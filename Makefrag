@@ -23,6 +23,8 @@ ifneq ($(which_disasm),)
 endif
 
 timeout_cycles = 100000000
+long_timeout_cycles = 1000000000
+linux_timeout_cycles = 5000000000
 
 #--------------------------------------------------------------------
 # Verilog Generation
@@ -332,7 +334,7 @@ mt_bmarks = \
 # LowRISC Tag Tests
 #--------------------------------------------------------------------
 
-tests_tag_dir = $(base_dir)/riscv-tools/lowrisc-tag-tests
+tests_tag_dir = $(base_dir)/riscv-tools/lowrisc-tag-tests/tests
 
 tag_tests = \
 	tag_ld_st \
