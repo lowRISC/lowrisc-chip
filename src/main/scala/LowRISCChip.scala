@@ -27,7 +27,8 @@ abstract trait TopLevelParameters extends UsesParameters {
 }
 
 class OuterMemorySystem extends Module with TopLevelParameters {
-  val io = new Bundle {
+  // conditional IO to support performance counter
+  class IOBundle extends Bundle {
     val tiles = Vec.fill(params(NTiles)){new TileLinkIO}.flip
     val htif = (new TileLinkIO).flip
     val incoherent = Vec.fill(params(LNClients)){Bool()}.asInput
@@ -35,6 +36,12 @@ class OuterMemorySystem extends Module with TopLevelParameters {
     val mem_backup = new MemSerializedIO(params(HTIFWidth))
     val mem_backup_en = Bool(INPUT)
   }
+
+  class IOBundle_PFC extends IOBundle {
+    val pfc = new CachePerformCounterReg
+  }
+
+  val io = new IOBundle_PFC
 
   // Create a simple NoC and points of coherence serialization
   val net = Module(new RocketChipCrossbarNetwork)
@@ -50,6 +57,10 @@ class OuterMemorySystem extends Module with TopLevelParameters {
 
   // Create a tag cache between L2 coherence managers and MemIO
   val tagCache = Module(new TagCache, {case TLId => "outer"; case CacheName => "L2"})
+
+  if(params(UsePerformCounters)) {
+    tagCache.io.pfc <> io.pfc
+  }
 
   if(params(NBanks) > 1) {
     val arb = Module(new UncachedTileLinkIOArbiterThatAppendsArbiterId(params(NBanks)),
@@ -92,8 +103,12 @@ class Uncore extends Module with TopLevelParameters {
     else UInt(0)
   }
 
-  val htif = Module(new HTIF(CSRs.reset)) // One HTIF module per chip
+  val htif = Module(new HTIF(CSRs.reset, CSRs.Tag_write_cnt)) // One HTIF module per chip
   val outmemsys = Module(new OuterMemorySystem) // NoC, LLC and SerDes
+
+  if(params(UsePerformCounters)) {
+    htif.io.pfc <> outmemsys.io.pfc
+  }
 
   // Wire outer mem system to tiles and htif, adding
   //   networking headers and endpoint queues

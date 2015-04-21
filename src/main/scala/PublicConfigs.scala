@@ -63,9 +63,9 @@ class DefaultConfig extends ChiselConfig (
       case NRAS => 2
       //L1DataCache
       case NDTLBEntries => 8
-      case StoreDataQueueDepth => 17
+      case StoreDataQueueDepth => if(site(MatchSpike)) 1 else 17
       case ReplayQueueDepth => 16
-      case NMSHRs => Knob("L1D_MSHRS")
+      case NMSHRs => if(site(MatchSpike)) 1 else Knob("L1D_MSHRS")
       case LRSCCycles => 32 
       //L2CacheParams
       case NReleaseTransactors => Knob("L2_REL_XACTS")
@@ -120,27 +120,28 @@ class DefaultConfig extends ChiselConfig (
           Module(new L2CoherenceAgent(id, "inner", "outer"), { case CacheName => "L2" })
       }
       case Coherence => new MSICoherence(() => new NullRepresentation)
+      case UsePerformCounters => true           // enable performance counter
+      case PerformCounterBits => site(XprLen)   // size of a performance counter
+      case MatchSpike => false                  // whether to match the cache results of spike
+      case DebugPrint => false                  // whether to print debug information
       // tag memory
-      // the number of tag bits per core data (64-bit)
-      case TagBits => 4
-      // the base address of the tag partition
+      case TagBits => 4                         // the number of tag bits per core data (64-bit)
       case TagBaseAddr => 1 << (site(PAddrBits) - 2)
-      // the size of the memory tag partition
-      case TagMemSize => 20
-      // the bit size of a tagged tilelink data
+                                                // the base address of the tag partition
+      case TagMemSize => 20                     // the size of the memory tag partition
       case TagTLDataBits => site(TLDataBits) + site(TagBits) * (site(TLDataBits) / site(CoreDataBits))
-      // the size of a block in the tag cache
+                                                // the bit size of a tagged tilelink data
       case TagBlockBytes => site(CacheBlockBytes)
-      // the size of a row in the tag cache
-      case TagRowBytes => site(MIFDataBits) / 8
-      // the number of tags in a row in the tag cache
+                                                // the size of a block in the tag cache
+      case TagRowBytes => site(MIFDataBits) / 8 // the size of a row in the tag cache
       case TagRowTags => 1 << log2Down((site(TagRowBytes) * 8) / site(TagBits))
-      // the number of cache blocks per row
+                                                // the number of tags in a row in the tag cache
       case TagRowBlocks => site(TagRowTags) * 8 / site(CacheBlockBytes) 
-      // number of cache blocks in a tag cache block
+                                                // the number of cache blocks per row
       case TagBlockBlocks => site(TagBlockBytes) / site(TagRowBytes) * site(TagRowBlocks)
-      // the number of tag bits needed for a cache block
+                                                // number of cache blocks in a tag cache block
       case TagBlockTagBits => site(TagBits) * site(CacheBlockBytes) / 8
+                                                // the number of tag bits needed for a cache block
       // other tag cache settings
       case TagCacheWays => 8
       case TagCacheSets => 64
