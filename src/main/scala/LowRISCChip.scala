@@ -39,6 +39,7 @@ class OuterMemorySystem extends Module with TopLevelParameters {
 
   class IOBundle_PFC extends IOBundle {
     val pfc = new CachePerformCounterReg
+    val tag_pfc_reset = Bool(INPUT)
   }
 
   val io = new IOBundle_PFC
@@ -60,6 +61,7 @@ class OuterMemorySystem extends Module with TopLevelParameters {
 
   if(params(UsePerformCounters)) {
     tagCache.io.pfc <> io.pfc
+    tagCache.io.pfc_reset := io.tag_pfc_reset
   }
 
   if(params(NBanks) > 1) {
@@ -108,6 +110,7 @@ class Uncore extends Module with TopLevelParameters {
 
   if(params(UsePerformCounters)) {
     htif.io.pfc <> outmemsys.io.pfc
+    outmemsys.io.tag_pfc_reset <> htif.io.tag_pfc_reset
   }
 
   // Wire outer mem system to tiles and htif, adding
