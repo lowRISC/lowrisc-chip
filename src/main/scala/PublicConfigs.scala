@@ -14,6 +14,8 @@ class DefaultConfig extends ChiselConfig (
     def findBy(sname:Any):Any = here[PF](site[Any](sname))(pname)
     pname match {
       //Memory Parameters
+      case CacheBlockBytes => 64
+      case CacheBlockOffsetBits => log2Up(here(CacheBlockBytes))
       case PAddrBits => 32
       case PgIdxBits => 12
       case PgLevels => 3 // Sv39
@@ -102,8 +104,8 @@ class DefaultConfig extends ChiselConfig (
       
       //Uncore Paramters
       case NBanks => Knob("NBANKS")
-      case LNEndpoints => site(TLNManagers) + site(TLNClients)
-      case LNHeaderBits => log2Ceil(site(TLNManagers)) + log2Up(site(TLNClients))
+      case BankIdLSB => 0
+      case LNHeaderBits => log2Up(max(site(TLNManagers),site(TLNClients)))
       case TLBlockAddrBits => site(PAddrBits) - site(CacheBlockOffsetBits)
       case TLNClients => site(TLNCachingClients) + site(TLNCachelessClients)
       case TLDataBits => site(CacheBlockBytes)*8/site(TLDataBeats)
@@ -136,8 +138,6 @@ class DefaultConfig extends ChiselConfig (
         case TLMaxClientsPerPort => site(NAcquireTransactors) + 2
       }:PF
       
-      case CacheBlockBytes => 64
-      case CacheBlockOffsetBits => log2Up(here(CacheBlockBytes))
     }},
   knobValues = {
     case "NTILES" => 1
