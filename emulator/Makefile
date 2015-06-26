@@ -3,7 +3,7 @@ sim_dir = .
 output_dir = $(sim_dir)/output
 tag_output_dir = $(sim_dir)/tag_output
 PROJECT = lowrisc_chip
-CONFIG ?= DefaultCPPConfig
+CONFIG ?= DefaultConfig
 
 all: emulator-$(CONFIG)
 debug: emulator-$(CONFIG)-debug

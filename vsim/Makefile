@@ -16,8 +16,9 @@ sim_dir = .
 output_dir = $(sim_dir)/output
 tag_output_dir = $(sim_dir)/tag_output
 
-BACKEND ?= lowrisc_chip.LowRISCChipBackend
-CONFIG ?= DefaultVLSIConfig
+#BACKEND ?= lowrisc_chip.LowRISCChipBackend
+BACKEND ?= v
+CONFIG ?= DefaultConfig
 
 include $(base_dir)/Makefrag
 include $(sim_dir)/Makefrag

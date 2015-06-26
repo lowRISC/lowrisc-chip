@@ -15,7 +15,7 @@ object BuildSettings extends Build {
     version      := buildVersion,
     scalaVersion := buildScalaVersion,
     parallelExecution in Global := false,
-    traceLevel   := 15,
+    traceLevel   := 50,
     scalacOptions ++= Seq("-deprecation","-unchecked"),
     libraryDependencies ++= Seq("org.scala-lang" % "scala-reflect" % scalaVersion.value)
     //                        "edu.berkeley.cs" %% "chisel" % "2.3-SNAPSHOT",

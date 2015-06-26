@@ -59,7 +59,6 @@ class DefaultConfig extends ChiselConfig (
 
       //L2 $
       case NAcquireTransactors => Knob("L2_XACTORS")
-      case L2StoreDataQueueDepth => 1
       case NSecondaryMisses => 4
       case L2DirectoryRepresentation => new FullRepresentation(site(TLNCachingClients))
       case "L2Bank" => {
@@ -84,6 +83,7 @@ class DefaultConfig extends ChiselConfig (
       case NTiles => Knob("NTILES")
       case NDCachePorts => 2
       case NPTWPorts => 2
+      case BuildRoCC => None
 
       //Rocket Core Constants
       case FetchWidth => 1
@@ -163,7 +163,7 @@ class DefaultConfig extends ChiselConfig (
 
 
 class FPGAConfig extends ChiselConfig (
-  (pname,site,here) => pname match {
-    case TagBaseAddr => 15 << 24 // 0xf00,0000
+  knobValues = {
+    case "TC_BASE_ADDR" => 15 << 24 // 0xf00,0000
   }
 )
