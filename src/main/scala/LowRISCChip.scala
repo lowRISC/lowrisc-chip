@@ -18,7 +18,7 @@ abstract trait TopLevelParameters extends UsesParameters {
 }
 
 class TopIO extends Bundle {
-  val mem     = new MemIO
+  val nasti     = new NASTIMasterIO
 }
 
 class Top extends Module with TopLevelParameters {
@@ -62,10 +62,13 @@ class Top extends Module with TopLevelParameters {
   tcNetwork.io.clients <> banks.map(_.outerTL)
 
   // tag cache
-  val tc = Module(new TagCache, {case TLId => "L2ToTC"; case CacheName => "TagCache"})
+  //val tc = Module(new TagCache, {case TLId => "L2ToTC"; case CacheName => "TagCache"})
+  // currently a TileLink to NASTI converter
+  val conv = Module(new NASTIMasterIOTileLinkIOConverter, {case TLId => "L2ToTC"})
 
-  tcNetwork.io.managers <> Vec(tc.io.inner)
-  io.mem <> tc.io.mem
-
+  //tcNetwork.io.managers <> Vec(tc.io.inner)
+  tcNetwork.io.managers <> Vec(conv.io.tl)
+  conv.io.nasti <> io.nasti
+  
 }
 
