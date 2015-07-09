@@ -19,3 +19,6 @@
 [submodule "uncore"]
 	path = uncore
 	url = https://github.com/lowrisc/uncore.git
+[submodule "zscale"]
+	path = zscale
+	url = https://github.com/lowrisc/zscale.git
