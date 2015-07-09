@@ -27,6 +27,12 @@ class DefaultConfig extends ChiselConfig (
       case MIFTagBits => 8
       case MIFDataBits => 128
 
+      // IO space
+      case IOBaseAddr0 => UInt("hffff0000") // ffff_0000 : ffff_ffff
+      case IOAddrMask0 => UInt("h0000ffff")
+      case IOBaseAddr1 => UInt("hffffffff") // empty
+      case IOAddrMask1 => UInt("h00000000")
+
       //Params used by all caches
       case NSets => findBy(CacheName)
       case NWays => findBy(CacheName)
