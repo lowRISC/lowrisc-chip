@@ -48,6 +48,29 @@ class TileLinkNetwork(
   }
 }
 
+/** The common channel hook up functions
+  */
+trait CrossbarHooker extends TLModule {
+  // define connection helpers
+  def P2LHookup[T <: Data](phy: DecoupledIO[PhysicalNetworkIO[T]], log: DecoupledIO[LogicalNetworkIO[T]]) =
+  {
+    val s = DefaultFromPhysicalShim(phy)
+    log.bits := s.bits
+    log.valid := s.valid
+    s.ready := log.ready
+  }
+
+  def L2PHookup[T <: Data](n: Int, phy: DecoupledIO[PhysicalNetworkIO[T]],
+    log: DecoupledIO[LogicalNetworkIO[T]]) =
+  {
+    val s = DefaultToPhysicalShim(n, log)
+    phy.bits := s.bits
+    phy.valid := s.valid
+    s.ready := phy.ready
+  }
+}
+
+
 /** A corssbar based TileLink network
   * @param count The number of beats for Acquire, Release and Grant messages
   */
@@ -57,7 +80,9 @@ class TileLinkCrossbar(
   count: Int = 1,
   clientFIFODepth: TileLinkDepths = TileLinkDepths(0,0,0,0,0),
   managerFIFODepth: TileLinkDepths = TileLinkDepths(0,0,0,0,0)
-) extends TileLinkNetwork(clientRouting, managerRouting, clientFIFODepth, managerFIFODepth) {
+) extends TileLinkNetwork(clientRouting, managerRouting, clientFIFODepth, managerFIFODepth)
+    with CrossbarHooker
+{
 
   // parallel crossbars for different message types
   val acqCB = Module(new BasicCrossbar(nClients, nManagers, new Acquire, count, Some((a: PhysicalNetworkIO[Acquire]) => a.payload.hasMultibeatData())))
@@ -66,28 +91,15 @@ class TileLinkCrossbar(
   val gntCB = Module(new BasicCrossbar(nManagers, nClients, new Grant, count, Some((g: PhysicalNetworkIO[Grant]) => g.payload.hasMultibeatData())))
   val finCB = Module(new BasicCrossbar(nClients, nManagers, new Finish))
 
-  // define connection helpers
-  def P2LHookup[T <: Data](phy: DecoupledIO[PhysicalNetworkIO[T]], log: DecoupledIO[LogicalNetworkIO[T]]) = {
-    val s = DefaultFromPhysicalShim(phy)
-    log.bits := s.bits
-    log.valid := s.valid
-    s.ready := log.ready
-  }
-
-  def L2PHookup[T <: Data](phy: DecoupledIO[PhysicalNetworkIO[T]], log: DecoupledIO[LogicalNetworkIO[T]]) = {
-    val s = DefaultToPhysicalShim(max(nClients, nManagers), log)
-    phy.bits := s.bits
-    phy.valid := s.valid
-    s.ready := phy.ready
-  }
+  val phyIdBits = max(nClients, nManagers)
 
   clients.zipWithIndex.map {
     case(c, i) => {
-      L2PHookup(acqCB.io.in(i),  c.acquire)
-      L2PHookup(relCB.io.in(i),  c.release)
+      L2PHookup(phyIdBits, acqCB.io.in(i),  c.acquire)
+      L2PHookup(phyIdBits, relCB.io.in(i),  c.release)
       P2LHookup(prbCB.io.out(i), c.probe)
       P2LHookup(gntCB.io.out(i), c.grant)
-      L2PHookup(finCB.io.in(i),  c.finish)
+      L2PHookup(phyIdBits, finCB.io.in(i),  c.finish)
     }
   }
 
@@ -95,8 +107,8 @@ class TileLinkCrossbar(
     case(m, i) => {
       P2LHookup(acqCB.io.out(i), m.acquire)
       P2LHookup(relCB.io.out(i), m.release)
-      L2PHookup(prbCB.io.in(i),  m.probe)
-      L2PHookup(gntCB.io.in(i),  m.grant)
+      L2PHookup(phyIdBits, prbCB.io.in(i),  m.probe)
+      L2PHookup(phyIdBits, gntCB.io.in(i),  m.grant)
       P2LHookup(finCB.io.out(i), m.finish)
     }
   }
@@ -111,11 +123,13 @@ class SharedTileLinkCrossbar(
   count: Int = 1,
   clientFIFODepth: TileLinkDepths = TileLinkDepths(0,0,0,0,0),
   managerFIFODepth: TileLinkDepths = TileLinkDepths(0,0,0,0,0)
-) extends TileLinkNetwork(clientRouting, managerRouting, clientFIFODepth, managerFIFODepth) {
+) extends TileLinkNetwork(clientRouting, managerRouting, clientFIFODepth, managerFIFODepth)
+    with CrossbarHooker
+{
 
   // shared crossbars
-  val c2mCB = Module(new BasicCrossbar(nClients, nManagers, new Acquire, count, Some((a: PhysicalNetworkIO[Acquire]) => a.payload.hasMultibeatData())))
-  val m2cCB = Module(new BasicCrossbar(nManagers, nClients, new Acquire, count, Some((a: PhysicalNetworkIO[Acquire]) => a.payload.hasMultibeatData())))
+  val c2mCB = Module(new BasicCrossbar(nClients, nManagers, new SuperChannel, count, Some((a: PhysicalNetworkIO[SuperChannel]) => a.payload.hasMultibeatData())))
+  val m2cCB = Module(new BasicCrossbar(nManagers, nClients, new SuperChannel, count, Some((a: PhysicalNetworkIO[SuperChannel]) => a.payload.hasMultibeatData())))
 
   // TODO: I need a super container for all channels
   //       the converter to/from the super container
