@@ -49,7 +49,7 @@ class TileLinkNetwork(
 }
 
 /** A corssbar based TileLink network
-  * @param count The number of beat for Acquire, Release and Grant messages
+  * @param count The number of beats for Acquire, Release and Grant messages
   */
 class TileLinkCrossbar(
   clientRouting: UInt => UInt,
@@ -100,4 +100,25 @@ class TileLinkCrossbar(
       P2LHookup(finCB.io.out(i), m.finish)
     }
   }
+}
+
+/** A TileLink Network using a shared crossbar
+  * @param count The number of beats for Acquire, Release and Grant messages
+  */
+class SharedTileLinkCrossbar(
+  clientRouting: UInt => UInt,
+  managerRouting: UInt => UInt,
+  count: Int = 1,
+  clientFIFODepth: TileLinkDepths = TileLinkDepths(0,0,0,0,0),
+  managerFIFODepth: TileLinkDepths = TileLinkDepths(0,0,0,0,0)
+) extends TileLinkNetwork(clientRouting, managerRouting, clientFIFODepth, managerFIFODepth) {
+
+  // shared crossbars
+  val c2mCB = Module(new BasicCrossbar(nClients, nManagers, new Acquire, count, Some((a: PhysicalNetworkIO[Acquire]) => a.payload.hasMultibeatData())))
+  val m2cCB = Module(new BasicCrossbar(nManagers, nClients, new Acquire, count, Some((a: PhysicalNetworkIO[Acquire]) => a.payload.hasMultibeatData())))
+
+  // TODO: I need a super container for all channels
+  //       the converter to/from the super container
+  //       arbitration and routing scheme for the super container
+
 }
