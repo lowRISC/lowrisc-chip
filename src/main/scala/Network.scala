@@ -131,8 +131,27 @@ class SharedTileLinkCrossbar(
   val c2mCB = Module(new BasicCrossbar(nClients, nManagers, new SuperChannel, count, Some((a: PhysicalNetworkIO[SuperChannel]) => a.payload.hasMultibeatData())))
   val m2cCB = Module(new BasicCrossbar(nManagers, nClients, new SuperChannel, count, Some((a: PhysicalNetworkIO[SuperChannel]) => a.payload.hasMultibeatData())))
 
-  // TODO: I need a super container for all channels
-  //       the converter to/from the super container
-  //       arbitration and routing scheme for the super container
+  val phyIdBits = max(nClients, nManagers)
 
+  clients.zipWithIndex.map {
+    case(c, i) => {
+      val mux = Module(new SuperChannelInputMultiplexer)
+      val demux = Module(new SuperChannelInputDemultiplexer)
+      mux.io.tl <> c
+      demux.io.tl <> c
+      c2mCB.io.in(i) <> mux.io.su
+      m2cCB.io.out(i) <> demux.io.su
+    }
+  }
+
+  managers.zipWithIndex.map {
+    case(m, i) => {
+      val mux = Module(new SuperChannelOutputMultiplexer)
+      val demux = Module(new SuperChannelOutputDemultiplexer)
+      mux.io.tl <> m
+      demux.io.tl <> m
+      c2mCB.io.out(i) <> demux.io.su
+      m2cCB.io.in(i) <> mux.io.su
+    }
+  }
 }
