@@ -31,8 +31,9 @@ object BuildSettings extends Build {
   lazy val hardfloat  = Project("hardfloat", file("hardfloat"), settings = buildSettings) dependsOn(chisel)
   lazy val uncore     = Project("uncore", file("uncore"), settings = buildSettings) dependsOn(hardfloat)
   lazy val rocket     = Project("rocket", file("rocket"), settings = buildSettings) dependsOn(uncore)
+  lazy val bridge     = Project("bridge", file("bridge"), settings = buildSettings) dependsOn(uncore)
 
-  val baselist = Vector("chisel", "uncore", "rocket", "hardfloat")
+  val baselist = Vector("chisel", "uncore", "rocket", "hardfloat", "bridge")
   def getsubdirs = {
     val blacklist = (baselist ++ Vector("target", "project"))
     IO.listFiles(file(".")) map (_.toString.split("/").last) filter (f=> !blacklist.contains(f) && (f(0)!='.')) filter (f=> !IO.listFiles(file(f+"/src/main/scala")).isEmpty)
