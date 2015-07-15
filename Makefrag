@@ -31,7 +31,7 @@ linux_timeout_cycles = 5000000000
 #--------------------------------------------------------------------
 
 $(generated_dir)/$(MODEL).$(CONFIG).v: $(chisel_srcs)
-	cd $(base_dir) && mkdir -p $(generated_dir) && $(SBT) "project lowrisc_chip" "elaborate $(MODEL) --backend $(BACKEND) --targetDir $(generated_dir) --noInlineMem --configInstance lowrisc_chip.$(CONFIG) --configDump"
+	cd $(base_dir) && mkdir -p $(generated_dir) && $(SBT) "project lowrisc_chip" "elaborate $(MODEL) --backend $(BACKEND) --targetDir $(generated_dir) --noInlineMem --configInstance lowrisc_chip.$(CONFIG) --configDump --debug"
 	cd $(generated_dir) && \
 	if [ -a $(MODEL).$(CONFIG).conf ]; then \
 	  $(mem_gen) $(generated_dir)/$(MODEL).$(CONFIG).conf >> $(generated_dir)/$(MODEL).$(CONFIG).v; \

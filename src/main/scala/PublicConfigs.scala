@@ -143,7 +143,15 @@ class DefaultConfig extends ChiselConfig (
         case TLMaxClientXacts => 1
         case TLMaxClientsPerPort => site(NAcquireTransactors) + 2
       }:PF
-      
+      case "L1ToIO" => {
+        case TLNManagers => 1
+        case TLNCachingClients => 0
+        case TLNCachelessClients => site(NTiles)
+        case TLCoherencePolicy => new MICoherence(new NullRepresentation(site(NTiles)))
+        case TLMaxManagerXacts => site(NTiles)
+        case TLMaxClientXacts => 1
+        case TLMaxClientsPerPort => 1
+      }:PF      
     }},
   knobValues = {
     case "NTILES" => 1
