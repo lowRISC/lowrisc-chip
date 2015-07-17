@@ -32,6 +32,8 @@ class DefaultConfig extends ChiselConfig (
       case IOAddrMask0 => UInt("h0000ffff")
       case IOBaseAddr1 => UInt("hffffffff") // empty
       case IOAddrMask1 => UInt("h00000000")
+      case IODataBits => 32         // assume 32-bit IO NASTI-Lite bus 
+                                    // (LD/SD leads to NASTI-Lite transactions) 
 
       //Params used by all caches
       case NSets => findBy(CacheName)
@@ -151,7 +153,27 @@ class DefaultConfig extends ChiselConfig (
         case TLMaxManagerXacts => site(NTiles)
         case TLMaxClientXacts => 1
         case TLMaxClientsPerPort => 1
-      }:PF      
+      }:PF
+
+      // NASTI BUS parameters
+      case NASTIDataBits => findBy(BusId)
+      case NASTIAddrBits => findBy(BusId)
+      case NASTIIdBits   => findBy(BusId)
+      case NASTIUserBits => findBy(BusId)
+
+      case "nasti" => {
+        case NASTIDataBits => site(MIFDataBits)
+        case NASTIAddrBits => site(PAddrBits)
+        case NASTIIdBits => site(MIFTagBits)
+        case NASTIUserBits => 1
+      }:PF
+      case "lite" => {
+        case NASTIDataBits => site(IODataBits)
+        case NASTIAddrBits => site(PAddrBits)
+        case NASTIIdBits => 1
+        case NASTIUserBits => 1
+      }:PF
+      
     }},
   knobValues = {
     case "NTILES" => 1

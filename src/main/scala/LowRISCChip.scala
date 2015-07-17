@@ -18,9 +18,9 @@ abstract trait TopLevelParameters extends UsesParameters {
 }
 
 class TopIO extends Bundle {
-  val nasti     = new NASTIMasterIO
+  val nasti     = Bundle(new NASTIMasterIO, {case BusId => "nasti"})
   //val poci      = new POCIIO
-  val poci      = new NASTIMasterIO
+  val poci      = Bundle(new NASTIMasterIO, {case BusId => "nasti"})
 }
 
 class Top extends Module with TopLevelParameters {
@@ -66,7 +66,7 @@ class Top extends Module with TopLevelParameters {
   // tag cache
   //val tc = Module(new TagCache, {case TLId => "L2ToTC"; case CacheName => "TagCache"})
   // currently a TileLink to NASTI converter
-  val conv = Module(new NASTIMasterIOTileLinkIOConverter, {case TLId => "L2ToTC"})
+  val conv = Module(new NASTIMasterIOTileLinkIOConverter, {case BusId => "nasti"; case TLId => "L2ToTC"})
 
   //tcNetwork.io.managers <> Vec(tc.io.inner)
   tcNetwork.io.managers <> Vec(conv.io.tl)
@@ -82,7 +82,7 @@ class Top extends Module with TopLevelParameters {
 
   // IO TileLink to poci bridge
   //val poci = Module(new TileLinkToPOCIBridge, {case TLId => "L1ToIO"})
-  val poci = Module(new NASTIMasterIOTileLinkIOConverter, {case TLId => "L1ToIO"})
+  val poci = Module(new NASTIMasterIOTileLinkIOConverter, {case BusId => "nasti"; case TLId => "L1ToIO"})
 
   ioNetwork.io.managers <> Vec(poci.io.tl)
   //poci.io.poci <> io.poci
