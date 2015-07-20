@@ -86,8 +86,8 @@ class Top extends Module with TopLevelParameters {
   nasti_lite.io.nasti <> io.nasti_lite
 }
 
-object Top {
+object Run {
   def main(args: Array[String]): Unit = {
-    chiselMain(args, () => Module(new Top))
+    chiselMain.run(args, () => new Top())
   }
 }

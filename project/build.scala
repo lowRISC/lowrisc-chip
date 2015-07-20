@@ -1,3 +1,5 @@
+// See LICENSE for license details.
+
 import sbt._
 import Keys._
 
@@ -15,6 +17,8 @@ object BuildSettings extends Build {
     scalacOptions ++= Seq("-deprecation","-unchecked"),
     libraryDependencies ++= Seq("org.scala-lang" % "scala-reflect" % scalaVersion.value)
   )
+
+  // sbt multi-project compilation
 
   lazy val chisel       = Project("chisel", file("chisel"), settings = buildSettings)
   lazy val hardfloat    = Project("hardfloat", file("hardfloat"), settings = buildSettings).dependsOn(chisel)
