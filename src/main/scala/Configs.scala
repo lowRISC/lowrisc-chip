@@ -16,7 +16,7 @@ class DefaultConfig extends ChiselConfig (
       //Memory Parameters
       case CacheBlockBytes => 64
       case CacheBlockOffsetBits => log2Up(here(CacheBlockBytes))
-      case PAddrBits => 32
+      case PAddrBits => Dump("PADDR_WIDTH", 32)
       case PgIdxBits => 12
       case PgLevels => 3 // Sv39
       case PgLevelBits => site(PgIdxBits) - log2Up(site(XLen)/8)
@@ -24,16 +24,16 @@ class DefaultConfig extends ChiselConfig (
       case PPNBits => site(PAddrBits) - site(PgIdxBits)
       case VAddrBits => site(VPNBits) + site(PgIdxBits)
       case ASIdBits => 7
-      case MIFTagBits => 8
-      case MIFDataBits => 128
+      case MIFTagBits => Dump("MEM_TAG_WIDTH", 8)
+      case MIFDataBits => Dump("MEM_DAT_WIDTH", 128)
 
       // IO space
       case IOBaseAddr0 => UInt("hffff0000") // ffff_0000 : ffff_ffff
       case IOAddrMask0 => UInt("h0000ffff")
       case IOBaseAddr1 => UInt("hffffffff") // empty
       case IOAddrMask1 => UInt("h00000000")
-      case IODataBits => 32         // assume 32-bit IO NASTI-Lite bus 
-                                    // (LD/SD leads to NASTI-Lite transactions) 
+      case IODataBits => Dump("IO_DAT_WIDTH", 32)  // assume 32-bit IO NASTI-Lite bus 
+                                                    // (LD/SD leads to NASTI-Lite transactions) 
 
       //Params used by all caches
       case NSets => findBy(CacheName)

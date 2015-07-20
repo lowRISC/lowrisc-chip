@@ -111,3 +111,8 @@ run-vpd: run-asm-tests-vpd run-bmarks-test-vpd run-tag-tests-vpd
 
 junk += $(output_dir)
 junk += $(tag_output_dir)
+
+
+# Local Variables:
+# mode: makefile
+# End:
