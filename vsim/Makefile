@@ -10,24 +10,25 @@
 default: all
 
 base_dir = $(abspath ..)
-generated_dir = $(abspath ./generated-src)
-mem_gen = $(base_dir)/vsim/vlsi_mem_gen
-sim_dir = .
-output_dir = $(sim_dir)/output
-tag_output_dir = $(sim_dir)/tag_output
+sim_dir = $(abspath ../vsim)
 
-#BACKEND ?= lowrisc_chip.LowRISCChipBackend
+generated_dir = $(sim_dir)/generated-src
+mem_gen = $(sim_dir)/vlsi_mem_gen
+output_dir = $(sim_dir)/output
+
 BACKEND ?= v
 CONFIG ?= DefaultConfig
 
 include $(base_dir)/Makefrag
 include $(sim_dir)/Makefrag
-include $(base_dir)/vsim/Makefrag-sim
 
-all: $(simv)
-debug: $(simv_debug)
+all: iv
+
+iv: $(sim_iv)
+
+vcs: $(sim_vcs)
 
 clean:
 	rm -rf $(junk) simv* csrc *.key DVE* *.h *.a *.daidir $(generated_dir)
 
-.PHONY: default all debug clean
+.PHONY: default all debug clean iv vcs
