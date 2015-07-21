@@ -22,3 +22,6 @@
 [submodule "zscale"]
 	path = bridge
 	url = https://github.com/lowrisc/zscale.git
+[submodule "socip"]
+	path = socip
+	url = https://github.com/lowrisc/socip.git
