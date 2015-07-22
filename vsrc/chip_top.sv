@@ -175,54 +175,60 @@ module chip_top
    // the memory contoller
 `ifdef FPGA
    
+   logic ram_clk, ram_rst, ram_en;
+   logic [7:0] ram_we;
+   logic [15:0] ram_addr;
+   logic [63:0] ram_wrdata, ram_rddata;
+
    axi_bram_ctrl_0 BramCtl
      (
-      .s_axi_aclk      ( clk           ),
-      .s_axi_aresetn   ( lrstn         ),
-      .s_axi_awid      ( axi_awid      ),
-      .s_axi_awaddr    ( axi_awaddr    ),
-      .s_axi_awlen     ( 8'h7          ), // 8 burst
-      .s_axi_awsize    ( 3'b011        ), // 4 byts per beat
-      .s_axi_awburst   ( 2'b01         ), // INCR burst
-      .s_axi_awlock    ( 1'b0          ), // no lock, AXI3 std.
-      .s_axi_awcache   ( 4'b0011       ), // nornal un-cacheable bufferable
-      .s_axi_awprot    ( 3'h0          ),
-      .s_axi_awvalid   ( axi_awvalid   ),
-      .s_axi_awready   ( axi_awready   ),
-      .s_axi_wdata     ( axi_wdata     ),
-      .s_axi_wstrb     ( 8'hff         ),
-      .s_axi_wlast     ( axi_wlast     ),
-      .s_axi_wvalid    ( axi_wvalid    ),
-      .s_axi_wready    ( axi_wready    ),
-      .s_axi_bid       ( axi_bid       ),
-      .s_axi_bresp     ( axi_bresp     ),
-      .s_axi_bvalid    ( axi_bvalid    ),
-      .s_axi_bready    ( axi_bready    ),
-      .s_axi_arid      ( axi_arid      ),
-      .s_axi_araddr    ( axi_araddr    ),
-      .s_axi_arlen     ( 8'h7          ),
-      .s_axi_arsize    ( 3'b011        ),
-      .s_axi_arburst   ( 2'b01         ),
-      .s_axi_arlock    ( 1'b0          ),
-      .s_axi_arcache   ( 4'b0011       ),
-      .s_axi_arprot    ( 3'h0          ),
-      .s_axi_arvalid   ( axi_arvalid   ),
-      .s_axi_arready   ( axi_arready   ),
-      .s_axi_rid       ( axi_rid       ),
-      .s_axi_rdata     ( axi_rdata     ),
-      .s_axi_rresp     ( axi_rresp     ),
-      .s_axi_rlast     ( axi_rlast     ),
-      .s_axi_rvalid    ( axi_rvalid    ),
-      .s_axi_rready    ( axi_rready    ),
-      .bram_rst_a      ( ram_rst       ),
-      .bram_clk_a      ( ram_clk       ),
-      .bram_en_a       ( ram_en        ),
-      .bram_we_a       ( ram_we        ),
-      .bram_addr_a     ( ram_addr      ),
-      .bram_wrdata_a   ( ram_wrdata    ),
-      .bram_rddata_a   ( ram_rddata    )
+      .s_axi_aclk      ( clk                 ),
+      .s_axi_aresetn   ( rstn                ),
+      .s_axi_awid      ( mem_nasti_aw.id     ),
+      .s_axi_awaddr    ( mem_nasti_aw.addr   ),
+      .s_axi_awlen     ( mem_nasti_aw.len    ),
+      .s_axi_awsize    ( mem_nasti_aw.size   ),
+      .s_axi_awburst   ( mem_nasti_aw.burst  ),
+      .s_axi_awlock    ( mem_nasti_aw.lock   ),
+      .s_axi_awcache   ( mem_nasti_aw.cache  ),
+      .s_axi_awprot    ( mem_nasti_aw.prot   ),
+      .s_axi_awvalid   ( mem_nasti_aw.valid  ),
+      .s_axi_awready   ( mem_nasti_aw.ready  ),
+      .s_axi_wdata     ( mem_nasti_w.data    ),
+      .s_axi_wstrb     ( mem_nasti_w.strb    ),
+      .s_axi_wlast     ( mem_nasti_w.last    ),
+      .s_axi_wvalid    ( mem_nasti_w.valid   ),
+      .s_axi_wready    ( mem_nasti_w.ready   ),
+      .s_axi_bid       ( mem_nasti_b.id      ),
+      .s_axi_bresp     ( mem_nasti_b.resp    ),
+      .s_axi_bvalid    ( mem_nasti_b.valid   ),
+      .s_axi_bready    ( mem_nasti_b.ready   ),
+      .s_axi_arid      ( mem_nasti_ar.id     ),
+      .s_axi_araddr    ( mem_nasti_ar.raddr  ),
+      .s_axi_arlen     ( mem_nasti_ar.len    ),
+      .s_axi_arsize    ( mem_nasti_ar.size   ),
+      .s_axi_arburst   ( mem_nasti_ar.burst  ),
+      .s_axi_arlock    ( mem_nasti_ar.lock   ),
+      .s_axi_arcache   ( mem_nasti_ar.cache  ),
+      .s_axi_arprot    ( mem_nasti_ar.prot   ),
+      .s_axi_arvalid   ( mem_nasti_ar.valid  ),
+      .s_axi_arready   ( mem_nasti_ar.ready  ),
+      .s_axi_rid       ( mem_nasti_r.id      ),
+      .s_axi_rdata     ( mem_nasti_r.data    ),
+      .s_axi_rresp     ( mem_nasti_r.resp    ),
+      .s_axi_rlast     ( mem_nasti_r.last    ),
+      .s_axi_rvalid    ( mem_nasti_r.valid   ),
+      .s_axi_rready    ( mem_nasti_r.ready   ),
+      .bram_rst_a      ( ram_rst             ),
+      .bram_clk_a      ( ram_clk             ),
+      .bram_en_a       ( ram_en              ),
+      .bram_we_a       ( ram_we              ),
+      .bram_addr_a     ( ram_addr            ),
+      .bram_wrdata_a   ( ram_wrdata          ),
+      .bram_rddata_a   ( ram_rddata          )
       );
 
+   // the inferred BRAMs
    reg [63:0] ram [0 : 13'h1FFF];
    reg [12:0] ram_addr_dly;
    
@@ -234,33 +240,40 @@ module chip_top
      end
 
    assign ram_rddata = ram[ram_addr_dly];
-   
-   initial $readmemh("/local/scratch/ws327/proj/untethered/lowrisc_printf/mem/uart.mem", ram);
 
-uart uart_i
-       (.S_AXI_araddr(S_AXI_araddr),
-        .S_AXI_arready(S_AXI_arready),
-        .S_AXI_arvalid(S_AXI_arvalid),
-        .S_AXI_awaddr(S_AXI_awaddr),
-        .S_AXI_awready(S_AXI_awready),
-        .S_AXI_awvalid(S_AXI_awvalid),
-        .S_AXI_bready(S_AXI_bready),
-        .S_AXI_bresp(S_AXI_bresp),
-        .S_AXI_bvalid(S_AXI_bvalid),
-        .S_AXI_rdata(S_AXI_rdata),
-        .S_AXI_rready(S_AXI_rready),
-        .S_AXI_rresp(S_AXI_rresp),
-        .S_AXI_rvalid(S_AXI_rvalid),
-        .S_AXI_wdata(S_AXI_wdata),
-        .S_AXI_wready(S_AXI_wready),
-        .S_AXI_wstrb(S_AXI_wstrb),
-        .S_AXI_wvalid(S_AXI_wvalid),
-        .freeze(freeze),
-        .rs232_uart_rxd(rs232_uart_rxd),
-        .rs232_uart_txd(rs232_uart_txd),
-        .rs232_uart_cts(rs232_uart_cts),
-        .rs232_uart_rts(rs232_uart_rts),
-        .s_axi_aclk(s_axi_aclk),
-        .s_axi_aresetn(s_axi_aresetn));
+   initial $readmemh("uart.mem", ram);
+
+ `ifdef USE_XIL_UART
+   // Xilinx UART IP
+   uart uart_i
+     (
+      .S_AXI_araddr    ( io_nasti_ar.addr   ),
+      .S_AXI_arready   ( io_nasti_ar.ready  ),
+      .S_AXI_arvalid   ( io_nasti_ar.valid  ),
+      .S_AXI_awaddr    ( io_nasti_aw.addr   ),
+      .S_AXI_awready   ( io_nasti_aw.ready  ),
+      .S_AXI_awvalid   ( io_nasti_aw.valid  ),
+      .S_AXI_bready    ( io_nasti_b.ready   ),
+      .S_AXI_bresp     ( io_nasti_b.resp    ),
+      .S_AXI_bvalid    ( io_nasti_b.valid   ),
+      .S_AXI_rdata     ( io_nasti_r.data    ),
+      .S_AXI_rready    ( io_nasti_r.ready   ),
+      .S_AXI_rresp     ( io_nasti_r.resp    ),
+      .S_AXI_rvalid    ( io_nasti_r.valid   ),
+      .S_AXI_wdata     ( io_nasti_w.data    ),
+      .S_AXI_wready    ( io_nasti_w.ready   ),
+      .S_AXI_wstrb     ( io_nasti_w.strb    ),
+      .S_AXI_wvalid    ( io_nasti_w.valid   ),
+      .freeze          (                    ),
+      .rs232_uart_rxd  ( rxd                ),
+      .rs232_uart_txd  ( txd                ),
+      .rs232_uart_cts  (                    ),
+      .rs232_uart_rts  (                    ),
+      .s_axi_aclk      ( clk                ),
+      .s_axi_aresetn   ( rstn               )
+      );
+
+ `endif //  `ifdef USE_XIL_UART
+`endif //  `ifdef FPGA
 
 endmodule // chip_top
