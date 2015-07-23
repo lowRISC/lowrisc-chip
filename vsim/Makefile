@@ -10,7 +10,7 @@
 default: all
 
 base_dir = $(abspath ..)
-sim_dir = $(abspath ../vsim)
+sim_dir = $(abspath .)
 
 generated_dir = $(sim_dir)/generated-src
 mem_gen = $(sim_dir)/vlsi_mem_gen
