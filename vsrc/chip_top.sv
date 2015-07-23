@@ -267,12 +267,35 @@ module chip_top
       .freeze          (                    ),
       .rs232_uart_rxd  ( rxd                ),
       .rs232_uart_txd  ( txd                ),
-      .rs232_uart_cts  (                    ),
+      .rs232_uart_cts  ( 1'b0               ),
       .rs232_uart_rts  (                    ),
       .s_axi_aclk      ( clk                ),
       .s_axi_aresetn   ( rstn               )
       );
 
+ `else // !`ifdef USE_XIL_UART
+
+   NASTILiteUART
+     #(
+       .NASTI_ADDR_WIDTH = 8,
+       .NASTI_DATA_WIDTH = 8,
+       .ClockFreq =	100000000,
+	   .Baud = 115200,
+	   .Parity = 0,
+	   .StopBits = 1
+       )
+   uart_i (
+           .clk        ( clk          ),
+           .rstn       ( rstn         ),
+           .nasti_aw   ( io_nasti_aw  ),
+           .nasti_w    ( io_nasti_w   ),
+           .nasti_b    ( io_nasti_b   ),
+           .nasti_ar   ( io_nasti_ar  ),
+           .nasti_r    ( io_nasti_r   ),
+           .rxd        ( rxd          ),
+           .txd        ( txd          )
+           );
+   
  `endif //  `ifdef USE_XIL_UART
 `endif //  `ifdef FPGA
 
