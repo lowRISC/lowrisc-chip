@@ -52,13 +52,12 @@ module chip_top
 `endif
 
    // the NASTI bus for cached memory
-   nasti_aw #(.ID_WIDTH(`MEM_TAG_WIDTH), .ADDR_WIDTH(`PADDR_WIDTH)) mem_nasti_aw();
-   nasti_w  #(.DATA_WIDTH(`MEM_DAT_WIDTH)) mem_nasti_w();
-   nasti_b  #(.ID_WIDTH(`MEM_TAG_WIDTH)) mem_nasti_b();
-   nasti_ar #(.ID_WIDTH(`MEM_TAG_WIDTH), .ADDR_WIDTH(`PADDR_WIDTH)) mem_nasti_ar();
-   nasti_r  #(.ID_WIDTH(`MEM_TAG_WIDTH), .DATA_WIDTH(`MEM_DAT_WIDTH)) mem_nasti_r();
+   nasti_aw mem_nasti_aw();
+   nasti_w  mem_nasti_w();
+   nasti_b  mem_nasti_b();
+   nasti_ar mem_nasti_ar();
+   nasti_r  mem_nasti_r();
 
-   /*
    defparam mem_nasti_aw.ID_WIDTH = `MEM_TAG_WIDTH;
    defparam mem_nasti_b.ID_WIDTH  = `MEM_TAG_WIDTH;
    defparam mem_nasti_ar.ID_WIDTH = `MEM_TAG_WIDTH;
@@ -67,21 +66,18 @@ module chip_top
    defparam mem_nasti_ar.ADDR_WIDTH = `PADDR_WIDTH;
    defparam mem_nasti_w.DATA_WIDTH = `MEM_DAT_WIDTH;
    defparam mem_nasti_r.DATA_WIDTH = `MEM_DAT_WIDTH;
-    */
    
    // the NASTI-Lite bus for IO space
-   nasti_aw #(.ADDR_WIDTH(16)) io_nasti_aw();
-   nasti_w  #(.DATA_WIDTH(`IO_DAT_WIDTH)) io_nasti_w();
+   nasti_aw io_nasti_aw();
+   nasti_w  io_nasti_w();
    nasti_b  io_nasti_b();
-   nasti_ar #(.ADDR_WIDTH(16)) io_nasti_ar();
-   nasti_r  #(.DATA_WIDTH(`IO_DAT_WIDTH)) io_nasti_r();
+   nasti_ar io_nasti_ar();
+   nasti_r  io_nasti_r();
 
-   /*
    defparam io_nasti_aw.ADDR_WIDTH = 16;
    defparam io_nasti_ar.ADDR_WIDTH = 16;
    defparam io_nasti_w.DATA_WIDTH = `IO_DAT_WIDTH;
    defparam io_nasti_r.DATA_WIDTH = `IO_DAT_WIDTH;
-   */
    
    // the Rocket chip
    Top Rocket
