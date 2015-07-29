@@ -6,7 +6,9 @@
 module chip_top
   (
    // clock
-`ifdef FPGA
+`ifdef SIMULATION
+   input clk_top,
+`elsif FPGA
    input clk_p, clk_n,
 `else
    input clk_top,
@@ -23,7 +25,13 @@ module chip_top
    // get the clock and reset signal
    logic  clk, rst, rstn;
 
-`ifdef FPGA
+`ifdef SIMULATION
+
+   assign clk = clk_top;
+   assign rst = rst_top;
+   assign rstn = !rst;
+
+`elsif FPGA
  `ifdef USE_PLL
    
    clk_wiz_0 mmcm
@@ -229,19 +237,19 @@ module chip_top
       );
 
    // the inferred BRAMs
-   reg [63:0] ram [0 : 13'h1FFF];
-   reg [12:0] ram_addr_dly;
+   reg [128:0] ram [0 : 8'hFF]; // 8K boot RAM
+   reg [7:0] ram_addr_dly;
    
    always_ff @(posedge ram_clk)
      if(ram_en) begin
-        ram_addr_dly <= ram_addr[15:3];
+        ram_addr_dly <= ram_addr[11:4];
         foreach (ram_we[i])
-          if(ram_we[i]) ram[ram_addr[15:3]][i*8 +:8] <= ram_wrdata[i*8 +: 8];
+          if(ram_we[i]) ram[ram_addr[11:4]][i*8 +:8] <= ram_wrdata[i*8 +: 8];
      end
 
    assign ram_rddata = ram[ram_addr_dly];
 
-   initial $readmemh("uart.mem", ram);
+   initial $readmemh("boot.mem", ram);
 
  `ifdef USE_XIL_UART
    // Xilinx UART IP
