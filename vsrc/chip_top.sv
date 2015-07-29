@@ -183,74 +183,41 @@ module chip_top
    // the memory contoller
 `ifdef FPGA
    
+   localparam MEM_DATA_WIDTH = 128;
+   localparam MEM_ADDR_WIDTH = 14;     // 16K
+   localparam MEM_LINE = 2 ** MEM_ADDR_WIDTH / MEM_DATA_WIDTH * 8;
+   localparam MEM_LINE_OFFSET = $clog2(MEM_DATA_WIDTH/8);
+   
    logic ram_clk, ram_rst, ram_en;
-   logic [7:0] ram_we;
-   logic [15:0] ram_addr;
-   logic [63:0] ram_wrdata, ram_rddata;
+   logic [MEM_ADDR_WIDTH/8-1:0] ram_we;
+   logic [MEM_ADDR_WIDTH-1:0] ram_addr;
+   logic [MEM_DATA_WIDTH:0] ram_wrdata, ram_rddata;
 
-   axi_bram_ctrl_0 BramCtl
-     (
-      .s_axi_aclk      ( clk                 ),
-      .s_axi_aresetn   ( rstn                ),
-      .s_axi_awid      ( mem_nasti_aw.id     ),
-      .s_axi_awaddr    ( mem_nasti_aw.addr   ),
-      .s_axi_awlen     ( mem_nasti_aw.len    ),
-      .s_axi_awsize    ( mem_nasti_aw.size   ),
-      .s_axi_awburst   ( mem_nasti_aw.burst  ),
-      .s_axi_awlock    ( mem_nasti_aw.lock   ),
-      .s_axi_awcache   ( mem_nasti_aw.cache  ),
-      .s_axi_awprot    ( mem_nasti_aw.prot   ),
-      .s_axi_awvalid   ( mem_nasti_aw.valid  ),
-      .s_axi_awready   ( mem_nasti_aw.ready  ),
-      .s_axi_wdata     ( mem_nasti_w.data    ),
-      .s_axi_wstrb     ( mem_nasti_w.strb    ),
-      .s_axi_wlast     ( mem_nasti_w.last    ),
-      .s_axi_wvalid    ( mem_nasti_w.valid   ),
-      .s_axi_wready    ( mem_nasti_w.ready   ),
-      .s_axi_bid       ( mem_nasti_b.id      ),
-      .s_axi_bresp     ( mem_nasti_b.resp    ),
-      .s_axi_bvalid    ( mem_nasti_b.valid   ),
-      .s_axi_bready    ( mem_nasti_b.ready   ),
-      .s_axi_arid      ( mem_nasti_ar.id     ),
-      .s_axi_araddr    ( mem_nasti_ar.addr   ),
-      .s_axi_arlen     ( mem_nasti_ar.len    ),
-      .s_axi_arsize    ( mem_nasti_ar.size   ),
-      .s_axi_arburst   ( mem_nasti_ar.burst  ),
-      .s_axi_arlock    ( mem_nasti_ar.lock   ),
-      .s_axi_arcache   ( mem_nasti_ar.cache  ),
-      .s_axi_arprot    ( mem_nasti_ar.prot   ),
-      .s_axi_arvalid   ( mem_nasti_ar.valid  ),
-      .s_axi_arready   ( mem_nasti_ar.ready  ),
-      .s_axi_rid       ( mem_nasti_r.id      ),
-      .s_axi_rdata     ( mem_nasti_r.data    ),
-      .s_axi_rresp     ( mem_nasti_r.resp    ),
-      .s_axi_rlast     ( mem_nasti_r.last    ),
-      .s_axi_rvalid    ( mem_nasti_r.valid   ),
-      .s_axi_rready    ( mem_nasti_r.ready   ),
-      .bram_rst_a      ( ram_rst             ),
-      .bram_clk_a      ( ram_clk             ),
-      .bram_en_a       ( ram_en              ),
-      .bram_we_a       ( ram_we              ),
-      .bram_addr_a     ( ram_addr            ),
-      .bram_wrdata_a   ( ram_wrdata          ),
-      .bram_rddata_a   ( ram_rddata          )
-      );
+   axi_bram_ctrl_top #(.ADDR_WIDTH(MEM_ADDR_WIDTH), .DATA_WIDTH(MEM_DATA_WIDTH)) 
+   BramCtl (
+            .*,
+            .aw    ( mem_nasti_aw ),
+            .w     ( mem_nasti_w  ),
+            .b     ( mem_nasti_b  ),
+            .ar    ( mem_nasti_ar ),
+            .r     ( mem_nasti_r  )
+           );
 
    // the inferred BRAMs
-   reg [128:0] ram [0 : 8'hFF]; // 8K boot RAM
-   reg [7:0] ram_addr_dly;
+   reg [MEM_DATA_WIDTH-1:0] ram [0 : MEM_LINE-1];
+   reg [MEM_ADDR_WIDTH-1:MEM_LINE_OFFSET] ram_addr_dly;
    
    always_ff @(posedge ram_clk)
      if(ram_en) begin
-        ram_addr_dly <= ram_addr[11:4];
+        ram_addr_dly <= ram_addr[MEM_ADDR_WIDTH-1:MEM_LINE_OFFSET];
         foreach (ram_we[i])
-          if(ram_we[i]) ram[ram_addr[11:4]][i*8 +:8] <= ram_wrdata[i*8 +: 8];
+          if(ram_we[i]) ram[ram_addr[MEM_ADDR_WIDTH-1:MEM_LINE_OFFSET]][i*8 +:8] <= ram_wrdata[i*8 +: 8];
      end
 
    assign ram_rddata = ram[ram_addr_dly];
 
-   initial $readmemh("boot.mem", ram);
-
+   initial $readmemh("/auto/homes/ws327/proj/new/lowrisc-chip-dev/fpga/board/kc705/src/boot.mem", ram);
+   
  `ifdef USE_XIL_UART
    // Xilinx UART IP
    axi_uart16550_0 uart_i
