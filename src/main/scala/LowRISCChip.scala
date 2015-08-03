@@ -77,7 +77,7 @@ class Top extends Module with TopLevelParameters {
   val ioNetwork = Module(new SharedTileLinkCrossbar(routeL1ToIO, routeIOToL1),
     {case TLId => "L1ToIO"})
 
-  ioNetwork.io.clients <> tiles.map(_.io.io)
+  ioNetwork.io.clients <> tiles.map(_.io.io).map(TileLinkIOWrapper(_, params.alterPartial({case TLId => "L1ToIO"})))
 
   // IO TileLink to NASTI-Lite bridge
   val nasti_lite = Module(new NASTILiteMasterIOTileLinkIOConverter, {case BusId => "lite"; case TLId => "L1ToIO"})
