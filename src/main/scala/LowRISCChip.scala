@@ -19,7 +19,7 @@ abstract trait TopLevelParameters extends UsesParameters {
 
 class TopIO extends Bundle {
   val nasti       = Bundle(new NASTIMasterIO, {case BusId => "nasti"})
-  val nasti_lite  = Bundle(new NASTILiteMasterIO, {case BusId => "nasti"})
+  val nasti_lite  = Bundle(new NASTILiteMasterIO, {case BusId => "lite"})
 }
 
 class Top extends Module with TopLevelParameters {

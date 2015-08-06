@@ -9,11 +9,11 @@ module axi_bram_ctrl_top
     )
    (
     input clk, rstn,
-    nasti_aw aw,
-    nasti_w w,
-    nasti_b b,
-    nasti_ar ar,
-    nasti_r r,
+    nasti_aw.slave aw,
+    nasti_w.slave w,
+    nasti_b.slave b,
+    nasti_ar.slave ar,
+    nasti_r.slave r,
     output ram_rst, ram_clk, ram_en,
     output [ADDR_WIDTH-1:0] ram_addr,
     output [DATA_WIDTH-1:0] ram_wrdata,

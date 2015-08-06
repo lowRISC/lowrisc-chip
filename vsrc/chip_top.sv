@@ -189,9 +189,9 @@ module chip_top
    localparam MEM_LINE_OFFSET = $clog2(MEM_DATA_WIDTH/8);
    
    logic ram_clk, ram_rst, ram_en;
-   logic [MEM_ADDR_WIDTH/8-1:0] ram_we;
+   logic [MEM_DATA_WIDTH/8-1:0] ram_we;
    logic [MEM_ADDR_WIDTH-1:0] ram_addr;
-   logic [MEM_DATA_WIDTH:0] ram_wrdata, ram_rddata;
+   logic [MEM_DATA_WIDTH-1:0] ram_wrdata, ram_rddata;
 
    axi_bram_ctrl_top #(.ADDR_WIDTH(MEM_ADDR_WIDTH), .DATA_WIDTH(MEM_DATA_WIDTH)) 
    BramCtl (
