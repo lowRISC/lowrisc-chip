@@ -216,7 +216,7 @@ module chip_top
 
    assign ram_rddata = ram[ram_addr_dly];
 
-   initial $readmemh("/auto/homes/ws327/proj/new/lowrisc-chip-dev/fpga/board/kc705/src/boot.mem", ram);
+   initial $readmemh("boot.mem", ram);
    
  `ifdef USE_XIL_UART
    // Xilinx UART IP
