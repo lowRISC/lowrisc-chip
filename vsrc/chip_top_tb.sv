@@ -6,7 +6,8 @@ module tb;
 
    chip_top
      DUT(
-         .clk_top(clk),
+         .clk_p(clk),
+         .clk_n(!clk),
          .rst_top(rst), 
          .rxd(1'b1)
          );
