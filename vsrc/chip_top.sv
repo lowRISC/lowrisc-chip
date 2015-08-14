@@ -26,7 +26,7 @@ module chip_top
    output        ddr3_cs_n,
    output [7:0]  ddr3_dm,
    output        ddr3_odt,
-`endif 
+`endif
    
    // UART
    input rxd,
