@@ -267,6 +267,112 @@ module chip_top
 
    initial $readmemh("boot.mem", ram);
 
+   // the NASTI bus for off-FPGA DRAM, converted to High frequency
+   nasti_aw mig_nasti_aw();
+   nasti_w  mig_nasti_w();
+   nasti_b  mig_nasti_b();
+   nasti_ar mig_nasti_ar();
+   nasti_r  mig_nasti_r();
+
+   defparam mig_nasti_aw.ID_WIDTH = `MEM_TAG_WIDTH;
+   defparam mig_nasti_b.ID_WIDTH  = `MEM_TAG_WIDTH;
+   defparam mig_nasti_ar.ID_WIDTH = `MEM_TAG_WIDTH;
+   defparam mig_nasti_r.ID_WIDTH  = `MEM_TAG_WIDTH;
+   defparam mig_nasti_aw.ADDR_WIDTH = DRAM_ADDR_WIDTH;
+   defparam mig_nasti_ar.ADDR_WIDTH = DRAM_ADDR_WIDTH;
+   defparam mig_nasti_w.DATA_WIDTH = `MEM_DAT_WIDTH;
+   defparam mig_nasti_r.DATA_WIDTH = `MEM_DAT_WIDTH;
+
+   // MIG clock
+   logic mig_clk;
+
+   // clock converter
+   axi_clock_converter_0 clk_conv
+     (
+      .s_axi_aclk           ( clk                   ),
+      .s_axi_aresetn        ( rstn                  ),
+      .s_axi_awid           ( dram_nasti_aw.id      ),
+      .s_axi_awaddr         ( dram_nasti_aw.addr    ),
+      .s_axi_awlen          ( dram_nasti_aw.len     ),
+      .s_axi_awsize         ( dram_nasti_aw.size    ),
+      .s_axi_awburst        ( dram_nasti_aw.burst   ),
+      .s_axi_awlock         ( 1'b0                  ), // not supported in AXI4
+      .s_axi_awcache        ( dram_nasti_aw.cache   ),
+      .s_axi_awprot         ( dram_nasti_aw.prot    ),
+      .s_axi_awqos          ( dram_nasti_aw.qos     ),
+      .s_axi_awregion       ( dram_nasti_aw.region  ),
+      .s_axi_awvalid        ( dram_nasti_aw.valid   ),
+      .s_axi_awready        ( dram_nasti_aw.ready   ),
+      .s_axi_wdata          ( dram_nasti_w.data     ),
+      .s_axi_wstrb          ( dram_nasti_w.strb     ),
+      .s_axi_wlast          ( dram_nasti_w.last     ),
+      .s_axi_wvalid         ( dram_nasti_w.valid    ),
+      .s_axi_wready         ( dram_nasti_w.ready    ),
+      .s_axi_bid            ( dram_nasti_b.id       ),
+      .s_axi_bresp          ( dram_nasti_b.resp     ),
+      .s_axi_bvalid         ( dram_nasti_b.valid    ),
+      .s_axi_bready         ( dram_nasti_b.ready    ),
+      .s_axi_arid           ( dram_nasti_ar.id      ),
+      .s_axi_araddr         ( dram_nasti_ar.addr    ),
+      .s_axi_arlen          ( dram_nasti_ar.len     ),
+      .s_axi_arsize         ( dram_nasti_ar.size    ),
+      .s_axi_arburst        ( dram_nasti_ar.burst   ),
+      .s_axi_arlock         ( 1'b0                  ), // not supported in AXI4
+      .s_axi_arcache        ( dram_nasti_ar.cache   ),
+      .s_axi_arprot         ( dram_nasti_ar.prot    ),
+      .s_axi_arqos          ( dram_nasti_ar.qos     ),
+      .s_axi_arregion       ( dram_nasti_ar.region  ),
+      .s_axi_arvalid        ( dram_nasti_ar.valid   ),
+      .s_axi_arready        ( dram_nasti_ar.ready   ),
+      .s_axi_rid            ( dram_nasti_r.id       ),
+      .s_axi_rdata          ( dram_nasti_r.data     ),
+      .s_axi_rresp          ( dram_nasti_r.resp     ),
+      .s_axi_rlast          ( dram_nasti_r.last     ),
+      .s_axi_rvalid         ( dram_nasti_r.valid    ),
+      .s_axi_rready         ( dram_nasti_r.ready    ),
+      .m_axi_aclk           ( mig_clk               ),
+      .m_axi_aresetn        ( rstn                  ),
+      .m_axi_awid           ( mig_nasti_aw.id       ),
+      .m_axi_awaddr         ( mig_nasti_aw.addr     ),
+      .m_axi_awlen          ( mig_nasti_aw.len      ),
+      .m_axi_awsize         ( mig_nasti_aw.size     ),
+      .m_axi_awburst        ( mig_nasti_aw.burst    ),
+      .m_axi_awlock         ( 1'b0                  ), // not supported in AXI4
+      .m_axi_awcache        ( mig_nasti_aw.cache    ),
+      .m_axi_awprot         ( mig_nasti_aw.prot     ),
+      .m_axi_awqos          ( mig_nasti_aw.qos      ),
+      .m_axi_awregion       ( mig_nasti_aw.region   ),
+      .m_axi_awvalid        ( mig_nasti_aw.valid    ),
+      .m_axi_awready        ( mig_nasti_aw.ready    ),
+      .m_axi_wdata          ( mig_nasti_w.data      ),
+      .m_axi_wstrb          ( mig_nasti_w.strb      ),
+      .m_axi_wlast          ( mig_nasti_w.last      ),
+      .m_axi_wvalid         ( mig_nasti_w.valid     ),
+      .m_axi_wready         ( mig_nasti_w.ready     ),
+      .m_axi_bid            ( mig_nasti_b.id        ),
+      .m_axi_bresp          ( mig_nasti_b.resp      ),
+      .m_axi_bvalid         ( mig_nasti_b.valid     ),
+      .m_axi_bready         ( mig_nasti_b.ready     ),
+      .m_axi_arid           ( mig_nasti_ar.id       ),
+      .m_axi_araddr         ( mig_nasti_ar.addr     ),
+      .m_axi_arlen          ( mig_nasti_ar.len      ),
+      .m_axi_arsize         ( mig_nasti_ar.size     ),
+      .m_axi_arburst        ( mig_nasti_ar.burst    ),
+      .m_axi_arlock         ( 1'b0                  ), // not supported in AXI4
+      .m_axi_arcache        ( mig_nasti_ar.cache    ),
+      .m_axi_arprot         ( mig_nasti_ar.prot     ),
+      .m_axi_arqos          ( mig_nasti_ar.qos      ),
+      .m_axi_arregion       ( mig_nasti_ar.region   ),
+      .m_axi_arvalid        ( mig_nasti_ar.valid    ),
+      .m_axi_arready        ( mig_nasti_ar.ready    ),
+      .m_axi_rid            ( mig_nasti_r.id        ),
+      .m_axi_rdata          ( mig_nasti_r.data      ),
+      .m_axi_rresp          ( mig_nasti_r.resp      ),
+      .m_axi_rlast          ( mig_nasti_r.last      ),
+      .m_axi_rvalid         ( mig_nasti_r.valid     ),
+      .m_axi_rready         ( mig_nasti_r.ready     )
+      );
+
    // DRAM controller
    mig_7series_0 dram_ctl
      (
@@ -288,49 +394,50 @@ module chip_top
       .ddr3_cs_n            ( ddr3_cs_n             ),
       .ddr3_dm              ( ddr3_dm               ),
       .ddr3_odt             ( ddr3_odt              ),
+      .ui_clk               ( mig_clk               ),
       .ui_addn_clk_0        ( clk                   ),
       .mmcm_locked          ( rstn                  ),
       .aresetn              ( rstn                  ), // AXI reset
       .app_sr_req           ( 1'b0                  ),
       .app_ref_req          ( 1'b0                  ),
       .app_zq_req           ( 1'b0                  ),
-      .s_axi_awid           ( dram_nasti_aw.id      ),
-      .s_axi_awaddr         ( dram_nasti_aw.addr    ),
-      .s_axi_awlen          ( dram_nasti_aw.len     ),
-      .s_axi_awsize         ( dram_nasti_aw.size    ),
-      .s_axi_awburst        ( dram_nasti_aw.burst   ),
+      .s_axi_awid           ( mig_nasti_aw.id       ),
+      .s_axi_awaddr         ( mig_nasti_aw.addr     ),
+      .s_axi_awlen          ( mig_nasti_aw.len      ),
+      .s_axi_awsize         ( mig_nasti_aw.size     ),
+      .s_axi_awburst        ( mig_nasti_aw.burst    ),
       .s_axi_awlock         ( 1'b0                  ), // not supported in AXI4
-      .s_axi_awcache        ( dram_nasti_aw.cache   ),
-      .s_axi_awprot         ( dram_nasti_aw.prot    ),
-      .s_axi_awqos          ( dram_nasti_aw.qos     ),
-      .s_axi_awvalid        ( dram_nasti_aw.valid   ),
-      .s_axi_awready        ( dram_nasti_aw.ready   ),
-      .s_axi_wdata          ( dram_nasti_w.data     ),
-      .s_axi_wstrb          ( dram_nasti_w.strb     ),
-      .s_axi_wlast          ( dram_nasti_w.last     ),
-      .s_axi_wvalid         ( dram_nasti_w.valid    ),
-      .s_axi_wready         ( dram_nasti_w.ready    ),
-      .s_axi_bid            ( dram_nasti_b.id       ),
-      .s_axi_bresp          ( dram_nasti_b.resp     ),
-      .s_axi_bvalid         ( dram_nasti_b.valid    ),
-      .s_axi_bready         ( dram_nasti_b.ready    ),
-      .s_axi_arid           ( dram_nasti_ar.id      ),
-      .s_axi_araddr         ( dram_nasti_ar.addr    ),
-      .s_axi_arlen          ( dram_nasti_ar.len     ),
-      .s_axi_arsize         ( dram_nasti_ar.size    ),
-      .s_axi_arburst        ( dram_nasti_ar.burst   ),
+      .s_axi_awcache        ( mig_nasti_aw.cache    ),
+      .s_axi_awprot         ( mig_nasti_aw.prot     ),
+      .s_axi_awqos          ( mig_nasti_aw.qos      ),
+      .s_axi_awvalid        ( mig_nasti_aw.valid    ),
+      .s_axi_awready        ( mig_nasti_aw.ready    ),
+      .s_axi_wdata          ( mig_nasti_w.data      ),
+      .s_axi_wstrb          ( mig_nasti_w.strb      ),
+      .s_axi_wlast          ( mig_nasti_w.last      ),
+      .s_axi_wvalid         ( mig_nasti_w.valid     ),
+      .s_axi_wready         ( mig_nasti_w.ready     ),
+      .s_axi_bid            ( mig_nasti_b.id        ),
+      .s_axi_bresp          ( mig_nasti_b.resp      ),
+      .s_axi_bvalid         ( mig_nasti_b.valid     ),
+      .s_axi_bready         ( mig_nasti_b.ready     ),
+      .s_axi_arid           ( mig_nasti_ar.id       ),
+      .s_axi_araddr         ( mig_nasti_ar.addr     ),
+      .s_axi_arlen          ( mig_nasti_ar.len      ),
+      .s_axi_arsize         ( mig_nasti_ar.size     ),
+      .s_axi_arburst        ( mig_nasti_ar.burst    ),
       .s_axi_arlock         ( 1'b0                  ), // not supported in AXI4
-      .s_axi_arcache        ( dram_nasti_ar.cache   ),
-      .s_axi_arprot         ( dram_nasti_ar.prot    ),
-      .s_axi_arqos          ( dram_nasti_ar.qos     ),
-      .s_axi_arvalid        ( dram_nasti_ar.valid   ),
-      .s_axi_arready        ( dram_nasti_ar.ready   ),
-      .s_axi_rid            ( dram_nasti_r.id       ),
-      .s_axi_rdata          ( dram_nasti_r.data     ),
-      .s_axi_rresp          ( dram_nasti_r.resp     ),
-      .s_axi_rlast          ( dram_nasti_r.last     ),
-      .s_axi_rvalid         ( dram_nasti_r.valid    ),
-      .s_axi_rready         ( dram_nasti_r.ready    )
+      .s_axi_arcache        ( mig_nasti_ar.cache    ),
+      .s_axi_arprot         ( mig_nasti_ar.prot     ),
+      .s_axi_arqos          ( mig_nasti_ar.qos      ),
+      .s_axi_arvalid        ( mig_nasti_ar.valid    ),
+      .s_axi_arready        ( mig_nasti_ar.ready    ),
+      .s_axi_rid            ( mig_nasti_r.id        ),
+      .s_axi_rdata          ( mig_nasti_r.data      ),
+      .s_axi_rresp          ( mig_nasti_r.resp      ),
+      .s_axi_rlast          ( mig_nasti_r.last      ),
+      .s_axi_rvalid         ( mig_nasti_r.valid     ),
+      .s_axi_rready         ( mig_nasti_r.ready     )
       );
 
    assign rst = !rstn;

@@ -66,10 +66,12 @@ class Top extends Module with TopLevelParameters {
   //val tc = Module(new TagCache, {case TLId => "L2ToTC"; case CacheName => "TagCache"})
   // currently a TileLink to NASTI converter
   val conv = Module(new NASTIMasterIOTileLinkIOConverter, {case BusId => "nasti"; case TLId => "L2ToTC"})
+  val nastiPipe = Module(new NASTIPipe, {case BusId => "nasti"})
 
   //tcNetwork.io.managers <> Vec(tc.io.inner)
   tcNetwork.io.managers <> Vec(conv.io.tl)
-  conv.io.nasti <> io.nasti
+  conv.io.nasti <> nastiPipe.io.slave
+  nastiPipe.io.master <> io.nasti
 
   // IO space
   def routeL1ToIO(addr: UInt) = UInt(0)
