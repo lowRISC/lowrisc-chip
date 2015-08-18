@@ -284,7 +284,9 @@ module chip_top
    defparam mig_nasti_r.DATA_WIDTH = `MEM_DAT_WIDTH;
 
    // MIG clock
-   logic mig_clk;
+   logic mig_clk, mig_rst, mig_rstn;
+   always_ff @(posedge mig_clk)
+     mig_rstn <= mig_rst;
 
    // clock converter
    axi_clock_converter_0 clk_conv
@@ -331,13 +333,13 @@ module chip_top
       .s_axi_rvalid         ( dram_nasti_r.valid    ),
       .s_axi_rready         ( dram_nasti_r.ready    ),
       .m_axi_aclk           ( mig_clk               ),
-      .m_axi_aresetn        ( rstn                  ),
+      .m_axi_aresetn        ( mig_rstn              ),
       .m_axi_awid           ( mig_nasti_aw.id       ),
       .m_axi_awaddr         ( mig_nasti_aw.addr     ),
       .m_axi_awlen          ( mig_nasti_aw.len      ),
       .m_axi_awsize         ( mig_nasti_aw.size     ),
       .m_axi_awburst        ( mig_nasti_aw.burst    ),
-      .m_axi_awlock         ( 1'b0                  ), // not supported in AXI4
+      .m_axi_awlock         (                       ), // not supported in AXI4
       .m_axi_awcache        ( mig_nasti_aw.cache    ),
       .m_axi_awprot         ( mig_nasti_aw.prot     ),
       .m_axi_awqos          ( mig_nasti_aw.qos      ),
@@ -358,7 +360,7 @@ module chip_top
       .m_axi_arlen          ( mig_nasti_ar.len      ),
       .m_axi_arsize         ( mig_nasti_ar.size     ),
       .m_axi_arburst        ( mig_nasti_ar.burst    ),
-      .m_axi_arlock         ( 1'b0                  ), // not supported in AXI4
+      .m_axi_arlock         (                       ), // not supported in AXI4
       .m_axi_arcache        ( mig_nasti_ar.cache    ),
       .m_axi_arprot         ( mig_nasti_ar.prot     ),
       .m_axi_arqos          ( mig_nasti_ar.qos      ),
@@ -395,6 +397,7 @@ module chip_top
       .ddr3_dm              ( ddr3_dm               ),
       .ddr3_odt             ( ddr3_odt              ),
       .ui_clk               ( mig_clk               ),
+      .ui_clk_sync_rst      ( mig_rst               ),
       .ui_addn_clk_0        ( clk                   ),
       .mmcm_locked          ( rstn                  ),
       .aresetn              ( rstn                  ), // AXI reset

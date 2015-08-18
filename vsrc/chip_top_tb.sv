@@ -42,7 +42,7 @@ module tb;
    logic        ddr3_ck_n;
    logic        ddr3_cke;
    logic        ddr3_cs_n;
-   logic [7:0]  ddr3_dm;
+   wire [7:0]   ddr3_dm;
    logic        ddr3_odt;
 
    // behavioural DDR3 RAM
@@ -58,7 +58,7 @@ module tb;
                 .cs_n    ( ddr3_cs_n        ),
                 .ras_n   ( ddr3_ras_n       ),
                 .cas_n   ( ddr3_cas_n       ),
-                .we_n    ( ddr3_we          ),
+                .we_n    ( ddr3_we_n        ),
                 .dm_tdqs ( ddr3_dm[i]       ),
                 .ba      ( ddr3_ba          ),
                 .addr    ( ddr3_addr        ),
@@ -70,9 +70,6 @@ module tb;
                 );
       end
    endgenerate
-
-
-
 
 `endif
    
