@@ -28,7 +28,7 @@ class DefaultConfig extends ChiselConfig (
       case MIFDataBits => Dump("MEM_DAT_WIDTH", 128)
 
       // IO space
-      case IOBaseAddr0 => UInt("h80000000") // ffff_0000 : ffff_ffff
+      case IOBaseAddr0 => UInt("h80000000") // 8000_0000 : ffff_ffff
       case IOAddrMask0 => UInt("h7fffffff")
       case IOBaseAddr1 => UInt("hffffffff") // empty
       case IOAddrMask1 => UInt("h00000000")
@@ -187,7 +187,7 @@ class DefaultConfig extends ChiselConfig (
     case "L1I_WAYS" => 4
 
     case "L2_XACTORS" => 2
-    case "L2_SETS" => 1024
+    case "L2_SETS" => 256 // 1024
     case "L2_WAYS" => 8
 
     case "TC_XACTORS" => 1

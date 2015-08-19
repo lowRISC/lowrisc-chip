@@ -286,7 +286,7 @@ module chip_top
    // MIG clock
    logic mig_clk, mig_rst, mig_rstn;
    always_ff @(posedge mig_clk)
-     mig_rstn <= mig_rst;
+     mig_rstn <= !mig_rst;
 
    // clock converter
    axi_clock_converter_0 clk_conv
