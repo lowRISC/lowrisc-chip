@@ -2,29 +2,29 @@
 
 import sbt._
 import Keys._
+import complete._
+import complete.DefaultParsers._
 
 object BuildSettings extends Build {
   val buildOrganization = "edu.berkeley.cs"
-  val buildVersion = "1.1"
-  val buildScalaVersion = "2.10.4"
+  val buildVersion = "1.2"
+  val buildScalaVersion = "2.11.6"
 
-  val buildSettings = Defaults.defaultSettings ++ Seq (
-    organization := buildOrganization,
-    version      := buildVersion,
-    scalaVersion := buildScalaVersion,
+  override lazy val settings = super.settings ++ Seq(
+    organization := "berkeley",
+    version      := "1.2",
+    scalaVersion := "2.11.6",
     parallelExecution in Global := false,
     traceLevel   := 50,
     scalacOptions ++= Seq("-deprecation","-unchecked"),
     libraryDependencies ++= Seq("org.scala-lang" % "scala-reflect" % scalaVersion.value)
   )
 
-  // sbt multi-project compilation
-
-  lazy val chisel       = Project("chisel", file("chisel"), settings = buildSettings)
-  lazy val hardfloat    = Project("hardfloat", file("hardfloat"), settings = buildSettings).dependsOn(chisel)
-  lazy val uncore       = Project("uncore", file("uncore"), settings = buildSettings).dependsOn(hardfloat)
-  lazy val rocket       = Project("rocket", file("rocket"), settings = buildSettings).dependsOn(uncore)
-  lazy val bridge       = Project("bridge", file("bridge"), settings = buildSettings).dependsOn(uncore)
-  lazy val lowrisc_chip = Project("lowrisc_chip", file("."), settings = buildSettings).dependsOn(chisel, hardfloat, uncore, rocket, bridge)
+  lazy val chisel    = project
+  lazy val hardfloat = project.dependsOn(chisel)
+  lazy val junctions = project.dependsOn(chisel)
+  lazy val uncore    = project.dependsOn(junctions)
+  lazy val rocket    = project.dependsOn(hardfloat,uncore)
+  lazy val lowrisc_chip = (project in file(".")).settings(chipSettings).dependsOn(rocket)
 
 }
