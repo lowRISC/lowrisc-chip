@@ -25,6 +25,6 @@ object BuildSettings extends Build {
   lazy val junctions = project.dependsOn(chisel)
   lazy val uncore    = project.dependsOn(junctions)
   lazy val rocket    = project.dependsOn(hardfloat,uncore)
-  lazy val lowrisc_chip = (project in file(".")).settings(chipSettings).dependsOn(rocket)
+  lazy val lowrisc_chip = project.dependsOn(rocket)
 
 }

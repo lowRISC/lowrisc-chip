@@ -93,3 +93,33 @@ object Run {
     chiselMain.run(args, () => new Top())
   }
 }
+
+
+// a NASTI pipeline stage sometimes used to break critical path
+class NASTIPipe extends NASTIModule {
+  val io = new Bundle {
+    val slave = new NASTISlaveIO
+    val master = new NASTIMasterIO
+  }
+
+  val awPipe = Module(new DecoupledPipe(io.slave.aw.bits))
+  awPipe.io.pi <> io.slave.aw
+  awPipe.io.po <> io.master.aw
+
+  val wPipe = Module(new DecoupledPipe(io.slave.w.bits))
+  wPipe.io.pi <> io.slave.w
+  wPipe.io.po <> io.master.w
+
+  val bPipe = Module(new DecoupledPipe(io.slave.b.bits))
+  bPipe.io.pi <> io.master.b
+  bPipe.io.po <> io.slave.b
+
+  val arPipe = Module(new DecoupledPipe(io.slave.ar.bits))
+  arPipe.io.pi <> io.slave.ar
+  arPipe.io.po <> io.master.ar
+
+  val rPipe = Module(new DecoupledPipe(io.master.r.bits))
+  rPipe.io.pi <> io.master.r
+  rPipe.io.po <> io.slave.r
+
+}
