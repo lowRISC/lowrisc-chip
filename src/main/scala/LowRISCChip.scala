@@ -3,6 +3,7 @@
 package lowrisc_chip
 
 import Chisel._
+import junctions._
 import uncore._
 import rocket._
 import rocket.Util._
