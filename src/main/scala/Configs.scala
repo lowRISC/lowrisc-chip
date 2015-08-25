@@ -161,18 +161,21 @@ class DefaultConfig extends ChiselConfig (
       case NASTIAddrBits => findBy(BusId)
       case NASTIIdBits   => findBy(BusId)
       case NASTIUserBits => findBy(BusId)
+      case NASTIHandlers => findBy(BusId)
 
       case "nasti" => {
         case NASTIDataBits => site(MIFDataBits)
         case NASTIAddrBits => site(PAddrBits)
         case NASTIIdBits => site(MIFTagBits)
         case NASTIUserBits => 1
+        case NASTIHandlers => 4
       }:PF
       case "lite" => {
         case NASTIDataBits => site(IODataBits)
         case NASTIAddrBits => site(PAddrBits)
         case NASTIIdBits => 1
         case NASTIUserBits => 1
+        case NASTIHandlers => 1
       }:PF
       
     }},
