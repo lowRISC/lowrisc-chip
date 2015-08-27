@@ -1,6 +1,7 @@
 #=======================================================================
 # Makefile for Verilog simulation w/ VCS
 #-----------------------------------------------------------------------
+# Wei Song (ws327@cam.ac.uk)
 # Yunsup Lee (yunsup@cs.berkeley.edu)
 #
 # This makefile will build a rtl simulator and run various tests to
@@ -16,19 +17,15 @@ generated_dir = $(sim_dir)/generated-src
 mem_gen = $(sim_dir)/vlsi_mem_gen
 output_dir = $(sim_dir)/output
 
-BACKEND ?= v
+BACKEND ?= lowrisc_chip.LowRISCBackend
 CONFIG ?= DefaultConfig
 
 include $(base_dir)/Makefrag
 include $(sim_dir)/Makefrag
 
-all: iv
 
-iv: $(sim_iv)
-
-vcs: $(sim_vcs)
 
 clean:
-	rm -rf $(junk) simv* csrc *.key DVE* *.h *.a *.daidir $(generated_dir)
+	rm -rf $(generated_dir) V$(tb_top)* $(CONFIG)-sim
 
-.PHONY: default all debug clean iv vcs
+.PHONY: default all debug clean sim

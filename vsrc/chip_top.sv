@@ -1,6 +1,5 @@
 // See LICENSE for license details.
 
-`include "config.vh"
 `include "consts.DefaultConfig.vh"
 
 module chip_top
@@ -445,7 +444,6 @@ module chip_top
 
    assign rst = !rstn;
    
- `ifdef USE_XIL_UART
    // Xilinx UART IP
    axi_uart16550_0 uart_i
      (
@@ -478,30 +476,6 @@ module chip_top
       .rtsn            (                    )
       );
 
- `else // !`ifdef USE_XIL_UART
-
-   NASTILiteUART
-     #(
-       .NASTI_ADDR_WIDTH = 8,
-       .NASTI_DATA_WIDTH = 8,
-       .ClockFreq =	100000000,
-	   .Baud = 115200,
-	   .Parity = 0,
-	   .StopBits = 1
-       )
-   uart_i (
-           .clk        ( clk          ),
-           .rstn       ( rstn         ),
-           .nasti_aw   ( io_nasti_aw  ),
-           .nasti_w    ( io_nasti_w   ),
-           .nasti_b    ( io_nasti_b   ),
-           .nasti_ar   ( io_nasti_ar  ),
-           .nasti_r    ( io_nasti_r   ),
-           .rxd        ( rxd          ),
-           .txd        ( txd          )
-           );
-   
- `endif //  `ifdef USE_XIL_UART
 `endif //  `ifdef FPGA
 
 endmodule // chip_top

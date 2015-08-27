@@ -17,33 +17,30 @@ verilog: $(sim_vsrcs)
 .PHONY: verilog
 
 #--------------------------------------------------------------------
-# Build rules
+# Build rules (verilator)
 #--------------------------------------------------------------------
+veri = verilator
+veri_flags = +incdir+$(generated_dir) --unroll-count 256 -Wno-lint -Wno-style -Wno-STMTDLY --exe --Mdir $(sim_dir)
+tb_top = chip_top
+veri_vtop = $(base_dir)/vsrc/chip_top.sv
+veri_vsrcs = \
+	$(generated_dir)/$(MODEL).$(CONFIG).v \
 
-# Synopsys VCS
-
-VCS = vcs -full64
-
-VCS_OPTS = -notice -line +lint=all,noVCDE,noONGS,noUI -error=PCWM-L -timescale=1ns/10ps -quiet \
-	+rad +v2k +vcs+lic+wait \
-	+define+CLOCK_PERIOD=0.5 $(sim_vsrcs) \
-	+libext+.v \
-
-IV = iverilog
-
-IV_OPS = -g2005 -v -W all
+veri_csrcs = \
+	$(base_dir)/csrc/veri/veri_top.cc \
 
 #--------------------------------------------------------------------
-# Build the simulator
+# Build the simulator (verilator)
 #--------------------------------------------------------------------
+verilator: V$(tb_top)__verFiles.dat
+V$(tb_top)__verFiles.dat: $(sim_vsrcs)
+	$(veri) --cc $(veri_vtop) $(veri_vsrcs) $(veri_csrcs) $(veri_flags) -o $(CONFIG)-sim
 
-sim_vcs = $(sim_dir)/sim-vcs-$(CONFIG)
-$(sim_vcs): $(sim_vsrcs)
-	$(VCS) $(VCS_OPTS) -o $(sim_vcs) \
+sim: $(CONFIG)-sim
+$(CONFIG)-sim: V$(tb_top)__verFiles.dat
+	make -f V$(tb_top).mk
 
-sim_iv = $(sim_dir)/sim-iv-$(CONFIG)
-$(sim_iv): $(sim_vsrcs)
-	$(IV) $(IV_OPTS) -o $(sim_iv) $(sim_vsrcs)\
+.PHONY: verilator sim
 
 # emacs local variable
 

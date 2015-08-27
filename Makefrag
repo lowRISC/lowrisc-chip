@@ -43,7 +43,8 @@ $(generated_dir)/$(MODEL).$(CONFIG).v: $(chisel_srcs)
 	cd $(generated_dir) && \
 	if [ -a $(MODEL).$(CONFIG).conf ]; then \
 	  $(mem_gen) $(generated_dir)/$(MODEL).$(CONFIG).conf >> $(generated_dir)/$(MODEL).$(CONFIG).v; \
-	fi
+	fi && \
+	sed -i.bak "s|fwrite(32'h80000002, |display(|" $(generated_dir)/$(MODEL).$(CONFIG).v
 
 $(generated_dir)/consts.$(CONFIG).vh: $(generated_dir)/$(MODEL).$(CONFIG).v
 	echo "\`ifndef CONST_VH" > $@
