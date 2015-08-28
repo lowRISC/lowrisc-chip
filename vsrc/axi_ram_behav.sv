@@ -4,7 +4,7 @@ module axi_ram_behav
   #(
     ID_WIDTH = 1,
     ADDR_WIDTH = 16,
-    DATA_WIDTH = 128
+    DATA_WIDTH = 128,
     USER_WIDTH = 1
     )
    (
@@ -16,10 +16,10 @@ module axi_ram_behav
     nasti_r.slave r
     );
 
-   initial assert(ID_WIDTH <= 16, "Error: ID_WIDTH > 16 is not supported!");
-   initial assert(ADDR_WIDTH <= 64, "Error: ADDR_WIDTH > 64 is not supported!");
-   initial assert(DATA_WIDTH <= 256, "Error: DATA_WIDTH > 256 is not supported!");
-   initial assert(USER_WIDTH <= 16, "Error: USER_WIDTH > 16 is not supported!");
+   initial assert(ID_WIDTH <= 16) else $error("Error: ID_WIDTH > 16 is not supported!");
+   initial assert(ADDR_WIDTH <= 64) else $error("Error: ADDR_WIDTH > 64 is not supported!");
+   initial assert(DATA_WIDTH <= 256) else $error("Error: DATA_WIDTH > 256 is not supported!");
+   initial assert(USER_WIDTH <= 16) else $error("Error: USER_WIDTH > 16 is not supported!");
    
    import "DPI-C" function bit memory_write_req (
                                                  input logic [15:0] id,

@@ -20,11 +20,13 @@ verilog: $(sim_vsrcs)
 # Build rules (verilator)
 #--------------------------------------------------------------------
 veri = verilator
-veri_flags = +incdir+$(generated_dir) --unroll-count 256 -Wno-lint -Wno-style -Wno-STMTDLY --exe --Mdir $(sim_dir)
+veri_flags = +incdir+$(generated_dir) --top-module $(tb_top) --unroll-count 256 -Wno-lint -Wno-style -Wno-STMTDLY --exe --Mdir $(sim_dir)
 tb_top = chip_top
-veri_vtop = $(base_dir)/vsrc/chip_top.sv
 veri_vsrcs = \
+	$(base_dir)/vsrc/chip_top.sv \
 	$(generated_dir)/$(MODEL).$(CONFIG).v \
+	$(base_dir)/vsrc/axi_ram_behav.sv \
+	$(base_dir)/socip/nasti/channel.sv \
 
 veri_csrcs = \
 	$(base_dir)/csrc/veri/veri_top.cc \
@@ -34,7 +36,7 @@ veri_csrcs = \
 #--------------------------------------------------------------------
 verilator: V$(tb_top)__verFiles.dat
 V$(tb_top)__verFiles.dat: $(sim_vsrcs)
-	$(veri) --cc $(veri_vtop) $(veri_vsrcs) $(veri_csrcs) $(veri_flags) -o $(CONFIG)-sim
+	$(veri) --cc $(veri_vsrcs) $(veri_csrcs) $(veri_flags) -o $(CONFIG)-sim
 
 sim: $(CONFIG)-sim
 $(CONFIG)-sim: V$(tb_top)__verFiles.dat
