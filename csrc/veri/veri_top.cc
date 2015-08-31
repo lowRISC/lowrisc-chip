@@ -1,5 +1,5 @@
 #include <verilated.h>
-#include <verilated_vcd_sc.h>
+#include <verilated_vcd_c.h>
 #include "Vchip_top.h"
 
 Vchip_top *top;
@@ -15,7 +15,7 @@ int main(int argc, char** argv) {
 
   // VCD dump
   Verilated::traceEverOn(true);
-  VerilatedVcdSc* vcd = new VerilatedVcdSc;
+  VerilatedVcdC* vcd = new VerilatedVcdC;
   top->trace(vcd, 99);
   vcd->open("verilated.vcd");
   

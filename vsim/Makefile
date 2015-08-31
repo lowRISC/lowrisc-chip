@@ -26,6 +26,6 @@ include $(sim_dir)/Makefrag
 
 
 clean:
-	rm -rf $(generated_dir) V$(tb_top)* $(CONFIG)-sim
+	rm -rf $(generated_dir) $(CONFIG)-sim verilator
 
 .PHONY: default all debug clean sim

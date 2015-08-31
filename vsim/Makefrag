@@ -20,8 +20,17 @@ verilog: $(sim_vsrcs)
 # Build rules (verilator)
 #--------------------------------------------------------------------
 veri = verilator
-veri_flags = +incdir+$(generated_dir) --top-module $(tb_top) --unroll-count 256 -Wno-lint -Wno-style -Wno-STMTDLY --exe --Mdir $(sim_dir)
 tb_top = chip_top
+
+veri_flags = \
+	+incdir+$(generated_dir) \
+	--top-module $(tb_top) \
+	--unroll-count 256 \
+	-Wno-lint -Wno-style -Wno-STMTDLY \
+	--exe \
+	--trace \
+	--Mdir $(sim_dir)/verilator
+
 veri_vsrcs = \
 	$(base_dir)/vsrc/chip_top.sv \
 	$(generated_dir)/$(MODEL).$(CONFIG).v \
@@ -34,13 +43,13 @@ veri_csrcs = \
 #--------------------------------------------------------------------
 # Build the simulator (verilator)
 #--------------------------------------------------------------------
-verilator: V$(tb_top)__verFiles.dat
-V$(tb_top)__verFiles.dat: $(sim_vsrcs)
-	$(veri) --cc $(veri_vsrcs) $(veri_csrcs) $(veri_flags) -o $(CONFIG)-sim
+verilator: verilator/V$(tb_top)__verFiles.dat
+verilator/V$(tb_top)__verFiles.dat: $(sim_vsrcs)
+	$(veri) --cc $(veri_vsrcs) $(veri_csrcs) $(veri_flags) -o ../$(CONFIG)-sim
 
 sim: $(CONFIG)-sim
-$(CONFIG)-sim: V$(tb_top)__verFiles.dat
-	make -f V$(tb_top).mk
+$(CONFIG)-sim: verilator/V$(tb_top)__verFiles.dat
+	cd verilator && make -f V$(tb_top).mk
 
 .PHONY: verilator sim
 
