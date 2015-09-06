@@ -37,7 +37,7 @@ extern "C" {
                                  svLogicVecVal *id_16b,
                                  svLogicVecVal *data_256b,
                                  svLogicVecVal *resp_2b,
-                                 svLogic last,
+                                 svLogic *last,
                                  svLogicVecVal *user_16b
                                  );
 #ifdef __cplusplus
@@ -88,41 +88,40 @@ public:
   // copy constructor
   MemoryOperation(const MemoryOperation& rhs)
     : rw(rhs.rw), tag(rhs.tag), addr(rhs.addr), data(rhs.data), mask(rhs.mask) {}
-}
+};
 
+class MemoryController {
+  Memory32 mem;
+  const unsigned int op_max;            // maximal parallel operation FIFOs
+  std::list<MemoryOperation> *op_fifo;  // parallel operation FIFOs
+  std::map<uint32_t, std::list<uint32_t> > resp_map; // the read response map
+  std::map<uint32_t, unsigned int>         resp_len; // the len of each response
+  std::list<uint32_t>                      resp_que;
+  unsigned int rr_index;              // round-robin index used to randomize writes
 
-  class MemoryController {
-    Memory32 mem;
-    const unsigned int op_max;            // maximal parallel operation FIFOs
-    std::list<MemoryOperation> *op_fifo;  // parallel operation FIFOs
-    std::map<uint32_t, std::list<uint32_t> > resp_map; // the read response map
-    unsigned int rr_index;                // round-robin index used to randomize operation handling
+public:
+  MemoryController(const unsigned int op_max = 4)
+    : op_max(op_max), rr_index(0)
+  {
+    op_fifo = new std::list<MemoryOperation> [op_max];
+  }
 
-  public:
-    MemoryController(const unsigned int op_max = 4)
-      : op_max(op_max)
-    {
-      op_fifo = new std::list<MemoryOperation> [op_max];
-      rr_index = 0;
-    }
+  virtual ~MemoryController() {
+    delete[] op_fifo;
+  }
 
-    virtual ~MemoryController() {
-      delete[] op_fifo;
-    }
-
-    void add_read_req(const unsigned int fifo, const uint32_t tag, const uint32_t addr);
-    void add_write_req(const unsigned int fifo, const uint32_t tag, const uint32_t addr, 
-                       const uint32_t data, const unit32_t mask);
-    // simulation step function
-    void step();
-    // get an empty queue
-    bool load_balance(unsigned int&);
-    std::list<uint32_t>& get_resp(const uint32_t tag) {
-      return resp_map[tag];
-    }
-
-  };
-
+  void add_read_req(const unsigned int fifo, const uint32_t tag, const uint32_t addr);
+  void record_read_size(const uint32_t tag, const unsigned int beat_size) {
+    resp_len[tag] = beat_size;
+  }
+  void add_write_req(const unsigned int fifo, const uint32_t tag, const uint32_t addr,
+                     const uint32_t data, const unit32_t mask);
+  // simulation step function
+  void step();
+  // get an empty queue
+  bool load_balance(unsigned int&);
+  std::list<uint32_t>* get_resp(uint32_t &tag);
+};
 
 // global memory controller
 extern MemoryController *memory_controller
@@ -136,13 +135,16 @@ class AXIMemWriter {
   uint32_t mask;         // the maximal mask defined by the size field
   unsigned int fifo;     // the chosen memory controller fifo
   bool valid;
+  std::list<uint32_t> resps; // response queue
 
 public:
   AXIMemWriter()
     : valid(false) {}
 
-  bool write_addr_req(const uint32_t tag, const uint32_t addr, unsigned int len, unsigned int size);
-  bool write_data_req(const uint32_t *data, const uint32_t mask, bool last);
+  bool write_addr_req(const uint32_t tag, const uint32_t addr, const unsigned int len, const unsigned int size);
+  bool write_data_req(const uint32_t *data, const uint32_t mask, const bool last, const unsigned int width);
+
+  bool writer_resp_req(uint32_t *tag, uint32_t *resp);
 };
 
 extern AXIMemWriter* axi_mem_writer;
@@ -152,7 +154,7 @@ class AXIMemReader {
   std::map<uint32_t, unsigned int> tracker_size;    // tracking beat size
 public:
   bool reader_addr_req(const uint32_t tag, const uint32_t addr, unsigned int len, unsigned int size);
-  bool reader_data_req(const uint32_t tag, uint32_t **data, bool *last);
+  bool reader_data_req(uint32_t *tag, uint32_t *data, uint32_t *resp, bool *last, const unsigned int width);
 };
 
 extern AXIMemReader *axi_mem_reader;

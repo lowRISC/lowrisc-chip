@@ -10,7 +10,156 @@ using std::pair;
 using std::list;
 
 // the SystemVerilog DPI functions
+svBit memory_write_req (
+                        const svLogicVecVal *id_16b,
+                        const svLogicVecVal *addr_32b,
+                        const svLogicVecVal *len_8b,
+                        const svLogicVecVal *size_3b,
+                        const svLogicVecVal *user_16b
+                        ) {
+  // collect all data
+  uint32_t id = SV_GET_UNSIGNED_BITS(id_16b[0].aval, 16);
+  assert(SV_GET_UNSIGNED_BITS(id_16b[0].bval, 16) == 0);
 
+  uint32_t addr = addr_32b[0].aval;
+  assert(addr_32b[0].bval == 0);
+
+  unsigned int len = SV_GET_UNSIGNED_BITS(len_8b[0].aval, 8);
+  assert(SV_GET_UNSIGNED_BITS(len_8b[0].bval, 8) == 0);
+
+  unsigned int size = SV_GET_UNSIGNED_BITS(size_3b[0].aval, 3);
+  assert(SV_GET_UNSIGNED_BITS(size_3b[0].bval, 3) == 0);
+
+  uint32_t user = SV_GET_UNSIGNED_BITS(user_16b[0].aval, 16);
+  assert(SV_GET_UNSIGNED_BITS(user_16b[0].bval, 16) == 0);
+
+  // call axi controller
+  if(axi_mem_writer->write_addr_req((user<<16)|id, addr, len, size))
+    return sv_1;
+  else
+    return sv_0;
+}
+
+svBit memory_write_data (
+                         const svLogicVecVal *data_256,
+                         const svLogicVecVal *strb_32,
+                         const svLogic last
+                         )
+{
+  // collect all data
+  uint32_t data[8];
+  for(int i=0; i<8; i++)
+    data[i] = data_256[i].aval;
+  uint32_t strb = strb_32[0].aval;
+  bool last_m = last == sv_1;
+
+  // call axi controller
+  if(axi_mem_writer->write_data_req(data, strb, last_m))
+    return sv_1;
+  else
+    return sv_0;
+}
+
+svBit memory_write_resp (
+                         svLogicVecVal *id_16b,
+                         svLogicVecVal *resp_2b,
+                         svLogicVecVal *user_16b
+                         )
+{
+  uint32_t tag;
+  uint32_t resp;
+
+  if(axi_mem_writer->writer_resp_req(&tag, &resp)) {
+    id_16b[0].aval = tag & 0xffff;
+    id_16b[0].bval = 0;
+    resp_2b[0].aval = resp;
+    resp_2b[0].bval = 0;
+    user_16b[0].aval = tag >> 16;
+    user_16b[0].bval = 0;
+    return sv_1;
+  } else {
+    id_16b[0].aval = 0xffffffff;
+    id_16b[0].bval = 0xffffffff;
+    resp_2b[0].aval = 0xffffffff;
+    resp_2b[0].bval = 0xffffffff;
+    user_16b[0].aval = 0xffffffff;
+    user_16b[0].bval = 0xffffffff;
+    return sv_0;
+  }
+}
+
+svBit memory_read_req (
+                       const svLogicVecVal *id_16b,
+                       const svLogicVecVal *addr_32b,
+                       const svLogicVecVal *len_8b,
+                       const svLogicVecVal *size_3b,
+                       const svLogicVecVal *user_16b
+                       )
+{
+  // collect all data
+  uint32_t id = SV_GET_UNSIGNED_BITS(id_16b[0].aval, 16);
+  assert(SV_GET_UNSIGNED_BITS(id_16b[0].bval, 16) == 0);
+
+  uint32_t addr = addr_32b[0].aval;
+  assert(addr_32b[0].bval == 0);
+
+  unsigned int len = SV_GET_UNSIGNED_BITS(len_8b[0].aval, 8);
+  assert(SV_GET_UNSIGNED_BITS(len_8b[0].bval, 8) == 0);
+
+  unsigned int size = SV_GET_UNSIGNED_BITS(size_3b[0].aval, 3);
+  assert(SV_GET_UNSIGNED_BITS(size_3b[0].bval, 3) == 0);
+  
+  uint32_t user = SV_GET_UNSIGNED_BITS(user_16b[0].aval, 16);
+  assert(SV_GET_UNSIGNED_BITS(user_16b[0].bval, 16) == 0);
+  
+  // call axi controller
+  if(axi_mem_reader->reader_addr_req((user<<16)|id, addr, len, size))
+    return sv_1;
+  else
+    return sv_0;
+}
+
+svBit memory_read_resp (
+                        svLogicVecVal *id_16b,
+                        svLogicVecVal *data_256b,
+                        svLogicVecVal *resp_2b,
+                        svLogic *last,
+                        svLogicVecVal *user_16b
+                        )
+{
+  uint32_t tag;
+  uint32_t data[8];
+  uint32_t resp;
+  bool last_m;
+
+  if(axi_mem_reader->reader_data_req(&tag, data, &resp, &last_m)) {
+    id_16b[0].aval = tag & 0xffff;
+    id_16b[0].bval = 0;
+    for(int i=0; i<8; i++) {
+      data_256b[i].aval = data[i];
+      data_256b[i].bval = 0;
+    }
+    resp_2b[0].aval = resp;
+    resp_2b[0].bval = 0;
+    user_16b[0].aval = tag >> 16;
+    user_16b[0].bval = 0;
+    *last = last_m ? sv_1 : sv_0;
+    return sv_1;
+  } else {
+    id_16b[0].aval = 0xffffffff;
+    id_16b[0].bval = 0xffffffff;
+    for(int i=0; i<8; i++) {
+      data_256b[i].aval = 0xffffffff;
+      data_256b[i].bval = 0xffffffff;
+    }
+    resp_2b[0].aval = 0xffffffff;
+    resp_2b[0].bval = 0xffffffff;
+    user_16b[0].aval = 0xffffffff;
+    user_16b[0].bval = 0xffffffff;
+    *last = sv_x;
+    return sv_0;
+  }
+}
 
 // Memory module
 
@@ -63,7 +212,7 @@ void MemoryController::step() {
       // get the operation
       MemoryOperation op = op_fifo[rr_index].fron();
       op_fifo[rr_index].pop_front();
-      rr_index++;
+      rr_index = (rr_inde + 1) % op_max;
 
       if(op.rw)
         mem.write(op.addr, op.data, op.mask);
@@ -72,6 +221,8 @@ void MemoryController::step() {
           resp_map[op.tag].push_back(op.data);
         else
           resp_map[op.tag].push_back(0);
+        if(resp_map[op.tag].size() % resp_len[op.tag] == 0)
+          resp_que.push_back(op.tag);
       }
     }
   }
@@ -84,16 +235,26 @@ bool MemoryController::load_balance(unsigned int &chosen) {
     if(op_fifo[chosen].empty())
       return true;
     else
-      chosen++;
+      chosen = (chosen + 1) % op_max;
   }
   return false;                 // all fifos occupied
 }
 
+// find if there is any response ready
+std::list<uint32_t>* MemoryController::get_resp(uint32_t &tag) {
+  if(resp_que.empty()) return NULL;
+  tag = resp_que.front();
+  resp_que.pop_front();
+  return &(resp_map[tag]);
+}
+
 // AXI controllers
 
-bool AXIMemWriter::write_addr_req(const uint32_t tag, const uint32_t addr, unsigned int len, unsigned int size) {
+bool AXIMemWriter::write_addr_req(const uint32_t tag, const uint32_t addr,
+                                  const unsigned int len, const unsigned int size)
+{
   if(valid) return false;       // another AXI write in operation
-  
+
   // check whether there is an empty queue
   if(!memory_controller->load_balance(this.fifo))
     return false;               // no empty queue
@@ -109,7 +270,9 @@ bool AXIMemWriter::write_addr_req(const uint32_t tag, const uint32_t addr, unsig
   return true;
 }
 
-bool AXIMemWriter::write_data_req(const uint32_t *data, const uint32_t mask, bool last) {
+bool AXIMemWriter::write_data_req(const uint32_t *data, const uint32_t mask,
+                                  const bool last)
+{
   uint32_t mask_m = mask;
 
   if(!valid) return false;      // have not received an address request yet
@@ -129,8 +292,18 @@ bool AXIMemWriter::write_data_req(const uint32_t *data, const uint32_t mask, boo
   else {
     assert(last);               // last should be high
     valid = false;
+    resps.push_back(tag);
   }
 
+  return true;
+}
+
+bool AXIMemWriter::writer_resp_req(uint32_t *tag, uint32_t *resp) {
+  if(resps.empty()) return false;
+  
+  *tag = resps.front();
+  *resp = 0;
+  resps.pop_front();
   return true;
 }
 
@@ -160,25 +333,26 @@ bool AXIMemReader::reader_addr_req(const uint32_t tag, const uint32_t addr, unsi
     }
   }
 
+  memory_controller->record_read_size(tag, size_m);
   return true;
 }
 
-bool AXIMemReader::reader_data_req(const uint32_t tag, uint32_t **data, bool *last) {
-  list<uint32_t> &resp = memory_controller->get_resp(tag);
+bool AXIMemReader::reader_data_req(uint32_t *tag, uint32_t *data, bool *last) {
+  list<uint32_t> *resp = memory_controller->get_resp(tag);
+  if(resp == NULL) return false;
+
   unsigned int size = tracker_size[tag];
 
   if(size < 4) {
-    if(resp.empty()) return false;
-    *data = new uint32_t [1];
-    (*data)[0] = resp.front();
-    resp.pop_front();
+    data[0] = resp->front();
+    for(int i=1; i<width; i++) data[i] = 0;
+    resp->pop_front();
   } else {
-    if(resp.size() < size/4) return false;
-    *data = new uint32_t [size/4];
     for(int i=0; i<size/4; i++) {
-      (*data)[0] = resp.front();
-      resp.pop_front();
+      data[0] = resp->front();
+      resp->pop_front();
     }
+    for(int i=size/4; i<width; i++) data[i] = 0;
   }
   
   *last = false;
