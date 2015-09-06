@@ -24,6 +24,8 @@ tb_top = chip_top
 
 veri_flags = \
 	+incdir+$(generated_dir) \
+	+incdir+$(base_dir)/vsrc \
+	+incdir+$(base_dir)/csrc/veri \
 	--top-module $(tb_top) \
 	--unroll-count 256 \
 	-Wno-lint -Wno-style -Wno-STMTDLY \
@@ -38,12 +40,13 @@ veri_vsrcs = \
 	$(base_dir)/socip/nasti/channel.sv \
 
 veri_csrcs = \
+	$(base_dir)/csrc/veri/dpi_ram_behav.cpp \
 	$(base_dir)/csrc/veri/veri_top.cc \
 
 #--------------------------------------------------------------------
 # Build the simulator (verilator)
 #--------------------------------------------------------------------
-verilator: verilator/V$(tb_top)__verFiles.dat
+verilator: verilator/V$(tb_top)__verFiles.dat $(veri_vsrcs) $(veri_csrcs)
 verilator/V$(tb_top)__verFiles.dat: $(sim_vsrcs)
 	$(veri) --cc $(veri_vsrcs) $(veri_csrcs) $(veri_flags) -o ../$(CONFIG)-sim
 

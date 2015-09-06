@@ -65,7 +65,7 @@ public:
   // write a value
   bool write(const uint32_t addr, const uint32_t& data, const uint32_t& mask);
   // read a value
-  bool read(const uint32_t addr, uint32 &data);
+  bool read(const uint32_t addr, uint32_t &data);
 };
 
 class MemoryOperation {
@@ -82,7 +82,7 @@ public:
   
   // normal constructor
   MemoryOperation(const bool rw, const uint32_t tag, const uint32_t addr,
-                  const uint32_t data = 0, const unit32_t mask = 0xf)
+                  const uint32_t data = 0, const uint32_t mask = 0xf)
     : rw(rw), tag(tag), addr(addr), data(data), mask(mask) {}
 
   // copy constructor
@@ -115,7 +115,7 @@ public:
     resp_len[tag] = beat_size;
   }
   void add_write_req(const unsigned int fifo, const uint32_t tag, const uint32_t addr,
-                     const uint32_t data, const unit32_t mask);
+                     const uint32_t data, const uint32_t mask);
   // simulation step function
   void step();
   // get an empty queue
@@ -124,7 +124,7 @@ public:
 };
 
 // global memory controller
-extern MemoryController *memory_controller
+extern MemoryController *memory_controller;
 
 // AXI controllers
 class AXIMemWriter {
@@ -142,7 +142,7 @@ public:
     : valid(false) {}
 
   bool write_addr_req(const uint32_t tag, const uint32_t addr, const unsigned int len, const unsigned int size);
-  bool write_data_req(const uint32_t *data, const uint32_t mask, const bool last, const unsigned int width);
+  bool write_data_req(const uint32_t *data, const uint32_t mask, const bool last);
 
   bool writer_resp_req(uint32_t *tag, uint32_t *resp);
 };
@@ -153,7 +153,7 @@ class AXIMemReader {
   std::map<uint32_t, unsigned int> tracker_len;     // tracking burst length
   std::map<uint32_t, unsigned int> tracker_size;    // tracking beat size
 public:
-  bool reader_addr_req(const uint32_t tag, const uint32_t addr, unsigned int len, unsigned int size);
+  bool reader_addr_req(const uint32_t tag, const uint32_t addr, const unsigned int len, const unsigned int size);
   bool reader_data_req(uint32_t *tag, uint32_t *data, uint32_t *resp, bool *last, const unsigned int width);
 };
 

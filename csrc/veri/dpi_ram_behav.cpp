@@ -132,7 +132,7 @@ svBit memory_read_resp (
   uint32_t resp;
   bool last_m;
 
-  if(axi_mem_reader->reader_data_req(&tag, data, &resp, &last_m)) {
+  if(axi_mem_reader->reader_data_req(&tag, data, &resp, &last_m, 8)) {
     id_16b[0].aval = tag & 0xffff;
     id_16b[0].bval = 0;
     for(int i=0; i<8; i++) {
@@ -173,12 +173,12 @@ bool Memory32::write(const uint32_t addr, const uint32_t& data, const uint32_t& 
       data_m = (data_m & ~(0xff << i*8)) | (data & (0xff << i*8));
     }
   }
-  mem[addr] = rdata;
+  mem[addr] = data_m;
 
   return true;
 }
 
-bool Memory32::read(const uint32_t addr, uint32 &data) {
+bool Memory32::read(const uint32_t addr, uint32_t &data) {
   assert(addr & 0xf == 0);
   if(addr >= addr_max || !mem.count(addr)) return false;
 
@@ -195,7 +195,7 @@ void MemoryController::add_read_req(const unsigned int fifo, const uint32_t tag,
 }
 
 void MemoryController::add_write_req(const unsigned int fifo, const uint32_t tag, const uint32_t addr, 
-                                     const uint32_t data, const unit32_t mask) {
+                                     const uint32_t data, const uint32_t mask) {
   assert(fifo < op_max);
   op_fifo[fifo].push_back(MemoryOperation(1, tag, addr, data, mask));
 }
@@ -210,9 +210,9 @@ void MemoryController::step() {
   for(int i=0; i<op_total; i++) {
     if(!op_fifo[rr_index].empty()) {
       // get the operation
-      MemoryOperation op = op_fifo[rr_index].fron();
+      MemoryOperation op = op_fifo[rr_index].front();
       op_fifo[rr_index].pop_front();
-      rr_index = (rr_inde + 1) % op_max;
+      rr_index = (rr_index + 1) % op_max;
 
       if(op.rw)
         mem.write(op.addr, op.data, op.mask);
@@ -256,16 +256,16 @@ bool AXIMemWriter::write_addr_req(const uint32_t tag, const uint32_t addr,
   if(valid) return false;       // another AXI write in operation
 
   // check whether there is an empty queue
-  if(!memory_controller->load_balance(this.fifo))
+  if(!memory_controller->load_balance(this->fifo))
     return false;               // no empty queue
 
   // register the request
-  this.tag = tag;
-  this.addr = addr;
-  this.len = len;
-  this.size = (unsigned int)(pow(2, size));
-  this.mask = (1 << this.size) - 1;
-  this.valid = true;
+  this->tag = tag;
+  this->addr = addr;
+  this->len = len;
+  this->size = (unsigned int)(pow(2, size));
+  this->mask = (1 << this->size) - 1;
+  this->valid = true;
 
   return true;
 }
@@ -278,7 +278,7 @@ bool AXIMemWriter::write_data_req(const uint32_t *data, const uint32_t mask,
   if(!valid) return false;      // have not received an address request yet
   
   if(size < 4) {
-    memory_controller->add_write_req(fifo, tag, addr, data[0], this.mask & mask);
+    memory_controller->add_write_req(fifo, tag, addr, data[0], this->mask & mask);
     addr += size;
   } else {
     for(int i=0; i<size/4; i++) {
@@ -307,7 +307,7 @@ bool AXIMemWriter::writer_resp_req(uint32_t *tag, uint32_t *resp) {
   return true;
 }
 
-bool AXIMemReader::reader_addr_req(const uint32_t tag, const uint32_t addr, unsigned int len, unsigned int size) {
+bool AXIMemReader::reader_addr_req(const uint32_t tag, const uint32_t addr, const unsigned int len, const unsigned int size) {
   unsigned int fifo;
   unsigned int size_m = (unsigned int)(pow(2, size));
   unsigned int len_m = len + 1;
@@ -337,29 +337,31 @@ bool AXIMemReader::reader_addr_req(const uint32_t tag, const uint32_t addr, unsi
   return true;
 }
 
-bool AXIMemReader::reader_data_req(uint32_t *tag, uint32_t *data, bool *last) {
-  list<uint32_t> *resp = memory_controller->get_resp(tag);
-  if(resp == NULL) return false;
+bool AXIMemReader::reader_data_req(uint32_t *tag, uint32_t *data, uint32_t *resp, bool *last, const unsigned int width) {
+  list<uint32_t> *read_resp = memory_controller->get_resp(*tag);
+  if(read_resp == NULL) return false;
 
-  unsigned int size = tracker_size[tag];
+  unsigned int size = tracker_size[*tag];
 
   if(size < 4) {
-    data[0] = resp->front();
+    data[0] = read_resp->front();
     for(int i=1; i<width; i++) data[i] = 0;
-    resp->pop_front();
+    read_resp->pop_front();
   } else {
     for(int i=0; i<size/4; i++) {
-      data[0] = resp->front();
-      resp->pop_front();
+      data[0] = read_resp->front();
+      read_resp->pop_front();
     }
     for(int i=size/4; i<width; i++) data[i] = 0;
   }
   
   *last = false;
-  if(tracker_len[tag] == 0)
+  if(tracker_len[*tag] == 0)
     *last = true;
   else
-    tracker_len[tag]--;
+    tracker_len[*tag]--;
+
+  *resp = 0;
 
   return true;
 }

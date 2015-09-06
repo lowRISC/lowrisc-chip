@@ -1,5 +1,6 @@
 // See LICENSE for license details.
 
+`include "config.vh"
 `include "consts.DefaultConfig.vh"
 
 module chip_top
