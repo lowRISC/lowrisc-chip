@@ -477,6 +477,25 @@ module chip_top
       .rtsn            (                    )
       );
 
-`endif //  `ifdef FPGA
+`elsif SIMULATION
+   axi_ram_behav
+     #(
+       .ID_WIDTH     ( `MEM_TAG_WIDTH   ),
+       .ADDR_WIDTH   ( `PADDR_WIDTH     ),
+       .DATA_WIDTH   ( `MEM_DAT_WIDTH   ),
+       .USER_WIDTH   ( 1                )
+       )
+   ram_behav
+     (
+      .clk           ( clk              ),
+      .rstn          ( rstn             ),
+      .aw            ( mem_nasti_aw     ),
+      .w             ( mem_nasti_w      ),
+      .b             ( mem_nasti_b      ),
+      .ar            ( mem_nasti_ar     ),
+      .r             ( mem_nasti_r      )
+      );
+
+`endif
 
 endmodule // chip_top

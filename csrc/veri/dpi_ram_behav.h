@@ -10,35 +10,35 @@ extern "C" {
 #endif
 
   extern svBit memory_write_req (
-                                 const svLogicVecVal *id_16b,
-                                 const svLogicVecVal *addr_32b,
-                                 const svLogicVecVal *len_8b,
-                                 const svLogicVecVal *size_3b,
-                                 const svLogicVecVal *user_16b
+                                 const svBitVecVal *id_16b,
+                                 const svBitVecVal *addr_32b,
+                                 const svBitVecVal *len_8b,
+                                 const svBitVecVal *size_3b,
+                                 const svBitVecVal *user_16b
                                  );
   extern svBit memory_write_data (
-                                  const svLogicVecVal *data_256,
-                                  const svLogicVecVal *strb_32,
-                                  const svLogic last
+                                  const svBitVecVal *data_256,
+                                  const svBitVecVal *strb_32,
+                                  const svBit last
                                   );
   extern svBit memory_write_resp (
-                                  svLogicVecVal *id_16b,
-                                  svLogicVecVal *resp_2b,
-                                  svLogicVecVal *user_16b
+                                  svBitVecVal *id_16b,
+                                  svBitVecVal *resp_2b,
+                                  svBitVecVal *user_16b
                                   );
   extern svBit memory_read_req (
-                                const svLogicVecVal *id_16b,
-                                const svLogicVecVal *addr_32b,
-                                const svLogicVecVal *len_8b,
-                                const svLogicVecVal *size_3b,
-                                const svLogicVecVal *user_16b
+                                const svBitVecVal *id_16b,
+                                const svBitVecVal *addr_32b,
+                                const svBitVecVal *len_8b,
+                                const svBitVecVal *size_3b,
+                                const svBitVecVal *user_16b
                                 );
   extern svBit memory_read_resp (
-                                 svLogicVecVal *id_16b,
-                                 svLogicVecVal *data_256b,
-                                 svLogicVecVal *resp_2b,
-                                 svLogic *last,
-                                 svLogicVecVal *user_16b
+                                 svBitVecVal *id_16b,
+                                 svBitVecVal *data_256b,
+                                 svBitVecVal *resp_2b,
+                                 svBit *last,
+                                 svBitVecVal *user_16b
                                  );
 #ifdef __cplusplus
 }

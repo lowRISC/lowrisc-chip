@@ -11,27 +11,18 @@ using std::list;
 
 // the SystemVerilog DPI functions
 svBit memory_write_req (
-                        const svLogicVecVal *id_16b,
-                        const svLogicVecVal *addr_32b,
-                        const svLogicVecVal *len_8b,
-                        const svLogicVecVal *size_3b,
-                        const svLogicVecVal *user_16b
+                        const svBitVecVal *id_16b,
+                        const svBitVecVal *addr_32b,
+                        const svBitVecVal *len_8b,
+                        const svBitVecVal *size_3b,
+                        const svBitVecVal *user_16b
                         ) {
   // collect all data
-  uint32_t id = SV_GET_UNSIGNED_BITS(id_16b[0].aval, 16);
-  assert(SV_GET_UNSIGNED_BITS(id_16b[0].bval, 16) == 0);
-
-  uint32_t addr = addr_32b[0].aval;
-  assert(addr_32b[0].bval == 0);
-
-  unsigned int len = SV_GET_UNSIGNED_BITS(len_8b[0].aval, 8);
-  assert(SV_GET_UNSIGNED_BITS(len_8b[0].bval, 8) == 0);
-
-  unsigned int size = SV_GET_UNSIGNED_BITS(size_3b[0].aval, 3);
-  assert(SV_GET_UNSIGNED_BITS(size_3b[0].bval, 3) == 0);
-
-  uint32_t user = SV_GET_UNSIGNED_BITS(user_16b[0].aval, 16);
-  assert(SV_GET_UNSIGNED_BITS(user_16b[0].bval, 16) == 0);
+  uint32_t id = SV_GET_UNSIGNED_BITS(id_16b[0], 16);
+  uint32_t addr = addr_32b[0];
+  unsigned int len = SV_GET_UNSIGNED_BITS(len_8b[0], 8);
+  unsigned int size = SV_GET_UNSIGNED_BITS(size_3b[0], 3);
+  uint32_t user = SV_GET_UNSIGNED_BITS(user_16b[0], 16);
 
   // call axi controller
   if(axi_mem_writer->write_addr_req((user<<16)|id, addr, len, size))
@@ -41,16 +32,16 @@ svBit memory_write_req (
 }
 
 svBit memory_write_data (
-                         const svLogicVecVal *data_256,
-                         const svLogicVecVal *strb_32,
-                         const svLogic last
+                         const svBitVecVal *data_256,
+                         const svBitVecVal *strb_32,
+                         const svBit last
                          )
 {
   // collect all data
   uint32_t data[8];
   for(int i=0; i<8; i++)
-    data[i] = data_256[i].aval;
-  uint32_t strb = strb_32[0].aval;
+    data[i] = data_256[i];
+  uint32_t strb = strb_32[0];
   bool last_m = last == sv_1;
 
   // call axi controller
@@ -61,57 +52,39 @@ svBit memory_write_data (
 }
 
 svBit memory_write_resp (
-                         svLogicVecVal *id_16b,
-                         svLogicVecVal *resp_2b,
-                         svLogicVecVal *user_16b
+                         svBitVecVal *id_16b,
+                         svBitVecVal *resp_2b,
+                         svBitVecVal *user_16b
                          )
 {
   uint32_t tag;
   uint32_t resp;
 
   if(axi_mem_writer->writer_resp_req(&tag, &resp)) {
-    id_16b[0].aval = tag & 0xffff;
-    id_16b[0].bval = 0;
-    resp_2b[0].aval = resp;
-    resp_2b[0].bval = 0;
-    user_16b[0].aval = tag >> 16;
-    user_16b[0].bval = 0;
+    id_16b[0] = tag & 0xffff;
+    resp_2b[0] = resp;
+    user_16b[0] = tag >> 16;
     return sv_1;
   } else {
-    id_16b[0].aval = 0xffffffff;
-    id_16b[0].bval = 0xffffffff;
-    resp_2b[0].aval = 0xffffffff;
-    resp_2b[0].bval = 0xffffffff;
-    user_16b[0].aval = 0xffffffff;
-    user_16b[0].bval = 0xffffffff;
     return sv_0;
   }
 }
 
 svBit memory_read_req (
-                       const svLogicVecVal *id_16b,
-                       const svLogicVecVal *addr_32b,
-                       const svLogicVecVal *len_8b,
-                       const svLogicVecVal *size_3b,
-                       const svLogicVecVal *user_16b
+                       const svBitVecVal *id_16b,
+                       const svBitVecVal *addr_32b,
+                       const svBitVecVal *len_8b,
+                       const svBitVecVal *size_3b,
+                       const svBitVecVal *user_16b
                        )
 {
   // collect all data
-  uint32_t id = SV_GET_UNSIGNED_BITS(id_16b[0].aval, 16);
-  assert(SV_GET_UNSIGNED_BITS(id_16b[0].bval, 16) == 0);
+  uint32_t id = SV_GET_UNSIGNED_BITS(id_16b[0], 16);
+  uint32_t addr = addr_32b[0];
+  unsigned int len = SV_GET_UNSIGNED_BITS(len_8b[0], 8);
+  unsigned int size = SV_GET_UNSIGNED_BITS(size_3b[0], 3);
+  uint32_t user = SV_GET_UNSIGNED_BITS(user_16b[0], 16);
 
-  uint32_t addr = addr_32b[0].aval;
-  assert(addr_32b[0].bval == 0);
-
-  unsigned int len = SV_GET_UNSIGNED_BITS(len_8b[0].aval, 8);
-  assert(SV_GET_UNSIGNED_BITS(len_8b[0].bval, 8) == 0);
-
-  unsigned int size = SV_GET_UNSIGNED_BITS(size_3b[0].aval, 3);
-  assert(SV_GET_UNSIGNED_BITS(size_3b[0].bval, 3) == 0);
-  
-  uint32_t user = SV_GET_UNSIGNED_BITS(user_16b[0].aval, 16);
-  assert(SV_GET_UNSIGNED_BITS(user_16b[0].bval, 16) == 0);
-  
   // call axi controller
   if(axi_mem_reader->reader_addr_req((user<<16)|id, addr, len, size))
     return sv_1;
@@ -120,11 +93,11 @@ svBit memory_read_req (
 }
 
 svBit memory_read_resp (
-                        svLogicVecVal *id_16b,
-                        svLogicVecVal *data_256b,
-                        svLogicVecVal *resp_2b,
-                        svLogic *last,
-                        svLogicVecVal *user_16b
+                        svBitVecVal *id_16b,
+                        svBitVecVal *data_256b,
+                        svBitVecVal *resp_2b,
+                        svBit *last,
+                        svBitVecVal *user_16b
                         )
 {
   uint32_t tag;
@@ -133,30 +106,15 @@ svBit memory_read_resp (
   bool last_m;
 
   if(axi_mem_reader->reader_data_req(&tag, data, &resp, &last_m, 8)) {
-    id_16b[0].aval = tag & 0xffff;
-    id_16b[0].bval = 0;
+    id_16b[0] = tag & 0xffff;
     for(int i=0; i<8; i++) {
-      data_256b[i].aval = data[i];
-      data_256b[i].bval = 0;
+      data_256b[i] = data[i];
     }
-    resp_2b[0].aval = resp;
-    resp_2b[0].bval = 0;
-    user_16b[0].aval = tag >> 16;
-    user_16b[0].bval = 0;
+    resp_2b[0] = resp;
+    user_16b[0] = tag >> 16;
     *last = last_m ? sv_1 : sv_0;
     return sv_1;
   } else {
-    id_16b[0].aval = 0xffffffff;
-    id_16b[0].bval = 0xffffffff;
-    for(int i=0; i<8; i++) {
-      data_256b[i].aval = 0xffffffff;
-      data_256b[i].bval = 0xffffffff;
-    }
-    resp_2b[0].aval = 0xffffffff;
-    resp_2b[0].bval = 0xffffffff;
-    user_16b[0].aval = 0xffffffff;
-    user_16b[0].bval = 0xffffffff;
-    *last = sv_x;
     return sv_0;
   }
 }

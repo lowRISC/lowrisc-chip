@@ -46,8 +46,8 @@ veri_csrcs = \
 #--------------------------------------------------------------------
 # Build the simulator (verilator)
 #--------------------------------------------------------------------
-verilator: verilator/V$(tb_top)__verFiles.dat $(veri_vsrcs) $(veri_csrcs)
-verilator/V$(tb_top)__verFiles.dat: $(sim_vsrcs)
+verilator: verilator/V$(tb_top)__verFiles.dat
+verilator/V$(tb_top)__verFiles.dat: $(sim_vsrcs) $(veri_vsrcs) $(veri_csrcs)
 	$(veri) --cc $(veri_vsrcs) $(veri_csrcs) $(veri_flags) -o ../$(CONFIG)-sim
 
 sim: $(CONFIG)-sim

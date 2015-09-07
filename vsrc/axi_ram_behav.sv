@@ -22,94 +22,94 @@ module axi_ram_behav
    initial assert(USER_WIDTH <= 16) else $error("Error: USER_WIDTH > 16 is not supported!");
    
    import "DPI-C" function bit memory_write_req (
-                                                 input logic [15:0] id,
-                                                 input logic [31:0] addr,
-                                                 input logic [7:0]  len,
-                                                 input logic [2:0]  size,
-                                                 input logic [15:0] user
+                                                 input bit [15:0] id,
+                                                 input bit [31:0] addr,
+                                                 input bit [7:0]  len,
+                                                 input bit [2:0]  size,
+                                                 input bit [15:0] user
                                                  );
 
    import "DPI-C" function bit memory_write_data (
-                                                  input logic [255:0] data,
-                                                  input logic [31:0]  strb,
-                                                  input logic         last
+                                                  input bit [255:0] data,
+                                                  input bit [31:0]  strb,
+                                                  input bit         last
                                                   );
    
    import "DPI-C" function bit memory_write_resp (
-                                                  output logic [15:0] id,
-                                                  output logic [1:0]  resp,
-                                                  output logic [15:0] user
+                                                  output bit [15:0] id,
+                                                  output bit [1:0]  resp,
+                                                  output bit [15:0] user
                                                   );
    
    import "DPI-C" function bit memory_read_req (
-                                                input logic [15:0] id,
-                                                input logic [31:0] addr,
-                                                input logic [7:0]  len,
-                                                input logic [2:0]  size,
-                                                input logic [15:0] user
+                                                input bit [15:0] id,
+                                                input bit [31:0] addr,
+                                                input bit [7:0]  len,
+                                                input bit [2:0]  size,
+                                                input bit [15:0] user
                                                 );
    
    import "DPI-C" function bit memory_read_resp (
-                                                 output logic [15:0]  id,
-                                                 output logic [255:0] data,
-                                                 output logic [1:0]   resp,
-                                                 output logic         last,
-                                                 output logic [15:0]  user
+                                                 output bit [15:0]  id,
+                                                 output bit [255:0] data,
+                                                 output bit [1:0]   resp,
+                                                 output bit         last,
+                                                 output bit [15:0]  user
                                                  );
    
    always_comb
-     if(nasti_aw.valid)
-       nasti_aw.ready = memory_write_req(nasti_aw.id, nasti_aw.addr, nasti_aw.len, nasti_aw.size, nasti_aw.user);
+     if(aw.valid)
+       aw.ready = memory_write_req(aw.id, aw.addr, aw.len, aw.size, aw.user);
      else
-       nasti_aw.ready = 0;
+       aw.ready = 0;
 
    always_comb
-     if(nasti_w.valid)
-       nasti_w.ready = memory_write_data(nasti_w.data, nasti_w.strb, nasti_w.last);
+     if(w.valid)
+       w.ready = memory_write_data(w.data, w.strb, w.last);
      else
-       nasti_w.ready = 0;
+       w.ready = 0;
       
-   logic [ID_WIDTH-1:0]   b_id;
-   logic [1:0]            b_resp;
-   logic [USER_WIDTH-1:0] b_user;
-   logic                  b_valid;
+   logic [15:0]   b_id;
+   logic [1:0]    b_resp;
+   logic [15:0]   b_user;
+   logic          b_valid;
    
    always_ff @(posedge clk or negedge rstn)
      if(!rstn)
        b_valid <= 0;
-     else if(!b_valid || nasti_b.ready)
+     else if(!b_valid || b.ready)
        b_valid <= memory_write_resp(b_id, b_resp, b_user);
    
-   assign nasti_b.valid = b_valid;
-   assign nasti_b.id = b_id;
-   assign nasti_b.resp = b_resp;
-   assign nasti_b.user = b_user;
+   assign b.valid = b_valid;
+   assign b.id = b_id;
+   assign b.resp = b_resp;
+   assign b.user = b_user;
 
    always_comb
-     if(nasti_ar.valid)
-       nasti_ar.ready = memory_read_req(nasti_ar.id, nasti_ar.addr, nasti_ar.len, nasti_ar.size, nasti_ar.user);
+     if(ar.valid)
+       ar.ready = memory_read_req(ar.id, ar.addr, ar.len, ar.size, ar.user);
      else
-       nasti_ar.ready = 0;
+       ar.ready = 0;
 
-   logic [ID_WIDTH-1:0]   r_id;
-   logic [DATA_WIDTH-1:0] r_data;
-   logic [1:0]            r_resp;
-   logic                  r_last;
-   logic [USER_WIDTH-1:0] r_user;
-   logic                  r_valid;
+   logic [15:0]   r_id;
+   logic [255:0]  r_data;
+   logic [1:0]    r_resp;
+   logic          r_last;
+   logic [15:0]   r_user;
+   logic          r_valid;
 
    always_ff @(posedge clk or negedge rstn)
      if(!rstn)
        r_valid <= 0;
-     else if(!b_valid || nasti_b.ready)
+     else if(!b_valid || b.ready)
        r_valid <= memory_read_resp(r_id, r_data, r_resp, r_last, r_user);
    
-   assign nasti_r.valid = r_valid;
-   assign nasti_r.data = r_data;
-   assign nasti_r.last = r_last;
-   assign nasti_r.id = r_id;
-   assign nasti_r.resp = r_resp;
-   assign nasti_r.user = r_user;
+   assign r.valid = r_valid;
+   assign r.data = r_data;
+   assign r.last = r_last;
+   assign r.id = r_id;
+   assign r.resp = r_resp;
+   assign r.user = r_user;
    
 endmodule // axi_ram_behav
 
