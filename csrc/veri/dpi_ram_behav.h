@@ -46,6 +46,7 @@ extern "C" {
 
 #include <map>
 #include <list>
+#include <string>
 
 class Memory32 {                // data width = 32-bit
   std::map<uint32_t, uint32_t> mem; // memory storage
@@ -121,6 +122,9 @@ public:
   // get an empty queue
   bool load_balance(unsigned int&);
   std::list<uint32_t>* get_resp(uint32_t &tag);
+
+  // load an initial memory
+  bool load_mem(const std::string& filename);
 };
 
 // global memory controller

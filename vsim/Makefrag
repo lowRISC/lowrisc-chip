@@ -31,6 +31,7 @@ veri_flags = \
 	-Wno-lint -Wno-style -Wno-STMTDLY \
 	--exe \
 	--trace \
+	 -CFLAGS "-g" \
 	--Mdir $(sim_dir)/verilator
 
 veri_vsrcs = \
@@ -46,12 +47,12 @@ veri_csrcs = \
 #--------------------------------------------------------------------
 # Build the simulator (verilator)
 #--------------------------------------------------------------------
-verilator: verilator/V$(tb_top)__verFiles.dat
-verilator/V$(tb_top)__verFiles.dat: $(sim_vsrcs) $(veri_vsrcs) $(veri_csrcs)
-	$(veri) --cc $(veri_vsrcs) $(veri_csrcs) $(veri_flags) -o ../$(CONFIG)-sim
+verilator: verilator.log
+verilator.log: $(sim_vsrcs) $(veri_vsrcs) $(veri_csrcs)
+	$(veri) --cc $(veri_vsrcs) $(veri_csrcs) $(veri_flags) -o ../$(CONFIG)-sim | tee $@
 
 sim: $(CONFIG)-sim
-$(CONFIG)-sim: verilator/V$(tb_top)__verFiles.dat
+$(CONFIG)-sim: verilator.log
 	cd verilator && make -f V$(tb_top).mk
 
 .PHONY: verilator sim

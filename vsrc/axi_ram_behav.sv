@@ -58,13 +58,13 @@ module axi_ram_behav
                                                  );
    
    always_comb
-     if(aw.valid)
+     if(aw.valid && rstn)
        aw.ready = memory_write_req(aw.id, aw.addr, aw.len, aw.size, aw.user);
      else
        aw.ready = 0;
 
    always_comb
-     if(w.valid)
+     if(w.valid && rstn)
        w.ready = memory_write_data(w.data, w.strb, w.last);
      else
        w.ready = 0;
@@ -86,7 +86,7 @@ module axi_ram_behav
    assign b.user = b_user;
 
    always_comb
-     if(ar.valid)
+     if(ar.valid && rstn)
        ar.ready = memory_read_req(ar.id, ar.addr, ar.len, ar.size, ar.user);
      else
        ar.ready = 0;

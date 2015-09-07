@@ -5,9 +5,14 @@
 #include <cstdlib>
 #include <cmath>
 #include <algorithm>
+#include <fstream>
+#include <boost/lexical_cast.hpp>
 
 using std::pair;
 using std::list;
+using std::string;
+using std::ifstream;
+using boost::lexical_cast;
 
 // the SystemVerilog DPI functions
 svBit memory_write_req (
@@ -122,7 +127,7 @@ svBit memory_read_resp (
 // Memory module
 
 bool Memory32::write(const uint32_t addr, const uint32_t& data, const uint32_t& mask) {
-  assert(addr & 0xf == 0);
+  assert((addr & 0x3) == 0);
   if(addr >= addr_max) return false;
 
   uint32_t data_m = mem[addr];
@@ -137,7 +142,7 @@ bool Memory32::write(const uint32_t addr, const uint32_t& data, const uint32_t& 
 }
 
 bool Memory32::read(const uint32_t addr, uint32_t &data) {
-  assert(addr & 0xf == 0);
+  assert((addr & 0x3) == 0);
   if(addr >= addr_max || !mem.count(addr)) return false;
 
   data = mem[addr];
@@ -204,6 +209,29 @@ std::list<uint32_t>* MemoryController::get_resp(uint32_t &tag) {
   tag = resp_que.front();
   resp_que.pop_front();
   return &(resp_map[tag]);
+}
+
+// load initial memory
+bool MemoryController::load_mem(const string& filename) {
+  ifstream ifs;
+  ifs.open(filename.c_str());
+
+  char buf [36];
+  uint32_t addr = 0;
+
+  while(ifs.good()) {
+    ifs.getline(buf, 36);
+    string line(buf);
+    if(line != "") {
+      for(int i=3; i>=0; i--) {
+        uint32_t data = strtoul(line.substr(i*8, 8).c_str(), NULL, 16);
+        mem.write(addr, data, 0xf);
+        addr += 4;
+      }
+    }
+  }
+
+  return true;
 }
 
 // AXI controllers

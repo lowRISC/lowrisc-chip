@@ -1,5 +1,5 @@
 *.vcd
 generated-src
 output
-verilator
+verilator*
 *-sim

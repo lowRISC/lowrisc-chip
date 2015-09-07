@@ -2,6 +2,12 @@
 #include <verilated_vcd_c.h>
 #include "Vchip_top.h"
 #include "dpi_ram_behav.h"
+#include <string>
+#include <vector>
+#include <iostream>
+
+using std::string;
+using std::vector;
 
 MemoryController *memory_controller;
 AXIMemWriter* axi_mem_writer;
@@ -19,15 +25,31 @@ int main(int argc, char** argv) {
   axi_mem_writer = new AXIMemWriter;
   axi_mem_reader = new AXIMemReader;
 
+  // handle arguements
+  bool vcd_enable = false;
+  vector<string> args(argv + 1, argv + argc);
+  for(vector<string>::iterator it = args.begin(); it != args.end(); ++it) {
+    if(*it == "+vcd")
+      vcd_enable = true;
+    else if(it->find("+load=") == 0) {
+      string filename = it->substr(strlen("+load="));
+      if(!memory_controller->load_mem(filename)) {
+        std::cout << "fail to load memory file " << filename << endl;
+        return 0;
+      }
+    }
+  }
 
   top = new Vchip_top;
   top->rst_top = 1;
 
   // VCD dump
-  Verilated::traceEverOn(true);
   VerilatedVcdC* vcd = new VerilatedVcdC;
-  top->trace(vcd, 99);
-  vcd->open("verilated.vcd");
+  if(vcd_enable) {
+    Verilated::traceEverOn(true);
+    top->trace(vcd, 99);
+    vcd->open("verilated.vcd");
+  }
   
   while(!Verilated::gotFinish()) {
     if(main_time > 133) {
@@ -44,7 +66,7 @@ int main(int argc, char** argv) {
 
     top->eval();
     memory_controller->step();
-    vcd->dump(main_time);       // do the dump
+    if(vcd_enable) vcd->dump(main_time);       // do the dump
 
     if(main_time < 140)
       main_time++;
@@ -53,9 +75,12 @@ int main(int argc, char** argv) {
   }
 
   top->final();
-  vcd->close();
+  if(vcd_enable) vcd->close();
+
   delete top;
   delete memory_controller;
   delete axi_mem_writer;
   delete axi_mem_reader;
+
+  return 0;
 }
