@@ -65,7 +65,7 @@ int main(int argc, char** argv) {
     }
 
     top->eval();
-    memory_controller->step();
+    if((main_time % 10) == 0) memory_controller->step();
     if(vcd_enable) vcd->dump(main_time);       // do the dump
 
     if(main_time < 140)

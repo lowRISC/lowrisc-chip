@@ -478,6 +478,11 @@ module chip_top
       );
 
 `elsif SIMULATION
+
+   assign clk = clk_p;
+   assign rst = rst_top;
+   assign rstn = !rst_top;
+
    axi_ram_behav
      #(
        .ID_WIDTH     ( `MEM_TAG_WIDTH   ),

@@ -56,18 +56,44 @@ module axi_ram_behav
                                                  output bit         last,
                                                  output bit [15:0]  user
                                                  );
+`ifdef VERILATOR
+   // A workaround for Verilator since it treats DPI functions as pure
+   // Which leads to wrong function scheduling.
+   // introduce verilog side-effect to prohibit rescheduling.
+   // Issue submitted as
+   // http://www.veripool.org/issues/963-Verilator-impure-function-being-scheduled-wrong
    
-   always_comb
-     if(aw.valid && rstn)
-       aw.ready = memory_write_req(aw.id, aw.addr, aw.len, aw.size, aw.user);
-     else
-       aw.ready = 0;
+   reg dummy;
 
-   always_comb
-     if(w.valid && rstn)
-       w.ready = memory_write_data(w.data, w.strb, w.last);
-     else
-       w.ready = 0;
+   function void write_dummy(input logic b);
+      dummy = b;
+   endfunction // write_dummy
+
+`endif
+
+   always @(negedge clk or negedge rstn)
+     if(!rstn)
+       aw.ready <= 0;
+     else if(aw.valid) begin
+        //$display("%t, aw valid", $time);
+        aw.ready <= memory_write_req(aw.id, aw.addr, aw.len, aw.size, aw.user);
+`ifdef VERILATOR
+        write_dummy(aw.ready);
+`endif
+     end else
+       aw.ready <= 0;
+
+   always @(negedge clk or negedge rstn)
+     if(!rstn)
+       w.ready <= 0;
+     else if(w.valid && rstn) begin
+        //$display("%t, w valid", $time);
+        w.ready <= memory_write_data(w.data, w.strb, w.last);
+`ifdef VERILATOR
+        write_dummy(w.ready);
+`endif
+     end else
+       w.ready <= 0;
       
    logic [15:0]   b_id;
    logic [1:0]    b_resp;
@@ -85,11 +111,17 @@ module axi_ram_behav
    assign b.resp = b_resp;
    assign b.user = b_user;
 
-   always_comb
-     if(ar.valid && rstn)
-       ar.ready = memory_read_req(ar.id, ar.addr, ar.len, ar.size, ar.user);
-     else
-       ar.ready = 0;
+   always @(negedge clk or negedge rstn)
+     if(!rstn)
+       ar.ready <= 0;
+     else if(ar.valid && rstn) begin
+        //$display("%t, ar valid", $time);
+        ar.ready <= memory_read_req(ar.id, ar.addr, ar.len, ar.size, ar.user);
+`ifdef VERILATOR
+        write_dummy(ar.ready);
+`endif
+     end else
+       ar.ready <= 0;
 
    logic [15:0]   r_id;
    logic [255:0]  r_data;
@@ -101,7 +133,7 @@ module axi_ram_behav
    always_ff @(posedge clk or negedge rstn)
      if(!rstn)
        r_valid <= 0;
-     else if(!b_valid || b.ready)
+     else if(!r_valid || r.ready)
        r_valid <= memory_read_resp(r_id, r_data, r_resp, r_last, r_user);
    
    assign r.valid = r_valid;

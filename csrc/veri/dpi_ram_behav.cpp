@@ -7,12 +7,14 @@
 #include <algorithm>
 #include <fstream>
 #include <boost/lexical_cast.hpp>
+#include <boost/format.hpp>
 
 using std::pair;
 using std::list;
 using std::string;
 using std::ifstream;
 using boost::lexical_cast;
+using boost::format;
 
 // the SystemVerilog DPI functions
 svBit memory_write_req (
@@ -28,9 +30,12 @@ svBit memory_write_req (
   unsigned int len = SV_GET_UNSIGNED_BITS(len_8b[0], 8);
   unsigned int size = SV_GET_UNSIGNED_BITS(size_3b[0], 3);
   uint32_t user = SV_GET_UNSIGNED_BITS(user_16b[0], 16);
+  uint32_t tag = (user<<16)|id;
+
+  std::cout << format("memory write request: %1$x @ %2$x") % tag % addr << std::endl;
 
   // call axi controller
-  if(axi_mem_writer->write_addr_req((user<<16)|id, addr, len, size))
+  if(axi_mem_writer->write_addr_req(tag, addr, len, size))
     return sv_1;
   else
     return sv_0;
@@ -48,6 +53,8 @@ svBit memory_write_data (
     data[i] = data_256[i];
   uint32_t strb = strb_32[0];
   bool last_m = last == sv_1;
+
+  std::cout << format("memory write data: %1$08x %2$08x %3$08x %4$08x") % data[3] % data[2] % data[1] % data[0] << std::endl;
 
   // call axi controller
   if(axi_mem_writer->write_data_req(data, strb, last_m))
@@ -89,9 +96,12 @@ svBit memory_read_req (
   unsigned int len = SV_GET_UNSIGNED_BITS(len_8b[0], 8);
   unsigned int size = SV_GET_UNSIGNED_BITS(size_3b[0], 3);
   uint32_t user = SV_GET_UNSIGNED_BITS(user_16b[0], 16);
+  uint32_t tag = (user<<16)|id;
+
+  std::cout << format("memory read request: %1$x @ %2$x") % tag % addr << std::endl;
 
   // call axi controller
-  if(axi_mem_reader->reader_addr_req((user<<16)|id, addr, len, size))
+  if(axi_mem_reader->reader_addr_req(tag, addr, len, size))
     return sv_1;
   else
     return sv_0;
@@ -111,6 +121,7 @@ svBit memory_read_resp (
   bool last_m;
 
   if(axi_mem_reader->reader_data_req(&tag, data, &resp, &last_m, 8)) {
+    std::cout << format("memory read resp: %1$x with data %2$08x %3$08x %4$08x %5$08x") % tag % data[3] % data[2] % data[1] % data[0]<< std::endl;
     id_16b[0] = tag & 0xffff;
     for(int i=0; i<8; i++) {
       data_256b[i] = data[i];
@@ -128,7 +139,7 @@ svBit memory_read_resp (
 
 bool Memory32::write(const uint32_t addr, const uint32_t& data, const uint32_t& mask) {
   assert((addr & 0x3) == 0);
-  if(addr >= addr_max) return false;
+  if(addr_max != 0 && addr >= addr_max) return false;
 
   uint32_t data_m = mem[addr];
   for(int i=0; i<4; i++) {
@@ -143,7 +154,7 @@ bool Memory32::write(const uint32_t addr, const uint32_t& data, const uint32_t& 
 
 bool Memory32::read(const uint32_t addr, uint32_t &data) {
   assert((addr & 0x3) == 0);
-  if(addr >= addr_max || !mem.count(addr)) return false;
+  if(addr_max != 0 && addr >= addr_max || !mem.count(addr)) return false;
 
   data = mem[addr];
 
@@ -154,6 +165,7 @@ bool Memory32::read(const uint32_t addr, uint32_t &data) {
 
 void MemoryController::add_read_req(const unsigned int fifo, const uint32_t tag, const uint32_t addr) {
   assert(fifo < op_max);
+  //std::cout << format("Memory controller read req from fifo %1% (%2$x @ %3$x)") % fifo % tag % addr << std::endl;
   op_fifo[fifo].push_back(MemoryOperation(0, tag, addr));
 }
 
@@ -168,26 +180,29 @@ void MemoryController::step() {
   const unsigned int max_random = 2048;
   const double random_step = (double)(max_random) / op_max;
   unsigned int rand_num = rand() % max_random;
-  unsigned int op_total = 1 + ceil(rand_num / random_step);
+  unsigned int op_total = ceil(rand_num / random_step);
 
   for(int i=0; i<op_total; i++) {
     if(!op_fifo[rr_index].empty()) {
       // get the operation
       MemoryOperation op = op_fifo[rr_index].front();
       op_fifo[rr_index].pop_front();
-      rr_index = (rr_index + 1) % op_max;
 
-      if(op.rw)
+      if(op.rw) {
         mem.write(op.addr, op.data, op.mask);
-      else {
+      } else {
         if(mem.read(op.addr, op.data))
           resp_map[op.tag].push_back(op.data);
-        else
+        else {
           resp_map[op.tag].push_back(0);
-        if(resp_map[op.tag].size() % resp_len[op.tag] == 0)
+        }
+
+        if(resp_map[op.tag].size() % resp_len[op.tag] == 0) {
           resp_que.push_back(op.tag);
+        }
       }
     }
+    rr_index = (rr_index + 1) % op_max;
   }
 }
   
@@ -308,18 +323,19 @@ bool AXIMemReader::reader_addr_req(const uint32_t tag, const uint32_t addr, cons
   tracker_size[tag] = size_m;
 
   if(size_m < 4) {
-    for(int i=0; i<=len_m; i++) {
+    for(int i=0; i<len_m; i++) {
       memory_controller->add_read_req(fifo, tag, addr_m);
       addr_m += size_m;
     }
+    memory_controller->record_read_size(tag, 1);
   } else {
-    for(int i=0; i<=len_m*size_m/4; i++) {
+    for(int i=0; i<len_m*size_m/4; i++) {
       memory_controller->add_read_req(fifo, tag, addr_m);
       addr_m += 4;
     }
+    memory_controller->record_read_size(tag, size_m/4);
   }
 
-  memory_controller->record_read_size(tag, size_m);
   return true;
 }
 
@@ -331,11 +347,11 @@ bool AXIMemReader::reader_data_req(uint32_t *tag, uint32_t *data, uint32_t *resp
 
   if(size < 4) {
     data[0] = read_resp->front();
-    for(int i=1; i<width; i++) data[i] = 0;
     read_resp->pop_front();
+    for(int i=1; i<width; i++) data[i] = 0;
   } else {
     for(int i=0; i<size/4; i++) {
-      data[0] = read_resp->front();
+      data[i] = read_resp->front();
       read_resp->pop_front();
     }
     for(int i=size/4; i<width; i++) data[i] = 0;
