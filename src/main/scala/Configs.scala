@@ -180,7 +180,7 @@ class DefaultConfig extends ChiselConfig (
       
     }},
   knobValues = {
-    case "NTILES" => 1
+    case "NTILES" => Dump("NTILES", 1)
     case "NBANKS" => 1
 
     case "L1D_MSHRS" => 2

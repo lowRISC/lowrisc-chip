@@ -63,6 +63,11 @@ module chip_top
    defparam io_nasti_ar.ADDR_WIDTH = 16;
    defparam io_nasti_w.DATA_WIDTH = `IO_DAT_WIDTH;
    defparam io_nasti_r.DATA_WIDTH = `IO_DAT_WIDTH;
+
+   // host interface
+   logic  host_req_valid, host_req_ready, host_resp_valid, host_resp_ready;
+   logic [$clog2(`NTILES)-1:0] host_req_id, host_resp_id;
+   logic [63:0]                host_req_data, host_resp_data;
    
    // the Rocket chip
    Top Rocket
@@ -154,11 +159,26 @@ module chip_top
       .io_nasti_lite_r_bits_id       ( io_nasti_r.id       ),
       .io_nasti_lite_r_bits_data     ( io_nasti_r.data     ),
       .io_nasti_lite_r_bits_resp     ( io_nasti_r.resp     ),
-      .io_nasti_lite_r_bits_user     ( io_nasti_r.user     )
+      .io_nasti_lite_r_bits_user     ( io_nasti_r.user     ),
+
+      .io_host_req_ready             ( host_req_ready      ),
+      .io_host_req_valid             ( host_req_valid      ),
+      .io_host_req_bits_id           ( host_req_id         ),
+      .io_host_req_bits_data         ( host_req_data       ),
+      .io_host_resp_ready            ( host_resp_ready     ),
+      .io_host_resp_valid            ( host_resp_valid     ),
+      .io_host_resp_bits_id          ( host_resp_id        ),
+      .io_host_resp_bits_data        ( host_resp_data      )
       );
 
    // the memory contoller
 `ifdef FPGA
+
+   // host interface is not used
+   assign host_req_ready = 1'b0;
+   assign host_resp_id = 0;
+   assign host_resp_data = 0;
+   assign host_resp_valid = 1'b0;
    
    localparam MEM_DATA_WIDTH = 128;
    localparam BRAM_ADDR_WIDTH = 14;     // 16 KB
@@ -482,6 +502,20 @@ module chip_top
    assign clk = clk_p;
    assign rst = rst_top;
    assign rstn = !rst_top;
+
+   host_behav #(.nCores(`NTILES))
+   host
+     (
+      .*,
+      .req_valid    ( host_req_valid   ),
+      .req_ready    ( host_req_ready   ),
+      .req_id       ( host_req_id      ),
+      .req          ( host_req_data    ),
+      .resp_valid   ( host_resp_valid  ),
+      .resp_ready   ( host_resp_ready  ),
+      .resp_id      ( host_resp_id     ),
+      .resp         ( host_resp_data   )
+      );
 
    axi_ram_behav
      #(
