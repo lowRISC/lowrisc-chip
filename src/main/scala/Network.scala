@@ -19,8 +19,8 @@ class TileLinkNetwork(
   managerFIFODepth: TileLinkDepths
 ) extends TLModule {
 
-  val nClients = params(TLNClients);
-  val nManagers = params(TLNManagers);
+  val nClients = params(TLNClients)
+  val nManagers = params(TLNManagers)
 
   val io = new Bundle {
     val clients = Vec.fill(nClients){new ClientTileLinkIO}.flip
@@ -152,6 +152,70 @@ class SharedTileLinkCrossbar(
       demux.io.tl <> m
       c2mCB.io.out(i) <> demux.io.su
       m2cCB.io.in(i) <> mux.io.su
+    }
+  }
+}
+
+/** General Host Network
+  */
+class HostNetwork(
+  clientFIFODepth: HostDepths,
+  managerFIFODepth: HostDepths
+) extends HTIFModule {
+
+  val nClients = nCores
+  val nManagers = nHosts
+
+  val io = new Bundle {
+    val clients = Vec.fill(nClients){new HostIO}.flip
+    val managers = Vec.fill(nManagers){new HostIO}
+  }
+
+  val clients = io.clients.zipWithIndex.map {
+    case (c, i) => {
+      val q = Module(new HostEnqueuer(clientFIFODepth))
+      val p = Module(new ClientHostNetworkPort)
+      q.io.client <> c
+      q.io.manager <> p.client
+      p.network
+    }
+  }
+
+  val managers = io.managers.zipWithIndex.map {
+    case (m, i) => {
+      val q = Module(new HostEnqueuer(managerFIFODepth))
+      val p = Module(new ManagerHostNetworkPort)
+      m <> q.io.manager
+      q.io.client <> p.manager
+      p.network
+    }
+  }
+}
+
+/** A corssbar based Host network
+  */
+class HostCrossbar(
+  clientFIFODepth: HostDepths = HostLinkDepths(0,0),
+  managerFIFODepth: HostDepths = HostDepths(0,0)
+) extends HostNetwork(clientFIFODepth, managerFIFODepth)
+    with CrossbarHooker
+{
+
+  // parallel crossbars for different messages
+  val reqCB = Module(new BasicCrossbar(nClients, nManagers, new HostMsg))
+  val respCB = Module(new BasicCrossbar(nManagers, nClients, new HostMsg))
+
+  clients.zipWithIndex.foreach {
+    case(c, i) => {
+      c.req <> reqCB.io.in(i)
+      c.resp <> respCB.io.out(i)
+    }
+  }
+
+  managers.zipWithIndex.foreach {
+    case(m, i) => {
+      m.req <> reqCB.io.out(i)
+      m.resp <> respCB.io.in(i)
     }
   }
 }
