@@ -21,6 +21,7 @@ abstract trait TopLevelParameters extends UsesParameters {
 class TopIO extends Bundle {
   val nasti       = Bundle(new NASTIMasterIO, {case BusId => "nasti"})
   val nasti_lite  = Bundle(new NASTILiteMasterIO, {case BusId => "lite"})
+  val host        = new HostIO
 }
 
 class Top extends Module with TopLevelParameters {
@@ -30,6 +31,12 @@ class Top extends Module with TopLevelParameters {
   val tiles = (0 until nTiles) map { i =>
     Module(new RocketTile(i), {case TLId => "L1ToL2"})
   }
+
+  // host IO (debug in simulation, minion interface in the future)
+  val hostNet = Module(new HostCrossbar(HostDepths(1,1), HostDepths(0,0)))
+
+  hostNet.io.clients <> (tiles.map(_.io.host))
+  hostNet.io.managers <> Vec(io.host)
 
   // The crossbar between tiles and L2
   def routeL1ToL2(addr: UInt) = if(nBanks > 1) addr(bankMSB,bankLSB) else UInt(0)

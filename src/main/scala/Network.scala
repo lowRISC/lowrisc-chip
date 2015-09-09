@@ -176,8 +176,8 @@ class HostNetwork(
       val q = Module(new HostEnqueuer(clientFIFODepth))
       val p = Module(new ClientHostNetworkPort)
       q.io.client <> c
-      q.io.manager <> p.client
-      p.network
+      q.io.manager <> p.io.client
+      p.io.network
     }
   }
 
@@ -186,8 +186,8 @@ class HostNetwork(
       val q = Module(new HostEnqueuer(managerFIFODepth))
       val p = Module(new ManagerHostNetworkPort)
       m <> q.io.manager
-      q.io.client <> p.manager
-      p.network
+      q.io.client <> p.io.manager
+      p.io.network
     }
   }
 }
@@ -195,11 +195,9 @@ class HostNetwork(
 /** A corssbar based Host network
   */
 class HostCrossbar(
-  clientFIFODepth: HostDepths = HostLinkDepths(0,0),
+  clientFIFODepth: HostDepths = HostDepths(0,0),
   managerFIFODepth: HostDepths = HostDepths(0,0)
-) extends HostNetwork(clientFIFODepth, managerFIFODepth)
-    with CrossbarHooker
-{
+) extends HostNetwork(clientFIFODepth, managerFIFODepth) {
 
   // parallel crossbars for different messages
   val reqCB = Module(new BasicCrossbar(nClients, nManagers, new HostMsg))
