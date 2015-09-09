@@ -16,6 +16,11 @@ using std::ifstream;
 using boost::lexical_cast;
 using boost::format;
 
+// global objects
+MemoryController *memory_controller;
+AXIMemWriter* axi_mem_writer;
+AXIMemReader *axi_mem_reader;
+
 // the SystemVerilog DPI functions
 svBit memory_write_req (
                         const svBitVecVal *id_16b,
@@ -234,16 +239,21 @@ bool MemoryController::load_mem(const string& filename) {
   char buf [36];
   uint32_t addr = 0;
 
-  while(ifs.good()) {
-    ifs.getline(buf, 36);
-    string line(buf);
-    if(line != "") {
-      for(int i=3; i>=0; i--) {
-        uint32_t data = strtoul(line.substr(i*8, 8).c_str(), NULL, 16);
-        mem.write(addr, data, 0xf);
-        addr += 4;
+  if(ifs.is_open()) {
+    while(ifs.good()) {
+      ifs.getline(buf, 36);
+      string line(buf);
+      if(line != "") {
+        for(int i=3; i>=0; i--) {
+          uint32_t data = strtoul(line.substr(i*8, 8).c_str(), NULL, 16);
+          mem.write(addr, data, 0xf);
+          addr += 4;
+        }
       }
     }
+  } else {
+    std::cout << "Error: Fail to open memory file " << filename << std::endl;
+    exit(1);
   }
 
   return true;

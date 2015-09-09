@@ -43,6 +43,7 @@ veri_vsrcs = \
 
 veri_csrcs = \
 	$(base_dir)/csrc/veri/dpi_ram_behav.cpp \
+	$(base_dir)/csrc/veri/dpi_host_behav.cpp \
 	$(base_dir)/csrc/veri/veri_top.cc \
 
 #--------------------------------------------------------------------

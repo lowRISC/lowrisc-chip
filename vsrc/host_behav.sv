@@ -39,5 +39,10 @@ module host_behav
    always @(posedge clk)
      if(rstn && resp_ready && resp_valid)
        resp_valid = 1'b0;
-   
+
+   task host_exit;
+      $finish();
+   endtask // host_exit
+
+
 endmodule // host_behav

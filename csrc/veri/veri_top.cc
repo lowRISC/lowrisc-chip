@@ -2,6 +2,7 @@
 #include <verilated_vcd_c.h>
 #include "Vchip_top.h"
 #include "dpi_ram_behav.h"
+#include "dpi_host_behav.h"
 #include <string>
 #include <vector>
 #include <iostream>
@@ -9,9 +10,6 @@
 using std::string;
 using std::vector;
 
-MemoryController *memory_controller;
-AXIMemWriter* axi_mem_writer;
-AXIMemReader *axi_mem_reader;
 Vchip_top *top;
 
 vluint64_t main_time = 0;
@@ -82,5 +80,5 @@ int main(int argc, char** argv) {
   delete axi_mem_writer;
   delete axi_mem_reader;
 
-  return 0;
+  return exit_code;
 }
