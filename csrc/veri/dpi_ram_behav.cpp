@@ -1,5 +1,6 @@
 // See LICENSE for license details.
 
+#include "veri_top.h"
 #include "dpi_ram_behav.h"
 #include <cassert>
 #include <cstdlib>
@@ -301,11 +302,10 @@ bool AXIMemWriter::write_data_req(const uint32_t *data, const uint32_t mask,
 
   if(len) len--;
   else {
-    assert(last);               // last should be high
+    assert(last);
     valid = false;
     resps.push_back(tag);
   }
-
   return true;
 }
 

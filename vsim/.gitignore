@@ -1,5 +1,9 @@
 *.vcd
+*.vpd
+*.log
+*sim
 generated-src
 output
 verilator*
-*-sim
+DVEfiles
+.nodeIdDynamicRanges

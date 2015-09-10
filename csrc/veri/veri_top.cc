@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 #include <iostream>
+#include <cstdlib>
 
 using std::string;
 using std::vector;
@@ -13,6 +14,10 @@ using std::vector;
 Vchip_top *top;
 
 vluint64_t main_time = 0;
+vluint64_t max_time = 0;
+
+unsigned int exit_delay = 0;
+unsigned int exit_code = 0;
 
 double sc_time_stamp() { return main_time; }
 
@@ -25,6 +30,8 @@ int main(int argc, char** argv) {
 
   // handle arguements
   bool vcd_enable = false;
+  string vcd_name = "verilated.vcd";
+
   vector<string> args(argv + 1, argv + argc);
   for(vector<string>::iterator it = args.begin(); it != args.end(); ++it) {
     if(*it == "+vcd")
@@ -36,6 +43,12 @@ int main(int argc, char** argv) {
         return 0;
       }
     }
+    else if(it->find("+max-cycles=") == 0) {
+      max_time = 10 * strtoul(it->substr(strlen("+max-cycles=")).c_str(), NULL, 10);
+    }
+    else if(it->find("+vcd_name=") == 0) {
+      vcd_name = it->substr(strlen("+vcd_name="));
+    }
   }
 
   top = new Vchip_top;
@@ -46,10 +59,13 @@ int main(int argc, char** argv) {
   if(vcd_enable) {
     Verilated::traceEverOn(true);
     top->trace(vcd, 99);
-    vcd->open("verilated.vcd");
+    vcd->open(vcd_name.c_str());
   }
   
-  while(!Verilated::gotFinish()) {
+  while(!Verilated::gotFinish() && 
+        (max_time == 0 || main_time < max_time) &&
+        (exit_delay != 1)
+        ) {
     if(main_time > 133) {
       top->rst_top = 0;
     }
@@ -70,6 +86,9 @@ int main(int argc, char** argv) {
       main_time++;
     else
       main_time += 5;
+
+    if((main_time % 10) == 0 && exit_delay != 0)
+      exit_delay--;             // postponed delay to allow VCD recording
   }
 
   top->final();
