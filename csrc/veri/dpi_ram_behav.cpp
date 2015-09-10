@@ -253,7 +253,7 @@ bool MemoryController::load_mem(const string& filename) {
       }
     }
   } else {
-    std::cout << "Error: Fail to open memory file " << filename << std::endl;
+    std::cerr << "Error: Fail to open memory file " << filename << std::endl;
     exit(1);
   }
 
@@ -302,7 +302,15 @@ bool AXIMemWriter::write_data_req(const uint32_t *data, const uint32_t mask,
 
   if(len) len--;
   else {
+#ifdef DELAY_EXIT
+    if(!last) {
+      std::cerr << main_time << " Error: AXI write last mismatch!" << std::endl;
+      exit_code = 1;
+      exit_delay = 100;
+    }
+#else
     assert(last);
+#endif
     valid = false;
     resps.push_back(tag);
   }

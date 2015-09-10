@@ -2,6 +2,7 @@
 *.vpd
 *.log
 *sim
+*sim-debug
 generated-src
 output
 verilator*

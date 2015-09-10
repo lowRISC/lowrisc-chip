@@ -7,10 +7,10 @@
 default: all
 
 base_dir = $(abspath ..)
-sim_dir = $(abspath .)
+generated_dir = $(abspath ./generated-src)
+mem_gen = $(abspath ./vlsi_mem_gen)
 
-generated_dir = $(sim_dir)/generated-src
-mem_gen = $(sim_dir)/vlsi_mem_gen
+sim_dir = .
 output_dir = $(sim_dir)/output
 
 BACKEND ?= lowrisc_chip.LowRISCBackend
@@ -64,11 +64,13 @@ veri_flags = \
 	+incdir+$(base_dir)/csrc/veri \
 	--top-module $(tb_top) \
 	--unroll-count 256 \
+	--trace \
 	-Wno-lint -Wno-style -Wno-STMTDLY \
 	--exe \
-	--trace \
-	 -CFLAGS "-g" \
 	--Mdir $(sim_dir)/verilator
+
+# remove optimization if compilation takes too long or run out of memory
+veri_opt_flags = -O3 -CFLAGS "-O1"
 
 veri_vsrcs = \
 	$(base_dir)/vsrc/chip_top.sv \
@@ -87,10 +89,19 @@ veri_csrcs = \
 #--------------------------------------------------------------------
 verilator: verilator.log
 verilator.log: $(sim_vsrcs) $(veri_vsrcs) $(veri_csrcs)
-	$(veri) --cc $(veri_vsrcs) $(veri_csrcs) $(veri_flags) -o ../$(CONFIG)-sim | tee $@
+	rm -fr $(sim_dir)/verilator
+	$(veri) --cc $(veri_vsrcs) $(veri_csrcs) $(veri_flags) $(veri_opt_flags) -o ../$(CONFIG)-sim | tee $@
 
 sim: $(CONFIG)-sim
 $(CONFIG)-sim: verilator.log
+	cd verilator && make -f V$(tb_top).mk
+
+verilator.debug.log: $(sim_vsrcs) $(veri_vsrcs) $(veri_csrcs)
+	rm -fr $(sim_dir)/verilator
+	$(veri) --cc $(veri_vsrcs) $(veri_csrcs) $(veri_flags) -CFLAGS "-g -DDELAY_EXIT" -o ../$(CONFIG)-sim-debug | tee $@
+
+sim-debug: $(CONFIG)-sim-debug
+$(CONFIG)-sim-debug: verilator.debug.log
 	cd verilator && make -f V$(tb_top).mk
 
 all: sim
@@ -148,6 +159,9 @@ riscv_test_bmarks_dir = $(base_dir)/riscv-tools/riscv-tests/benchmarks
 %.hex:
 	$(MAKE) -C $(dir $@) $(notdir $@)
 
+%.riscv.hex: %
+	$(MAKE) -C $(dir $@) $(notdir $@)
+
 $(addprefix $(output_dir)/, $(addsuffix .hex, $(asm_p_tests) $(asm_pt_tests) $(asm_pm_tests) $(asm_v_tests))): $(output_dir)/%.hex: $(riscv_test_asm_dir)/%.hex
 	mkdir -p $(output_dir)
 	ln -fs $< $@
@@ -162,14 +176,15 @@ $(addprefix $(output_dir)/, $(addsuffix .riscv.hex, $(bmarks))): $(output_dir)/%
 asm_tests_out = $(foreach test, $(asm_p_tests) $(asm_v_tests), $(output_dir)/$(test).verilator.out)
 bmarks_out = $(foreach test, $(bmarks_tests), $(output_dir)/$(test).verilator.out)
 exec_simv = $(CONFIG)-sim
-exec_simv_vcd = $(CONFIG)-sim +vcd
+exec_simv_vcd = $(CONFIG)-sim-debug +vcd
 
 $(output_dir)/%.verilator.out: $(output_dir)/%.hex $(CONFIG)-sim
 	$(exec_simv) +max-cycles=$(timeout_cycles) +load=$< $(disasm) $@ && [ $$PIPESTATUS -eq 0 ]
-$(output_dir)/%.verilator.vcd: $(output_dir)/%.hex $(CONFIG)-sim
+
+$(output_dir)/%.verilator.vcd: $(output_dir)/%.hex $(CONFIG)-sim-debug
 	$(exec_simv_vcd) +vcd_name=$@ +max-cycles=$(timeout_cycles) +load=$< $(disasm) $(patsubst %.vcd,%.out,$@) && [ $$PIPESTATUS -eq 0 ]
 
-$(output_dir)/%.verilator.vpd: $(output_dir)/%.hex $(CONFIG)-sim
+$(output_dir)/%.verilator.vpd: $(output_dir)/%.hex $(CONFIG)-sim-debug
 	rm -rf $(patsubst %.vpd,%.vcd,$@) && mkfifo $(patsubst %.vpd,%.vcd,$@)
 	vcd2vpd $(patsubst %.vpd,%.vcd,$@) $@ > /dev/null &
 	$(exec_simv_vcd) +vcd_name=$@ +max-cycles=$(timeout_cycles) +load=$< $(disasm) $(patsubst %.vpd,%.out,$@) && [ $$PIPESTATUS -eq 0 ]
@@ -180,12 +195,6 @@ run-bmarks-test: $(bmarks_out)
 run: run-asm-tests run-bmarks-test
 
 .PHONY: run-asm-tests run-bmarks-test run
-
-#--------------------------------------------------------------------
-# path work around
-#--------------------------------------------------------------------
-output/%: $(output_dir)/%
-	@echo "make $<"
 
 #--------------------------------------------------------------------
 # clean up

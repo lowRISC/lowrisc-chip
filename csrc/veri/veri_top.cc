@@ -1,6 +1,7 @@
 #include <verilated.h>
 #include <verilated_vcd_c.h>
 #include "Vchip_top.h"
+#include "veri_top.h"
 #include "dpi_ram_behav.h"
 #include "dpi_host_behav.h"
 #include <string>
