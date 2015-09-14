@@ -98,7 +98,8 @@ class Top extends Module with TopLevelParameters {
 
 object Run {
   def main(args: Array[String]): Unit = {
-    chiselMain.run(args, () => new Top())
+    val gen = () => Class.forName("lowrisc_chip."+args(0)).newInstance().asInstanceOf[Module]
+    chiselMain.run(args.drop(1), () => new Top())
   }
 }
 
