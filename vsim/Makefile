@@ -150,7 +150,7 @@ asm_p_tests  += $(addprefix rv64si-p-, $(rv64si))
 asm_p_tests  += $(addprefix rv64mi-p-, $(rv64mi))
 asm_pm_tests += $(addprefix rv64mi-pm-, $(rv64mi))
 
-bmarks_tests += $(bmarks)
+bmarks_tests += $(addsuffix .riscv, $(bmarks))
 
 #--------------------------------------------------------------------
 riscv_test_asm_dir = $(base_dir)/riscv-tools/riscv-tests/isa
@@ -159,14 +159,11 @@ riscv_test_bmarks_dir = $(base_dir)/riscv-tools/riscv-tests/benchmarks
 %.hex:
 	$(MAKE) -C $(dir $@) $(notdir $@)
 
-%.riscv.hex: %
-	$(MAKE) -C $(dir $@) $(notdir $@)
-
 $(addprefix $(output_dir)/, $(addsuffix .hex, $(asm_p_tests) $(asm_pt_tests) $(asm_pm_tests) $(asm_v_tests))): $(output_dir)/%.hex: $(riscv_test_asm_dir)/%.hex
 	mkdir -p $(output_dir)
 	ln -fs $< $@
 
-$(addprefix $(output_dir)/, $(addsuffix .riscv.hex, $(bmarks))): $(output_dir)/%.hex: $(riscv_test_bmarks_dir)/%.hex
+$(addprefix $(output_dir)/, $(addsuffix .hex, $(bmarks_tests))): $(output_dir)/%.hex: $(riscv_test_bmarks_dir)/%.hex
 	mkdir -p $(output_dir)
 	ln -fs $< $@
 
