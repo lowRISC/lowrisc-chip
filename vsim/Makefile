@@ -195,6 +195,7 @@ run-bmarks-test: $(bmarks_out)
 run: run-asm-tests run-bmarks-test
 
 .PHONY: run-asm-tests run-bmarks-test run
+junk += $(output_dir)
 
 #--------------------------------------------------------------------
 # clean up
