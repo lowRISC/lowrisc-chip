@@ -5,10 +5,6 @@
 
 module chip_top
   (
-   // clock and reset
-   input clk_p, clk_n,
-   input rst_top,
-
 `ifdef FPGA
    // DDRAM3
    inout [63:0]  ddr3_dq,
@@ -26,11 +22,22 @@ module chip_top
    output        ddr3_cs_n,
    output [7:0]  ddr3_dm,
    output        ddr3_odt,
-`endif
    
    // UART
-   input rxd,
-   output txd
+   input         rxd,
+   output        txd,
+
+   // SPI for SD-card
+   inout         spi_cs,
+   inout         spi_sclk,
+   inout         spi_mosi,
+   inout         spi_miso,
+`endif
+
+   // clock and reset
+   input         clk_p,
+   input         clk_n,
+   input         rst_top
    );
 
    // internal clock and reset signals
@@ -59,8 +66,8 @@ module chip_top
    nasti_ar io_nasti_ar();
    nasti_r  io_nasti_r();
 
-   defparam io_nasti_aw.ADDR_WIDTH = 16;
-   defparam io_nasti_ar.ADDR_WIDTH = 16;
+   defparam io_nasti_aw.ADDR_WIDTH = `PADDR_WIDTH;
+   defparam io_nasti_ar.ADDR_WIDTH = `PADDR_WIDTH;
    defparam io_nasti_w.DATA_WIDTH = `IO_DAT_WIDTH;
    defparam io_nasti_r.DATA_WIDTH = `IO_DAT_WIDTH;
 
@@ -220,13 +227,13 @@ module chip_top
    defparam dram_nasti_r.DATA_WIDTH = `MEM_DAT_WIDTH;
    
    // the AXI crossbar for BRAM and DRAM controllers
-   axi_crossbar_1x2_top
+   axi_crossbar_mem_1x2_top
      #(
        .ADDR_WIDTH   ( `PADDR_WIDTH   ),
        .DATA_WIDTH   ( `MEM_DAT_WIDTH ),
        .ID_WIDTH     ( `MEM_TAG_WIDTH )
        )
-   axi_cb
+   axi_cb_mem
      (
       .clk     ( clk            ),
       .rstn    ( rstn           ),
@@ -464,38 +471,146 @@ module chip_top
       );
 
    assign rst = !rstn;
+
+    // the NASTI-Lite bus for UART
+   nasti_aw uart_nasti_aw();
+   nasti_w  uart_nasti_w();
+   nasti_b  uart_nasti_b();
+   nasti_ar uart_nasti_ar();
+   nasti_r  uart_nasti_r();
+
+   defparam uart_nasti_aw.ADDR_WIDTH = `PADDR_WIDTH;
+   defparam uart_nasti_ar.ADDR_WIDTH = `PADDR_WIDTH;
+   defparam uart_nasti_w.DATA_WIDTH = `IO_DAT_WIDTH;
+   defparam uart_nasti_r.DATA_WIDTH = `IO_DAT_WIDTH;
+
+   // the NASTI-Lite bus for SPI (SD-card)
+   nasti_aw spi_nasti_aw();
+   nasti_w  spi_nasti_w();
+   nasti_b  spi_nasti_b();
+   nasti_ar spi_nasti_ar();
+   nasti_r  spi_nasti_r();
+
+   defparam spi_nasti_aw.ADDR_WIDTH = `PADDR_WIDTH;
+   defparam spi_nasti_ar.ADDR_WIDTH = `PADDR_WIDTH;
+   defparam spi_nasti_w.DATA_WIDTH = `IO_DAT_WIDTH;
+   defparam spi_nasti_r.DATA_WIDTH = `IO_DAT_WIDTH;
+  
    
+   // the AXI crossbar for IO peripherals
+   axi_crossbar_io_1x2_top
+     #(
+       .ADDR_WIDTH   ( `PADDR_WIDTH   ),
+       .DATA_WIDTH   ( `IO_DAT_WIDTH  )
+       )
+   axi_cb_io
+     (
+      .clk     ( clk            ),
+      .rstn    ( rstn           ),
+      .aw_i    ( io_nasti_aw    ),
+      .w_i     ( io_nasti_w     ),
+      .b_i     ( io_nasti_b     ),
+      .ar_i    ( io_nasti_ar    ),
+      .r_i     ( io_nasti_r     ),
+      .aw_o_0  ( uart_nasti_aw  ),
+      .w_o_0   ( uart_nasti_w   ),
+      .b_o_0   ( uart_nasti_b   ),
+      .ar_o_0  ( uart_nasti_ar  ),
+      .r_o_0   ( uart_nasti_r   ),
+      .aw_o_1  ( spi_nasti_aw   ),
+      .w_o_1   ( spi_nasti_w    ),
+      .b_o_1   ( spi_nasti_b    ),
+      .ar_o_1  ( spi_nasti_ar   ),
+      .r_o_1   ( spi_nasti_r    )
+      );
+
    // Xilinx UART IP
    axi_uart16550_0 uart_i
      (
+      .s_axi_aclk      ( clk                 ),
+      .s_axi_aresetn   ( rstn                ),
+      .s_axi_araddr    ( uart_nasti_ar.addr  ),
+      .s_axi_arready   ( uart_nasti_ar.ready ),
+      .s_axi_arvalid   ( uart_nasti_ar.valid ),
+      .s_axi_awaddr    ( uart_nasti_aw.addr  ),
+      .s_axi_awready   ( uart_nasti_aw.ready ),
+      .s_axi_awvalid   ( uart_nasti_aw.valid ),
+      .s_axi_bready    ( uart_nasti_b.ready  ),
+      .s_axi_bresp     ( uart_nasti_b.resp   ),
+      .s_axi_bvalid    ( uart_nasti_b.valid  ),
+      .s_axi_rdata     ( uart_nasti_r.data   ),
+      .s_axi_rready    ( uart_nasti_r.ready  ),
+      .s_axi_rresp     ( uart_nasti_r.resp   ),
+      .s_axi_rvalid    ( uart_nasti_r.valid  ),
+      .s_axi_wdata     ( uart_nasti_w.data   ),
+      .s_axi_wready    ( uart_nasti_w.ready  ),
+      .s_axi_wstrb     ( uart_nasti_w.strb   ),
+      .s_axi_wvalid    ( uart_nasti_w.valid  ),
+      .freeze          ( 1'b0                ),
+      .rin             ( 1'b1                ),
+      .dcdn            ( 1'b1                ),
+      .dsrn            ( 1'b1                ),
+      .sin             ( rxd                 ),
+      .sout            ( txd                 ),
+      .ctsn            ( 1'b1                ),
+      .rtsn            (                     )
+      );
+
+   // Xilinx SPI IP
+   wire  spi_cs_i, spi_cs_o, spi_cs_t;
+   wire  spi_sclk_i, spi_sclk_o, spi_sclk_t;
+   wire  spi_miso_i, spi_miso_o, spi_miso_t;
+   wire  spi_mosi_i, spi_mosi_o, spi_mosi_t;
+   
+   axi_quad_spi_0 spi_i
+     (
+      .ext_spi_clk     ( clk                ),
       .s_axi_aclk      ( clk                ),
       .s_axi_aresetn   ( rstn               ),
-      .s_axi_araddr    ( io_nasti_ar.addr   ),
-      .s_axi_arready   ( io_nasti_ar.ready  ),
-      .s_axi_arvalid   ( io_nasti_ar.valid  ),
-      .s_axi_awaddr    ( io_nasti_aw.addr   ),
-      .s_axi_awready   ( io_nasti_aw.ready  ),
-      .s_axi_awvalid   ( io_nasti_aw.valid  ),
-      .s_axi_bready    ( io_nasti_b.ready   ),
-      .s_axi_bresp     ( io_nasti_b.resp    ),
-      .s_axi_bvalid    ( io_nasti_b.valid   ),
-      .s_axi_rdata     ( io_nasti_r.data    ),
-      .s_axi_rready    ( io_nasti_r.ready   ),
-      .s_axi_rresp     ( io_nasti_r.resp    ),
-      .s_axi_rvalid    ( io_nasti_r.valid   ),
-      .s_axi_wdata     ( io_nasti_w.data    ),
-      .s_axi_wready    ( io_nasti_w.ready   ),
-      .s_axi_wstrb     ( io_nasti_w.strb    ),
-      .s_axi_wvalid    ( io_nasti_w.valid   ),
-      .freeze          ( 1'b0               ),
-      .rin             ( 1'b1               ),
-      .dcdn            ( 1'b1               ),
-      .dsrn            ( 1'b1               ),
-      .sin             ( rxd                ),
-      .sout            ( txd                ),
-      .ctsn            ( 1'b1               ),
-      .rtsn            (                    )
+      .s_axi_araddr    ( spi_nasti_ar.addr  ),
+      .s_axi_arready   ( spi_nasti_ar.ready ),
+      .s_axi_arvalid   ( spi_nasti_ar.valid ),
+      .s_axi_awaddr    ( spi_nasti_aw.addr  ),
+      .s_axi_awready   ( spi_nasti_aw.ready ),
+      .s_axi_awvalid   ( spi_nasti_aw.valid ),
+      .s_axi_bready    ( spi_nasti_b.ready  ),
+      .s_axi_bresp     ( spi_nasti_b.resp   ),
+      .s_axi_bvalid    ( spi_nasti_b.valid  ),
+      .s_axi_rdata     ( spi_nasti_r.data   ),
+      .s_axi_rready    ( spi_nasti_r.ready  ),
+      .s_axi_rresp     ( spi_nasti_r.resp   ),
+      .s_axi_rvalid    ( spi_nasti_r.valid  ),
+      .s_axi_wdata     ( spi_nasti_w.data   ),
+      .s_axi_wready    ( spi_nasti_w.ready  ),
+      .s_axi_wstrb     ( spi_nasti_w.strb   ),
+      .s_axi_wvalid    ( spi_nasti_w.valid  ),
+      .io0_i           ( spi_mosi_i         ),
+      .io0_o           ( spi_mosi_o         ),
+      .io0_t           ( spi_mosi_t         ),
+      .io1_i           ( spi_miso_i         ),
+      .io1_o           ( spi_miso_o         ),
+      .io1_t           ( spi_miso_t         ),
+      .sck_i           ( spi_sclk_i         ),
+      .sck_o           ( spi_sclk_o         ),
+      .sck_t           ( spi_sclk_t         ),
+      .ss_i            ( spi_cs_i           ),
+      .ss_o            ( spi_cs_o           ),
+      .ss_t            ( spi_cs_t           ),
+      .ip2intc_irpt    (                    )  // polling for now
       );
+
+   // tri-state gate to protect SPI IOs
+   assign spi_mosi = !spi_mosi_t ? spi_mosi_o : 1'bz;
+   assign spi_mosi_i = 1'b1;    // always in master mode
+
+   assign spi_miso = !spi_miso_t ? spi_miso_o : 1'bz;
+   assign spi_miso_i = spi_miso;
+
+   assign spi_sclk = !spi_sclk_t ? spi_sclk_o : 1'bz;
+   assign spi_sclk_i = 1'b1;    // always in master mode
+
+   assign spi_cs = !spi_cs_t ? spi_cs_o : 1'bz;
+   assign spi_cs_i = 1'b1;;     // always in master mode
 
 `elsif SIMULATION
 
