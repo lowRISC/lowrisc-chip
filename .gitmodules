@@ -10,9 +10,6 @@
 [submodule "fpga"]
         path = fpga
         url = https://github.com/lowRISC/lowrisc-fpga.git
-[submodule "fpga-zynq"]
-	path = fpga-zynq
-	url = https://github.com/lowRISC/fpga-zynq.git
 [submodule "rocket"]
 	path = rocket
 	url = https://github.com/lowrisc/rocket.git
