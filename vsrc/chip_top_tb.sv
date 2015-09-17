@@ -7,11 +7,13 @@ module tb;
    chip_top
      DUT(
          .*,
+`ifdef FPGA
+         .rxd(1'b1),
+         .txd(),
+`endif
          .clk_p(clk),
          .clk_n(!clk),
-         .rst_top(rst), 
-         .rxd(1'b1),
-         .txd()
+         .rst_top(rst) 
          );
    
    initial begin
@@ -70,6 +72,16 @@ module tb;
                 );
       end
    endgenerate
+
+   // spi
+   wire spi_cs, spi_sclk, spi_mosi, spi_miso;
+   assign spi_cs = 1'bz;
+   assign spi_sclk = 1'bz;
+   assign spi_mosi = 1'bz;
+   assign spi_miso = !spi_cs ? spi_mosi : 1'bz;
+
+   assign spi_sclk = 1'bz;
+   
 
 `endif
    

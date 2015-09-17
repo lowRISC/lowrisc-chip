@@ -40,6 +40,9 @@ module chip_top
    input         rst_top
    );
 
+   // remove the 4 MSB for IO address
+   localparam IO_ADDR_WIDTH = `PADDR_WIDTH - 4;
+
    // internal clock and reset signals
    logic  clk, rst, rstn;
 
@@ -66,8 +69,8 @@ module chip_top
    nasti_ar io_nasti_ar();
    nasti_r  io_nasti_r();
 
-   defparam io_nasti_aw.ADDR_WIDTH = `PADDR_WIDTH;
-   defparam io_nasti_ar.ADDR_WIDTH = `PADDR_WIDTH;
+   defparam io_nasti_aw.ADDR_WIDTH = IO_ADDR_WIDTH;
+   defparam io_nasti_ar.ADDR_WIDTH = IO_ADDR_WIDTH;
    defparam io_nasti_w.DATA_WIDTH = `IO_DAT_WIDTH;
    defparam io_nasti_r.DATA_WIDTH = `IO_DAT_WIDTH;
 
@@ -479,8 +482,8 @@ module chip_top
    nasti_ar uart_nasti_ar();
    nasti_r  uart_nasti_r();
 
-   defparam uart_nasti_aw.ADDR_WIDTH = `PADDR_WIDTH;
-   defparam uart_nasti_ar.ADDR_WIDTH = `PADDR_WIDTH;
+   defparam uart_nasti_aw.ADDR_WIDTH = IO_ADDR_WIDTH;
+   defparam uart_nasti_ar.ADDR_WIDTH = IO_ADDR_WIDTH;
    defparam uart_nasti_w.DATA_WIDTH = `IO_DAT_WIDTH;
    defparam uart_nasti_r.DATA_WIDTH = `IO_DAT_WIDTH;
 
@@ -491,8 +494,8 @@ module chip_top
    nasti_ar spi_nasti_ar();
    nasti_r  spi_nasti_r();
 
-   defparam spi_nasti_aw.ADDR_WIDTH = `PADDR_WIDTH;
-   defparam spi_nasti_ar.ADDR_WIDTH = `PADDR_WIDTH;
+   defparam spi_nasti_aw.ADDR_WIDTH = IO_ADDR_WIDTH;
+   defparam spi_nasti_ar.ADDR_WIDTH = IO_ADDR_WIDTH;
    defparam spi_nasti_w.DATA_WIDTH = `IO_DAT_WIDTH;
    defparam spi_nasti_r.DATA_WIDTH = `IO_DAT_WIDTH;
   
@@ -500,7 +503,7 @@ module chip_top
    // the AXI crossbar for IO peripherals
    axi_crossbar_io_1x2_top
      #(
-       .ADDR_WIDTH   ( `PADDR_WIDTH   ),
+       .ADDR_WIDTH   ( IO_ADDR_WIDTH  ),
        .DATA_WIDTH   ( `IO_DAT_WIDTH  )
        )
    axi_cb_io
