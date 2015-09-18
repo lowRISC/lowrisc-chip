@@ -178,13 +178,19 @@ exec_simv_vcd = $(CONFIG)-sim-debug +vcd
 $(output_dir)/%.verilator.out: $(output_dir)/%.hex $(CONFIG)-sim
 	$(exec_simv) +max-cycles=$(timeout_cycles) +load=$< $(disasm) $@ && [ $$PIPESTATUS -eq 0 ]
 
+.PRECIOUS: $(output_dir)/%.verilator.out
+
 $(output_dir)/%.verilator.vcd: $(output_dir)/%.hex $(CONFIG)-sim-debug
 	$(exec_simv_vcd) +vcd_name=$@ +max-cycles=$(timeout_cycles) +load=$< $(disasm) $(patsubst %.vcd,%.out,$@) && [ $$PIPESTATUS -eq 0 ]
+
+.PRECIOUS: $(output_dir)/%.verilator.vcd
 
 $(output_dir)/%.verilator.vpd: $(output_dir)/%.hex $(CONFIG)-sim-debug
 	rm -rf $(patsubst %.vpd,%.vcd,$@) && mkfifo $(patsubst %.vpd,%.vcd,$@)
 	vcd2vpd $(patsubst %.vpd,%.vcd,$@) $@ > /dev/null &
 	$(exec_simv_vcd) +vcd_name=$@ +max-cycles=$(timeout_cycles) +load=$< $(disasm) $(patsubst %.vpd,%.out,$@) && [ $$PIPESTATUS -eq 0 ]
+
+.PRECIOUS: $(output_dir)/%.verilator.vpd
 
 run-asm-tests: $(asm_tests_out)
 run-bmarks-test: $(bmarks_out)
