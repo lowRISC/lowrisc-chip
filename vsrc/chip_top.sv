@@ -191,7 +191,7 @@ module chip_top
    assign host_resp_valid = 1'b0;
    
    localparam MEM_DATA_WIDTH = 128;
-   localparam BRAM_ADDR_WIDTH = 14;     // 16 KB
+   localparam BRAM_ADDR_WIDTH = 15;     // 32 KB
    localparam BRAM_LINE = 2 ** BRAM_ADDR_WIDTH  * 8 / MEM_DATA_WIDTH;
    localparam BRAM_LINE_OFFSET = $clog2(MEM_DATA_WIDTH/8);
    localparam DRAM_ADDR_WIDTH = 30;     // 1 GB
