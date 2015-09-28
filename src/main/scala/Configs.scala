@@ -29,10 +29,7 @@ class DefaultConfig extends ChiselConfig (
       case MIFDataBits => Dump("MEM_DAT_WIDTH", 128)
 
       // IO space
-      case IOBaseAddr0 => UInt("h80000000") // 8000_0000 : ffff_ffff
-      case IOAddrMask0 => UInt("h7fffffff")
-      case IOBaseAddr1 => UInt("hffffffff") // empty
-      case IOAddrMask1 => UInt("h00000000")
+      case NIOSections => 2                 // number of IO space sections
       case IODataBits => Dump("IO_DAT_WIDTH", 32)  // assume 32-bit IO NASTI-Lite bus 
                                                     // (LD/SD leads to NASTI-Lite transactions) 
 

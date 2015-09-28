@@ -32,11 +32,14 @@ class Top extends Module with TopLevelParameters {
     Module(new RocketTile(i), {case TLId => "L1ToL2"})
   }
 
-  // host IO (debug in simulation, minion interface in the future)
-  val hostNet = Module(new HostCrossbar(HostDepths(1,1), HostDepths(0,0)))
-
-  hostNet.io.clients <> (tiles.map(_.io.host))
-  hostNet.io.managers <> Vec(io.host)
+  // PCR controller
+  val pcrControl = Module(new PCRControl)
+  pcrControl.io.host <> io.host
+  pcrControl.io.pcr_req <> (tiles.map(_.io.pcr.req))
+  (0 until nTiles) foreach { i =>
+    tiles(i).io.soft_reset := pcrControl.io.reset
+    tiles(i).io.pcr.resp := pcrControl.io.pcr_resp
+  }
 
   // The crossbar between tiles and L2
   def routeL1ToL2(addr: UInt) = if(nBanks > 1) addr(bankMSB,bankLSB) else UInt(0)
