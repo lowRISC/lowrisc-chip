@@ -39,6 +39,7 @@ class Top extends Module with TopLevelParameters {
   (0 until nTiles) foreach { i =>
     tiles(i).io.soft_reset := pcrControl.io.reset
     tiles(i).io.pcr.resp := pcrControl.io.pcr_resp
+    tiles(i).io.pcr.update := pcrControl.io.pcr_update
   }
 
   // The crossbar between tiles and L2
