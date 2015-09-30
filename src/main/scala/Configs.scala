@@ -33,11 +33,11 @@ class DefaultConfig extends ChiselConfig (
       case IODataBits => Dump("IO_DAT_WIDTH", 32)   // assume 32-bit IO NASTI-Lite bus
                                                     // (LD/SD leads to NASTI-Lite transactions)
       case NMemSections => 2                        // number of Memory space sections
-      case InitIOBase => 0x80000000                 // IO base address after reset
-      case InitIOMask => 0x0fffffff                 // IO space mask after reset
-      case InitMemBase => 0x00000000                // Memory base address after reset
-      case InitMemMask => 0x7fffffff                // Memory space mask address after reset
-      case InitPhyBase => 0x00000000                // Memory physical base address after reset
+      case InitIOBase => "h80000000"                // IO base address after reset
+      case InitIOMask => "h0fffffff"                // IO space mask after reset
+      case InitMemBase => "h00000000"               // Memory base address after reset
+      case InitMemMask => "h7fffffff"               // Memory space mask address after reset
+      case InitPhyBase => "h00000000"               // Memory physical base address after reset
 
       //Params used by all caches
       case NSets => findBy(CacheName)
@@ -106,7 +106,7 @@ class DefaultConfig extends ChiselConfig (
       case FastMulDiv => true
       case XLen => 64
       case NMultXpr => 32
-      case BuildFPU => Some(() => Module(new FPU))
+      case BuildFPU => true
       case FDivSqrt => true
       case SFMALatency => 2
       case DFMALatency => 3
