@@ -37,7 +37,7 @@ class Top extends Module with TopLevelParameters {
   pcrControl.io.host <> io.host
   pcrControl.io.pcr_req <> (tiles.map(_.io.pcr.req))
   (0 until nTiles) foreach { i =>
-    tiles(i).io.soft_reset := pcrControl.io.reset
+    tiles(i).io.soft_reset := pcrControl.io.soft_reset
     tiles(i).io.pcr.resp := pcrControl.io.pcr_resp
     tiles(i).io.pcr.update := pcrControl.io.pcr_update
   }
