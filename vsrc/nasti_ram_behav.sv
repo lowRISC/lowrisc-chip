@@ -1,6 +1,6 @@
 // See LICENSE for license details.
 
-module axi_ram_behav
+module nasti_ram_behav
   #(
     ID_WIDTH = 1,
     ADDR_WIDTH = 16,
@@ -139,7 +139,7 @@ module axi_ram_behav
    assign nasti.r_resp = r_resp;
    assign nasti.r_user = r_user;
    
-endmodule // axi_ram_behav
+endmodule // nasti_ram_behav
 
    
             

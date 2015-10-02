@@ -182,14 +182,14 @@ module chip_top
    defparam combined_mem_nasti.ADDR_WIDTH = `PADDR_WIDTH;
    defparam combined_mem_nasti.DATA_WIDTH = `MEM_DAT_WIDTH;
 
-   // the AXI crossbar for BRAM and DRAM controllers
-   axi_crossbar_mem_1x2_top
+   // the NASTI crossbar for BRAM and DRAM controllers
+   nasti_crossbar
      #(
        .ADDR_WIDTH   ( `PADDR_WIDTH   ),
        .DATA_WIDTH   ( `MEM_DAT_WIDTH ),
        .ID_WIDTH     ( `MEM_TAG_WIDTH )
        )
-   axi_cb_mem
+   nasti_cb_mem
      (
       .*,
       .s   ( mem_nasti          ),
@@ -448,13 +448,13 @@ module chip_top
    defparam spi_nasti.ADDR_WIDTH = IO_ADDR_WIDTH;
    defparam spi_nasti.DATA_WIDTH = `IO_DAT_WIDTH;
    
-   // the AXI crossbar for IO peripherals
-   axi_crossbar_io_1x2_top
+   // the NASTI crossbar for IO peripherals
+   nasti_crossbar
      #(
        .ADDR_WIDTH   ( IO_ADDR_WIDTH  ),
        .DATA_WIDTH   ( `IO_DAT_WIDTH  )
        )
-   axi_cb_io
+   nasti_cb_io
      (
       .*,
       .s    ( io_nasti          ),
@@ -576,7 +576,7 @@ module chip_top
       .resp         ( host_resp_data   )
       );
 
-   axi_ram_behav
+   nasti_ram_behav
      #(
        .ID_WIDTH     ( `MEM_TAG_WIDTH   ),
        .ADDR_WIDTH   ( `PADDR_WIDTH     ),
