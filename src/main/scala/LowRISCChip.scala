@@ -66,6 +66,7 @@ class Top extends Module with TopLevelParameters {
 
   l2Network.io.managers <> banks.map(_.innerTL)
   banks.foreach(_.incoherent := UInt(0))
+  banks.foreach(_.io.soft_reset := pcrControl.io.soft_reset)
 
   // the network between L2 and tag cache
   def routeL2ToTC(addr: UInt) = UInt(0)

@@ -9,11 +9,7 @@ module axi_ram_behav
     )
    (
     input clk, rstn,
-    nasti_aw.slave aw,
-    nasti_w.slave w,
-    nasti_b.slave b,
-    nasti_ar.slave ar,
-    nasti_r.slave r
+    nasti_channel.slave nasti
     );
 
    initial assert(ID_WIDTH <= 16) else $error("Error: ID_WIDTH > 16 is not supported!");
@@ -73,27 +69,27 @@ module axi_ram_behav
 
    always @(negedge clk or negedge rstn)
      if(!rstn)
-       aw.ready <= 0;
-     else if(aw.valid) begin
+       nasti.aw_ready <= 0;
+     else if(nasti.aw_valid) begin
         //$display("%t, aw valid", $time);
-        aw.ready <= memory_write_req(aw.id, aw.addr, aw.len, aw.size, aw.user);
+        nasti.aw_ready <= memory_write_req(nasti.aw_id, nasti.aw_addr, nasti.aw_len, nasti.aw_size, nasti.aw_user);
 `ifdef VERILATOR
-        write_dummy(aw.ready);
+        write_dummy(nasti.aw_ready);
 `endif
      end else
-       aw.ready <= 0;
+       nasti.aw_ready <= 0;
 
    always @(negedge clk or negedge rstn)
      if(!rstn)
-       w.ready <= 0;
-     else if(w.valid && rstn) begin
+       nasti.w_ready <= 0;
+     else if(nasti.w_valid && rstn) begin
         //$display("%t, w valid", $time);
-        w.ready <= memory_write_data(w.data, w.strb, w.last);
+        nasti.w_ready <= memory_write_data(nasti.w_data, nasti.w_strb, nasti.w_last);
 `ifdef VERILATOR
-        write_dummy(w.ready);
+        write_dummy(nasti.w_ready);
 `endif
      end else
-       w.ready <= 0;
+       nasti.w_ready <= 0;
       
    logic [15:0]   b_id;
    logic [1:0]    b_resp;
@@ -103,25 +99,25 @@ module axi_ram_behav
    always_ff @(posedge clk or negedge rstn)
      if(!rstn)
        b_valid <= 0;
-     else if(!b_valid || b.ready)
+     else if(!b_valid || nasti.b_ready)
        b_valid <= memory_write_resp(b_id, b_resp, b_user);
    
-   assign b.valid = b_valid;
-   assign b.id = b_id;
-   assign b.resp = b_resp;
-   assign b.user = b_user;
+   assign nasti.b_valid = b_valid;
+   assign nasti.b_id = b_id;
+   assign nasti.b_resp = b_resp;
+   assign nasti.b_user = b_user;
 
    always @(negedge clk or negedge rstn)
      if(!rstn)
-       ar.ready <= 0;
-     else if(ar.valid && rstn) begin
+       nasti.r_ready <= 0;
+     else if(nasti.r_valid && rstn) begin
         //$display("%t, ar valid", $time);
-        ar.ready <= memory_read_req(ar.id, ar.addr, ar.len, ar.size, ar.user);
+        nasti.r_ready <= memory_read_req(nasti.r_id, nasti.r_addr, nasti.r_len, nasti.r_size, nasti.r_user);
 `ifdef VERILATOR
-        write_dummy(ar.ready);
+        write_dummy(nasti.r_ready);
 `endif
      end else
-       ar.ready <= 0;
+       nasti.r_ready <= 0;
 
    logic [15:0]   r_id;
    logic [255:0]  r_data;
@@ -133,15 +129,15 @@ module axi_ram_behav
    always_ff @(posedge clk or negedge rstn)
      if(!rstn)
        r_valid <= 0;
-     else if(!r_valid || r.ready)
+     else if(!r_valid || nasti.r_ready)
        r_valid <= memory_read_resp(r_id, r_data, r_resp, r_last, r_user);
    
-   assign r.valid = r_valid;
-   assign r.data = r_data;
-   assign r.last = r_last;
-   assign r.id = r_id;
-   assign r.resp = r_resp;
-   assign r.user = r_user;
+   assign nasti.r_valid = r_valid;
+   assign nasti.r_data = r_data;
+   assign nasti.r_last = r_last;
+   assign nasti.r_id = r_id;
+   assign nasti.r_resp = r_resp;
+   assign nasti.r_user = r_user;
    
 endmodule // axi_ram_behav
 
