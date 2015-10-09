@@ -40,23 +40,22 @@ module chip_top
    input         rst_top
    );
 
-   // remove the 4 MSB for IO address
-   localparam IO_ADDR_WIDTH = `PADDR_WIDTH - 4;
-
    // internal clock and reset signals
    logic  clk, rst, rstn;
 
    // the NASTI bus for cached memory
    nasti_channel mem_nasti();
 
-   defparam mem_nasti.ID_WIDTH = `MEM_TAG_WIDTH;
+   defparam mem_nasti.ID_WIDTH = `MEM_TAG_WIDTH + 1;
    defparam mem_nasti.ADDR_WIDTH = `PADDR_WIDTH;
    defparam mem_nasti.DATA_WIDTH = `MEM_DAT_WIDTH;
+   assign mem_nasti.aw_id[`MEM_TAG_WIDTH] = 1'b0; // differentiate Memory from IO
+   assign mem_nasti.ar_id[`MEM_TAG_WIDTH] = 1'b0;
    
    // the NASTI-Lite bus for IO space
    nasti_channel io_nasti();
 
-   defparam io_nasti.ADDR_WIDTH = IO_ADDR_WIDTH;
+   defparam io_nasti.ADDR_WIDTH = `PADDR_WIDTH;
    defparam io_nasti.DATA_WIDTH = `IO_DAT_WIDTH;
 
    // host interface
@@ -562,6 +561,64 @@ module chip_top
    assign rst = rst_top;
    assign rstn = !rst_top;
 
+   // converted nasti channel for io_nasti
+   nasti_channel io_nasti_full();
+   defparam io_nasti_full.ID_WIDTH = `MEM_TAG_WIDTH + 1;
+   defparam io_nasti_full.ADDR_WIDTH = `PADDR_WIDTH;
+   defparam io_nasti_full.DATA_WIDTH = `MEM_DAT_WIDTH;
+   assign io_nasti_full.aw_id[`MEM_TAG_WIDTH] = 1'b1;
+   assign io_nasti_full.ar_id[`MEM_TAG_WIDTH] = 1'b1;
+
+   // nasti channel to behavioural ram
+   nasti_channel ram_nasti();
+   defparam ram_nasti.ID_WIDTH = `MEM_TAG_WIDTH + 1;
+   defparam ram_nasti.ADDR_WIDTH = `PADDR_WIDTH;
+   defparam ram_nasti.DATA_WIDTH = `MEM_DAT_WIDTH;
+
+   // combined mem and IO nasti
+   nasti_channel mem_io_nasti();
+   defparam mem_io_nasti.N_PORT = 2;
+   defparam mem_io_nasti.ID_WIDTH = `MEM_TAG_WIDTH + 1;
+   defparam mem_io_nasti.ADDR_WIDTH = `PADDR_WIDTH;
+   defparam mem_io_nasti.DATA_WIDTH = `MEM_DAT_WIDTH;
+
+   // convert nasti-lite io_nasti to full nasti io_nasti_full
+   lite_nasti_bridge
+     #(
+       .ID_WIDTH          ( `MEM_TAG_WIDTH ),
+       .ADDR_WIDTH        ( `PADDR_WIDTH   ),
+       .NASTI_DATA_WIDTH  ( `MEM_DAT_WIDTH ),
+       .LITE_DATA_WIDTH   ( `IO_DAT_WIDTH  )
+       )
+   io_nasti_conv
+     (
+      .*,
+      .lite_s  ( io_nasti      ),
+      .nasti_m ( io_nasti_full )
+      );
+
+   // crossbar to merge memory and IO to the behaviour dram
+   nasti_crossbar
+     #(
+       .N_INPUT    ( 2                  ),
+       .N_OUTPUT   ( 1                  ),
+       .IB_DEPTH   ( 3                  ),
+       .OB_DEPTH   ( 3                  ),
+       .W_MAX      ( 4                  ),
+       .R_MAX      ( 4                  ),
+       .ID_WIDTH   ( `MEM_TAG_WIDTH + 1 ),
+       .ADDR_WIDTH ( `PADDR_WIDTH       ),
+       .DATA_WIDTH ( `MEM_DAT_WIDTH     ),
+       .BASE0      ( 0                  ),
+       .BASE1      ( 32'hffffffff       )
+       )
+   mem_crossbar
+     (
+      .*,
+      .s ( mem_io_nasti  ),
+      .m ( ram_nasti     )
+      );
+
    host_behav #(.nCores(`NTILES))
    host
      (
@@ -578,7 +635,7 @@ module chip_top
 
    nasti_ram_behav
      #(
-       .ID_WIDTH     ( `MEM_TAG_WIDTH   ),
+       .ID_WIDTH     ( `MEM_TAG_WIDTH+1 ),
        .ADDR_WIDTH   ( `PADDR_WIDTH     ),
        .DATA_WIDTH   ( `MEM_DAT_WIDTH   ),
        .USER_WIDTH   ( 1                )
@@ -587,7 +644,7 @@ module chip_top
      (
       .clk           ( clk              ),
       .rstn          ( rstn             ),
-      .nasti         ( mem_nasti        )
+      .nasti         ( ram_nasti        )
       );
 
 `endif
