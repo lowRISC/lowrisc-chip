@@ -7,8 +7,8 @@ module host_behav
     input logic           req_valid, resp_ready,
     output logic          req_ready,
     output reg            resp_valid,
-    input logic [IDW-1:0] req_id,
-    output reg [IDW-1:0]  resp_id,
+    input logic [$clog2(nCores)-1:0] req_id,
+    output reg [$clog2(nCores)-1:0]  resp_id,
     input logic [63:0]    req,
     output reg [63:0]     resp
     );

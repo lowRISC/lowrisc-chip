@@ -102,7 +102,7 @@ veri_csrcs = \
 verilator: verilator.log
 verilator.log: $(sim_vsrcs) $(veri_vsrcs) $(veri_csrcs)
 	rm -fr $(sim_dir)/verilator
-	$(veri) --cc $(veri_vsrcs) $(veri_csrcs) $(veri_flags) $(veri_opt_flags) -o ../$(CONFIG)-sim | tee $@
+	$(veri) --cc $(veri_vsrcs) $(veri_csrcs) $(veri_flags) $(veri_opt_flags) -o ../$(CONFIG)-sim 2>&1 | tee $@
 
 sim: $(CONFIG)-sim
 $(CONFIG)-sim: verilator.log
