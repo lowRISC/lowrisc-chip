@@ -586,6 +586,24 @@ module chip_top
       .nasti_m ( io_nasti_full )
       );
 
+   // combine memory and io nasti channels
+   nasti_channel dummy2(), dummy3(), dummy4(), dummy5(), dummy6(), dummy7();
+
+   nasti_channel_combiner #(2)
+   mem_io_combiner
+     (
+      .*,
+      .s0  ( mem_nasti     ),
+      .s1  ( io_nasti_full ),
+      .s2  ( dummy2        ),
+      .s3  ( dummy3        ),
+      .s4  ( dummy4        ),
+      .s5  ( dummy5        ),
+      .s6  ( dummy6        ),
+      .s7  ( dummy7        ),
+      .m   ( mem_io_nasti  )
+      );
+
    // crossbar to merge memory and IO to the behaviour dram
    nasti_crossbar
      #(
