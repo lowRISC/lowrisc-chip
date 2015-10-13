@@ -28,13 +28,16 @@ class DefaultConfig extends ChiselConfig (
       case MIFTagBits => Dump("MEM_TAG_WIDTH", 8)
       case MIFDataBits => Dump("MEM_DAT_WIDTH", 128)
 
-      // IO space
-      case IOBaseAddr0 => UInt("h80000000") // 8000_0000 : ffff_ffff
-      case IOAddrMask0 => UInt("h7fffffff")
-      case IOBaseAddr1 => UInt("hffffffff") // empty
-      case IOAddrMask1 => UInt("h00000000")
-      case IODataBits => Dump("IO_DAT_WIDTH", 32)  // assume 32-bit IO NASTI-Lite bus 
-                                                    // (LD/SD leads to NASTI-Lite transactions) 
+      // Memory spaces
+      case NIOSections => 2                         // number of IO space sections
+      case IODataBits => Dump("IO_DAT_WIDTH", 32)   // assume 32-bit IO NASTI-Lite bus
+                                                    // (LD/SD leads to NASTI-Lite transactions)
+      case NMemSections => 2                        // number of Memory space sections
+      case InitIOBase => "h80000000"                // IO base address after reset
+      case InitIOMask => "h0fffffff"                // IO space mask after reset
+      case InitMemBase => "h00000000"               // Memory base address after reset
+      case InitMemMask => "h7fffffff"               // Memory space mask address after reset
+      case InitPhyBase => "h00000000"               // Memory physical base address after reset
 
       //Params used by all caches
       case NSets => findBy(CacheName)
@@ -103,7 +106,7 @@ class DefaultConfig extends ChiselConfig (
       case FastMulDiv => true
       case XLen => 64
       case NMultXpr => 32
-      case BuildFPU => Some(() => Module(new FPU))
+      case BuildFPU => true
       case FDivSqrt => true
       case SFMALatency => 2
       case DFMALatency => 3

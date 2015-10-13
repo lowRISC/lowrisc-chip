@@ -75,9 +75,21 @@ veri_opt_flags = -O3 -CFLAGS "-O1"
 veri_vsrcs = \
 	$(base_dir)/vsrc/chip_top.sv \
 	$(generated_dir)/$(MODEL).$(CONFIG).v \
-	$(base_dir)/vsrc/axi_ram_behav.sv \
+	$(base_dir)/vsrc/nasti_ram_behav.sv \
 	$(base_dir)/vsrc/host_behav.sv \
 	$(base_dir)/socip/nasti/channel.sv \
+	$(base_dir)/socip/nasti/lite_nasti_reader.sv \
+	$(base_dir)/socip/nasti/lite_nasti_writer.sv \
+	$(base_dir)/socip/nasti/nasti_buf.sv \
+	$(base_dir)/socip/nasti/nasti_combiner.sv \
+	$(base_dir)/socip/nasti/nasti_crossbar.sv \
+	$(base_dir)/socip/nasti/nasti_demux.sv \
+	$(base_dir)/socip/nasti/nasti_lite_bridge.sv \
+	$(base_dir)/socip/nasti/nasti_lite_reader.sv \
+	$(base_dir)/socip/nasti/nasti_lite_writer.sv \
+	$(base_dir)/socip/nasti/nasti_mux.sv \
+	$(base_dir)/socip/nasti/nasti_slicer.sv \
+	$(base_dir)/socip/util/arbiter.sv \
 
 veri_csrcs = \
 	$(base_dir)/csrc/veri/dpi_ram_behav.cpp \
@@ -90,7 +102,7 @@ veri_csrcs = \
 verilator: verilator.log
 verilator.log: $(sim_vsrcs) $(veri_vsrcs) $(veri_csrcs)
 	rm -fr $(sim_dir)/verilator
-	$(veri) --cc $(veri_vsrcs) $(veri_csrcs) $(veri_flags) $(veri_opt_flags) -o ../$(CONFIG)-sim | tee $@
+	$(veri) --cc $(veri_vsrcs) $(veri_csrcs) $(veri_flags) $(veri_opt_flags) -o ../$(CONFIG)-sim 2>&1 | tee $@
 
 sim: $(CONFIG)-sim
 $(CONFIG)-sim: verilator.log
