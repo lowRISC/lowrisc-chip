@@ -617,7 +617,7 @@ module chip_top
        .ADDR_WIDTH ( `PADDR_WIDTH       ),
        .DATA_WIDTH ( `MEM_DAT_WIDTH     ),
        .BASE0      ( 0                  ),
-       .BASE1      ( 32'hffffffff       )
+       .MASK0      ( 32'hffffffff       )
        )
    mem_crossbar
      (
