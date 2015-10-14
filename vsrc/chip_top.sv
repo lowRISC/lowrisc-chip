@@ -182,17 +182,17 @@ module chip_top
    io_nasti_cbo();
 
    // IO to memory channel
-   nasti_channel 
+   nasti_channel
      #(
        .ID_WIDTH    ( `MEM_TAG_WIDTH + 1 ),
        .ADDR_WIDTH  ( `PADDR_WIDTH       ),
        .DATA_WIDTH  ( `IO_DAT_WIDTH      ))
    io_nasti_mem();
-   
+
    // IO to UART and SPI
-   nasti_channel  
+   nasti_channel
      #(
-       .ADDR_WIDTH  ( IO_DDR_WIDTH       ),
+       .ADDR_WIDTH  ( IO_ADDR_WIDTH      ),
        .DATA_WIDTH  ( `IO_DAT_WIDTH      ))
    io_nasti_uart(), io_nasti_spi();
 
@@ -314,7 +314,7 @@ module chip_top
    assign spi_cs_i = 1'b1;;     // always in master mode
 
    // nasti-lite to nasti bridge for io_nasti_mem
-   nasti_channel 
+   nasti_channel
      #(
        .ID_WIDTH    ( `MEM_TAG_WIDTH + 1 ),
        .ADDR_WIDTH  ( `PADDR_WIDTH       ),
@@ -338,7 +338,7 @@ module chip_top
       );
    
    // combine memory requests from mem and IO
-   nasti_channel  
+   nasti_channel
      #(
        .N_PORT      ( 2                  ),
        .ID_WIDTH    ( `MEM_TAG_WIDTH + 1 ),
@@ -379,12 +379,25 @@ module chip_top
       );
 
    // channel for BRAM and DRAM
-   nasti_channel   
+   localparam MEM_DATA_WIDTH = 128;
+   localparam BRAM_ADDR_WIDTH = 16;     // 64 KB
+   localparam BRAM_LINE = 2 ** BRAM_ADDR_WIDTH  * 8 / MEM_DATA_WIDTH;
+   localparam BRAM_LINE_OFFSET = $clog2(MEM_DATA_WIDTH/8);
+   localparam DRAM_ADDR_WIDTH = 30;     // 1 GB
+
+   nasti_channel
      #(
        .ID_WIDTH    ( `MEM_TAG_WIDTH + 1 ),
-       .ADDR_WIDTH  ( `PADDR_WIDTH       ),
+       .ADDR_WIDTH  ( BRAM_ADDR_WIDTH    ),
        .DATA_WIDTH  ( `MEM_DAT_WIDTH     ))
-   mem_nasti_bram(), mem_nasti_dram();
+   mem_nasti_bram();
+
+   nasti_channel
+     #(
+       .ID_WIDTH    ( `MEM_TAG_WIDTH + 1 ),
+       .ADDR_WIDTH  ( DRAM_ADDR_WIDTH    ),
+       .DATA_WIDTH  ( `MEM_DAT_WIDTH     ))
+   mem_nasti_dram();
    
    // slice the channels from memory crossbar
    nasti_channel ms_dmm2(), ms_dmm3(), ms_dmm4(), ms_dmm5(), ms_dmm6(), ms_dmm7(); // dummy channels
@@ -603,24 +616,20 @@ module chip_top
    assign rst = rst_top;
    assign rstn = !rst_top;
 
-   // converted nasti channel for io_nasti
-   nasti_channel io_nasti_full();
-   defparam io_nasti_full.ID_WIDTH = `MEM_TAG_WIDTH + 1;
-   defparam io_nasti_full.ADDR_WIDTH = `PADDR_WIDTH;
-   defparam io_nasti_full.DATA_WIDTH = `MEM_DAT_WIDTH;
+   nasti_channel
+     #(
+       .ID_WIDTH    ( `MEM_TAG_WIDTH + 1 ),
+       .ADDR_WIDTH  ( `PADDR_WIDTH       ),
+       .DATA_WIDTH  ( `MEM_DAT_WIDTH     ))
+   io_nasti_full(), ram_nasti();
 
-   // nasti channel to behavioural ram
-   nasti_channel ram_nasti();
-   defparam ram_nasti.ID_WIDTH = `MEM_TAG_WIDTH + 1;
-   defparam ram_nasti.ADDR_WIDTH = `PADDR_WIDTH;
-   defparam ram_nasti.DATA_WIDTH = `MEM_DAT_WIDTH;
-
-   // combined mem and IO nasti
-   nasti_channel mem_io_nasti();
-   defparam mem_io_nasti.N_PORT = 2;
-   defparam mem_io_nasti.ID_WIDTH = `MEM_TAG_WIDTH + 1;
-   defparam mem_io_nasti.ADDR_WIDTH = `PADDR_WIDTH;
-   defparam mem_io_nasti.DATA_WIDTH = `MEM_DAT_WIDTH;
+   nasti_channel
+     #(
+       .N_PORT      ( 2                  ),
+       .ID_WIDTH    ( `MEM_TAG_WIDTH + 1 ),
+       .ADDR_WIDTH  ( `PADDR_WIDTH       ),
+       .DATA_WIDTH  ( `MEM_DAT_WIDTH     ))
+   mem_io_nasti();
 
    // convert nasti-lite io_nasti to full nasti io_nasti_full
    lite_nasti_bridge
