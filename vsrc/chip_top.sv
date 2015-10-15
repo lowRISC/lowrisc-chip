@@ -52,8 +52,11 @@ module chip_top
        .ADDR_WIDTH  ( `PADDR_WIDTH       ),
        .DATA_WIDTH  ( `MEM_DAT_WIDTH     ))
    mem_nasti();
-   assign mem_nasti.aw_id[0][`MEM_TAG_WIDTH] = 1'b0; // differentiate Memory from IO
-   assign mem_nasti.ar_id[0][`MEM_TAG_WIDTH] = 1'b0;
+   logic [`MEM_TAG_WIDTH : 0] mem_nasti_aw_id, mem_nasti_ar_id;
+   assign mem_nasti_aw_id[`MEM_TAG_WIDTH] = 1'b0; // differentiate Memory from IO
+   assign mem_nasti_ar_id[`MEM_TAG_WIDTH] = 1'b0;
+   assign mem_nasti.aw_id = mem_nasti_aw_id;
+   assign mem_nasti.ar_id = mem_nasti_ar_id;
    
    // the NASTI-Lite bus for IO space
    nasti_channel
@@ -62,8 +65,11 @@ module chip_top
        .ADDR_WIDTH  ( `PADDR_WIDTH       ),
        .DATA_WIDTH  ( `IO_DAT_WIDTH      ))
    io_nasti();
-   assign io_nasti.aw_id[0][`MEM_TAG_WIDTH] = 1'b1;
-   assign io_nasti.ar_id[0][`MEM_TAG_WIDTH] = 1'b1;
+   logic [`MEM_TAG_WIDTH : 0] io_nasti_aw_id, io_nasti_ar_id;
+   assign io_nasti_aw_id[`MEM_TAG_WIDTH] = 1'b1; // differentiate Memory from IO
+   assign io_nasti_ar_id[`MEM_TAG_WIDTH] = 1'b1;
+   assign io_nasti.aw_id = io_nasti_aw_id;
+   assign io_nasti.ar_id = io_nasti_ar_id;
 
    // host interface
    logic  host_req_valid, host_req_ready, host_resp_valid, host_resp_ready;
@@ -77,7 +83,7 @@ module chip_top
       .reset                         ( rst                                    ),
       .io_nasti_aw_valid             ( mem_nasti.aw_valid                     ),
       .io_nasti_aw_ready             ( mem_nasti.aw_ready                     ),
-      .io_nasti_aw_bits_id           ( mem_nasti.aw_id[0][`MEM_TAG_WIDTH-1:0] ),
+      .io_nasti_aw_bits_id           ( mem_nasti_aw_id[`MEM_TAG_WIDTH-1:0]    ),
       .io_nasti_aw_bits_addr         ( mem_nasti.aw_addr                      ),
       .io_nasti_aw_bits_len          ( mem_nasti.aw_len                       ),
       .io_nasti_aw_bits_size         ( mem_nasti.aw_size                      ),
@@ -96,12 +102,12 @@ module chip_top
       .io_nasti_w_bits_user          ( mem_nasti.w_user                       ),
       .io_nasti_b_valid              ( mem_nasti.b_valid                      ),
       .io_nasti_b_ready              ( mem_nasti.b_ready                      ),
-      .io_nasti_b_bits_id            ( mem_nasti.b_id[0][`MEM_TAG_WIDTH-1:0]  ),
+      .io_nasti_b_bits_id            ( mem_nasti.b_id                         ),
       .io_nasti_b_bits_resp          ( mem_nasti.b_resp                       ),
       .io_nasti_b_bits_user          ( mem_nasti.b_user                       ),
       .io_nasti_ar_valid             ( mem_nasti.ar_valid                     ),
       .io_nasti_ar_ready             ( mem_nasti.ar_ready                     ),
-      .io_nasti_ar_bits_id           ( mem_nasti.ar_id[0][`MEM_TAG_WIDTH-1:0] ),
+      .io_nasti_ar_bits_id           ( mem_nasti_ar_id[`MEM_TAG_WIDTH-1:0]    ),
       .io_nasti_ar_bits_addr         ( mem_nasti.ar_addr                      ),
       .io_nasti_ar_bits_len          ( mem_nasti.ar_len                       ),
       .io_nasti_ar_bits_size         ( mem_nasti.ar_size                      ),
@@ -114,14 +120,14 @@ module chip_top
       .io_nasti_ar_bits_user         ( mem_nasti.ar_user                      ),
       .io_nasti_r_valid              ( mem_nasti.r_valid                      ),
       .io_nasti_r_ready              ( mem_nasti.r_ready                      ),
-      .io_nasti_r_bits_id            ( mem_nasti.r_id[0][`MEM_TAG_WIDTH-1:0]  ),
+      .io_nasti_r_bits_id            ( mem_nasti.r_id                         ),
       .io_nasti_r_bits_data          ( mem_nasti.r_data                       ),
       .io_nasti_r_bits_resp          ( mem_nasti.r_resp                       ),
       .io_nasti_r_bits_last          ( mem_nasti.r_last                       ),
       .io_nasti_r_bits_user          ( mem_nasti.r_user                       ),
       .io_nasti_lite_aw_valid        ( io_nasti.aw_valid                      ),
       .io_nasti_lite_aw_ready        ( io_nasti.aw_ready                      ),
-      .io_nasti_lite_aw_bits_id      ( io_nasti.aw_id[0][`MEM_TAG_WIDTH-1:0]  ),
+      .io_nasti_lite_aw_bits_id      ( io_nasti_aw_id[`MEM_TAG_WIDTH-1:0]     ),
       .io_nasti_lite_aw_bits_addr    ( io_nasti.aw_addr                       ),
       .io_nasti_lite_aw_bits_prot    ( io_nasti.aw_prot                       ),
       .io_nasti_lite_aw_bits_qos     ( io_nasti.aw_qos                        ),
@@ -134,12 +140,12 @@ module chip_top
       .io_nasti_lite_w_bits_user     ( io_nasti.w_user                        ),
       .io_nasti_lite_b_valid         ( io_nasti.b_valid                       ),
       .io_nasti_lite_b_ready         ( io_nasti.b_ready                       ),
-      .io_nasti_lite_b_bits_id       ( io_nasti.b_id[0][`MEM_TAG_WIDTH-1:0]   ),
+      .io_nasti_lite_b_bits_id       ( io_nasti.b_id                          ),
       .io_nasti_lite_b_bits_resp     ( io_nasti.b_resp                        ),
       .io_nasti_lite_b_bits_user     ( io_nasti.b_user                        ),
       .io_nasti_lite_ar_valid        ( io_nasti.ar_valid                      ),
       .io_nasti_lite_ar_ready        ( io_nasti.ar_ready                      ),
-      .io_nasti_lite_ar_bits_id      ( io_nasti.ar_id[0][`MEM_TAG_WIDTH-1:0]  ),
+      .io_nasti_lite_ar_bits_id      ( io_nasti_ar_id[`MEM_TAG_WIDTH-1:0]     ),
       .io_nasti_lite_ar_bits_addr    ( io_nasti.ar_addr                       ),
       .io_nasti_lite_ar_bits_prot    ( io_nasti.ar_prot                       ),
       .io_nasti_lite_ar_bits_qos     ( io_nasti.ar_qos                        ),
@@ -147,7 +153,7 @@ module chip_top
       .io_nasti_lite_ar_bits_user    ( io_nasti.ar_user                       ),
       .io_nasti_lite_r_valid         ( io_nasti.r_valid                       ),
       .io_nasti_lite_r_ready         ( io_nasti.r_ready                       ),
-      .io_nasti_lite_r_bits_id       ( io_nasti.r_id[0][`MEM_TAG_WIDTH-1:0]   ),
+      .io_nasti_lite_r_bits_id       ( io_nasti.r_id                          ),
       .io_nasti_lite_r_bits_data     ( io_nasti.r_data                        ),
       .io_nasti_lite_r_bits_resp     ( io_nasti.r_resp                        ),
       .io_nasti_lite_r_bits_user     ( io_nasti.r_user                        ),
@@ -202,7 +208,7 @@ module chip_top
        .N_INPUT    ( 1                  ),
        .N_OUTPUT   ( 3                  ),
        .IB_DEPTH   ( 0                  ),
-       .OB_DEPTH   ( 0                  ),
+       .OB_DEPTH   ( 1                  ), // some IPs response only with data, which will cause deadlock in nasti_demux (no lock)
        .W_MAX      ( 1                  ),
        .R_MAX      ( 1                  ),
        .ID_WIDTH   ( `MEM_TAG_WIDTH + 1 ),
