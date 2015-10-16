@@ -1,9 +1,8 @@
 // See LICENSE for license details.
 
-#include "veri_top.h"
+#include "globals.h"
 #include "dpi_ram_behav.h"
 #include <cassert>
-#include <cstdlib>
 #include <cmath>
 #include <algorithm>
 #include <fstream>
@@ -139,6 +138,20 @@ svBit memory_read_resp (
   } else {
     return sv_0;
   }
+}
+
+svBit memory_model_init()
+{
+  memory_controller = new MemoryController(4);
+  axi_mem_writer = new AXIMemWriter;
+  axi_mem_reader = new AXIMemReader;
+}
+
+svBit memory_model_close()
+{
+  delete memory_controller;
+  delete axi_mem_writer;
+  delete axi_mem_reader;
 }
 
 // Memory module

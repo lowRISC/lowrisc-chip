@@ -52,6 +52,12 @@ module nasti_ram_behav
                                                  output bit         last,
                                                  output bit [15:0]  user
                                                  );
+   import "DPI-C" function bit memory_model_init ();
+
+`ifndef VERILATOR
+   initial memory_model_init();
+`endif
+
 `ifdef VERILATOR
    // A workaround for Verilator since it treats DPI functions as pure
    // Which leads to wrong function scheduling.

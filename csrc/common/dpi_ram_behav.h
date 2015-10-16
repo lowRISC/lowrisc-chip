@@ -40,6 +40,9 @@ extern "C" {
                                  svBit *last,
                                  svBitVecVal *user_16b
                                  );
+  extern svBit memory_model_init ();
+  extern svBit memory_model_close ();
+
 #ifdef __cplusplus
 }
 #endif

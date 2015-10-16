@@ -11,7 +11,6 @@ extern "C" {
 
   extern void host_resp (unsigned int id, unsigned long long data);
   extern void host_req (unsigned int id, unsigned long long data);
-  extern void host_exit ();
 
 #ifdef __cplusplus
 }

@@ -59,14 +59,15 @@ veri = verilator
 tb_top = chip_top
 
 veri_flags = \
-	-DVERILATOR_GCC
+	-DVERILATOR_GCC \
 	+incdir+$(generated_dir) \
 	+incdir+$(base_dir)/vsrc \
-	+incdir+$(base_dir)/csrc/veri \
 	--top-module $(tb_top) \
 	--unroll-count 256 \
 	--trace \
 	-Wno-lint -Wno-style -Wno-STMTDLY \
+	-CFLAGS "-std=c++11" \
+	-CFLAGS "-I$(base_dir)/csrc/common -I$(base_dir)/csrc/veri" \
 	--exe \
 	--Mdir $(sim_dir)/verilator
 
@@ -93,8 +94,9 @@ veri_vsrcs = \
 	$(base_dir)/socip/util/arbiter.sv \
 
 veri_csrcs = \
-	$(base_dir)/csrc/veri/dpi_ram_behav.cpp \
-	$(base_dir)/csrc/veri/dpi_host_behav.cpp \
+	$(base_dir)/csrc/common/globals.cpp \
+	$(base_dir)/csrc/common/dpi_ram_behav.cpp \
+	$(base_dir)/csrc/common/dpi_host_behav.cpp \
 	$(base_dir)/csrc/veri/veri_top.cc \
 
 #--------------------------------------------------------------------

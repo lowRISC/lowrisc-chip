@@ -16,7 +16,6 @@ module host_behav
    localparam IDW = $clog2(nCores);
 
    import "DPI-C" function void host_req ( input int unsigned id, input longint unsigned data);
-   export "DPI-C" task host_resp;
 
    assign req_ready = 0;
 
@@ -39,10 +38,5 @@ module host_behav
    always @(posedge clk)
      if(rstn && resp_ready && resp_valid)
        resp_valid = 1'b0;
-
-   task host_exit;
-      $finish();
-   endtask // host_exit
-
 
 endmodule // host_behav
