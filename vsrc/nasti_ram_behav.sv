@@ -53,10 +53,14 @@ module nasti_ram_behav
                                                  output bit [15:0]  user
                                                  );
    import "DPI-C" function bit memory_model_init ();
+   import "DPI-C" function bit memory_model_step ();
 
 `ifndef VERILATOR
    initial memory_model_init();
 `endif
+
+   always @(posedge clk)
+     memory_model_step();
 
 `ifdef VERILATOR
    // A workaround for Verilator since it treats DPI functions as pure

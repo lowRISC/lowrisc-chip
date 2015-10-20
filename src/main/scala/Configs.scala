@@ -177,7 +177,7 @@ class DefaultConfig extends ChiselConfig (
       case "lite" => {
         case NASTIDataBits => site(IODataBits)
         case NASTIAddrBits => site(PAddrBits)
-        case NASTIIdBits => 1
+        case NASTIIdBits => site(MIFTagBits) // IO may write to memory, avoid X in simulation
         case NASTIUserBits => 1
         case NASTIHandlers => 1
       }:PF

@@ -4,6 +4,7 @@
 #define DPI_RAM_BEHAV_H
 
 #include <svdpi.h>
+#include <ostream>
 
 #ifdef __cplusplus
 extern "C" {
@@ -42,6 +43,7 @@ extern "C" {
                                  );
   extern svBit memory_model_init ();
   extern svBit memory_model_close ();
+  extern svBit memory_model_step ();
 
 #ifdef __cplusplus
 }
@@ -92,7 +94,14 @@ public:
   // copy constructor
   MemoryOperation(const MemoryOperation& rhs)
     : rw(rhs.rw), tag(rhs.tag), addr(rhs.addr), data(rhs.data), mask(rhs.mask) {}
+
+  // streamout (print)
+  std::ostream& streamout(std::ostream& os) const;
 };
+
+inline std::ostream& operator<< (std::ostream& os, const MemoryOperation& rhs) {
+  return rhs.streamout(os);
+}
 
 class MemoryController {
   Memory32 mem;
