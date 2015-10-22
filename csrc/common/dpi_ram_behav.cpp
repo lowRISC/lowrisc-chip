@@ -1,9 +1,8 @@
 // See LICENSE for license details.
 
-#include "veri_top.h"
+#include "globals.h"
 #include "dpi_ram_behav.h"
 #include <cassert>
-#include <cstdlib>
 #include <cmath>
 #include <algorithm>
 #include <fstream>
@@ -38,12 +37,11 @@ svBit memory_write_req (
   uint32_t user = SV_GET_UNSIGNED_BITS(user_16b[0], 16);
   uint32_t tag = (user<<16)|id;
 
-  std::cout << format("memory write request: %1$x @ %2$x") % tag % addr << std::endl;
-
   // call axi controller
-  if(axi_mem_writer->write_addr_req(tag, addr, len, size))
+  if(axi_mem_writer->write_addr_req(tag, addr, len, size)) {
+    std::cout << format("memory write request: %1$x @ %2$x [%3$x]") % tag % addr % (len+1) << std::endl;
     return sv_1;
-  else
+  } else
     return sv_0;
 }
 
@@ -60,12 +58,11 @@ svBit memory_write_data (
   uint32_t strb = strb_32[0];
   bool last_m = last == sv_1;
 
-  std::cout << format("memory write data: %1$08x %2$08x %3$08x %4$08x") % data[3] % data[2] % data[1] % data[0] << std::endl;
-
   // call axi controller
-  if(axi_mem_writer->write_data_req(data, strb, last_m))
+  if(axi_mem_writer->write_data_req(data, strb, last_m)) {
+    std::cout << format("memory write data: %1$08x %2$08x %3$08x %4$08x") % data[3] % data[2] % data[1] % data[0] << std::endl;
     return sv_1;
-  else
+  } else
     return sv_0;
 }
 
@@ -104,12 +101,12 @@ svBit memory_read_req (
   uint32_t user = SV_GET_UNSIGNED_BITS(user_16b[0], 16);
   uint32_t tag = (user<<16)|id;
 
-  std::cout << format("memory read request: %1$x @ %2$x") % tag % addr << std::endl;
 
   // call axi controller
-  if(axi_mem_reader->reader_addr_req(tag, addr, len, size))
+  if(axi_mem_reader->reader_addr_req(tag, addr, len, size)) {
+    std::cout << format("memory read request: %1$x @ %2$x") % tag % addr << std::endl;
     return sv_1;
-  else
+  } else
     return sv_0;
 }
 
@@ -141,6 +138,25 @@ svBit memory_read_resp (
   }
 }
 
+svBit memory_model_init()
+{
+  memory_controller = new MemoryController(4);
+  axi_mem_writer = new AXIMemWriter;
+  axi_mem_reader = new AXIMemReader;
+}
+
+svBit memory_model_close()
+{
+  delete memory_controller;
+  delete axi_mem_writer;
+  delete axi_mem_reader;
+}
+
+svBit memory_model_step()
+{
+  memory_controller->step();
+}
+
 // Memory module
 
 bool Memory32::write(const uint32_t addr, const uint32_t& data, const uint32_t& mask) {
@@ -155,6 +171,7 @@ bool Memory32::write(const uint32_t addr, const uint32_t& data, const uint32_t& 
   }
   mem[addr] = data_m;
 
+  //std::cout << format("memory write [%1$x] = %2$x") % addr % data_m << std::endl;
   return true;
 }
 
@@ -164,7 +181,16 @@ bool Memory32::read(const uint32_t addr, uint32_t &data) {
 
   data = mem[addr];
 
+  //std::cout << format("memory read [%1$x] = %2$x") % addr % data << std::endl;
   return true;
+}
+
+// memory operation
+std::ostream& MemoryOperation::streamout(std::ostream& os) const {
+  if(rw) os << "write: ";
+  else   os << "read:  ";
+  os << format("%1$x @ %2$x m%3$x t%4$x") % data % addr % mask % tag;
+  return os;
 }
 
 // Memory controller
@@ -220,6 +246,10 @@ bool MemoryController::load_balance(unsigned int &chosen) {
       return true;
     else
       chosen = (chosen + 1) % op_max;
+  }
+  std::cout << "all op_fifo occupied!" << std::endl;
+  for(int i=0; i<op_max; i++) {
+    std::cout << "op_fifo[" << i << "]: " << op_fifo[i].front() << std::endl;
   }
   return false;                 // all fifos occupied
 }

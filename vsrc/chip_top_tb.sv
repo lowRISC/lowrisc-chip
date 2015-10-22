@@ -15,7 +15,7 @@ module tb;
          .clk_n(!clk),
          .rst_top(rst) 
          );
-   
+
    initial begin
       rst = 0;
       #3;
@@ -30,6 +30,7 @@ module tb;
    end // initial begin
 
 `ifdef FPGA
+ `ifdef FPGA_FULL
    // DDRAM3
    wire [63:0]  ddr3_dq;
    wire [7:0]   ddr3_dqs_n;
@@ -72,6 +73,7 @@ module tb;
                 );
       end
    endgenerate
+ `endif //  `ifdef FPGA_FULL
 
    // spi
    wire spi_cs, spi_sclk, spi_mosi, spi_miso;
@@ -81,8 +83,7 @@ module tb;
    assign spi_miso = !spi_cs ? spi_mosi : 1'bz;
 
    assign spi_sclk = 1'bz;
-   
 
 `endif
-   
+
 endmodule // tb

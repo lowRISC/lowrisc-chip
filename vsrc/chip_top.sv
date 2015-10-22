@@ -6,6 +6,7 @@
 module chip_top
   (
 `ifdef FPGA
+ `ifdef FPGA_FULL
    // DDRAM3
    inout [63:0]  ddr3_dq,
    inout [7:0]   ddr3_dqs_n,
@@ -22,7 +23,8 @@ module chip_top
    output        ddr3_cs_n,
    output [7:0]  ddr3_dm,
    output        ddr3_odt,
-   
+ `endif //  `ifdef FPGA_FULL
+
    // UART
    input         rxd,
    output        txd,
@@ -57,7 +59,7 @@ module chip_top
    assign mem_nasti_ar_id[`MEM_TAG_WIDTH] = 1'b0;
    assign mem_nasti.aw_id = mem_nasti_aw_id;
    assign mem_nasti.ar_id = mem_nasti_ar_id;
-   
+
    // the NASTI-Lite bus for IO space
    nasti_channel
      #(
@@ -75,7 +77,7 @@ module chip_top
    logic  host_req_valid, host_req_ready, host_resp_valid, host_resp_ready;
    logic [$clog2(`NTILES)-1:0] host_req_id, host_resp_id;
    logic [63:0]                host_req_data, host_resp_data;
-   
+
    // the Rocket chip
    Top Rocket
      (
@@ -171,12 +173,6 @@ module chip_top
 `ifdef FPGA
 
    assign rst = !rstn;
-
-   // host interface is not used
-   assign host_req_ready = 1'b0;
-   assign host_resp_id = 0;
-   assign host_resp_data = 0;
-   assign host_resp_valid = 1'b0;
 
    // output of the IO crossbar
    nasti_channel
@@ -342,7 +338,7 @@ module chip_top
       .lite_s  ( io_nasti_mem      ),
       .nasti_m ( io_nasti_mem_full )
       );
-   
+
    // combine memory requests from mem and IO
    nasti_channel
      #(
@@ -418,7 +414,7 @@ module chip_top
    logic [BRAM_ADDR_WIDTH-1:0] ram_addr;
    logic [MEM_DATA_WIDTH-1:0] ram_wrdata, ram_rddata;
 
-   axi_bram_ctrl_top #(.ADDR_WIDTH(BRAM_ADDR_WIDTH), .DATA_WIDTH(MEM_DATA_WIDTH)) 
+   axi_bram_ctrl_top #(.ADDR_WIDTH(BRAM_ADDR_WIDTH), .DATA_WIDTH(MEM_DATA_WIDTH))
    BramCtl
      (
       .clk          ( clk            ),
@@ -447,6 +443,8 @@ module chip_top
    assign ram_rddata = ram[ram_addr_dly];
 
    initial $readmemh("boot.mem", ram);
+
+ `ifdef FPGA_FULL
 
    // the NASTI bus for off-FPGA DRAM, converted to High frequency
    nasti_channel   
@@ -616,6 +614,47 @@ module chip_top
       .s_axi_rready         ( mem_nasti_mig.r_ready  )
       );
 
+   // host interface is not used
+   assign host_req_ready = 1'b0;
+   assign host_resp_id = 0;
+   assign host_resp_data = 0;
+   assign host_resp_valid = 1'b0;
+
+ `else // !`ifdef FPGA_FULL
+
+   assign clk = clk_p;
+   assign rstn = !rst_top;
+
+   nasti_ram_behav
+     #(
+       .ID_WIDTH     ( `MEM_TAG_WIDTH+1 ),
+       .ADDR_WIDTH   ( `PADDR_WIDTH     ),
+       .DATA_WIDTH   ( `MEM_DAT_WIDTH   ),
+       .USER_WIDTH   ( 1                )
+       )
+   ram_behav
+     (
+      .clk           ( clk              ),
+      .rstn          ( rstn             ),
+      .nasti         ( mem_nasti_dram   )
+      );
+
+   host_behav #(.nCores(`NTILES))
+   host
+     (
+      .*,
+      .req_valid    ( host_req_valid   ),
+      .req_ready    ( host_req_ready   ),
+      .req_id       ( host_req_id      ),
+      .req          ( host_req_data    ),
+      .resp_valid   ( host_resp_valid  ),
+      .resp_ready   ( host_resp_ready  ),
+      .resp_id      ( host_resp_id     ),
+      .resp         ( host_resp_data   )
+      );
+
+ `endif // !`ifdef FPGA_FULL
+
 `elsif SIMULATION
 
    assign clk = clk_p;
@@ -690,20 +729,6 @@ module chip_top
       .*,
       .s ( mem_io_nasti  ),
       .m ( ram_nasti     )
-      );
-
-   host_behav #(.nCores(`NTILES))
-   host
-     (
-      .*,
-      .req_valid    ( host_req_valid   ),
-      .req_ready    ( host_req_ready   ),
-      .req_id       ( host_req_id      ),
-      .req          ( host_req_data    ),
-      .resp_valid   ( host_resp_valid  ),
-      .resp_ready   ( host_resp_ready  ),
-      .resp_id      ( host_resp_id     ),
-      .resp         ( host_resp_data   )
       );
 
    nasti_ram_behav

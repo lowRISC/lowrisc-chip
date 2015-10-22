@@ -1,33 +1,28 @@
+// See LICENSE for license details.
+
 #include <verilated.h>
 #include <verilated_vcd_c.h>
 #include "Vchip_top.h"
-#include "veri_top.h"
+#include "globals.h"
 #include "dpi_ram_behav.h"
 #include "dpi_host_behav.h"
 #include <string>
 #include <vector>
 #include <iostream>
-#include <cstdlib>
 
 using std::string;
 using std::vector;
 
 Vchip_top *top;
-
-vluint64_t main_time = 0;
-vluint64_t max_time = 0;
-
-unsigned int exit_delay = 0;
-unsigned int exit_code = 0;
+uint64_t max_time = 0;
 
 double sc_time_stamp() { return main_time; }
 
 int main(int argc, char** argv) {
   Verilated::commandArgs(argc, argv);
 
-  memory_controller = new MemoryController(4);
-  axi_mem_writer = new AXIMemWriter;
-  axi_mem_reader = new AXIMemReader;
+  // initialize memory model
+  memory_model_init();
 
   // handle arguements
   bool vcd_enable = false;
@@ -63,7 +58,7 @@ int main(int argc, char** argv) {
     vcd->open(vcd_name.c_str());
   }
   
-  while(!Verilated::gotFinish() && 
+  while(!Verilated::gotFinish() && (!exit_code || exit_delay > 1) &&
         (max_time == 0 || main_time < max_time) &&
         (exit_delay != 1)
         ) {
@@ -96,9 +91,7 @@ int main(int argc, char** argv) {
   if(vcd_enable) vcd->close();
 
   delete top;
-  delete memory_controller;
-  delete axi_mem_writer;
-  delete axi_mem_reader;
+  memory_model_close();
 
   return exit_code;
 }
