@@ -745,6 +745,20 @@ module chip_top
       .nasti         ( ram_nasti        )
       );
 
+   host_behav #(.nCores(`NTILES))
+   host
+     (
+      .*,
+      .req_valid    ( host_req_valid   ),
+      .req_ready    ( host_req_ready   ),
+      .req_id       ( host_req_id      ),
+      .req          ( host_req_data    ),
+      .resp_valid   ( host_resp_valid  ),
+      .resp_ready   ( host_resp_ready  ),
+      .resp_id      ( host_resp_id     ),
+      .resp         ( host_resp_data   )
+      );
+
 `endif
 
 endmodule // chip_top
