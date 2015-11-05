@@ -61,13 +61,13 @@ tb_top = chip_top
 veri_flags = \
 	-DVERILATOR_GCC \
 	+incdir+$(generated_dir) \
-	+incdir+$(base_dir)/vsrc \
+	+incdir+$(base_dir)/src/main/verilog \
 	--top-module $(tb_top) \
 	--unroll-count 256 \
 	--trace \
 	-Wno-lint -Wno-style -Wno-STMTDLY \
 	-CFLAGS "-std=c++11" \
-	-CFLAGS "-I$(base_dir)/csrc/common -I$(base_dir)/csrc/veri" \
+	-CFLAGS "-I$(base_dir)/src/test/cxx/common -I$(base_dir)/src/test/cxx/veri" \
 	--exe \
 	--Mdir $(sim_dir)/verilator
 
@@ -75,10 +75,10 @@ veri_flags = \
 veri_opt_flags = -O3 -CFLAGS "-O1"
 
 veri_vsrcs = \
-	$(base_dir)/vsrc/chip_top.sv \
+	$(base_dir)/src/main/verilog/chip_top.sv \
 	$(generated_dir)/$(MODEL).$(CONFIG).v \
-	$(base_dir)/vsrc/nasti_ram_behav.sv \
-	$(base_dir)/vsrc/host_behav.sv \
+	$(base_dir)/src/test/verilog/nasti_ram_behav.sv \
+	$(base_dir)/src/test/verilog/host_behav.sv \
 	$(base_dir)/socip/nasti/channel.sv \
 	$(base_dir)/socip/nasti/lite_nasti_reader.sv \
 	$(base_dir)/socip/nasti/lite_nasti_writer.sv \
@@ -94,10 +94,10 @@ veri_vsrcs = \
 	$(base_dir)/socip/util/arbiter.sv \
 
 veri_csrcs = \
-	$(base_dir)/csrc/common/globals.cpp \
-	$(base_dir)/csrc/common/dpi_ram_behav.cpp \
-	$(base_dir)/csrc/common/dpi_host_behav.cpp \
-	$(base_dir)/csrc/veri/veri_top.cc \
+	$(base_dir)/src/test/cxx/common/globals.cpp \
+	$(base_dir)/src/test/cxx/common/dpi_ram_behav.cpp \
+	$(base_dir)/src/test/cxx/common/dpi_host_behav.cpp \
+	$(base_dir)/src/test/cxx/veri/veri_top.cc \
 
 #--------------------------------------------------------------------
 # Build the simulator (verilator)
@@ -163,7 +163,7 @@ asm_v_tests  += $(addprefix rv64uf-v-, $(rv64uf))
 asm_p_tests  += $(addprefix rv64si-p-, $(rv64si))
 
 asm_p_tests  += $(addprefix rv64mi-p-, $(rv64mi))
-asm_pm_tests += $(addprefix rv64mi-pm-, $(rv64mi))
+#asm_pm_tests += $(addprefix rv64mi-pm-, $(rv64mi))
 
 bmarks_tests += $(addsuffix .riscv, $(bmarks))
 
@@ -185,7 +185,7 @@ $(addprefix $(output_dir)/, $(addsuffix .hex, $(bmarks_tests))): $(output_dir)/%
 #--------------------------------------------------------------------
 # Run (verilator)
 #--------------------------------------------------------------------
-asm_tests_out = $(foreach test, $(asm_p_tests) $(asm_v_tests), $(output_dir)/$(test).verilator.out)
+asm_tests_out = $(foreach test, $(asm_p_tests) $(asm_pt_tests) $(asm_v_tests), $(output_dir)/$(test).verilator.out)
 bmarks_out = $(foreach test, $(bmarks_tests), $(output_dir)/$(test).verilator.out)
 exec_simv = $(CONFIG)-sim
 exec_simv_vcd = $(CONFIG)-sim-debug +vcd

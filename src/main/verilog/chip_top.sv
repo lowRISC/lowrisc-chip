@@ -78,6 +78,9 @@ module chip_top
    logic [$clog2(`NTILES)-1:0] host_req_id, host_resp_id;
    logic [63:0]                host_req_data, host_resp_data;
 
+   // interrupt line
+   logic [63:0]                interrupt;
+
    // the Rocket chip
    Top Rocket
      (
@@ -166,7 +169,8 @@ module chip_top
       .io_host_resp_ready            ( host_resp_ready                        ),
       .io_host_resp_valid            ( host_resp_valid                        ),
       .io_host_resp_bits_id          ( host_resp_id                           ),
-      .io_host_resp_bits_data        ( host_resp_data                         )
+      .io_host_resp_bits_data        ( host_resp_data                         ),
+      .io_interrupt                  ( interrupt                              )
       );
 
    // the memory contoller
@@ -233,6 +237,8 @@ module chip_top
               .m3(ios_dmm3), .m4(ios_dmm4), .m5(ios_dmm5), .m6(ios_dmm6), .m7(ios_dmm7));
 
    // Xilinx UART IP
+   logic                       uart_irq;
+
    axi_uart16550_0 uart_i
      (
       .s_axi_aclk      ( clk                    ),
@@ -254,6 +260,7 @@ module chip_top
       .s_axi_wready    ( io_nasti_uart.w_ready  ),
       .s_axi_wstrb     ( io_nasti_uart.w_strb   ),
       .s_axi_wvalid    ( io_nasti_uart.w_valid  ),
+      .ip2intc_irpt    ( uart_irq               ),
       .freeze          ( 1'b0                   ),
       .rin             ( 1'b1                   ),
       .dcdn            ( 1'b1                   ),
@@ -265,6 +272,8 @@ module chip_top
       );
 
    // Xilinx SPI IP
+   logic                       spi_irq;
+
    axi_quad_spi_0 spi_i
      (
       .ext_spi_clk     ( clk                   ),
@@ -299,7 +308,7 @@ module chip_top
       .ss_i            ( spi_cs_i              ),
       .ss_o            ( spi_cs_o              ),
       .ss_t            ( spi_cs_t              ),
-      .ip2intc_irpt    (                       )  // polling for now
+      .ip2intc_irpt    ( spi_irq               )  // polling for now
       );
 
    // tri-state gate to protect SPI IOs
@@ -314,6 +323,9 @@ module chip_top
 
    assign spi_cs = !spi_cs_t ? spi_cs_o : 1'bz;
    assign spi_cs_i = 1'b1;;     // always in master mode
+
+   // interrupt
+   assign interrupt = {62'b0, spi_irq, uart_irq};
 
    // nasti-lite to nasti bridge for io_nasti_mem
    nasti_channel
@@ -414,19 +426,52 @@ module chip_top
    logic [BRAM_ADDR_WIDTH-1:0] ram_addr;
    logic [MEM_DATA_WIDTH-1:0] ram_wrdata, ram_rddata;
 
-   axi_bram_ctrl_top #(.ADDR_WIDTH(BRAM_ADDR_WIDTH), .DATA_WIDTH(MEM_DATA_WIDTH))
-   BramCtl
+   axi_bram_ctrl_0 BramCtl
      (
-      .clk          ( clk            ),
-      .rstn         ( rstn           ),
-      .nasti        ( mem_nasti_bram ),
-      .ram_rst      ( ram_rst        ),
-      .ram_clk      ( ram_clk        ),
-      .ram_en       ( ram_en         ),
-      .ram_addr     ( ram_addr       ),
-      .ram_wrdata   ( ram_wrdata     ),
-      .ram_we       ( ram_we         ),
-      .ram_rddata   ( ram_rddata     )
+      .s_axi_aclk      ( clk                      ),
+      .s_axi_aresetn   ( rstn                     ),
+      .s_axi_awid      ( mem_nasti_nasti.aw_id    ),
+      .s_axi_awaddr    ( mem_nasti_nasti.aw_addr  ),
+      .s_axi_awlen     ( mem_nasti_nasti.aw_len   ),
+      .s_axi_awsize    ( mem_nasti_nasti.aw_size  ),
+      .s_axi_awburst   ( mem_nasti_nasti.aw_burst ),
+      .s_axi_awlock    ( mem_nasti_nasti.aw_lock  ),
+      .s_axi_awcache   ( mem_nasti_nasti.aw_cache ),
+      .s_axi_awprot    ( mem_nasti_nasti.aw_prot  ),
+      .s_axi_awvalid   ( mem_nasti_nasti.aw_valid ),
+      .s_axi_awready   ( mem_nasti_nasti.aw_ready ),
+      .s_axi_wdata     ( mem_nasti_nasti.w_data   ),
+      .s_axi_wstrb     ( mem_nasti_nasti.w_strb   ),
+      .s_axi_wlast     ( mem_nasti_nasti.w_last   ),
+      .s_axi_wvalid    ( mem_nasti_nasti.w_valid  ),
+      .s_axi_wready    ( mem_nasti_nasti.w_ready  ),
+      .s_axi_bid       ( mem_nasti_nasti.b_id     ),
+      .s_axi_bresp     ( mem_nasti_nasti.b_resp   ),
+      .s_axi_bvalid    ( mem_nasti_nasti.b_valid  ),
+      .s_axi_bready    ( mem_nasti_nasti.b_ready  ),
+      .s_axi_arid      ( mem_nasti_nasti.ar_id    ),
+      .s_axi_araddr    ( mem_nasti_nasti.ar_addr  ),
+      .s_axi_arlen     ( mem_nasti_nasti.ar_len   ),
+      .s_axi_arsize    ( mem_nasti_nasti.ar_size  ),
+      .s_axi_arburst   ( mem_nasti_nasti.ar_burst ),
+      .s_axi_arlock    ( mem_nasti_nasti.ar_lock  ),
+      .s_axi_arcache   ( mem_nasti_nasti.ar_cache ),
+      .s_axi_arprot    ( mem_nasti_nasti.ar_prot  ),
+      .s_axi_arvalid   ( mem_nasti_nasti.ar_valid ),
+      .s_axi_arready   ( mem_nasti_nasti.ar_ready ),
+      .s_axi_rid       ( mem_nasti_nasti.r_id     ),
+      .s_axi_rdata     ( mem_nasti_nasti.r_data   ),
+      .s_axi_rresp     ( mem_nasti_nasti.r_resp   ),
+      .s_axi_rlast     ( mem_nasti_nasti.r_last   ),
+      .s_axi_rvalid    ( mem_nasti_nasti.r_valid  ),
+      .s_axi_rready    ( mem_nasti_nasti.r_ready  ),
+      .bram_rst_a      ( ram_rst                  ),
+      .bram_clk_a      ( ram_clk                  ),
+      .bram_en_a       ( ram_en                   ),
+      .bram_we_a       ( ram_we                   ),
+      .bram_addr_a     ( ram_addr                 ),
+      .bram_wrdata_a   ( ram_wrdata               ),
+      .bram_rddata_a   ( ram_rddata               )
       );
 
    // the inferred BRAMs
@@ -660,6 +705,7 @@ module chip_top
    assign clk = clk_p;
    assign rst = rst_top;
    assign rstn = !rst_top;
+   assign interrupt = 0;
 
    nasti_channel
      #(
