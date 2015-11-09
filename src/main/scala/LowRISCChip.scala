@@ -22,6 +22,7 @@ class TopIO extends Bundle {
   val nasti       = Bundle(new NASTIMasterIO, {case BusId => "nasti"})
   val nasti_lite  = Bundle(new NASTILiteMasterIO, {case BusId => "lite"})
   val host        = new HostIO
+  val interrupt   = UInt(INPUT, params(XLen))
 }
 
 class Top extends Module with TopLevelParameters {
@@ -35,11 +36,13 @@ class Top extends Module with TopLevelParameters {
   // PCR controller
   val pcrControl = Module(new PCRControl)
   pcrControl.io.host <> io.host
+  pcrControl.io.interrupt <> io.interrupt
   pcrControl.io.pcr_req <> (tiles.map(_.io.pcr.req))
   (0 until nTiles) foreach { i =>
     tiles(i).io.soft_reset := pcrControl.io.soft_reset
     tiles(i).io.pcr.resp := pcrControl.io.pcr_resp
     tiles(i).io.pcr.update := pcrControl.io.pcr_update
+    tiles(i).io.irq := pcrControl.io.irq(i)
   }
 
   // The crossbar between tiles and L2

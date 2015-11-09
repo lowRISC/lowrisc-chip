@@ -83,7 +83,7 @@ int main(int argc, char** argv) {
     else
       main_time += 5;
 
-    if((main_time % 10) == 0 && exit_delay != 0)
+    if((main_time % 10) == 0 && exit_delay > 1)
       exit_delay--;             // postponed delay to allow VCD recording
   }
 
