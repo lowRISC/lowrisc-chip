@@ -22,6 +22,3 @@
 [submodule "junctions"]
 	path = junctions
 	url = https://github.com/lowrisc/junctions.git
-[submodule "chisel-components"]
-	path = chisel-components
-	url = https://github.com/lowrisc/chisel-components.git
