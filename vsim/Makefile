@@ -1,5 +1,10 @@
 # See LICENSE for license details.
 
+# check Verilator environment variable
+ifndef VERILATOR_ROOT
+$(error Please set environment for the Verilator simulator)
+endif
+
 #--------------------------------------------------------------------
 # global define
 #--------------------------------------------------------------------
