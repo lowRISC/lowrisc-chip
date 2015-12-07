@@ -520,7 +520,7 @@ module chip_top
    // MIG clock
    logic mig_ui_clk, mig_ui_rst, mig_ui_rstn;
    assign mig_ui_rstn = !mig_ui_rst;
-   
+
    // clock converter
    axi_clock_converter_0 clk_conv
      (
@@ -611,7 +611,7 @@ module chip_top
   `ifdef NEXYS4
    //clock generator
    logic mig_sys_clk, clk_locked;
-   clk_wiz_0 clk_gen 
+   clk_wiz_0 clk_gen
      (
       .clk_in1     ( clk_p         ), // 100 MHz onboard
       .clk_out1    ( mig_sys_clk   ), // 200 MHz
