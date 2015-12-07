@@ -7,22 +7,40 @@ module chip_top
   (
 `ifdef FPGA
  `ifdef FPGA_FULL
-   // DDRAM3
-   inout [63:0]  ddr3_dq,
-   inout [7:0]   ddr3_dqs_n,
-   inout [7:0]   ddr3_dqs_p,
-   output [13:0] ddr3_addr,
-   output [2:0]  ddr3_ba,
-   output        ddr3_ras_n,
-   output        ddr3_cas_n,
-   output        ddr3_we_n,
-   output        ddr3_reset_n,
-   output        ddr3_ck_p,
-   output        ddr3_ck_n,
-   output        ddr3_cke,
-   output        ddr3_cs_n,
-   output [7:0]  ddr3_dm,
-   output        ddr3_odt,
+   `ifdef KC705
+   // DDR3 RAM
+   inout [63:0]  ddr_dq,
+   inout [7:0]   ddr_dqs_n,
+   inout [7:0]   ddr_dqs_p,
+   output [13:0] ddr_addr,
+   output [2:0]  ddr_ba,
+   output        ddr_ras_n,
+   output        ddr_cas_n,
+   output        ddr_we_n,
+   output        ddr_reset_n,
+   output        ddr_ck_n,
+   output        ddr_ck_p,
+   output        ddr_cke,
+   output        ddr_cs_n,
+   output [7:0]  ddr_dm,
+   output        ddr_odt,
+   `elsif NEXYS4
+   // DDR2 RAM
+   inout [15:0]  ddr_dq,
+   inout [1:0]   ddr_dqs_n,
+   inout [1:0]   ddr_dqs_p,
+   output [12:0] ddr_addr,
+   output [2:0]  ddr_ba,
+   output        ddr_ras_n,
+   output        ddr_cas_n,
+   output        ddr_we_n,
+   output        ddr_ck_n,
+   output        ddr_ck_p,
+   output        ddr_cke,
+   output        ddr_cs_n,
+   output [1:0]  ddr_dm,
+   output        ddr_odt,
+   `endif
  `endif //  `ifdef FPGA_FULL
 
    // UART
@@ -500,9 +518,8 @@ module chip_top
    mem_nasti_mig();
 
    // MIG clock
-   logic mig_clk, mig_rst, mig_rstn;
-   always_ff @(posedge mig_clk)
-     mig_rstn <= !mig_rst;
+   logic mig_ui_clk, mig_ui_rst, mig_ui_rstn;
+   assign mig_ui_rstn = !mig_ui_rst;
 
    // clock converter
    axi_clock_converter_0 clk_conv
@@ -548,8 +565,8 @@ module chip_top
       .s_axi_rlast          ( mem_nasti_dram.r_last    ),
       .s_axi_rvalid         ( mem_nasti_dram.r_valid   ),
       .s_axi_rready         ( mem_nasti_dram.r_ready   ),
-      .m_axi_aclk           ( mig_clk                  ),
-      .m_axi_aresetn        ( mig_rstn                 ),
+      .m_axi_aclk           ( mig_ui_clk               ),
+      .m_axi_aresetn        ( mig_ui_rstn              ),
       .m_axi_awid           ( mem_nasti_mig.aw_id      ),
       .m_axi_awaddr         ( mem_nasti_mig.aw_addr    ),
       .m_axi_awlen          ( mem_nasti_mig.aw_len     ),
@@ -591,30 +608,63 @@ module chip_top
       .m_axi_rready         ( mem_nasti_mig.r_ready    )
       );
 
+  `ifdef NEXYS4
+   //clock generator
+   logic mig_sys_clk, clk_locked;
+   clk_wiz_0 clk_gen
+     (
+      .clk_in1     ( clk_p         ), // 100 MHz onboard
+      .clk_out1    ( mig_sys_clk   ), // 200 MHz
+      .resetn      ( rst_top       ),
+      .locked      ( clk_locked    )
+      );
+  `endif
+
    // DRAM controller
    mig_7series_0 dram_ctl
      (
+   `ifdef KC705
       .sys_clk_p            ( clk_p                  ),
       .sys_clk_n            ( clk_n                  ),
       .sys_rst              ( rst_top                ),
-      .ddr3_dq              ( ddr3_dq                ),
-      .ddr3_dqs_n           ( ddr3_dqs_n             ),
-      .ddr3_dqs_p           ( ddr3_dqs_p             ),
-      .ddr3_addr            ( ddr3_addr              ),
-      .ddr3_ba              ( ddr3_ba                ),
-      .ddr3_ras_n           ( ddr3_ras_n             ),
-      .ddr3_cas_n           ( ddr3_cas_n             ),
-      .ddr3_we_n            ( ddr3_we_n              ),
-      .ddr3_reset_n         ( ddr3_reset_n           ),
-      .ddr3_ck_p            ( ddr3_ck_p              ),
-      .ddr3_ck_n            ( ddr3_ck_n              ),
-      .ddr3_cke             ( ddr3_cke               ),
-      .ddr3_cs_n            ( ddr3_cs_n              ),
-      .ddr3_dm              ( ddr3_dm                ),
-      .ddr3_odt             ( ddr3_odt               ),
-      .ui_clk               ( mig_clk                ),
-      .ui_clk_sync_rst      ( mig_rst                ),
       .ui_addn_clk_0        ( clk                    ),
+      .ddr3_dq              ( ddr_dq                 ),
+      .ddr3_dqs_n           ( ddr_dqs_n              ),
+      .ddr3_dqs_p           ( ddr_dqs_p              ),
+      .ddr3_addr            ( ddr_addr               ),
+      .ddr3_ba              ( ddr_ba                 ),
+      .ddr3_ras_n           ( ddr_ras_n              ),
+      .ddr3_cas_n           ( ddr_cas_n              ),
+      .ddr3_we_n            ( ddr_we_n               ),
+      .ddr3_reset_n         ( ddr_reset_n            ),
+      .ddr3_ck_p            ( ddr_ck_p               ),
+      .ddr3_ck_n            ( ddr_ck_n               ),
+      .ddr3_cke             ( ddr_cke                ),
+      .ddr3_cs_n            ( ddr_cs_n               ),
+      .ddr3_dm              ( ddr_dm                 ),
+      .ddr3_odt             ( ddr_odt                ),
+   `elsif NEXYS4
+      .sys_clk_i            ( mig_sys_clk            ),
+      .sys_rst              ( clk_locked             ),
+      .ui_addn_clk_0        ( clk                    ),
+      .device_temp_i        ( 0                      ),
+      .ddr2_dq              ( ddr_dq                 ),
+      .ddr2_dqs_n           ( ddr_dqs_n              ),
+      .ddr2_dqs_p           ( ddr_dqs_p              ),
+      .ddr2_addr            ( ddr_addr               ),
+      .ddr2_ba              ( ddr_ba                 ),
+      .ddr2_ras_n           ( ddr_ras_n              ),
+      .ddr2_cas_n           ( ddr_cas_n              ),
+      .ddr2_we_n            ( ddr_we_n               ),
+      .ddr2_ck_p            ( ddr_ck_p               ),
+      .ddr2_ck_n            ( ddr_ck_n               ),
+      .ddr2_cke             ( ddr_cke                ),
+      .ddr2_cs_n            ( ddr_cs_n               ),
+      .ddr2_dm              ( ddr_dm                 ),
+      .ddr2_odt             ( ddr_odt                ),
+   `endif
+      .ui_clk               ( mig_ui_clk             ),
+      .ui_clk_sync_rst      ( mig_ui_rst             ),
       .mmcm_locked          ( rstn                   ),
       .aresetn              ( rstn                   ), // AXI reset
       .app_sr_req           ( 1'b0                   ),
