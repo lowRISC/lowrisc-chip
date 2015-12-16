@@ -1,6 +1,3 @@
-[submodule "dramsim2"]
-	path = dramsim2
-	url = https://github.com/dramninjasUMD/DRAMSim2.git
 [submodule "riscv-tools"]
 	path = riscv-tools
 	url = https://github.com/lowRISC/riscv-tools.git
@@ -10,12 +7,18 @@
 [submodule "hardfloat"]
 	path = hardfloat
 	url = https://github.com/ucb-bar/berkeley-hardfloat.git
-[submodule "fpga-zynq"]
-	path = fpga-zynq
-	url = https://github.com/lowRISC/fpga-zynq.git
+[submodule "fpga"]
+        path = fpga
+        url = https://github.com/lowRISC/lowrisc-fpga.git
 [submodule "rocket"]
 	path = rocket
 	url = https://github.com/lowrisc/rocket.git
 [submodule "uncore"]
 	path = uncore
 	url = https://github.com/lowrisc/uncore.git
+[submodule "socip"]
+	path = socip
+	url = https://github.com/lowrisc/socip.git
+[submodule "junctions"]
+	path = junctions
+	url = https://github.com/lowrisc/junctions.git
