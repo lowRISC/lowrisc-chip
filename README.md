@@ -4,11 +4,11 @@ lowRISC chip
 The root git repo for lowRISC development and FPGA
 demos.
 
-[master] status: [![master build status](https://travis-ci.org/lowrisc/lowrisc-chip.svg?branch=master)](https://travis-ci.org/lowrisc/lowrisc-chip)
+[master] status: [![master build status](https://travis-ci.org/lowRISC/lowrisc-chip.svg?branch=master)](https://travis-ci.org/lowRISC/lowrisc-chip)
 
-[update] status: [![update build status](https://travis-ci.org/lowrisc/lowrisc-chip.svg?branch=update)](https://travis-ci.org/lowrisc/lowrisc-chip)
+[update] status: [![update build status](https://travis-ci.org/lowRISC/lowrisc-chip.svg?branch=update)](https://travis-ci.org/lowRISC/lowrisc-chip)
 
-[dev] status: [![dev build status](https://travis-ci.org/lowrisc/lowrisc-chip.svg?branch=dev)](https://travis-ci.org/lowrisc/lowrisc-chip)
+[dev] status: [![dev build status](https://travis-ci.org/lowRISC/lowrisc-chip.svg?branch=dev)](https://travis-ci.org/lowRISC/lowrisc-chip)
 
 Current version: Release version 0.2 (12-2015) --- Untethered lowRISC
 
