@@ -1,0 +1,91 @@
+# Run in container-based environment
+sudo: false
+
+# Install the build requirements
+addons:
+  apt:
+   sources:
+    # For gcc-4.8
+    - ubuntu-toolchain-r-test
+   packages:
+    # Dependencies from tutorial
+    - autoconf
+    - automake
+    - autotools-dev
+    - curl
+    - libmpc-dev
+    - libmpfr-dev
+    - libgmp-dev
+    - gawk
+    - build-essential
+    - bison
+    - flex
+    - texinfo
+    - gperf
+    - libncurses5-dev
+    - libusb-1.0-0
+    - libboost-dev
+    # Need gcc-4.8
+    - gcc-4.8
+    - g++-4.8
+
+# Environment
+env:
+ global:
+  - VERILATOR_ROOT=$HOME/tools/verilator
+  - PATH=$VERILATOR_ROOT/bin:$PATH
+  - JOBS=4
+
+before_install:
+ - git submodule update --init --recursive
+
+# Execute the build
+install:
+ - source set_riscv_env.sh
+ # Build verilator
+ - mkdir -p $HOME/tools
+ - cd $HOME/tools
+ - git clone http://git.veripool.org/git/verilator
+ - cd verilator
+ - autoconf
+ - ./configure > /dev/null
+ - make -j $JOBS > /dev/null
+ # Build RISC-V cross-compilation tools
+ - cd $TOP/riscv-tools
+ - sed -i 's/JOBS=16/JOBS=$JOBS/' build.common
+ - CC=gcc-4.8 CXX=g++-4.8 ./build.sh
+ # Building the Linux GCC
+ - cd $TOP/riscv-tools/riscv-gnu-toolchain
+ - mkdir -p build
+ - cd build
+ - ../configure --prefix=$RISCV > /dev/null
+ - make -j $JOBS linux > /dev/null
+ # Build Linux
+ - cd $TOP/riscv-tools
+ - curl https://www.kernel.org/pub/linux/kernel/v3.x/linux-3.14.41.tar.xz | tar -xJ
+ - cd linux-3.14.41
+ - git init
+ - git remote add origin https://github.com/lowrisc/riscv-linux.git
+ - git fetch
+ - git checkout -f -t origin/master
+ - make ARCH=riscv defconfig 
+ - make -j $JOBS ARCH=riscv vmlinux > /dev/null
+ # Build Busybox
+ - cd $TOP/riscv-tools
+ - curl -L http://busybox.net/downloads/busybox-1.21.1.tar.bz2 | tar -xj
+ - cd busybox-1.21.1
+ - cp $TOP/riscv-tools/busybox_config .config
+ - make -j $JOBS > /dev/null
+ - $TOP/riscv-tools/make_root.sh
+
+script:
+ # Build RTL simulation
+ - cd $TOP/vsim
+ - make sim CC=gcc-4.8 CXX=g++-4.8
+ # Build RTL simulation with vcd
+ - cd $TOP/vsim
+ - make sim-debug CC=gcc-4.8 CXX=g++-4.8
+ # Run asm tests
+ # Add . to PATH so that make finds it (will be changed)
+ - export PATH=.:$PATH
+ - make run-asm-tests
