@@ -14,6 +14,7 @@ object BuildSettings extends Build {
     parallelExecution in Global := false,
     traceLevel   := 50,
     scalacOptions ++= Seq("-deprecation","-unchecked"),
+    scalacOptions ++= Seq("-Xmax-classfile-name", "72"),
     libraryDependencies ++= Seq("org.scala-lang" % "scala-reflect" % scalaVersion.value)
   )
 
