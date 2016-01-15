@@ -54,29 +54,6 @@ install:
  - cd $TOP/riscv-tools
  - sed -i 's/JOBS=16/JOBS=$JOBS/' build.common
  - CC=gcc-4.8 CXX=g++-4.8 ./build.sh
- # Building the Linux GCC
- - cd $TOP/riscv-tools/riscv-gnu-toolchain
- - mkdir -p build
- - cd build
- - ../configure --prefix=$RISCV > /dev/null
- - make -j $JOBS linux > /dev/null
- # Build Linux
- - cd $TOP/riscv-tools
- - curl https://www.kernel.org/pub/linux/kernel/v3.x/linux-3.14.41.tar.xz | tar -xJ
- - cd linux-3.14.41
- - git init
- - git remote add origin https://github.com/lowrisc/riscv-linux.git
- - git fetch
- - git checkout -f -t origin/master
- - make ARCH=riscv defconfig 
- - make -j $JOBS ARCH=riscv vmlinux > /dev/null
- # Build Busybox
- - cd $TOP/riscv-tools
- - curl -L http://busybox.net/downloads/busybox-1.21.1.tar.bz2 | tar -xj
- - cd busybox-1.21.1
- - cp $TOP/riscv-tools/busybox_config .config
- - make -j $JOBS > /dev/null
- - $TOP/riscv-tools/make_root.sh
 
 script:
  # Build RTL simulation
