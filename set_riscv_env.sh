@@ -1,9 +1,11 @@
 #!/bin/bash
 # source this file
-echo "Setting up RISC-V environment..."
-# Variables for RISC-V
+echo "Setting up lowRISC/RISC-V environment..."
+echo "Make sure you source this script at the top of lowrisc-chip."
+# Variables for lowRISC/RISC-V
 if [ "$TOP" == "" ]; then
-    echo "\$TOP is not available. So set it to the current directory $PWD."
+    echo "\$TOP is not available."
+    echo "Set \$TOP to the top of lowrisc-chip which is the current directory."
     export TOP=$PWD
 fi
 export RISCV=$TOP/riscv
