@@ -7,30 +7,31 @@ import junctions._
 import uncore._
 import rocket._
 import rocket.Util._
+import cde.{Parameters, Config}
 
-abstract trait TopLevelParameters extends UsesParameters {
-  val nTiles = params(NTiles)
-  val nBanks = params(NBanks)
-  val bankLSB = params(BankIdLSB)
+trait HasTopLevelParameters {
+  implicit val p: Parameters
+  val nTiles : Int = p(NTiles)
+  val nBanks : Int = p(NBanks)
+  val bankLSB : Int = p(BankIdLSB)
   val bankMSB = bankLSB + log2Up(nBanks) - 1
   require(isPow2(nBanks))
-  require(bankMSB < params(TLBlockAddrBits))
-  val tlDataBeats = params(TLDataBeats)
 }
 
-class TopIO extends Bundle {
-  val nasti       = Bundle(new NASTIMasterIO, {case BusId => "nasti"})
-  val nasti_lite  = Bundle(new NASTILiteMasterIO, {case BusId => "lite"})
-  val host        = new HostIO
-  val interrupt   = UInt(INPUT, params(XLen))
+class TopIO(implicit val p: Parameters) extends ParameterizedBundle()(p) with HasTopLevelParameters {
+  val nasti       = new NastiIO()(p.alterPartial({case BusId => "nasti"}))
+  val nasti_lite  = new NastiIO()(p.alterPartial({case BusId => "lite"}))
+  val host        = new HIFIO
+  val interrupt   = UInt(INPUT, p(XLen))
 }
 
-class Top extends Module with TopLevelParameters {
+class Top(topParams: Parameters) extends Module with HasTopLevelParameters {
+  implicit val p = topParams
   val io = new TopIO
 
   // Rocket Tiles
   val tiles = (0 until nTiles) map { i =>
-    Module(new RocketTile(i), {case TLId => "L1ToL2"})
+    Module(new RocketTile(i)(p.alterPartial({case TLId => "L1toL2" })))
   }
 
   // PCR controller
@@ -49,22 +50,21 @@ class Top extends Module with TopLevelParameters {
   def routeL1ToL2(addr: UInt) = if(nBanks > 1) addr(bankMSB,bankLSB) else UInt(0)
   def routeL2ToL1(id: UInt) = id
   val l2Network = Module(new TileLinkCrossbar(
-    routeL1ToL2, routeL2ToL1, tlDataBeats,
+    routeL1ToL2, routeL2ToL1,
     TileLinkDepths(2,2,2,2,2),
     TileLinkDepths(0,0,1,0,0)   //Berkeley: TODO: had EOS24 crit path on inner.release
-  ), {case TLId => "L1ToL2"})
+  )(p.alterPartial({case TLId => "L1toL2"})))
 
-  l2Network.io.clients <> (tiles.map(_.io.cached) ++ 
-                           tiles.map(_.io.uncached).map(TileLinkIOWrapper(_, params.alterPartial({case TLId => "L1ToL2"}))))
+  l2Network.io.clients <> (tiles.map(_.io.cached).flatten ++ tiles.map(_.io.uncached).flatten.map(TileLinkIOWrapper(_)))
 
   // L2 Banks
   val banks = (0 until nBanks) map { _ =>
-    Module(new L2HellaCacheBank, {
+    Module(new L2HellaCacheBank()(p.alterPartial({
       case CacheName => "L2Bank"
       case InnerTLId => "L1ToL2"
       case OuterTLId => "L2ToTC"
       case TLId => "L1ToL2"   // dummy
-    })
+    })))
   }
 
   l2Network.io.managers <> banks.map(_.innerTL)
@@ -74,34 +74,33 @@ class Top extends Module with TopLevelParameters {
   // the network between L2 and tag cache
   def routeL2ToTC(addr: UInt) = UInt(0)
   def routeTCToL2(id: UInt) = id
-  val tcNetwork = Module(new TileLinkCrossbar(routeL2ToTC, routeTCToL2, tlDataBeats), {case TLId => "L2ToTC"})
+  val tcNetwork = Module(new TileLinkCrossbar(routeL2ToTC, routeTCToL2)(p.alterPartial({case TLId => "L2toTC" })))
 
   tcNetwork.io.clients <> banks.map(_.outerTL)
 
   // tag cache
   //val tc = Module(new TagCache, {case TLId => "L2ToTC"; case CacheName => "TagCache"})
   // currently a TileLink to NASTI converter
-  val conv = Module(new NASTIMasterIOTileLinkIOConverter, {case BusId => "nasti"; case TLId => "L2ToTC"})
-  val nastiPipe = Module(new NASTIPipe, {case BusId => "nasti"})
-  val nastiAddrConv = Module(new NASTIAddrConv, {case BusId => "nasti"})
+  val conv = Module(new NastiMasterIOTileLinkIOConverter()(p.alterPartial({case BusId => "nasti"; case TLId => "L2toTC"})))
+  val nastiPipe = Module(new NastiPipe()(p.alterPartial({case BusId => "nasti"})))
+  val nastiAddrConv = Module(new NastiAddrConv()(p.alterPartial({case BusId => "nasti"})))
 
   //tcNetwork.io.managers <> Vec(tc.io.inner)
   tcNetwork.io.managers <> Vec(conv.io.tl)
-  conv.io.nasti <> nastiPipe.io.slave
-  nastiPipe.io.master <> nastiAddrConv.io.slave
-  nastiAddrConv.io.master <> io.nasti
+  conv.io.nasti <> nastiPipe.io.master
+  nastiPipe.io.slave <> nastiAddrConv.io.master
+  nastiAddrConv.io.slave <> io.nasti
   nastiAddrConv.io.update := pcrControl.io.pcr_update
 
   // IO space
   def routeL1ToIO(addr: UInt) = UInt(0)
   def routeIOToL1(id: UInt) = id
-  val ioNetwork = Module(new SharedTileLinkCrossbar(routeL1ToIO, routeIOToL1),
-    {case TLId => "L1ToIO"})
+  val ioNetwork = Module(new SharedTileLinkCrossbar(routeL1ToIO, routeIOToL1)(p.alterPartial({case TLId => "L1toIO"})))
 
-  ioNetwork.io.clients <> tiles.map(_.io.io).map(TileLinkIOWrapper(_, params.alterPartial({case TLId => "L1ToIO"})))
+  ioNetwork.io.clients <> tiles.map(_.io.io).map(TileLinkIOWrapper(_))
 
   // IO TileLink to NASTI-Lite bridge
-  val nasti_lite = Module(new NASTILiteMasterIOTileLinkIOConverter, {case BusId => "lite"; case TLId => "L1ToIO"})
+  val nasti_lite = Module(new NastiLiteMasterIOTileLinkIOConverter()(p.alterPartial({case BusId => "lite"; case TLId => "L1toIO"})))
 
   ioNetwork.io.managers <> Vec(nasti_lite.io.tl)
   nasti_lite.io.nasti <> io.nasti_lite
@@ -109,65 +108,71 @@ class Top extends Module with TopLevelParameters {
 
 object Run {
   def main(args: Array[String]): Unit = {
-    val gen = () => Class.forName("lowrisc_chip."+args(0)).newInstance().asInstanceOf[Module]
-    chiselMain.run(args.drop(1), () => new Top())
+    val config = Class.forName("lowrisc_chip."+args(1)).newInstance.asInstanceOf[Config]
+    val paramsFromConfig: Parameters = Parameters.root(config.toInstance)
+    val gen = () =>
+      Class.forName("lowrisc_chip."+args(0))
+        .getConstructor(classOf[cde.Parameters])
+        .newInstance(paramsFromConfig)
+        .asInstanceOf[Module]
+    chiselMain.run(args.drop(2), gen)
   }
 }
 
 
 // a NASTI pipeline stage sometimes used to break critical path
-class NASTIPipe extends NASTIModule {
+class NastiPipe(implicit p: Parameters) extends NastiModule()(p) {
   val io = new Bundle {
-    val slave = new NASTISlaveIO
-    val master = new NASTIMasterIO
+    val slave = new NastiIO
+    val master = (new NastiIO).flip
   }
 
-  val awPipe = Module(new DecoupledPipe(io.slave.aw.bits))
-  awPipe.io.pi <> io.slave.aw
-  awPipe.io.po <> io.master.aw
+  val awPipe = Module(new DecoupledPipe(io.master.aw.bits))
+  awPipe.io.po <> io.slave.aw
+  awPipe.io.pi <> io.master.aw
 
-  val wPipe = Module(new DecoupledPipe(io.slave.w.bits))
-  wPipe.io.pi <> io.slave.w
-  wPipe.io.po <> io.master.w
+  val wPipe = Module(new DecoupledPipe(io.master.w.bits))
+  wPipe.io.po <> io.slave.w
+  wPipe.io.pi <> io.master.w
 
   val bPipe = Module(new DecoupledPipe(io.slave.b.bits))
-  bPipe.io.pi <> io.master.b
-  bPipe.io.po <> io.slave.b
+  bPipe.io.po <> io.master.b
+  bPipe.io.pi <> io.slave.b
 
-  val arPipe = Module(new DecoupledPipe(io.slave.ar.bits))
-  arPipe.io.pi <> io.slave.ar
-  arPipe.io.po <> io.master.ar
+  val arPipe = Module(new DecoupledPipe(io.master.ar.bits))
+  arPipe.io.po <> io.slave.ar
+  arPipe.io.pi <> io.master.ar
 
-  val rPipe = Module(new DecoupledPipe(io.master.r.bits))
-  rPipe.io.pi <> io.master.r
-  rPipe.io.po <> io.slave.r
+  val rPipe = Module(new DecoupledPipe(io.slave.r.bits))
+  rPipe.io.po <> io.master.r
+  rPipe.io.pi <> io.slave.r
 
 }
 
 // convert core address to phy address
-class NASTIAddrConv extends NASTIModule {
+class NastiAddrConv(implicit p: Parameters) extends NastiModule()(p) {
   val io = new Bundle {
-    val slave = new NASTISlaveIO
-    val master = new NASTIMasterIO
+    val slave = new NastiIO
+    val master = (new NastiIO).flip
     val update = new ValidIO(new PCRUpdate).flip
   }
 
   val conv = Module(new MemSpaceConsts(2))
   conv.io.update <> io.update
 
-  io.master.aw.valid := io.slave.aw.valid
-  io.master.aw.bits := io.slave.aw.bits
-  conv.io.core_addr(0) := io.slave.aw.bits.addr
-  io.master.aw.bits.addr := conv.io.phy_addr(0)
-  io.slave.aw.ready := io.master.aw.ready
+  io.slave.aw.valid := io.master.aw.valid
+  io.slave.aw.bits := io.master.aw.bits
+  conv.io.core_addr(0) := io.master.aw.bits.addr
+  io.slave.aw.bits.addr := conv.io.phy_addr(0)
+  io.master.aw.ready := io.slave.aw.ready
 
-  io.master.ar.valid := io.slave.ar.valid
-  io.master.ar.bits := io.slave.ar.bits
-  conv.io.core_addr(1) := io.slave.ar.bits.addr
-  io.master.ar.bits.addr := conv.io.phy_addr(1)
-  io.slave.ar.ready := io.master.ar.ready
+  io.slave.ar.valid := io.master.ar.valid
+  io.slave.ar.bits := io.master.ar.bits
+  conv.io.core_addr(1) := io.master.ar.bits.addr
+  io.slave.ar.bits.addr := conv.io.phy_addr(1)
+  io.master.ar.ready := io.slave.ar.ready
 
-  io.master.w <> io.slave.w
-  io.slave.b <> io.master.b
-  io.slave.r <> io.master.r
+  io.slave.w <> io.master.w
+  io.master.b <> io.slave.b
+  io.master.r <> io.slave.r
 }

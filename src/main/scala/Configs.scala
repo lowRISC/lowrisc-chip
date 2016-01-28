@@ -8,8 +8,9 @@ import uncore._
 import rocket._
 import rocket.Util._
 import scala.math.max
+import cde.{Parameters, Config, Dump, Knob}
 
-class DefaultConfig extends ChiselConfig (
+class DefaultConfig extends Config (
   topDefinitions = { (pname,site,here) => 
     type PF = PartialFunction[Any,Any]
     def findBy(sname:Any):Any = here[PF](site[Any](sname))(pname)
@@ -46,8 +47,7 @@ class DefaultConfig extends ChiselConfig (
       case NTLBEntries => findBy(CacheName)
 
       //L1 I$
-      case NBTBEntries => 62
-      case NRAS => 2
+      case BtbKey => BtbParameters()
       case "L1I" => {
         case NSets => Knob("L1I_SETS")
         case NWays => Knob("L1I_WAYS")
@@ -72,11 +72,11 @@ class DefaultConfig extends ChiselConfig (
       //L2 $
       case NAcquireTransactors => Knob("L2_XACTORS")
       case NSecondaryMisses => 4
-      case L2DirectoryRepresentation => new FullRepresentation(site(TLNCachingClients))
+      case L2DirectoryRepresentation => new FullRepresentation(site(NTiles))
       case "L2Bank" => {
         case NSets => Knob("L2_SETS")
         case NWays => Knob("L2_WAYS")
-        case RowBits => site(TLDataBits)
+        case RowBits => site(TLKey(site(TLId))).dataBitsPerBeat
       }: PF
 
       // Tag Cache
@@ -93,8 +93,6 @@ class DefaultConfig extends ChiselConfig (
       
       //Tile Constants
       case NTiles => Knob("NTILES")
-      case NDCachePorts => 2
-      case NPTWPorts => 2
       case BuildRoCC => None
 
       //Rocket Core Constants
@@ -105,82 +103,70 @@ class DefaultConfig extends ChiselConfig (
       case FastLoadByte => false
       case FastMulDiv => true
       case XLen => 64
-      case NMultXpr => 32
-      case BuildFPU => true
+      case UseFPU => true
       case FDivSqrt => true
       case SFMALatency => 2
       case DFMALatency => 3
       case CoreInstBits => 32
-      case CoreDCacheReqTagBits => 7 + log2Up(site(NDCachePorts))
       case NCustomMRWCSRs => 0
       
       //Uncore Paramters
       case NBanks => Knob("NBANKS")
       case BankIdLSB => 0
-      case LNHeaderBits => log2Up(max(site(TLNManagers),site(TLNClients)))
-      case TLBlockAddrBits => site(PAddrBits) - site(CacheBlockOffsetBits)
-      case TLNClients => site(TLNCachingClients) + site(TLNCachelessClients)
-      case TLDataBits => site(CacheBlockBytes)*8/site(TLDataBeats)
-      case TLWriteMaskBits => (site(TLDataBits) - 1) / 8 + 1
-      case TLDataBeats => 4
-      case TLNetworkIsOrderedP2P => false
-      case TLNManagers => findBy(TLId)
-      case TLNCachingClients => findBy(TLId)
-      case TLNCachelessClients => findBy(TLId)
-      case TLCoherencePolicy => findBy(TLId)
-      case TLMaxManagerXacts => findBy(TLId)
-      case TLMaxClientXacts => findBy(TLId)
-      case TLMaxClientsPerPort => findBy(TLId)
+      case LNHeaderBits => log2Up(max(site(TLKey(site(TLId))).nManagers,
+        site(TLKey(site(TLId))).nCachingClients + site(TLKey(site(TLId))).nCachelessClients))
       
-      case "L1ToL2" => {
-        case TLNManagers => site(NBanks)
-        case TLNCachingClients => site(NTiles)
-        case TLNCachelessClients => site(NTiles)
-        case TLCoherencePolicy => new MESICoherence(site(L2DirectoryRepresentation)) 
-        case TLMaxManagerXacts => site(NAcquireTransactors) + 2  // ?? + 2
-        case TLMaxClientXacts => site(NMSHRs)
-        case TLMaxClientsPerPort => 1
-      }:PF
-      case "L2ToTC" => {
-        case TLNManagers => 1
-        case TLNCachingClients => site(NBanks)
-        case TLNCachelessClients => 0
-        case TLCoherencePolicy => new MEICoherence(new NullRepresentation(site(NBanks)))
-        case TLMaxManagerXacts => site(TCTransactors) // ?? + ?
-        case TLMaxClientXacts => 1
-        case TLMaxClientsPerPort => site(NAcquireTransactors) + 2
-      }:PF
-      case "L1ToIO" => {
-        case TLNManagers => 1
-        case TLNCachingClients => 0
-        case TLNCachelessClients => site(NTiles)
-        case TLCoherencePolicy => new MICoherence(new NullRepresentation(site(NTiles)))
-        case TLMaxManagerXacts => site(NTiles)
-        case TLMaxClientXacts => 1
-        case TLMaxClientsPerPort => 1
-      }:PF
+      case TLKey("L1toL2") =>
+        TileLinkParameters(
+          coherencePolicy = new MESICoherence(site(L2DirectoryRepresentation)),
+          nManagers = site(NBanks),
+          nCachingClients = site(NTiles),
+          nCachelessClients = site(NTiles),
+          maxClientXacts = site(NMSHRs),
+          maxClientsPerPort = 1,
+          maxManagerXacts = site(NAcquireTransactors) + 2,
+          dataBits = site(CacheBlockBytes)*8
+        )
+      case TLKey("L2toTC") =>
+        TileLinkParameters(
+          coherencePolicy = new MEICoherence(new NullRepresentation(site(NBanks))),
+          nManagers = 1,
+          nCachingClients = site(NBanks),
+          nCachelessClients = 0,
+          maxClientXacts = 1,
+          maxClientsPerPort = site(NAcquireTransactors) + 2,
+          maxManagerXacts = 1,
+          dataBits = site(CacheBlockBytes)*8
+        )
+      case TLKey("L1toIO") =>
+        TileLinkParameters(
+          coherencePolicy = new MICoherence(new NullRepresentation(site(NTiles))),
+          nManagers = 1,
+          nCachingClients = 0,
+          nCachelessClients = site(NTiles),
+          maxClientXacts = 1,
+          maxClientsPerPort = 1,
+          maxManagerXacts = site(NTiles),
+          dataBits = site(XLen)
+        )
 
       // NASTI BUS parameters
-      case NASTIDataBits => findBy(BusId)
-      case NASTIAddrBits => findBy(BusId)
-      case NASTIIdBits   => findBy(BusId)
-      case NASTIUserBits => findBy(BusId)
-      case NASTIHandlers => findBy(BusId)
-
-      case "nasti" => {
-        case NASTIDataBits => site(MIFDataBits)
-        case NASTIAddrBits => site(PAddrBits)
-        case NASTIIdBits => site(MIFTagBits)
-        case NASTIUserBits => 1
-        case NASTIHandlers => 4
-      }:PF
-      case "lite" => {
-        case NASTIDataBits => site(IODataBits)
-        case NASTIAddrBits => site(PAddrBits)
-        case NASTIIdBits => site(MIFTagBits) // IO may write to memory, avoid X in simulation
-        case NASTIUserBits => 1
-        case NASTIHandlers => 1
-      }:PF
+      case NastiKey("nasti") =>
+        NastiParameters(
+          dataBits = site(MIFDataBits),
+          addrBits = site(PAddrBits),
+          idBits = site(MIFTagBits),
+          userBits = 1,
+          handlers = 4
+        )
+      case NastiKey("lite") =>
+        NastiParameters(
+          dataBits = site(IODataBits),
+          addrBits = site(PAddrBits),
+          idBits = site(MIFTagBits),
+          userBits = 1,
+          handlers = 1
+        )
       
     }},
   knobValues = {

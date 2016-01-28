@@ -5,6 +5,7 @@ package lowrisc_chip
 import Chisel._
 import uncore._
 import scala.math.max
+import cde.{Parameters, Field}
 
 /** A general Network for TileLink communication
   * @param clientRouting     the client side routing algorithm
@@ -17,10 +18,10 @@ class TileLinkNetwork(
   managerRouting: UInt => UInt,
   clientFIFODepth: TileLinkDepths,
   managerFIFODepth: TileLinkDepths
-) extends TLModule {
+) (implicit p: Parameters) extends TLModule()(p) {
 
-  val nClients = params(TLNClients)
-  val nManagers = params(TLNManagers)
+  val nClients = tlNClients
+  val nManagers = tlNManagers
 
   val io = new Bundle {
     val clients = Vec.fill(nClients){new ClientTileLinkIO}.flip
@@ -46,11 +47,7 @@ class TileLinkNetwork(
       q.io.client
     }
   }
-}
 
-/** The common channel hook up functions
-  */
-trait CrossbarHooker extends TLModule {
   // define connection helpers
   def P2LHookup[T <: Data](phy: DecoupledIO[PhysicalNetworkIO[T]], log: DecoupledIO[LogicalNetworkIO[T]]) =
   {
@@ -70,19 +67,18 @@ trait CrossbarHooker extends TLModule {
   }
 }
 
-
 /** A corssbar based TileLink network
   * @param count The number of beats for Acquire, Release and Grant messages
   */
 class TileLinkCrossbar(
   clientRouting: UInt => UInt,
   managerRouting: UInt => UInt,
-  count: Int = 1,
   clientFIFODepth: TileLinkDepths = TileLinkDepths(0,0,0,0,0),
   managerFIFODepth: TileLinkDepths = TileLinkDepths(0,0,0,0,0)
-) extends TileLinkNetwork(clientRouting, managerRouting, clientFIFODepth, managerFIFODepth)
-    with CrossbarHooker
+) (implicit p: Parameters) extends TileLinkNetwork(clientRouting, managerRouting, clientFIFODepth, managerFIFODepth)(p)
 {
+
+  val count = tlDataBeats
 
   // parallel crossbars for different message types
   val acqCB = Module(new BasicCrossbar(nClients, nManagers, new Acquire, count, Some((a: PhysicalNetworkIO[Acquire]) => a.payload.hasMultibeatData())))
@@ -120,12 +116,12 @@ class TileLinkCrossbar(
 class SharedTileLinkCrossbar(
   clientRouting: UInt => UInt,
   managerRouting: UInt => UInt,
-  count: Int = 1,
   clientFIFODepth: TileLinkDepths = TileLinkDepths(0,0,0,0,0),
   managerFIFODepth: TileLinkDepths = TileLinkDepths(0,0,0,0,0)
-) extends TileLinkNetwork(clientRouting, managerRouting, clientFIFODepth, managerFIFODepth)
-    with CrossbarHooker
+) (implicit p: Parameters) extends TileLinkNetwork(clientRouting, managerRouting, clientFIFODepth, managerFIFODepth)(p)
 {
+
+  val count = tlDataBeats
 
   // shared crossbars
   val c2mCB = Module(new BasicCrossbar(nClients, nManagers, new SuperChannel, count, Some((a: PhysicalNetworkIO[SuperChannel]) => a.payload.hasMultibeatData())))

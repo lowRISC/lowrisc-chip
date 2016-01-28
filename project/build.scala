@@ -19,10 +19,11 @@ object BuildSettings extends Build {
   )
 
   lazy val chisel       = Project("chisel", file("chisel"))
-  lazy val hardfloat    = Project("hardfloat", file("hardfloat")).dependsOn(chisel)
-  lazy val junctions    = Project("bridge", file("junctions")).dependsOn(chisel)
-  lazy val uncore       = Project("uncore", file("uncore")).dependsOn(junctions)
+  lazy val cde          = Project("cde", file("context-dependent-environments")).dependsOn(chisel)
+  lazy val hardfloat    = Project("hardfloat", file("hardfloat")).dependsOn(chisel, cde)
+  lazy val junctions    = Project("bridge", file("junctions")).dependsOn(chisel, cde)
+  lazy val uncore       = Project("uncore", file("uncore")).dependsOn(junctions, cde)
   lazy val rocket       = Project("rocket", file("rocket")).dependsOn(hardfloat, uncore)
-  lazy val lowrisc_chip = Project("lowrisc_chip", file(".")).dependsOn(chisel, hardfloat, uncore, rocket, junctions)
+  lazy val lowrisc_chip = Project("lowrisc_chip", file(".")).dependsOn(chisel, cde, hardfloat, uncore, rocket, junctions)
 
 }
