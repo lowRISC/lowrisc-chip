@@ -22,3 +22,6 @@
 [submodule "junctions"]
 	path = junctions
 	url = https://github.com/lowrisc/junctions.git
+[submodule "opensocdebug/hardware"]
+	path = opensocdebug/hardware
+	url = https://github.com/opensocdebug/hardware
