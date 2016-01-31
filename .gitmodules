@@ -25,3 +25,6 @@
 [submodule "opensocdebug/hardware"]
 	path = opensocdebug/hardware
 	url = https://github.com/opensocdebug/hardware
+[submodule "opensocdebug/glip"]
+	path = opensocdebug/glip
+	url = https://github.com/tum-lis/glip
