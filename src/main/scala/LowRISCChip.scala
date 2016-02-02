@@ -3,19 +3,19 @@
 package lowrisc_chip
 
 import Chisel._
+import cde.{Parameters, ParameterDump, Field, Config}
 import junctions._
 import uncore._
 import rocket._
 import rocket.Util._
-import cde.{Parameters, Config}
 
 trait HasTopLevelParameters {
   implicit val p: Parameters
-  val nTiles : Int = p(NTiles)
-  val nBanks : Int = p(NBanks)
-  val bankLSB : Int = p(BankIdLSB)
-  val bankMSB = bankLSB + log2Up(nBanks) - 1
-  require(isPow2(nBanks))
+  lazy val nTiles : Int = p(NTiles)
+  lazy val nBanks : Int = p(NBanks)
+  lazy val bankLSB : Int = p(BankIdLSB)
+  lazy val bankMSB = bankLSB + log2Up(nBanks) - 1
+  //require(isPow2(nBanks))
 }
 
 class TopIO(implicit val p: Parameters) extends ParameterizedBundle()(p) with HasTopLevelParameters {
@@ -108,14 +108,29 @@ class Top(topParams: Parameters) extends Module with HasTopLevelParameters {
 
 object Run {
   def main(args: Array[String]): Unit = {
-    val config = Class.forName("lowrisc_chip."+args(1)).newInstance.asInstanceOf[Config]
-    val paramsFromConfig: Parameters = Parameters.root(config.toInstance)
+    val projectName = "lowrisc_chip"
+    val topModuleName = args(0)
+    val configClassName = args(1)
+
+    val config = try {
+      Class.forName(s"$projectName.$configClassName").newInstance.asInstanceOf[Config]
+    } catch {
+      case e: java.lang.ClassNotFoundException =>
+        throwException(s"Could not find the cde.Config subclass you asked for " +
+          "(i.e. \"$configClassName\"), did you misspell it?", e)
+    }
+
+    val world = config.toInstance
+    val paramsFromConfig: Parameters = Parameters.root(world)
+
     val gen = () =>
-      Class.forName("lowrisc_chip."+args(0))
+      Class.forName(s"$projectName.$topModuleName")
         .getConstructor(classOf[cde.Parameters])
         .newInstance(paramsFromConfig)
         .asInstanceOf[Module]
+
     chiselMain.run(args.drop(2), gen)
+    //chiselMain.run(args.drop(2), () => new Top(paramsFromConfig))
   }
 }
 

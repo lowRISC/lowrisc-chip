@@ -20,7 +20,7 @@ class DefaultConfig extends Config (
       case CacheBlockOffsetBits => log2Up(here(CacheBlockBytes))
       case PAddrBits => Dump("PADDR_WIDTH", 32)
       case PgIdxBits => 12
-      case PgLevels => 3 // Sv39
+      case PgLevels => if (site(XLen) == 64) 3 /* Sv39 */ else 2 /* Sv32 */
       case PgLevelBits => site(PgIdxBits) - log2Up(site(XLen)/8)
       case VPNBits => site(PgLevels) * site(PgLevelBits)
       case PPNBits => site(PAddrBits) - site(PgIdxBits)
@@ -68,6 +68,7 @@ class DefaultConfig extends Config (
       }:PF
       case ECCCode => None
       case Replacer => () => new RandomReplacement(site(NWays))
+      case AmoAluOperandBits => site(XLen)
 
       //L2 $
       case NAcquireTransactors => Knob("L2_XACTORS")
@@ -93,7 +94,11 @@ class DefaultConfig extends Config (
       
       //Tile Constants
       case NTiles => Knob("NTILES")
-      case BuildRoCC => None
+      case BuildRoCC => Nil
+      case RoccNMemChannels => site(BuildRoCC).map(_.nMemChannels).foldLeft(0)(_ + _)
+      case NDmaTransactors => 3
+      case NDmaClients => site(NTiles)
+      case NDmaXactsPerClient => site(NDmaTransactors)
 
       //Rocket Core Constants
       case FetchWidth => 1

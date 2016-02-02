@@ -11,7 +11,7 @@ PROJECT := lowrisc_chip
 CXX := g++
 CXXFLAGS := -O1
 
-SBT := java -Xmx2048M -Xss8M -XX:MaxPermSize=128M -jar sbt-launch.jar
+SBT := java -Xmx2048M -Xss8M -XX:MaxPermSize=256M -jar sbt-launch.jar
 SHELL := /bin/bash
 
 CHISEL_ARGS := $(MODEL) $(CONFIG) --W0W --minimumCompatibility 3.0.0 --backend $(BACKEND) --compileInitializationUnoptimized --targetDir $(generated_dir)

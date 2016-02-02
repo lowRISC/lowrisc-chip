@@ -24,27 +24,27 @@ class TileLinkNetwork(
   val nManagers = tlNManagers
 
   val io = new Bundle {
-    val clients = Vec.fill(nClients){new ClientTileLinkIO}.flip
-    val managers = Vec.fill(nManagers){new ManagerTileLinkIO}.flip
+    val clients = Vec(nClients, new ClientTileLinkIO).flip
+    val managers = Vec(nManagers, new ManagerTileLinkIO).flip
   }
 
   val clients = io.clients.zipWithIndex.map {
     case (c, i) => {
-      val p = Module(new ClientTileLinkNetworkPort(i, clientRouting))
-      val q = Module(new TileLinkEnqueuer(clientFIFODepth))
-      p.io.client <> c
-      q.io.client <> p.io.network
-      q.io.manager
+      val port = Module(new ClientTileLinkNetworkPort(i, clientRouting))
+      val qs = Module(new TileLinkEnqueuer(clientFIFODepth))
+      port.io.client <> c
+      qs.io.client <> port.io.network
+      qs.io.manager
     }
   }
 
   val managers = io.managers.zipWithIndex.map {
     case (m, i) => {
-      val p = Module(new ManagerTileLinkNetworkPort(i, managerRouting))
-      val q = Module(new TileLinkEnqueuer(managerFIFODepth))
-      m <> p.io.manager
-      p.io.network <> q.io.manager
-      q.io.client
+      val port = Module(new ManagerTileLinkNetworkPort(i, managerRouting))
+      val qs = Module(new TileLinkEnqueuer(managerFIFODepth))
+      port.io.manager <> m
+      port.io.network <> qs.io.manager
+      qs.io.client
     }
   }
 
