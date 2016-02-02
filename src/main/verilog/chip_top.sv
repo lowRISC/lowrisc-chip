@@ -257,36 +257,28 @@ module chip_top
    // Xilinx UART IP
    logic                       uart_irq;
 
-   axi_uart16550_0 uart_i
+   debug_system u_debug_system
      (
-      .s_axi_aclk      ( clk                    ),
-      .s_axi_aresetn   ( rstn                   ),
-      .s_axi_araddr    ( io_nasti_uart.ar_addr  ),
-      .s_axi_arready   ( io_nasti_uart.ar_ready ),
-      .s_axi_arvalid   ( io_nasti_uart.ar_valid ),
-      .s_axi_awaddr    ( io_nasti_uart.aw_addr  ),
-      .s_axi_awready   ( io_nasti_uart.aw_ready ),
-      .s_axi_awvalid   ( io_nasti_uart.aw_valid ),
-      .s_axi_bready    ( io_nasti_uart.b_ready  ),
-      .s_axi_bresp     ( io_nasti_uart.b_resp   ),
-      .s_axi_bvalid    ( io_nasti_uart.b_valid  ),
-      .s_axi_rdata     ( io_nasti_uart.r_data   ),
-      .s_axi_rready    ( io_nasti_uart.r_ready  ),
-      .s_axi_rresp     ( io_nasti_uart.r_resp   ),
-      .s_axi_rvalid    ( io_nasti_uart.r_valid  ),
-      .s_axi_wdata     ( io_nasti_uart.w_data   ),
-      .s_axi_wready    ( io_nasti_uart.w_ready  ),
-      .s_axi_wstrb     ( io_nasti_uart.w_strb   ),
-      .s_axi_wvalid    ( io_nasti_uart.w_valid  ),
-      .ip2intc_irpt    ( uart_irq               ),
-      .freeze          ( 1'b0                   ),
-      .rin             ( 1'b1                   ),
-      .dcdn            ( 1'b1                   ),
-      .dsrn            ( 1'b1                   ),
-      .sin             ( rxd                    ),
-      .sout            ( txd                    ),
-      .ctsn            ( 1'b1                   ),
-      .rtsn            (                        )
+      .*,
+      .uart_irq        (uart_irq),
+      .uart_ar_addr    ( io_nasti_uart.ar_addr  ),
+      .uart_ar_ready   ( io_nasti_uart.ar_ready ),
+      .uart_ar_valid   ( io_nasti_uart.ar_valid ),
+      .uart_aw_addr    ( io_nasti_uart.aw_addr  ),
+      .uart_aw_ready   ( io_nasti_uart.aw_ready ),
+      .uart_aw_valid   ( io_nasti_uart.aw_valid ),
+      .uart_b_ready    ( io_nasti_uart.b_ready  ),
+      .uart_b_resp     ( io_nasti_uart.b_resp   ),
+      .uart_b_valid    ( io_nasti_uart.b_valid  ),
+      .uart_r_data     ( io_nasti_uart.r_data   ),
+      .uart_r_ready    ( io_nasti_uart.r_ready  ),
+      .uart_r_resp     ( io_nasti_uart.r_resp   ),
+      .uart_r_valid    ( io_nasti_uart.r_valid  ),
+      .uart_w_data     ( io_nasti_uart.w_data   ),
+      .uart_w_ready    ( io_nasti_uart.w_ready  ),
+      .uart_w_valid    ( io_nasti_uart.w_valid  ),
+      .rx              ( rxd                    ),
+      .tx              ( txd                    )
       );
 
    // Xilinx SPI IP
