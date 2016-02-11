@@ -52,7 +52,7 @@ module chip_top
    inout         spi_sclk,
    inout         spi_mosi,
    inout         spi_miso,
-`endif
+`endif //  `ifdef FPGA
 
    // clock and reset
    input         clk_p,
