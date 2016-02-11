@@ -132,7 +132,13 @@ class DefaultConfig extends ChiselConfig (
       case TLMaxManagerXacts => findBy(TLId)
       case TLMaxClientXacts => findBy(TLId)
       case TLMaxClientsPerPort => findBy(TLId)
+
+      // debug
+      // disabled in Default
       case UseDebug => false
+      case MamIODataWidth => 16
+      case MamIOAddrWidth => 39
+      case MamIOBusrtMax => 256
       
       case "L1ToL2" => {
         case TLNManagers => site(NBanks)

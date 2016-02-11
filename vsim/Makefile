@@ -34,7 +34,7 @@ include $(base_dir)/Makefrag
 
 sim_vsrcs = \
 	$(generated_dir)/$(MODEL).$(CONFIG).v \
-	$(generated_dir)/consts.$(CONFIG).vh \
+	$(generated_dir)/consts.vh \
 
 #--------------------------------------------------------------------
 # Build Verilog
@@ -42,21 +42,10 @@ sim_vsrcs = \
 
 verilog: $(sim_vsrcs)
 
-$(generated_dir)/$(MODEL).$(CONFIG).v: $(chisel_srcs)
-	cd $(base_dir) && mkdir -p $(generated_dir) && $(SBT) "run $(CHISEL_ARGS) --configDump --noInlineMem"
-	cd $(generated_dir) && \
-	if [ -a $(MODEL).$(CONFIG).conf ]; then \
-	  $(mem_gen) $(generated_dir)/$(MODEL).$(CONFIG).conf >> $(generated_dir)/$(MODEL).$(CONFIG).v; \
-	fi && \
-	sed -i.bak "s|fwrite(32'h80000002, |display(|" $(generated_dir)/$(MODEL).$(CONFIG).v
-
-$(generated_dir)/consts.$(CONFIG).vh: $(generated_dir)/$(MODEL).$(CONFIG).v
-	echo "\`ifndef CONST_VH" > $@
-	echo "\`define CONST_VH" >> $@
-	sed -r 's/\(([A-Za-z0-9_]+),([A-Za-z0-9_]+)\)/`define \1 \2/' $(patsubst %.v,%.prm,$<) >> $@
-	echo "\`endif // CONST_VH" >> $@
+include $(base_dir)/Makefrag-build
 
 .PHONY: verilog
+junk += $(generated_dir)
 
 #--------------------------------------------------------------------
 # Build rules (verilator)
@@ -129,7 +118,7 @@ all: sim
 
 .PHONY: verilator sim
 
-junk += $(generated_dir) $(CONFIG)-sim verilator
+junk += $(CONFIG)-sim verilator
 
 #--------------------------------------------------------------------
 # Test cases
