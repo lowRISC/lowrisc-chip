@@ -7,6 +7,7 @@ import junctions._
 import uncore._
 import rocket._
 import rocket.Util._
+import open_soc_debug._
 
 abstract trait TopLevelParameters extends UsesParameters {
   val nTiles = params(NTiles)
@@ -23,6 +24,7 @@ class TopIO extends Bundle {
   val nasti_lite  = Bundle(new NASTILiteMasterIO, {case BusId => "lite"})
   val host        = new HostIO
   val interrupt   = UInt(INPUT, params(XLen))
+  val debug       = (new MamIO).flip
 }
 
 class Top extends Module with TopLevelParameters {
@@ -54,8 +56,16 @@ class Top extends Module with TopLevelParameters {
     TileLinkDepths(0,0,1,0,0)   //Berkeley: TODO: had EOS24 crit path on inner.release
   ), {case TLId => "L1ToL2"})
 
-  l2Network.io.clients <> (tiles.map(_.io.cached) ++ 
-                           tiles.map(_.io.uncached).map(TileLinkIOWrapper(_, params.alterPartial({case TLId => "L1ToL2"}))))
+  if(params(UseDebug)) {
+    val debug_mam = Module(new TileLinkIOMamIOConverter(), {case TLId => "L1ToL2"})
+    debug_mam.io.mam <> io.debug
+    l2Network.io.clients <> (tiles.map(_.io.cached) ++
+      (tiles.map(_.io.uncached).map(TileLinkIOWrapper(_, params.alterPartial({case TLId => "L1ToL2"}))) :+
+        TileLinkIOWrapper(debug_mam.io.tl, params.alterPartial({case TLId => "L1ToL2"}))))
+  } else {
+    l2Network.io.clients <> (tiles.map(_.io.cached) ++
+      tiles.map(_.io.uncached).map(TileLinkIOWrapper(_, params.alterPartial({case TLId => "L1ToL2"}))))
+  }
 
   // L2 Banks
   val banks = (0 until nBanks) map { _ =>

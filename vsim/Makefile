@@ -19,7 +19,8 @@ sim_dir = .
 output_dir = $(sim_dir)/output
 
 BACKEND ?= lowrisc_chip.LowRISCBackend
-CONFIG ?= DefaultConfig
+#CONFIG ?= DefaultConfig
+CONFIG ?= DebugConfig
 
 include $(base_dir)/Makefrag
 

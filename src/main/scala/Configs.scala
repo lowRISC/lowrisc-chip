@@ -4,6 +4,7 @@ package lowrisc_chip
 
 import Chisel._
 import junctions._
+import open_soc_debug._
 import uncore._
 import rocket._
 import rocket.Util._
@@ -131,11 +132,12 @@ class DefaultConfig extends ChiselConfig (
       case TLMaxManagerXacts => findBy(TLId)
       case TLMaxClientXacts => findBy(TLId)
       case TLMaxClientsPerPort => findBy(TLId)
+      case UseDebug => false
       
       case "L1ToL2" => {
         case TLNManagers => site(NBanks)
         case TLNCachingClients => site(NTiles)
-        case TLNCachelessClients => site(NTiles)
+        case TLNCachelessClients => if(site(UseDebug)) site(NTiles) + 1 else site(NTiles)
         case TLCoherencePolicy => new MESICoherence(site(L2DirectoryRepresentation)) 
         case TLMaxManagerXacts => site(NAcquireTransactors) + 2  // ?? + 2
         case TLMaxClientXacts => site(NMSHRs)
@@ -206,8 +208,21 @@ class DefaultConfig extends ChiselConfig (
 )
 
 
-class FPGAConfig extends ChiselConfig (
+class WithFPGATagCacheConfig extends ChiselConfig (
   knobValues = {
     case "TC_BASE_ADDR" => 15 << 24 // 0xf00,0000
   }
 )
+
+class WithDebugConfig extends ChiselConfig (
+  (pname,site,here) => pname match {
+    case UseDebug => true
+    case MamIODataWidth => Dump("MAM_IO_DWIDTH", 16)
+    case MamIOAddrWidth => Dump("MAM_IO_AWIDTH", 39)
+    case MamIOBusrtMax => Dump("MAM_MAX_BURST", 256)
+  }
+)
+
+class FPGATagCacheConfig extends ChiselConfig(new WithFPGATagCacheConfig ++ new DefaultConfig)
+
+class DebugConfig extends ChiselConfig(new WithDebugConfig ++ new DefaultConfig)
