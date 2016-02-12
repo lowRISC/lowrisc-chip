@@ -24,7 +24,8 @@ class TopIO extends Bundle {
   val nasti_lite  = Bundle(new NASTILiteMasterIO, {case BusId => "lite"})
   val host        = new HostIO
   val interrupt   = UInt(INPUT, params(XLen))
-  val debug       = (new MamIO).flip
+  val debug_mam   = (new MamIO).flip
+  val debug_rst   = Bool(INPUT)
 }
 
 class Top extends Module with TopLevelParameters {
@@ -41,7 +42,7 @@ class Top extends Module with TopLevelParameters {
   pcrControl.io.interrupt <> io.interrupt
   pcrControl.io.pcr_req <> (tiles.map(_.io.pcr.req))
   (0 until nTiles) foreach { i =>
-    tiles(i).io.soft_reset := pcrControl.io.soft_reset
+    tiles(i).io.soft_reset := pcrControl.io.soft_reset || io.debug_rst
     tiles(i).io.pcr.resp := pcrControl.io.pcr_resp
     tiles(i).io.pcr.update := pcrControl.io.pcr_update
     tiles(i).io.irq := pcrControl.io.irq(i)
@@ -58,7 +59,7 @@ class Top extends Module with TopLevelParameters {
 
   if(params(UseDebug)) {
     val debug_mam = Module(new TileLinkIOMamIOConverter(), {case TLId => "L1ToL2"})
-    debug_mam.io.mam <> io.debug
+    debug_mam.io.mam <> io.debug_mam
     l2Network.io.clients <> (tiles.map(_.io.cached) ++
       (tiles.map(_.io.uncached).map(TileLinkIOWrapper(_, params.alterPartial({case TLId => "L1ToL2"}))) :+
         TileLinkIOWrapper(debug_mam.io.tl, params.alterPartial({case TLId => "L1ToL2"}))))
