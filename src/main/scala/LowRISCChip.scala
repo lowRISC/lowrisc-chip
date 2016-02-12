@@ -55,15 +55,16 @@ class Top(topParams: Parameters) extends Module with HasTopLevelParameters {
     TileLinkDepths(0,0,1,0,0)   //Berkeley: TODO: had EOS24 crit path on inner.release
   )(p.alterPartial({case TLId => "L1toL2"})))
 
-  l2Network.io.clients <> (tiles.map(_.io.cached).flatten ++ tiles.map(_.io.uncached).flatten.map(TileLinkIOWrapper(_)))
+  l2Network.io.clients <> (tiles.map(_.io.cached).flatten ++ tiles.map(_.io.uncached).flatten.map(TileLinkIOWrapper(_)(p.alterPartial({case TLId => "L1toL2"}))))
 
   // L2 Banks
-  val banks = (0 until nBanks) map { _ =>
+  val banks = (0 until nBanks) map { i =>
     Module(new L2HellaCacheBank()(p.alterPartial({
+      case CacheId => i
       case CacheName => "L2Bank"
-      case InnerTLId => "L1ToL2"
-      case OuterTLId => "L2ToTC"
-      case TLId => "L1ToL2"   // dummy
+      case InnerTLId => "L1toL2"
+      case OuterTLId => "L2toTC"
+      case TLId => "L1toL2"   // dummy
     })))
   }
 
@@ -97,7 +98,7 @@ class Top(topParams: Parameters) extends Module with HasTopLevelParameters {
   def routeIOToL1(id: UInt) = id
   val ioNetwork = Module(new SharedTileLinkCrossbar(routeL1ToIO, routeIOToL1)(p.alterPartial({case TLId => "L1toIO"})))
 
-  ioNetwork.io.clients <> tiles.map(_.io.io).map(TileLinkIOWrapper(_))
+  ioNetwork.io.clients <> tiles.map(_.io.io).map(TileLinkIOWrapper(_)(p.alterPartial({case TLId => "L1toIO" })))
 
   // IO TileLink to NASTI-Lite bridge
   val nasti_lite = Module(new NastiLiteMasterIOTileLinkIOConverter()(p.alterPartial({case BusId => "lite"; case TLId => "L1toIO"})))

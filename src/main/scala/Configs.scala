@@ -45,6 +45,8 @@ class DefaultConfig extends Config (
       case NWays => findBy(CacheName)
       case RowBits => findBy(CacheName)
       case NTLBEntries => findBy(CacheName)
+      case CacheIdBits => findBy(CacheName)
+      case ICacheBufferWays => Knob("L1I_BUFFER_WAYS")
 
       //L1 I$
       case BtbKey => BtbParameters()
@@ -53,6 +55,7 @@ class DefaultConfig extends Config (
         case NWays => Knob("L1I_WAYS")
         case RowBits => 4*site(CoreInstBits)
         case NTLBEntries => 8
+        case CacheIdBits => 0
       }:PF
 
       //L1 D$
@@ -63,21 +66,25 @@ class DefaultConfig extends Config (
       case "L1D" => {
         case NSets => Knob("L1D_SETS")
         case NWays => Knob("L1D_WAYS")
-        case RowBits => 2*site(XLen)
+        case RowBits => 2*site(CoreDataBits)
         case NTLBEntries => 8
+        case CacheIdBits => 0
       }:PF
       case ECCCode => None
       case Replacer => () => new RandomReplacement(site(NWays))
       case AmoAluOperandBits => site(XLen)
+      case WordBits => site(XLen)
 
       //L2 $
       case NAcquireTransactors => Knob("L2_XACTORS")
       case NSecondaryMisses => 4
       case L2DirectoryRepresentation => new FullRepresentation(site(NTiles))
+      case L2Replacer => () => new SeqRandom(site(NWays))
       case "L2Bank" => {
         case NSets => Knob("L2_SETS")
         case NWays => Knob("L2_WAYS")
         case RowBits => site(TLKey(site(TLId))).dataBitsPerBeat
+        case CacheIdBits => log2Ceil(site(NBanks))
       }: PF
 
       // Tag Cache
@@ -90,6 +97,7 @@ class DefaultConfig extends Config (
         case NSets => Knob("TC_SETS")
         case NWays => Knob("TC_WAYS")
         case RowBits => site(TCBlockTags) * site(TagBits)
+        case CacheIdBits => 0
       }: PF
       
       //Tile Constants
@@ -113,13 +121,15 @@ class DefaultConfig extends Config (
       case SFMALatency => 2
       case DFMALatency => 3
       case CoreInstBits => 32
+      case CoreDataBits => site(XLen)
       case NCustomMRWCSRs => 0
       
       //Uncore Paramters
       case NBanks => Knob("NBANKS")
       case BankIdLSB => 0
+      case LNEndpoints => site(TLKey(site(TLId))).nManagers + site(TLKey(site(TLId))).nClients
       case LNHeaderBits => log2Up(max(site(TLKey(site(TLId))).nManagers,
-        site(TLKey(site(TLId))).nCachingClients + site(TLKey(site(TLId))).nCachelessClients))
+        site(TLKey(site(TLId))).nClients))
       
       case TLKey("L1toL2") =>
         TileLinkParameters(
@@ -152,7 +162,8 @@ class DefaultConfig extends Config (
           maxClientXacts = 1,
           maxClientsPerPort = 1,
           maxManagerXacts = site(NTiles),
-          dataBits = site(XLen)
+          dataBits = site(XLen),
+          dataBeats = 1
         )
 
       // NASTI BUS parameters
@@ -173,6 +184,7 @@ class DefaultConfig extends Config (
           handlers = 1
         )
       
+      case MMIOBase => Dump("MEM_SIZE", BigInt(1 << 30)) // 1 GB
     }},
   knobValues = {
     case "NTILES" => Dump("NTILES", 1)
@@ -184,6 +196,7 @@ class DefaultConfig extends Config (
 
     case "L1I_SETS" => 64
     case "L1I_WAYS" => 4
+    case "L1I_BUFFER_WAYS" => false
 
     case "L2_XACTORS" => 2
     case "L2_SETS" => 256 // 1024
