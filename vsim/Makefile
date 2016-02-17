@@ -48,8 +48,6 @@ $(generated_dir)/$(MODEL).$(CONFIG).v: $(chisel_srcs)
 	  $(mem_gen) $(generated_dir)/$(MODEL).$(CONFIG).conf >> $(generated_dir)/$(MODEL).$(CONFIG).v; \
 	fi
 
-#	sed -i.bak "s|fwrite(32'h80000002, |display(|" $(generated_dir)/$(MODEL).$(CONFIG).v
-
 $(generated_dir)/consts.$(CONFIG).vh: $(generated_dir)/$(MODEL).$(CONFIG).v
 	echo "\`ifndef CONST_VH" > $@
 	echo "\`define CONST_VH" >> $@
@@ -71,7 +69,7 @@ veri_flags = \
 	--top-module $(tb_top) \
 	--unroll-count 256 \
 	--trace \
-	-Wno-lint -Wno-style -Wno-STMTDLY \
+	-Wno-lint -Wno-style -Wno-STMTDLY -Wno-ASSIGNIN \
 	-CFLAGS "-std=c++11" \
 	-CFLAGS "-I$(base_dir)/src/test/cxx/common -I$(base_dir)/src/test/cxx/veri" \
 	--exe \

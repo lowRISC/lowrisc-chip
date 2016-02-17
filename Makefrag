@@ -25,7 +25,7 @@ chisel_srcs = $(addprefix $(base_dir)/,$(addsuffix /$(src_path)/*.scala,$(defaul
 disasm := >
 which_disasm := $(shell which spike-dasm 2> /dev/null)
 ifneq ($(which_disasm),)
-	disasm := | $(which_disasm) $(DISASM_EXTENSION) >
+	disasm := 2>&1 | $(which_disasm) $(DISASM_EXTENSION) >
 endif
 
 # define time-out for different types of simulation
