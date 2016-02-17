@@ -107,8 +107,8 @@ class Top(topParams: Parameters) extends Module with HasTopLevelParameters {
   nasti_lite.io.nasti <> io.nasti_lite
 }
 
-object Run {
-  def main(args: Array[String]): Unit = {
+object Run extends App with FileSystemUtilities {
+//  def main(args: Array[String]): Unit = {
     val projectName = "lowrisc_chip"
     val topModuleName = args(0)
     val configClassName = args(1)
@@ -131,8 +131,11 @@ object Run {
         .asInstanceOf[Module]
 
     chiselMain.run(args.drop(2), gen)
-    //chiselMain.run(args.drop(2), () => new Top(paramsFromConfig))
-  }
+
+    val pdFile = createOutputFile(s"$topModuleName.$configClassName.prm")
+    pdFile.write(ParameterDump.getDump)
+    pdFile.close
+//  }
 }
 
 
