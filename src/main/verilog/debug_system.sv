@@ -1,47 +1,71 @@
 import dii_package::dii_flit;
 
 module debug_system
+  #(parameter MAM_DATA_WIDTH = 512,
+    parameter MAM_BASE_ADDR = 0,
+    parameter MAM_MEM_SIZE = 1024*1024*1024,
+    parameter MAM_ADDR_WIDTH = 64)
   (
-   input         clk, rstn,
+   input                        clk, rstn,
    
-   input         rx,
-   output        tx,
+   input                        rx,
+   output                       tx,
 
-   output        uart_irq,
+   output                       uart_irq,
 
-   input [12:0]  uart_ar_addr,
-   input         uart_ar_valid,
-   output        uart_ar_ready,
+   input [12:0]                 uart_ar_addr,
+   input                        uart_ar_valid,
+   output                       uart_ar_ready,
     
-   output [1:0]  uart_r_resp,
-   output [31:0] uart_r_data,
-   output        uart_r_valid,
-   input         uart_r_ready,
+   output [1:0]                 uart_r_resp,
+   output [31:0]                uart_r_data,
+   output                       uart_r_valid,
+   input                        uart_r_ready,
 
-   input [12:0]  uart_aw_addr,
-   input         uart_aw_valid,
-   output        uart_aw_ready,
+   input [12:0]                 uart_aw_addr,
+   input                        uart_aw_valid,
+   output                       uart_aw_ready,
 
-   input [31:0]  uart_w_data,
-   input         uart_w_valid,
-   output        uart_w_ready,
+   input [31:0]                 uart_w_data,
+   input                        uart_w_valid,
+   output                       uart_w_ready,
 
-   output [1:0]  uart_b_resp,
-   output        uart_b_valid,
-   input         uart_b_ready
+   output [1:0]                 uart_b_resp,
+   output                       uart_b_valid,
+   input                        uart_b_ready,
+
+   output                       sys_rst, cpu_rst,
+
+
+   output                       req_valid,
+   input                        req_ready,
+   output                       req_rw,
+   output [MAM_ADDR_WIDTH-1:0]  req_addr,
+   output                       req_burst,
+   output [15:0]                req_size,
+
+   output                       write_valid,
+   input                        write_ready,
+   output [MAM_DATA_WIDTH-1:0]  write_data,
+   logic [MAM_DATA_WIDTH/8-1:0] write_strb, 
+   
+   input                        read_valid,
+   input [MAM_DATA_WIDTH-1:0]   read_data,
+   output                       read_ready
    );
 
+   localparam MAX_PKT_LEN = 16;
+   
    logic  rst;
    assign rst = ~rstn;
 
    assign uart_irq = 0;
    
-   glip_channel #(.WIDTH(16)) fifo_in (.*);
-   glip_channel #(.WIDTH(16)) fifo_out (.*);
-
+   glip_channel #(.WIDTH(16)) fifo_in (.*); 
+   glip_channel #(.WIDTH(16)) fifo_out (.*);    
+   
    logic  logic_rst, com_rst;
-   logic  sys_rst, cpu_rst;
-
+   
 `ifdef FPGA 
    logic [15:0]  fifo_out_data;
    logic         fifo_out_valid;
@@ -88,7 +112,7 @@ module debug_system
           .fifo_out  (fifo_out));
 `endif
 
-      localparam N = 3;
+   localparam N = 4;
 
    dii_flit [N-1:0] dii_out; logic [N-1:0] dii_out_ready;
    dii_flit [N-1:0] dii_in; logic [N-1:0] dii_in_ready;   
@@ -104,7 +128,8 @@ module debug_system
            );
    
    osd_scm
-     #(.SYSTEMID(16'hdead), .NUM_MOD(N-1))
+     #(.SYSTEMID(16'hdead), .NUM_MOD(N-1),
+       .MAX_PKT_LEN(MAX_PKT_LEN))
    u_scm(.*,
          .id (10'd1),
          .debug_in        ( dii_in[1]        ),
@@ -141,6 +166,19 @@ module debug_system
              .debug_out       ( dii_out[2]       ),
              .debug_out_ready ( dii_out_ready[2] )
              );
+
+   osd_mam
+     #(.DATA_WIDTH(MAM_DATA_WIDTH), .BASE_ADDR(MAM_BASE_ADDR),
+       .MEM_SIZE(MAM_MEM_SIZE), .ADDR_WIDTH(MAM_ADDR_WIDTH),
+       .MAX_PKT_LEN(MAX_PKT_LEN))
+   u_mam (.*,
+          .id (10'd3),
+          .debug_in        ( dii_in[3]        ),
+          .debug_in_ready  ( dii_in_ready[3]  ),
+          .debug_out       ( dii_out[3]       ),
+          .debug_out_ready ( dii_out_ready[3] )
+          );
+   
    
    debug_ring
      #(.PORTS(N))

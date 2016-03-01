@@ -65,6 +65,26 @@ module chip_top
    // internal clock and reset signals
    logic  clk, rst, rstn;
 
+   // Debug control over the soft resets
+   logic  sys_rst, cpu_rst;
+
+   // Debug MAM signals
+   logic         req_valid;
+   logic         req_ready;
+   logic         req_rw;
+   logic [63:0]  req_addr;
+   logic         req_burst;
+   logic [15:0]  req_size;
+
+   logic         write_valid;
+   logic [511:0] write_data;
+   logic [63:0]  write_strb;
+   logic         write_ready;
+
+   logic         read_valid;
+   logic [511:0] read_data;
+   logic         read_ready;
+
    // the NASTI bus for cached memory
    nasti_channel
      #(

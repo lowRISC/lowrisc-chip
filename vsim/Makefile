@@ -82,6 +82,7 @@ veri_vsrcs = \
 	$(base_dir)/opensocdebug/hardware/modules/dem_uart/verilog/osd_dem_uart.sv \
 	$(base_dir)/opensocdebug/hardware/modules/dem_uart/verilog/osd_dem_uart_16550.sv \
 	$(base_dir)/opensocdebug/hardware/modules/dem_uart/verilog/osd_dem_uart_nasti.sv \
+	$(base_dir)/opensocdebug/hardware/modules/mam/verilog/osd_mam.sv \
 	$(base_dir)/opensocdebug/hardware/blocks/buffer/verilog/dii_buffer.sv \
 	$(base_dir)/opensocdebug/hardware/interconnect/verilog/debug_ring.sv \
 	$(base_dir)/opensocdebug/hardware/interconnect/verilog/ring_router.sv \
