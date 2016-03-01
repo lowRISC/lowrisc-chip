@@ -36,6 +36,13 @@ module debug_system
 
    assign uart_irq = 0;
    
+   glip_channel #(.WIDTH(16)) fifo_in (.*);
+   glip_channel #(.WIDTH(16)) fifo_out (.*);
+
+   logic  logic_rst, com_rst;
+   logic  sys_rst, cpu_rst;
+
+`ifdef FPGA 
    logic [15:0]  fifo_out_data;
    logic         fifo_out_valid;
    logic         fifo_out_ready;
@@ -43,8 +50,13 @@ module debug_system
    logic         fifo_in_valid;
    logic         fifo_in_ready;
 
-   logic  logic_rst, com_rst;
- 
+   assign fifo_in.data = fifo_in_data;
+   assign fifo_in.valid = fifo_in_valid;
+   assign fifo_in_ready = fifo_in.ready;
+   assign fifo_out_data = fifo_out.data;
+   assign fifo_out_valid = fifo_out.valid;
+   assign fifo_out.ready = fifo_out_ready;
+
    glip_uart_toplevel
      #(.WIDTH(16), .BAUD(1000000), .FREQ(25000000))
    u_glip(.clk_io    (clk),
@@ -63,21 +75,23 @@ module debug_system
           .uart_cts (0),
           .uart_rts (),
           .error ());
+`else // !`ifdef FPGA
+   
+   glip_tcp_toplevel
+     #(.WIDTH(16))
+   u_glip(.clk_io    (clk),
+          .clk_logic (clk),
+          .rst       (rst),
+          .logic_rst (logic_rst),
+          .com_rst   (com_rst),
+          .fifo_in   (fifo_in),
+          .fifo_out  (fifo_out));
+`endif
 
       localparam N = 3;
 
    dii_flit [N-1:0] dii_out; logic [N-1:0] dii_out_ready;
    dii_flit [N-1:0] dii_in; logic [N-1:0] dii_in_ready;   
-   
-   glip_channel #(.WIDTH(16)) fifo_in (.*); 
-   glip_channel #(.WIDTH(16)) fifo_out (.*); 
-   
-   assign fifo_in.data = fifo_in_data;
-   assign fifo_in.valid = fifo_in_valid;
-   assign fifo_in_ready = fifo_in.ready;
-   assign fifo_out_data = fifo_out.data;
-   assign fifo_out_valid = fifo_out.valid;
-   assign fifo_out.ready = fifo_out_ready;
    
    osd_him
      u_him(.*,

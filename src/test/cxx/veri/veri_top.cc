@@ -10,6 +10,8 @@
 #include <vector>
 #include <iostream>
 
+#include "GlipTcp.h"
+
 using std::string;
 using std::vector;
 
@@ -57,11 +59,17 @@ int main(int argc, char** argv) {
     top->trace(vcd, 99);
     vcd->open(vcd_name.c_str());
   }
+
+  top->eval();
   
+  GlipTcp &glip = GlipTcp::instance();
   while(!Verilated::gotFinish() && (!exit_code || exit_delay > 1) &&
         (max_time == 0 || main_time < max_time) &&
         (exit_delay != 1)
         ) {
+    if (!glip.connected()) {
+      continue;
+    }
     if(main_time > 133) {
       top->rst_top = 0;
     }

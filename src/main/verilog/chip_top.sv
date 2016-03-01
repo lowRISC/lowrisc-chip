@@ -847,6 +847,30 @@ module chip_top
       .resp         ( host_resp_data   )
       );
 
+   debug_system u_debug_system
+     (
+      .*,
+      .uart_irq        (uart_irq),
+      .uart_ar_addr    (0),
+      .uart_ar_ready   (),
+      .uart_ar_valid   (0),
+      .uart_aw_addr    (0),
+      .uart_aw_ready   (),
+      .uart_aw_valid   (0),
+      .uart_b_ready    (1),
+      .uart_b_resp     (),
+      .uart_b_valid    (),
+      .uart_r_data     (),
+      .uart_r_ready    (1),
+      .uart_r_resp     (),
+      .uart_r_valid    (),
+      .uart_w_data     (),
+      .uart_w_ready    (),
+      .uart_w_valid    (0),
+      .rx              (),
+      .tx              ()
+      );
+
 `endif
 
 endmodule // chip_top
