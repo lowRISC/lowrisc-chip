@@ -224,7 +224,7 @@ class WithDebugConfig extends ChiselConfig (
   (pname,site,here) => pname match {
     case UseDebug => Dump("ENABLE_DEBUG", true)
     case MamIODataWidth => Dump("MAM_IO_DWIDTH", 16)
-    case MamIOAddrWidth => Dump("MAM_IO_AWIDTH", 39)
+    case MamIOAddrWidth => site(PAddrBits)
     case MamIOBusrtMax => Dump("MAM_MAX_BURST", 256)
   }
 )

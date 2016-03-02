@@ -52,6 +52,10 @@ module chip_top
    inout         spi_sclk,
    inout         spi_mosi,
    inout         spi_miso,
+`elsif ENABLE_DEBUG
+   // UART
+   input         rxd,
+   output        txd,
 `endif //  `ifdef FPGA
 
    // clock and reset
@@ -69,21 +73,19 @@ module chip_top
    logic  sys_rst, cpu_rst;
 
    // Debug MAM signals
-   logic         req_valid;
-   logic         req_ready;
-   logic         req_rw;
-   logic [63:0]  req_addr;
-   logic         req_burst;
-   logic [15:0]  req_size;
-
-   logic         write_valid;
-   logic [511:0] write_data;
-   logic [63:0]  write_strb;
-   logic         write_ready;
-
-   logic         read_valid;
-   logic [511:0] read_data;
-   logic         read_ready;
+   logic                              mam_req_valid;
+   logic                              mam_req_ready;
+   logic                              mam_req_rw;
+   logic [`PADDR_WIDTH-1:0]           mam_req_addr;
+   logic                              mam_req_burst;
+   logic [$clog2(`MAM_MAX_BURST)-1:0] mam_req_size;
+   logic                              mam_write_valid;
+   logic [`MAM_IO_DWIDTH-1:0]         mam_write_data;
+   logic [`MAM_IO_DWIDTH/8-1:0]       mam_write_strb;
+   logic                              mam_write_ready;
+   logic                              mam_read_valid;
+   logic [`MAM_IO_DWIDTH-1:0]         mam_read_data;
+   logic                              mam_read_ready;
 
    // the NASTI bus for cached memory
    nasti_channel
@@ -123,7 +125,7 @@ module chip_top
    Top Rocket
      (
       .clk                           ( clk                                    ),
-      .reset                         ( rst                                    ),
+      .reset                         ( sys_rst                                ),
       .io_nasti_aw_valid             ( mem_nasti.aw_valid                     ),
       .io_nasti_aw_ready             ( mem_nasti.aw_ready                     ),
       .io_nasti_aw_bits_id           ( mem_nasti_aw_id[`MEM_TAG_WIDTH-1:0]    ),
@@ -208,7 +210,21 @@ module chip_top
       .io_host_resp_valid            ( host_resp_valid                        ),
       .io_host_resp_bits_id          ( host_resp_id                           ),
       .io_host_resp_bits_data        ( host_resp_data                         ),
-      .io_interrupt                  ( interrupt                              )
+      .io_interrupt                  ( interrupt                              ),
+      .io_debug_mam_req_ready        ( mam_req_ready                          ),
+      .io_debug_mam_req_valid        ( mam_req_valid                          ),
+      .io_debug_mam_req_bits_rw      ( mam_req_rw                             ),
+      .io_debug_mam_req_bits_addr    ( mam_req_addr                           ),
+      .io_debug_mam_req_bits_burst   ( mam_req_burst                          ),
+      .io_debug_mam_req_bits_size    ( mam_req_size                           ),
+      .io_debug_mam_wdata_ready      ( mam_wdata_ready                        ),
+      .io_debug_mam_wdata_valid      ( mam_wdata_valid                        ),
+      .io_debug_mam_wdata_bits_data  ( mam_wdata_data                         ),
+      .io_debug_mam_wdata_bits_strb  ( mam_wdata_strb                         ),
+      .io_debug_mam_rdata_ready      ( mam_rdata_ready                        ),
+      .io_debug_mam_rdata_valid      ( mam_rdata_valid                        ),
+      .io_debug_mam_rdata_bits_data  ( mam_rdata_data                         ),
+      .io_debug_rst                  ( cpu_rst                                )
       );
 
    // the memory contoller
@@ -277,7 +293,13 @@ module chip_top
    // Xilinx UART IP
    logic                       uart_irq;
 
-   debug_system u_debug_system
+ `ifdef ENABLE_DEBUG
+   debug_system
+     #(
+       .MAM_DATA_WIDTH   ( `MAM_IO_DWIDTH   ),
+       .MAM_ADDR_WIDTH   ( `MAM_IO_AWIDTH   )
+       )
+   u_debug_system
      (
       .*,
       .uart_irq        (uart_irq),
@@ -298,8 +320,60 @@ module chip_top
       .uart_w_ready    ( io_nasti_uart.w_ready  ),
       .uart_w_valid    ( io_nasti_uart.w_valid  ),
       .rx              ( rxd                    ),
-      .tx              ( txd                    )
+      .tx              ( txd                    ),
+      .sys_rst         ( sys_rst                ),
+      .cpu_rst         ( cpu_rst                ),
+      .req_valid       ( mam_req_valid          ),
+      .req_ready       ( mam_req_ready          ),
+      .req_rw          ( mam_req_rw             ),
+      .req_addr        ( mam_req_addr           ),
+      .req_burst       ( mam_req_burst          ),
+      .req_size        ( mam_req_size           ),
+      .write_valid     ( mam_write_valid        ),
+      .write_ready     ( mam_write_ready        ),
+      .write_data      ( mam_write_data         ),
+      .write_strb      ( mam_write_strb         ),
+      .read_valid      ( mam_read_valid         ),
+      .read_data       ( mam_read_data          ),
+      .read_ready      ( mam_read_ready         )
       );
+ `else // !`ifdef ENABLE_DEBUG
+
+   assign sys_rst = rst;
+   assign cpu_rst = 1'b0;
+
+   axi_uart16550_0 uart_i
+     (
+      .s_axi_aclk      ( clk                    ),
+      .s_axi_aresetn   ( rstn                   ),
+      .s_axi_araddr    ( io_nasti_uart.ar_addr  ),
+      .s_axi_arready   ( io_nasti_uart.ar_ready ),
+      .s_axi_arvalid   ( io_nasti_uart.ar_valid ),
+      .s_axi_awaddr    ( io_nasti_uart.aw_addr  ),
+      .s_axi_awready   ( io_nasti_uart.aw_ready ),
+      .s_axi_awvalid   ( io_nasti_uart.aw_valid ),
+      .s_axi_bready    ( io_nasti_uart.b_ready  ),
+      .s_axi_bresp     ( io_nasti_uart.b_resp   ),
+      .s_axi_bvalid    ( io_nasti_uart.b_valid  ),
+      .s_axi_rdata     ( io_nasti_uart.r_data   ),
+      .s_axi_rready    ( io_nasti_uart.r_ready  ),
+      .s_axi_rresp     ( io_nasti_uart.r_resp   ),
+      .s_axi_rvalid    ( io_nasti_uart.r_valid  ),
+      .s_axi_wdata     ( io_nasti_uart.w_data   ),
+      .s_axi_wready    ( io_nasti_uart.w_ready  ),
+      .s_axi_wstrb     ( io_nasti_uart.w_strb   ),
+      .s_axi_wvalid    ( io_nasti_uart.w_valid  ),
+      .ip2intc_irpt    ( uart_irq               ),
+      .freeze          ( 1'b0                   ),
+      .rin             ( 1'b1                   ),
+      .dcdn            ( 1'b1                   ),
+      .dsrn            ( 1'b1                   ),
+      .sin             ( rxd                    ),
+      .sout            ( txd                    ),
+      .ctsn            ( 1'b1                   ),
+      .rtsn            (                        )
+      );
+ `endif
 
    // Xilinx SPI IP
    logic                       spi_irq;
@@ -769,22 +843,115 @@ module chip_top
    assign rstn = !rst_top;
    assign interrupt = 0;
 
-   nasti_channel
-     #(
-       .ID_WIDTH    ( `MEM_TAG_WIDTH + 1 ),
-       .ADDR_WIDTH  ( `PADDR_WIDTH       ),
-       .DATA_WIDTH  ( `MEM_DAT_WIDTH     ))
-   io_nasti_full(), ram_nasti();
-
+   // output of the IO crossbar
    nasti_channel
      #(
        .N_PORT      ( 2                  ),
        .ID_WIDTH    ( `MEM_TAG_WIDTH + 1 ),
        .ADDR_WIDTH  ( `PADDR_WIDTH       ),
-       .DATA_WIDTH  ( `MEM_DAT_WIDTH     ))
-   mem_io_nasti();
+       .DATA_WIDTH  ( `IO_DAT_WIDTH      ))
+   io_nasti_cbo();
 
-   // convert nasti-lite io_nasti to full nasti io_nasti_full
+   // IO to memory channel
+   nasti_channel
+     #(
+       .ID_WIDTH    ( `MEM_TAG_WIDTH + 1 ),
+       .ADDR_WIDTH  ( `PADDR_WIDTH       ),
+       .DATA_WIDTH  ( `IO_DAT_WIDTH      ))
+   io_nasti_mem(), ram_nasti();
+
+   // IO to Debug UART
+   nasti_channel
+     #(
+       .ADDR_WIDTH  ( IO_ADDR_WIDTH      ),
+       .DATA_WIDTH  ( `IO_DAT_WIDTH      ))
+   io_nasti_uart();
+
+ `ifdef ENABLE_DEBUG
+   // debug UART
+   debug_system
+     #(
+       .MAM_DATA_WIDTH   ( `MAM_IO_DWIDTH   ),
+       .MAM_ADDR_WIDTH   ( `PADDR_WIDTH     )
+       )
+   u_debug_system
+     (
+      .*,
+      .uart_irq        (uart_irq),
+      .uart_ar_addr    ( io_nasti_uart.ar_addr  ),
+      .uart_ar_ready   ( io_nasti_uart.ar_ready ),
+      .uart_ar_valid   ( io_nasti_uart.ar_valid ),
+      .uart_aw_addr    ( io_nasti_uart.aw_addr  ),
+      .uart_aw_ready   ( io_nasti_uart.aw_ready ),
+      .uart_aw_valid   ( io_nasti_uart.aw_valid ),
+      .uart_b_ready    ( io_nasti_uart.b_ready  ),
+      .uart_b_resp     ( io_nasti_uart.b_resp   ),
+      .uart_b_valid    ( io_nasti_uart.b_valid  ),
+      .uart_r_data     ( io_nasti_uart.r_data   ),
+      .uart_r_ready    ( io_nasti_uart.r_ready  ),
+      .uart_r_resp     ( io_nasti_uart.r_resp   ),
+      .uart_r_valid    ( io_nasti_uart.r_valid  ),
+      .uart_w_data     ( io_nasti_uart.w_data   ),
+      .uart_w_ready    ( io_nasti_uart.w_ready  ),
+      .uart_w_valid    ( io_nasti_uart.w_valid  ),
+      .rx              ( rxd                    ),
+      .tx              ( txd                    ),
+      .sys_rst         ( sys_rst                ),
+      .cpu_rst         ( cpu_rst                ),
+      .req_valid       ( mam_req_valid          ),
+      .req_ready       ( mam_req_ready          ),
+      .req_rw          ( mam_req_rw             ),
+      .req_addr        ( mam_req_addr           ),
+      .req_burst       ( mam_req_burst          ),
+      .req_size        ( mam_req_size           ),
+      .write_valid     ( mam_write_valid        ),
+      .write_ready     ( mam_write_ready        ),
+      .write_data      ( mam_write_data         ),
+      .write_strb      ( mam_write_strb         ),
+      .read_valid      ( mam_read_valid         ),
+      .read_data       ( mam_read_data          ),
+      .read_ready      ( mam_read_ready         )
+      );
+
+   // the io crossbar
+   nasti_crossbar
+     #(
+       .N_INPUT    ( 1                  ),
+       .N_OUTPUT   ( 2                  ),
+       .IB_DEPTH   ( 0                  ),
+       .OB_DEPTH   ( 1                  ), // some IPs response only with data, which will cause deadlock in nasti_demux (no lock)
+       .W_MAX      ( 1                  ),
+       .R_MAX      ( 1                  ),
+       .ID_WIDTH   ( `MEM_TAG_WIDTH + 1 ),
+       .ADDR_WIDTH ( `PADDR_WIDTH       ),
+       .DATA_WIDTH ( `IO_DAT_WIDTH      ),
+       .LITE_MODE  ( 1                  ),
+       .BASE0      ( 0                  ), // memory
+       .MASK0      ( 32'h7fffffff       ),
+       .BASE1      ( 32'h80000000       ), // UART
+       .MASK1      ( 32'h0000ffff       ),
+       .BASE2      ( 32'h80010000       ), // SPI
+       .MASK2      ( 32'h0000ffff       )
+       )
+   io_crossbar
+     (
+      .*,
+      .s ( io_nasti     ),
+      .m ( io_nasti_cbo )
+      );
+
+   // devide the combined channels
+   nasti_channel ios_dmm2(), ios_dmm3(), ios_dmm4(), ios_dmm5(), ios_dmm6(), ios_dmm7(); // dummy channels
+
+   nasti_channel_slicer #(2)
+   io_slicer (.s(io_nasti_cbo), .m0(io_nasti_mem), .m1(io_nasti_uart), .m2(ios_dmm2),
+              .m3(ios_dmm3), .m4(ios_dmm4), .m5(ios_dmm5), .m6(ios_dmm6), .m7(ios_dmm7));
+ `else // !`ifdef ENABLE_DEBUG
+
+   assign sys_rst = rst;
+   assign cpu_rst = 1'b0;
+
+   // convert nasti-lite io_nasti to a full nasti for memory
    lite_nasti_bridge
      #(
        .ID_WIDTH          ( `MEM_TAG_WIDTH + 1 ),
@@ -796,8 +963,17 @@ module chip_top
      (
       .*,
       .lite_s  ( io_nasti      ),
-      .nasti_m ( io_nasti_full )
+      .nasti_m ( io_nasti_mem  )
       );
+`endif
+
+   nasti_channel
+     #(
+       .N_PORT      ( 2                  ),
+       .ID_WIDTH    ( `MEM_TAG_WIDTH + 1 ),
+       .ADDR_WIDTH  ( `PADDR_WIDTH       ),
+       .DATA_WIDTH  ( `MEM_DAT_WIDTH     ))
+   mem_io_nasti();
 
    // combine memory and io nasti channels
    nasti_channel dummy2(), dummy3(), dummy4(), dummy5(), dummy6(), dummy7();
@@ -807,7 +983,7 @@ module chip_top
      (
       .*,
       .s0  ( mem_nasti     ),
-      .s1  ( io_nasti_full ),
+      .s1  ( io_nasti_mem  ),
       .s2  ( dummy2        ),
       .s3  ( dummy3        ),
       .s4  ( dummy4        ),
@@ -865,30 +1041,6 @@ module chip_top
       .resp_ready   ( host_resp_ready  ),
       .resp_id      ( host_resp_id     ),
       .resp         ( host_resp_data   )
-      );
-
-   debug_system u_debug_system
-     (
-      .*,
-      .uart_irq        (uart_irq),
-      .uart_ar_addr    (0),
-      .uart_ar_ready   (),
-      .uart_ar_valid   (0),
-      .uart_aw_addr    (0),
-      .uart_aw_ready   (),
-      .uart_aw_valid   (0),
-      .uart_b_ready    (1),
-      .uart_b_resp     (),
-      .uart_b_valid    (),
-      .uart_r_data     (),
-      .uart_r_ready    (1),
-      .uart_r_resp     (),
-      .uart_r_valid    (),
-      .uart_w_data     (),
-      .uart_w_ready    (),
-      .uart_w_valid    (0),
-      .rx              (),
-      .tx              ()
       );
 
 `endif
