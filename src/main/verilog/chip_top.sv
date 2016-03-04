@@ -217,13 +217,13 @@ module chip_top
       .io_debug_mam_req_bits_addr    ( mam_req_addr                           ),
       .io_debug_mam_req_bits_burst   ( mam_req_burst                          ),
       .io_debug_mam_req_bits_size    ( mam_req_size                           ),
-      .io_debug_mam_wdata_ready      ( mam_wdata_ready                        ),
-      .io_debug_mam_wdata_valid      ( mam_wdata_valid                        ),
-      .io_debug_mam_wdata_bits_data  ( mam_wdata_data                         ),
-      .io_debug_mam_wdata_bits_strb  ( mam_wdata_strb                         ),
-      .io_debug_mam_rdata_ready      ( mam_rdata_ready                        ),
-      .io_debug_mam_rdata_valid      ( mam_rdata_valid                        ),
-      .io_debug_mam_rdata_bits_data  ( mam_rdata_data                         ),
+      .io_debug_mam_wdata_ready      ( mam_write_ready                        ),
+      .io_debug_mam_wdata_valid      ( mam_write_valid                        ),
+      .io_debug_mam_wdata_bits_data  ( mam_write_data                         ),
+      .io_debug_mam_wdata_bits_strb  ( mam_write_strb                         ),
+      .io_debug_mam_rdata_ready      ( mam_read_ready                         ),
+      .io_debug_mam_rdata_valid      ( mam_read_valid                         ),
+      .io_debug_mam_rdata_bits_data  ( mam_read_data                          ),
       .io_debug_rst                  ( cpu_rst                                )
       );
 
