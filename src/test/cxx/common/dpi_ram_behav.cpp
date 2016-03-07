@@ -178,7 +178,7 @@ bool Memory32::write(const uint32_t addr, const uint32_t& data, const uint32_t& 
 bool Memory32::read(const uint32_t addr, uint32_t &data) {
   //assert((addr & 0x3) == 0);
   if((addr & 0x3) != 0) {
-    std::cout << format("Memory read @ %1$x error, unaligned!") % addr << std::endl;
+    std::cerr << format("Memory read @ %1$x error, unaligned!") % addr << std::endl;
   }
 
   if(addr_max != 0 && addr >= addr_max || !mem.count(addr)) return false;
