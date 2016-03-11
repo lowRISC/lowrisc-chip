@@ -78,7 +78,7 @@ module chip_top
    logic                              mam_req_rw;
    logic [`PADDR_WIDTH-1:0]           mam_req_addr;
    logic                              mam_req_burst;
-   logic [$clog2(`MAM_MAX_BURST)-1:0] mam_req_size;
+   logic [13:0]                       mam_req_beats;
    logic                              mam_write_valid;
    logic [`MAM_IO_DWIDTH-1:0]         mam_write_data;
    logic [`MAM_IO_DWIDTH/8-1:0]       mam_write_strb;
@@ -216,7 +216,7 @@ module chip_top
       .io_debug_mam_req_bits_rw      ( mam_req_rw                             ),
       .io_debug_mam_req_bits_addr    ( mam_req_addr                           ),
       .io_debug_mam_req_bits_burst   ( mam_req_burst                          ),
-      .io_debug_mam_req_bits_size    ( mam_req_size                           ),
+      .io_debug_mam_req_bits_beats   ( mam_req_beats                          ),
       .io_debug_mam_wdata_ready      ( mam_write_ready                        ),
       .io_debug_mam_wdata_valid      ( mam_write_valid                        ),
       .io_debug_mam_wdata_bits_data  ( mam_write_data                         ),
@@ -297,7 +297,7 @@ module chip_top
    debug_system
      #(
        .MAM_DATA_WIDTH   ( `MAM_IO_DWIDTH   ),
-       .MAM_ADDR_WIDTH   ( `MAM_IO_AWIDTH   )
+       .MAM_ADDR_WIDTH   ( `PADDR_WIDTH     )
        )
    u_debug_system
      (
@@ -328,7 +328,7 @@ module chip_top
       .req_rw          ( mam_req_rw             ),
       .req_addr        ( mam_req_addr           ),
       .req_burst       ( mam_req_burst          ),
-      .req_size        ( mam_req_size           ),
+      .req_beats       ( mam_req_beats          ),
       .write_valid     ( mam_write_valid        ),
       .write_ready     ( mam_write_ready        ),
       .write_data      ( mam_write_data         ),
@@ -903,7 +903,7 @@ module chip_top
       .req_rw          ( mam_req_rw             ),
       .req_addr        ( mam_req_addr           ),
       .req_burst       ( mam_req_burst          ),
-      .req_size        ( mam_req_size           ),
+      .req_beats       ( mam_req_beats          ),
       .write_valid     ( mam_write_valid        ),
       .write_ready     ( mam_write_ready        ),
       .write_data      ( mam_write_data         ),

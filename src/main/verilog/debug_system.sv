@@ -42,7 +42,7 @@ module debug_system
    output                       req_rw,
    output [MAM_ADDR_WIDTH-1:0]  req_addr,
    output                       req_burst,
-   output [15:0]                req_size,
+   output [13:0]                req_beats,
 
    output                       write_valid,
    input                        write_ready,
@@ -172,7 +172,6 @@ module debug_system
        .MEM_SIZE(MAM_MEM_SIZE), .ADDR_WIDTH(MAM_ADDR_WIDTH),
        .MAX_PKT_LEN(MAX_PKT_LEN))
    u_mam (.*,
-          .req_beats (req_size),
           .id (10'd3),
           .debug_in        ( dii_in[3]        ),
           .debug_in_ready  ( dii_in_ready[3]  ),
