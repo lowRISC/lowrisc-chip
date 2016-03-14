@@ -14,6 +14,60 @@ class DefaultConfig extends Config (
   topDefinitions = { (pname,site,here) => 
     type PF = PartialFunction[Any,Any]
     def findBy(sname:Any):Any = here[PF](site[Any](sname))(pname)
+    def genCsrAddrMap: AddrMap = {
+      val deviceTree = AddrMapEntry("devicetree", None, MemSize(1 << 15, AddrMapConsts.R))
+      val csrSize = (1 << 12) * (site(XLen) / 8)
+      val csrs = (0 until site(NTiles)).map{ i => 
+        AddrMapEntry(s"csr$i", None, MemSize(csrSize, AddrMapConsts.RW))
+      }
+      val scrSize = site(HtifKey).nSCR * (site(XLen) / 8)
+      val scr = AddrMapEntry("scr", None, MemSize(scrSize, AddrMapConsts.RW))
+      new AddrMap(deviceTree +: csrs :+ scr)
+    }
+    def makeDeviceTree() = {
+      val addrMap = new AddrHashMap(site(GlobalAddrMap), site(MMIOBase))
+      val devices = site(GlobalDeviceSet)
+      val dt = new DeviceTreeGenerator
+      dt.beginNode("")
+      dt.addProp("#address-cells", 2)
+      dt.addProp("#size-cells", 2)
+      dt.addProp("model", "Rocket-Chip")
+        dt.beginNode("memory@0")
+          dt.addProp("device_type", "memory")
+          dt.addReg(0, site(MMIOBase).toLong)
+        dt.endNode()
+        dt.beginNode("cpus")
+          dt.addProp("#address-cells", 2)
+          dt.addProp("#size-cells", 2)
+          for (i <- 0 until site(NTiles)) {
+            val csrs = addrMap(s"conf:csr$i")
+            dt.beginNode(s"cpu@${csrs.start.toLong.toHexString}")
+              dt.addProp("device_type", "cpu")
+              dt.addProp("compatible", "riscv")
+              dt.addProp("isa", s"rv${site(XLen)}")
+              dt.addReg(csrs.start.toLong)
+            dt.endNode()
+          }
+        dt.endNode()
+        val scrs = addrMap("conf:scr")
+        dt.beginNode(s"scr@${scrs.start.toLong.toHexString}")
+          dt.addProp("device_type", "scr")
+          dt.addProp("compatible", "riscv")
+          dt.addProp("protection", scrs.prot)
+          dt.addReg(scrs.start.toLong, scrs.size.toLong)
+        dt.endNode()
+        for (dev <- devices.toSeq) {
+          val entry = addrMap(s"devices:${dev.name}")
+          dt.beginNode(s"${dev.name}@${entry.start}")
+            dt.addProp("device_type", s"${dev.dtype}")
+            dt.addProp("compatible", "riscv")
+            dt.addProp("protection", entry.prot)
+            dt.addReg(entry.start.toLong, entry.size.toLong)
+          dt.endNode()
+        }
+      dt.endNode()
+      dt.toArray()
+    }
     pname match {
       //Memory Parameters
       case CacheBlockBytes => 64
@@ -46,6 +100,7 @@ class DefaultConfig extends Config (
       case RowBits => findBy(CacheName)
       case NTLBEntries => findBy(CacheName)
       case CacheIdBits => findBy(CacheName)
+      case SplitMetadata => findBy(CacheName)
       case ICacheBufferWays => Knob("L1I_BUFFER_WAYS")
 
       //L1 I$
@@ -56,6 +111,7 @@ class DefaultConfig extends Config (
         case RowBits => 4*site(CoreInstBits)
         case NTLBEntries => 8
         case CacheIdBits => 0
+	case SplitMetadata => false
       }:PF
 
       //L1 D$
@@ -69,6 +125,7 @@ class DefaultConfig extends Config (
         case RowBits => 2*site(CoreDataBits)
         case NTLBEntries => 8
         case CacheIdBits => 0
+	case SplitMetadata => false
       }:PF
       case ECCCode => None
       case Replacer => () => new RandomReplacement(site(NWays))
@@ -112,6 +169,7 @@ class DefaultConfig extends Config (
       case FetchWidth => 1
       case RetireWidth => 1
       case UseVM => true
+      case UsePerfCounters => true
       case FastLoadWord => true
       case FastLoadByte => false
       case FastMulDiv => true
@@ -123,8 +181,9 @@ class DefaultConfig extends Config (
       case CoreInstBits => 32
       case CoreDataBits => site(XLen)
       case NCustomMRWCSRs => 0
-      
+      case MtvecInit => BigInt(0x100)
       //Uncore Paramters
+      case RTCPeriod => 100 // gives 10 MHz RTC assuming 1 GHz uncore clock
       case NBanks => Knob("NBANKS")
       case BankIdLSB => 0
       case LNEndpoints => site(TLKey(site(TLId))).nManagers + site(TLKey(site(TLId))).nClients
@@ -153,7 +212,7 @@ class DefaultConfig extends Config (
           maxManagerXacts = 1,
           dataBits = site(CacheBlockBytes)*8
         )
-      case TLKey("L1toIO") =>
+      case TLKey("L2toIO") =>
         TileLinkParameters(
           coherencePolicy = new MICoherence(new NullRepresentation(site(NTiles))),
           nManagers = 1,
@@ -185,6 +244,24 @@ class DefaultConfig extends Config (
         )
       
       case MMIOBase => Dump("MEM_SIZE", BigInt(1 << 30)) // 1 GB
+      case DeviceTree => makeDeviceTree()
+      case GlobalAddrMap => {
+        AddrMap(
+          AddrMapEntry("conf", None,
+            MemSubmap(BigInt(1L << 30), genCsrAddrMap)),
+          AddrMapEntry("devices", None,
+            MemSubmap(BigInt(1L << 31), site(GlobalDeviceSet).getAddrMap)))
+      }
+      case GlobalDeviceSet => {
+        val devset = new DeviceSet
+        if (site(UseStreamLoopback)) {
+          devset.addDevice("loopback", site(StreamLoopbackWidth) / 8, "stream")
+        }
+        if (site(UseDma)) {
+          devset.addDevice("dma", site(CacheBlockBytes), "dma")
+        }
+        devset
+      }
     }},
   knobValues = {
     case "NTILES" => Dump("NTILES", 1)
