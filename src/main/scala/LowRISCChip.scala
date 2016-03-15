@@ -104,7 +104,7 @@ class Top(topParams: Parameters) extends Module with HasTopLevelParameters {
   val addrMap = p(GlobalAddrMap)
   val addrHashMap = new AddrHashMap(addrMap, mmioBase)
   val nIOMasters = (if (dmaOpt.isEmpty) 2 else 3)
-  val nIOSlaves = addrHashMap.nEntries // how to get the right number !!!
+  val nIOSlaves = addrHashMap.nInternalPorts
 
   println("Generated Address Map")
   for ((name, base, size, _) <- addrHashMap.sortedEntries) {
@@ -113,8 +113,8 @@ class Top(topParams: Parameters) extends Module with HasTopLevelParameters {
 
   val mmio_ic = Module(new NastiRecursiveInterconnect(nIOMasters, nIOSlaves, addrMap, mmioBase))
 
-  val mmio_narrow = Module(new TileLinkIONarrower("L2toMC", "Outermost"))
-  val mmio_conv = Module(new NastiIOTileLinkIOConverter()(outermostTLParams))
+  val mmio_narrow = Module(new TileLinkIONarrower("L2toIO", "IONoC"))
+  val mmio_conv = Module(new NastiIOTileLinkIOConverter()(p.alterPartial({case BusId => "lite"; case TLId => "IONoC"})))
   mmio_narrow.io.in <> mmioManager.io.outer
   mmio_conv.io.tl <> mmio_narrow.io.out
 
@@ -127,12 +127,6 @@ class Top(topParams: Parameters) extends Module with HasTopLevelParameters {
     mmio_ic.io.masters(2) <> dma.io.mmio
     dma.io.ctrl <> mmio_ic.io.slaves(addrHashMap("devices:dma").port)
   }
-
-  // IO TileLink to NASTI-Lite bridge
-  val nasti_lite = Module(new NastiLiteMasterIOTileLinkIOConverter()(p.alterPartial({case BusId => "lite"; case TLId => "L1toIO"})))
-
-  ioNetwork.io.managers <> Vec(nasti_lite.io.tl)
-  nasti_lite.io.nasti <> io.nasti_lite
 }
 
 object Run extends App with FileSystemUtilities {
