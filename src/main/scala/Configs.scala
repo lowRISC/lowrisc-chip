@@ -137,7 +137,9 @@ class DefaultConfig extends ChiselConfig (
       // disabled in Default
       case UseDebug => false
       case MamIODataWidth => 16
-      case MamIOAddrWidth => 39
+      case MamIOAddrWidth => 32
+      case DebugCtmID => 0
+      case DebugStmID => 0
       
       case "L1ToL2" => {
         case TLNManagers => site(NBanks)
@@ -225,6 +227,8 @@ class WithDebugConfig extends ChiselConfig (
     case MamIODataWidth => Dump("MAM_IO_DWIDTH", 16)
     case MamIOAddrWidth => site(PAddrBits)
     case MamIOBeatsBits => 14
+    case DebugCtmID => 4
+    case DebugStmID => 5
   }
 )
 

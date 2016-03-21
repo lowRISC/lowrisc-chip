@@ -36,6 +36,10 @@ module debug_system
 
    output                       sys_rst, cpu_rst,
 
+   input  dii_flit [1:0]        ring_in,
+   output [1:0]                 ring_in_ready,
+   output dii_flit [1:0]        ring_out,
+   input [1:0]                  ring_out_ready,
 
    output                       req_valid,
    input                        req_ready,
@@ -178,14 +182,18 @@ module debug_system
           .debug_out       ( dii_out[3]       ),
           .debug_out_ready ( dii_out_ready[3] )
           );
-   
-   
-   debug_ring
-     #(.PORTS(N))
-             u_ring(.*,
-                    .dii_in        ( dii_out       ),
-                    .dii_in_ready  ( dii_out_ready ),
-                    .dii_out       ( dii_in        ),
-                    .dii_out_ready ( dii_in_ready  )
-                    );
+
+   debug_ring_expand
+     #(.PORTS(N), ID_BASE(0))
+   u_ring(.*,
+          .dii_in        ( dii_out        ),
+          .dii_in_ready  ( dii_out_ready  ),
+          .dii_out       ( dii_in         ),
+          .dii_out_ready ( dii_in_ready   ),
+          .ext_in        ( ring_in        ),
+          .ext_in_ready  ( ring_in_ready  ),
+          .ext_out       ( ring_out       ),
+          .ext_out_ready ( ring_out_ready )
+          );
+
 endmodule // debug_system

@@ -72,23 +72,24 @@ veri_opt_flags = -O3 -CFLAGS "-O1"
 
 veri_vsrcs = \
 	$(base_dir)/src/main/verilog/chip_top.sv \
-	$(base_dir)/opensocdebug/hardware/interfaces/verilog/dii_channel.sv \
+	$(base_dir)/opensocdebug/hardware/interfaces/common/dii_channel.sv \
 	$(base_dir)/opensocdebug/glip/src/common/logic/interface/glip_channel.sv \
-	$(base_dir)/opensocdebug/hardware/modules/him/verilog/osd_him.sv \
-	$(base_dir)/opensocdebug/hardware/modules/scm/verilog/osd_scm.sv \
-	$(base_dir)/opensocdebug/hardware/blocks/regaccess/verilog/osd_regaccess.sv \
-	$(base_dir)/opensocdebug/hardware/blocks/regaccess/verilog/osd_regaccess_demux.sv \
-	$(base_dir)/opensocdebug/hardware/blocks/regaccess/verilog/osd_regaccess_layer.sv \
-	$(base_dir)/opensocdebug/hardware/modules/dem_uart/verilog/osd_dem_uart.sv \
-	$(base_dir)/opensocdebug/hardware/modules/dem_uart/verilog/osd_dem_uart_16550.sv \
-	$(base_dir)/opensocdebug/hardware/modules/dem_uart/verilog/osd_dem_uart_nasti.sv \
-	$(base_dir)/opensocdebug/hardware/modules/mam/verilog/osd_mam.sv \
-	$(base_dir)/opensocdebug/hardware/blocks/buffer/verilog/dii_buffer.sv \
-	$(base_dir)/opensocdebug/hardware/interconnect/verilog/debug_ring.sv \
-	$(base_dir)/opensocdebug/hardware/interconnect/verilog/ring_router.sv \
-	$(base_dir)/opensocdebug/hardware/interconnect/verilog/ring_router_mux.sv \
-	$(base_dir)/opensocdebug/hardware/interconnect/verilog/ring_router_mux_rr.sv \
-	$(base_dir)/opensocdebug/hardware/interconnect/verilog/ring_router_demux.sv \
+	$(base_dir)/opensocdebug/hardware/modules/him/common/osd_him.sv \
+	$(base_dir)/opensocdebug/hardware/modules/scm/common/osd_scm.sv \
+	$(base_dir)/opensocdebug/hardware/blocks/regaccess/common/osd_regaccess.sv \
+	$(base_dir)/opensocdebug/hardware/blocks/regaccess/common/osd_regaccess_demux.sv \
+	$(base_dir)/opensocdebug/hardware/blocks/regaccess/common/osd_regaccess_layer.sv \
+	$(base_dir)/opensocdebug/hardware/modules/dem_uart/common/osd_dem_uart.sv \
+	$(base_dir)/opensocdebug/hardware/modules/dem_uart/common/osd_dem_uart_16550.sv \
+	$(base_dir)/opensocdebug/hardware/modules/dem_uart/common/osd_dem_uart_nasti.sv \
+	$(base_dir)/opensocdebug/hardware/modules/mam/common/osd_mam.sv \
+	$(base_dir)/opensocdebug/hardware/modules/stm/common/osd_stm.sv \
+	$(base_dir)/opensocdebug/hardware/blocks/buffer/common/dii_buffer.sv \
+	$(base_dir)/opensocdebug/hardware/interconnect/common/debug_ring.sv \
+	$(base_dir)/opensocdebug/hardware/interconnect/common/ring_router.sv \
+	$(base_dir)/opensocdebug/hardware/interconnect/common/ring_router_mux.sv \
+	$(base_dir)/opensocdebug/hardware/interconnect/common/ring_router_mux_rr.sv \
+	$(base_dir)/opensocdebug/hardware/interconnect/common/ring_router_demux.sv \
 	$(base_dir)/src/main/verilog/debug_system.sv \
 	$(generated_dir)/$(MODEL).$(CONFIG).v \
 	$(base_dir)/src/test/verilog/nasti_ram_behav.sv \
