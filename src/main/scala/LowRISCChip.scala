@@ -26,6 +26,7 @@ class TopIO extends Bundle {
   val interrupt   = UInt(INPUT, params(XLen))
   val debug_mam   = (new MamIO).flip
   val debug_rst   = Bool(INPUT)
+  val debug_net   = Vec(2, new DiiBBoxIO)       // debug network
 }
 
 class Top extends Module with TopLevelParameters {
@@ -34,6 +35,26 @@ class Top extends Module with TopLevelParameters {
   // Rocket Tiles
   val tiles = (0 until nTiles) map { i =>
     Module(new RocketTile(i), {case TLId => "L1ToL2"})
+  }
+
+  if(params(UseDebug)) {
+    (0 until nTiles) foreach { i =>
+      if(nTiles > 1 && i != 0) {
+        tiles(i).io.dbgnet(0).dii_in <> tiles(i-1).io.dbgnet(0).dii_out
+        tiles(i).io.dbgnet(1).dii_in <> tiles(i-1).io.dbgnet(1).dii_out
+      }
+    }
+
+    (0 until 2) foreach { i =>
+      val bbox_port = Module(new DiiBBoxPort)
+      io.debug_net(i) <> bbox_port.io.bbox
+      bbox_port.io.chisel.dii_in <> tiles(0).io.dbgnet(i).dii_in
+      if(nTiles == 1) {
+        bbox_port.io.chisel.dii_out <> tiles(0).io.dbgnet(i).dii_out
+      } else {
+        bbox_port.io.chisel.dii_out <> tiles(nTiles - 1).io.dbgnet(i).dii_out
+      }
+    }
   }
 
   // PCR controller

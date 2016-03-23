@@ -136,10 +136,6 @@ class DefaultConfig extends ChiselConfig (
       // debug
       // disabled in Default
       case UseDebug => false
-      case MamIODataWidth => 16
-      case MamIOAddrWidth => 32
-      case DebugCtmID => 0
-      case DebugStmID => 0
       
       case "L1ToL2" => {
         case TLNManagers => site(NBanks)
@@ -229,6 +225,8 @@ class WithDebugConfig extends ChiselConfig (
     case MamIOBeatsBits => 14
     case DebugCtmID => 4
     case DebugStmID => 5
+    case DebugStmCsrAddr => 0x8f0 // not synced with instruction.scala
+    case DebugRouterBufferSize => 4
   }
 )
 
