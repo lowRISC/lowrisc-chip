@@ -23,7 +23,7 @@ object BuildSettings extends Build {
   lazy val open_soc_debug = Project("open_soc_debug", file("opensocdebug/hardware")).dependsOn(chisel)
   lazy val junctions    = Project("bridge", file("junctions")).dependsOn(chisel)
   lazy val uncore       = Project("uncore", file("uncore")).dependsOn(junctions, open_soc_debug)
-  lazy val rocket       = Project("rocket", file("rocket")).dependsOn(hardfloat, uncore)
+  lazy val rocket       = Project("rocket", file("rocket")).dependsOn(hardfloat, uncore, open_soc_debug)
   lazy val lowrisc_chip = Project("lowrisc_chip", file(".")).dependsOn(chisel, hardfloat, uncore, rocket, junctions, open_soc_debug)
 
 }
