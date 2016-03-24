@@ -1,5 +1,7 @@
 // See LICENSE for license details.
 
+import dii_package::dii_flit;
+
 `include "config.vh"
 `include "consts.vh"
 
@@ -86,6 +88,12 @@ module chip_top
    logic                              mam_read_valid;
    logic [`MAM_IO_DWIDTH-1:0]         mam_read_data;
    logic                              mam_read_ready;
+
+   // Debug ring connections
+   dii_flit [1:0]                     debug_ring_start; // starting connector
+   logic [1:0]                        debug_ring_start_ready;
+   dii_flit [1:0]                     debug_ring_end; // ending connector
+   logic [1:0]                        debug_ring_end_ready;
 
    // the NASTI bus for cached memory
    nasti_channel
@@ -211,6 +219,14 @@ module chip_top
       .io_host_resp_bits_id          ( host_resp_id                           ),
       .io_host_resp_bits_data        ( host_resp_data                         ),
       .io_interrupt                  ( interrupt                              ),
+      .io_debug_net_0_dii_in         ( debug_ring_start[0]                    ),
+      .io_debug_net_0_dii_in_ready   ( debug_ring_start_ready[0]              ),
+      .io_debug_net_1_dii_in         ( debug_ring_start[1]                    ),
+      .io_debug_net_1_dii_in_ready   ( debug_ring_start_ready[1]              ),
+      .io_debug_net_0_dii_out        ( debug_ring_end[0]                      ),
+      .io_debug_net_0_dii_out_ready  ( debug_ring_end_ready[0]                ),
+      .io_debug_net_1_dii_out        ( debug_ring_end[1]                      ),
+      .io_debug_net_1_dii_out_ready  ( debug_ring_end_ready[1]                ),
       .io_debug_mam_req_ready        ( mam_req_ready                          ),
       .io_debug_mam_req_valid        ( mam_req_valid                          ),
       .io_debug_mam_req_bits_rw      ( mam_req_rw                             ),
@@ -323,6 +339,10 @@ module chip_top
       .tx              ( txd                    ),
       .sys_rst         ( sys_rst                ),
       .cpu_rst         ( cpu_rst                ),
+      .ring_out        ( debug_ring_start       ),
+      .ring_out_ready  ( debug_ring_start_ready ),
+      .ring_in         ( debug_ring_end         ),
+      .ring_in_ready   ( debug_ring_end_ready   ),
       .req_valid       ( mam_req_valid          ),
       .req_ready       ( mam_req_ready          ),
       .req_rw          ( mam_req_rw             ),
@@ -898,6 +918,10 @@ module chip_top
       .tx              ( txd                    ),
       .sys_rst         ( sys_rst                ),
       .cpu_rst         ( cpu_rst                ),
+      .ring_out        ( debug_ring_start       ),
+      .ring_out_ready  ( debug_ring_start_ready ),
+      .ring_in         ( debug_ring_end         ),
+      .ring_in_ready   ( debug_ring_end_ready   ),
       .req_valid       ( mam_req_valid          ),
       .req_ready       ( mam_req_ready          ),
       .req_rw          ( mam_req_rw             ),

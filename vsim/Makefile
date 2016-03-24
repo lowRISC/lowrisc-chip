@@ -71,8 +71,8 @@ veri_flags = \
 veri_opt_flags = -O3 -CFLAGS "-O1"
 
 veri_vsrcs = \
-	$(base_dir)/src/main/verilog/chip_top.sv \
 	$(base_dir)/opensocdebug/hardware/interfaces/common/dii_channel.sv \
+	$(base_dir)/src/main/verilog/chip_top.sv \
 	$(base_dir)/opensocdebug/glip/src/common/logic/interface/glip_channel.sv \
 	$(base_dir)/opensocdebug/hardware/modules/him/common/osd_him.sv \
 	$(base_dir)/opensocdebug/hardware/modules/scm/common/osd_scm.sv \

@@ -183,17 +183,27 @@ module debug_system
           .debug_out_ready ( dii_out_ready[3] )
           );
 
+   dii_flit [1:0] ext_in;  logic [1:0] ext_in_ready;
+   dii_flit [1:0] ext_out; logic [1:0] ext_out_ready;
+
    debug_ring_expand
-     #(.PORTS(N), ID_BASE(0))
+     #(.PORTS(N), .ID_BASE(0))
    u_ring(.*,
           .dii_in        ( dii_out        ),
           .dii_in_ready  ( dii_out_ready  ),
           .dii_out       ( dii_in         ),
           .dii_out_ready ( dii_in_ready   ),
-          .ext_in        ( ring_in        ),
-          .ext_in_ready  ( ring_in_ready  ),
-          .ext_out       ( ring_out       ),
-          .ext_out_ready ( ring_out_ready )
+          .ext_in        ( ext_in         ),
+          .ext_in_ready  ( ext_in_ready   ),
+          .ext_out       ( ext_out        ),
+          .ext_out_ready ( ext_out_ready  )
           );
+
+   assign ext_in[0].valid = 1'b0;
+   assign ext_in[1] = ring_in[0];
+   assign ring_in_ready[0] = ext_in_ready[1];
+   assign ring_out = ext_out;
+   assign ext_out_ready = ring_out_ready;
+   assign ring_in_ready[1] = 1'b1;
 
 endmodule // debug_system
