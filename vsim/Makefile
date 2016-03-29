@@ -68,7 +68,8 @@ veri_flags = \
 	--Mdir $(sim_dir)/verilator
 
 # remove optimization if compilation takes too long or run out of memory
-veri_opt_flags = -O3 -CFLAGS "-O1"
+#veri_opt_flags = -O3 -CFLAGS "-O1"
+veri_opt_flags =
 
 veri_vsrcs = \
 	$(base_dir)/opensocdebug/hardware/interfaces/common/dii_channel.sv \
@@ -141,7 +142,7 @@ all: sim
 
 .PHONY: verilator sim
 
-junk += $(CONFIG)-sim verilator
+junk += $(CONFIG)-sim verilator.log $(CONFIG)-sim-debug verilator verilator.debug.log
 
 #--------------------------------------------------------------------
 # Test cases
