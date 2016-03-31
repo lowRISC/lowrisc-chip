@@ -85,6 +85,7 @@ veri_vsrcs = \
 	$(base_dir)/opensocdebug/hardware/modules/dem_uart/common/osd_dem_uart_nasti.sv \
 	$(base_dir)/opensocdebug/hardware/modules/mam/common/osd_mam.sv \
 	$(base_dir)/opensocdebug/hardware/modules/stm/common/osd_stm.sv \
+	$(base_dir)/opensocdebug/hardware/modules/ctm/common/osd_ctm.sv \
 	$(base_dir)/opensocdebug/hardware/blocks/buffer/common/dii_buffer.sv \
 	$(base_dir)/opensocdebug/hardware/interconnect/common/debug_ring.sv \
 	$(base_dir)/opensocdebug/hardware/interconnect/common/ring_router.sv \

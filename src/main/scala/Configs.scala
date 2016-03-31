@@ -230,6 +230,7 @@ class WithDebugConfig extends ChiselConfig (
     case DebugCtmID => 0
     case DebugStmID => 1
     case DebugBaseID => 8
+    case DebugCtmScorBoardSize => site(NMSHRs)
     case DebugStmCsrAddr => 0x8f0 // not synced with instruction.scala
     case DebugRouterBufferSize => 4
   }
