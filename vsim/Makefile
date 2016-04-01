@@ -55,6 +55,7 @@ $(generated_dir)/consts.$(CONFIG).vh: $(generated_dir)/$(MODEL).$(CONFIG).v
 	echo "\`endif // CONST_VH" >> $@
 
 .PHONY: verilog
+junk += $(generated_dir)
 
 #--------------------------------------------------------------------
 # Build rules (verilator)
@@ -76,7 +77,8 @@ veri_flags = \
 	--Mdir $(sim_dir)/verilator
 
 # remove optimization if compilation takes too long or run out of memory
-veri_opt_flags = -O3 -CFLAGS "-O1"
+#veri_opt_flags = -O3 -CFLAGS "-O1"
+veri_opt_flags =
 
 veri_vsrcs = \
 	$(base_dir)/src/main/verilog/chip_top.sv \
@@ -107,7 +109,7 @@ veri_csrcs = \
 # Build the simulator (verilator)
 #--------------------------------------------------------------------
 verilator: verilator.log
-verilator.log: $(sim_vsrcs) $(veri_vsrcs) $(veri_csrcs)
+verilator.log: $(sim_vsrcs) $(veri_vsrcs) $(veri_csrcs) Makefile
 	rm -fr $(sim_dir)/verilator
 	$(veri) --cc $(veri_vsrcs) $(veri_csrcs) $(veri_flags) $(veri_opt_flags) -o ../$(CONFIG)-sim 2>&1 | tee $@
 
@@ -127,7 +129,7 @@ all: sim
 
 .PHONY: verilator sim
 
-junk += $(generated_dir) $(CONFIG)-sim verilator
+junk += $(generated_dir) $(CONFIG)-sim verilator verilator.log $(CONFIG)-sim-debug verilator.debug.log
 
 #--------------------------------------------------------------------
 # Test cases

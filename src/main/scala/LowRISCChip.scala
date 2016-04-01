@@ -21,7 +21,6 @@ trait HasTopLevelParameters {
 class TopIO(implicit val p: Parameters) extends ParameterizedBundle()(p) with HasTopLevelParameters {
   val nasti       = new NastiIO()(p.alterPartial({case BusId => "nasti"}))
   val nasti_lite  = new NastiIO()(p.alterPartial({case BusId => "lite"}))
-  val host        = new HIFIO
   val interrupt   = UInt(INPUT, p(XLen))
 }
 
@@ -97,8 +96,8 @@ class Top(topParams: Parameters) extends Module with HasTopLevelParameters {
   io.nasti.ar           <> Queue(conv.io.nasti.ar)
   io.nasti.aw           <> Queue(conv.io.nasti.aw)
   io.nasti.w            <> Queue(conv.io.nasti.w)
-  conv.nasti.nasti.r    <> Queue(io.nasti.r)
-  conv.nasti.nasti.b    <> Queue(io.nasti.b)
+  conv.io.nasti.r       <> Queue(io.nasti.r)
+  conv.io.nasti.b       <> Queue(io.nasti.b)
 
   // IO space
   val addrMap = p(GlobalAddrMap)
@@ -111,9 +110,9 @@ class Top(topParams: Parameters) extends Module with HasTopLevelParameters {
     println(f"\t$name%s $base%x - ${base + size - 1}%x")
   }
 
-  val mmio_ic = Module(new NastiRecursiveInterconnect(nIOMasters, nIOSlaves, addrMap, mmioBase))
+  val mmio_ic = Module(new NastiRecursiveInterconnect(nIOMasters, nIOSlaves, addrMap, mmioBase)(p.alterPartial({case BusId => "lite"})))
 
-  val mmio_narrow = Module(new TileLinkIONarrower("L2toIO", "IONoC"))
+  val mmio_narrow = Module(new TileLinkIONarrower("L2toIO", "IONoC")(p.alterPartial({case TLId => "IONoC"})))
   val mmio_conv = Module(new NastiIOTileLinkIOConverter()(p.alterPartial({case BusId => "lite"; case TLId => "IONoC"})))
   mmio_narrow.io.in <> mmioManager.io.outer
   mmio_conv.io.tl <> mmio_narrow.io.out

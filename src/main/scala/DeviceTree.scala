@@ -1,4 +1,4 @@
-package rocketchip
+package lowrisc_chip
 
 case object DeviceTree extends cde.Field[Array[Byte]]
 

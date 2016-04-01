@@ -20,7 +20,7 @@ class DefaultConfig extends Config (
       val csrs = (0 until site(NTiles)).map{ i => 
         AddrMapEntry(s"csr$i", None, MemSize(csrSize, AddrMapConsts.RW))
       }
-      val scrSize = site(HtifKey).nSCR * (site(XLen) / 8)
+      val scrSize = 64 * (site(XLen) / 8)
       val scr = AddrMapEntry("scr", None, MemSize(scrSize, AddrMapConsts.RW))
       new AddrMap(deviceTree +: csrs :+ scr)
     }
@@ -82,17 +82,7 @@ class DefaultConfig extends Config (
       case ASIdBits => 7
       case MIFTagBits => Dump("MEM_TAG_WIDTH", 8)
       case MIFDataBits => Dump("MEM_DAT_WIDTH", 128)
-
-      // Memory spaces
-      case NIOSections => 2                         // number of IO space sections
       case IODataBits => Dump("IO_DAT_WIDTH", 32)   // assume 32-bit IO NASTI-Lite bus
-                                                    // (LD/SD leads to NASTI-Lite transactions)
-      case NMemSections => 2                        // number of Memory space sections
-      case InitIOBase => "h80000000"                // IO base address after reset
-      case InitIOMask => "h0fffffff"                // IO space mask after reset
-      case InitMemBase => "h00000000"               // Memory base address after reset
-      case InitMemMask => "h7fffffff"               // Memory space mask address after reset
-      case InitPhyBase => "h00000000"               // Memory physical base address after reset
 
       //Params used by all caches
       case NSets => findBy(CacheName)
@@ -111,7 +101,7 @@ class DefaultConfig extends Config (
         case RowBits => 4*site(CoreInstBits)
         case NTLBEntries => 8
         case CacheIdBits => 0
-	case SplitMetadata => false
+	    case SplitMetadata => false
       }:PF
 
       //L1 D$
@@ -125,7 +115,7 @@ class DefaultConfig extends Config (
         case RowBits => 2*site(CoreDataBits)
         case NTLBEntries => 8
         case CacheIdBits => 0
-	case SplitMetadata => false
+	    case SplitMetadata => false
       }:PF
       case ECCCode => None
       case Replacer => () => new RandomReplacement(site(NWays))
@@ -142,6 +132,7 @@ class DefaultConfig extends Config (
         case NWays => Knob("L2_WAYS")
         case RowBits => site(TLKey(site(TLId))).dataBitsPerBeat
         case CacheIdBits => log2Ceil(site(NBanks))
+	    case SplitMetadata => false
       }: PF
 
       // Tag Cache
@@ -161,9 +152,12 @@ class DefaultConfig extends Config (
       case NTiles => Knob("NTILES")
       case BuildRoCC => Nil
       case RoccNMemChannels => site(BuildRoCC).map(_.nMemChannels).foldLeft(0)(_ + _)
+      case RoccNPTWPorts => site(BuildRoCC).map(_.nPTWPorts).foldLeft(0)(_ + _)
+      case RoccNCSRs => site(BuildRoCC).map(_.csrs.size).foldLeft(0)(_ + _)
+      case UseDma => false
       case NDmaTransactors => 3
+      case NDmaXacts => site(NDmaTransactors) * 1 // site(NTiles)   ????? WRONG
       case NDmaClients => site(NTiles)
-      case NDmaXactsPerClient => site(NDmaTransactors)
 
       //Rocket Core Constants
       case FetchWidth => 1
@@ -193,13 +187,14 @@ class DefaultConfig extends Config (
       case TLKey("L1toL2") =>
         TileLinkParameters(
           coherencePolicy = new MESICoherence(site(L2DirectoryRepresentation)),
-          nManagers = site(NBanks),
+          nManagers = 2,   // site(NBanks) + 1,   ??? WRONG
           nCachingClients = site(NTiles),
-          nCachelessClients = site(NTiles),
-          maxClientXacts = site(NMSHRs),
-          maxClientsPerPort = 1,
+          nCachelessClients = (if (site(UseDma)) 2 else 1) + 1, // site(NTiles),  ??? WRONG
+          maxClientXacts = max(site(NMSHRs) + 1, if (site(UseDma)) 4 else 1),
+          maxClientsPerPort = if (site(UseDma)) site(NDmaTransactors) + 1 else 1,
           maxManagerXacts = site(NAcquireTransactors) + 2,
-          dataBits = site(CacheBlockBytes)*8
+          dataBits = site(CacheBlockBytes)*8,
+          dataBeats = 4
         )
       case TLKey("L2toTC") =>
         TileLinkParameters(
@@ -210,7 +205,8 @@ class DefaultConfig extends Config (
           maxClientXacts = 1,
           maxClientsPerPort = site(NAcquireTransactors) + 2,
           maxManagerXacts = 1,
-          dataBits = site(CacheBlockBytes)*8
+          dataBits = site(CacheBlockBytes)*8,
+          dataBeats = 4
         )
       case TLKey("L2toIO") =>
         TileLinkParameters(
@@ -222,7 +218,21 @@ class DefaultConfig extends Config (
           maxClientsPerPort = 1,
           maxManagerXacts = site(NTiles),
           dataBits = site(XLen),
-          dataBeats = 1
+          dataBeats = 4,                             // no multi-beat is support, set to 4 due to require in uncore HasCoherenceAgentParameters
+          overrideDataBitsPerBeat = Some(site(XLen)) // override beat width to the full width
+        )
+      case TLKey("IONoC") =>
+        TileLinkParameters(
+          coherencePolicy = new MICoherence(new NullRepresentation(site(NTiles))),
+          nManagers = 1,
+          nCachingClients = 0,
+          nCachelessClients = 1,
+          maxClientXacts = site(NTiles),
+          maxClientsPerPort = 1,
+          maxManagerXacts = site(NTiles),
+          dataBits = site(XLen),
+          dataBeats = 4,                             // no multi-beat is support, set to 4 due to require in uncore HasCoherenceAgentParameters
+          overrideDataBitsPerBeat = Some(site(XLen)) // override beat width to the full width
         )
 
       // NASTI BUS parameters
@@ -231,15 +241,13 @@ class DefaultConfig extends Config (
           dataBits = site(MIFDataBits),
           addrBits = site(PAddrBits),
           idBits = site(MIFTagBits),
-          userBits = 1,
           handlers = 4
         )
       case NastiKey("lite") =>
         NastiParameters(
-          dataBits = site(IODataBits),
+          dataBits = site(XLen),   // site(IODataBits), ??? Wrong
           addrBits = site(PAddrBits),
           idBits = site(MIFTagBits),
-          userBits = 1,
           handlers = 1
         )
       
@@ -254,9 +262,6 @@ class DefaultConfig extends Config (
       }
       case GlobalDeviceSet => {
         val devset = new DeviceSet
-        if (site(UseStreamLoopback)) {
-          devset.addDevice("loopback", site(StreamLoopbackWidth) / 8, "stream")
-        }
         if (site(UseDma)) {
           devset.addDevice("dma", site(CacheBlockBytes), "dma")
         }

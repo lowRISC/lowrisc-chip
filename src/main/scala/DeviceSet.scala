@@ -1,4 +1,4 @@
-package rocketchip
+package lowrisc_chip
 
 import Chisel.log2Ceil
 import cde.{Parameters, Field}
