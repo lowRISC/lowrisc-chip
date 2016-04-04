@@ -118,6 +118,7 @@ module debug_system
    dii_flit [N-1:0] dii_in; logic [N-1:0] dii_in_ready;   
    
    osd_him
+     #(.MAX_PKT_LEN(MAX_PKT_LEN))
      u_him(.*,
            .glip_in  (fifo_in),
            .glip_out (fifo_out),
