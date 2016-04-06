@@ -79,18 +79,21 @@ class Top extends Module with TopLevelParameters {
   tcNetwork.io.clients <> banks.map(_.outerTL)
 
   // tag cache
-  //val tc = Module(new TagCache, {case TLId => "L2ToTC"; case CacheName => "TagCache"})
+  val tc = Module(new TagCache, {case TLId => "L2ToTC"; case BusId => "nasti";  case CacheName => "TagCache"})
+  tc.io.update := pcrControl.io.pcr_update
   // currently a TileLink to NASTI converter
   val conv = Module(new NASTIMasterIOTileLinkIOConverter, {case BusId => "nasti"; case TLId => "L2ToTC"})
+  conv.io.tl.acquire <> tc.io.tl_out.acquire
+  conv.io.tl.grant <> tc.io.tl_out.grant
+  conv.io.tl.probe.ready := Bool(true)
+  conv.io.tl.release.valid := Bool(false)
+  
   val nastiPipe = Module(new NASTIPipe, {case BusId => "nasti"})
-  val nastiAddrConv = Module(new NASTIAddrConv, {case BusId => "nasti"})
 
-  //tcNetwork.io.managers <> Vec(tc.io.inner)
-  tcNetwork.io.managers <> Vec(conv.io.tl)
-  conv.io.nasti <> nastiPipe.io.slave
-  nastiPipe.io.master <> nastiAddrConv.io.slave
-  nastiAddrConv.io.master <> io.nasti
-  nastiAddrConv.io.update := pcrControl.io.pcr_update
+  tcNetwork.io.managers <> Vec(tc.io.tl)
+  conv.io.nasti <> nastiPipe.io.slave  //Connection when TC has a TL port as output
+
+  nastiPipe.io.master <> io.nasti
 
   // IO space
   def routeL1ToIO(addr: UInt) = UInt(0)
@@ -145,30 +148,3 @@ class NASTIPipe extends NASTIModule {
 
 }
 
-// convert core address to phy address
-class NASTIAddrConv extends NASTIModule {
-  val io = new Bundle {
-    val slave = new NASTISlaveIO
-    val master = new NASTIMasterIO
-    val update = new ValidIO(new PCRUpdate).flip
-  }
-
-  val conv = Module(new MemSpaceConsts(2))
-  conv.io.update <> io.update
-
-  io.master.aw.valid := io.slave.aw.valid
-  io.master.aw.bits := io.slave.aw.bits
-  conv.io.core_addr(0) := io.slave.aw.bits.addr
-  io.master.aw.bits.addr := conv.io.phy_addr(0)
-  io.slave.aw.ready := io.master.aw.ready
-
-  io.master.ar.valid := io.slave.ar.valid
-  io.master.ar.bits := io.slave.ar.bits
-  conv.io.core_addr(1) := io.slave.ar.bits.addr
-  io.master.ar.bits.addr := conv.io.phy_addr(1)
-  io.slave.ar.ready := io.master.ar.ready
-
-  io.master.w <> io.slave.w
-  io.slave.b <> io.master.b
-  io.slave.r <> io.master.r
-}
