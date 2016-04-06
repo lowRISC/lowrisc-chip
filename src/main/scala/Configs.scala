@@ -76,15 +76,25 @@ class DefaultConfig extends ChiselConfig (
       case "L2Bank" => {
         case NSets => Knob("L2_SETS")
         case NWays => Knob("L2_WAYS")
-        case RowBits => site(TLDataBits)
+        case RowBits => site(TagTLDataBits)
       }: PF
 
       // Tag Cache
+      case TagMemSize => 26 //64 MB for DRAM
+      case TagMemSizeBram => 12 //4kB for BRAM
       case TagBits => 4
       case TCBlockBits => site(MIFDataBits)
       case TCTransactors => Knob("TC_XACTORS")
       case TCBlockTags => 1 << log2Down(site(TCBlockBits) / site(TagBits))
       case TCBaseAddr => Knob("TC_BASE_ADDR")
+      case TCBaseAddrBram => 0xFFFF
+      case TCTrackers => 1
+      case TagBlockBytes => site(CacheBlockBytes)
+      case TagRowBytes => site(MIFDataBits) / 8
+      case TagRowTags => 1 << log2Down((site(TagRowBytes) * 8) / site(TagBits))
+      case TagRowBlocks => site(TagRowTags) * 8 / site(CacheBlockBytes)
+      case TagBlockBlocks => site(TagBlockBytes) / site(TagRowBytes) * site(TagRowBlocks)
+      case TagBlockTagBits => site(TagBits) * site(CacheBlockBytes) / 8
       case "TagCache" => {
         case NSets => Knob("TC_SETS")
         case NWays => Knob("TC_WAYS")
@@ -121,7 +131,9 @@ class DefaultConfig extends ChiselConfig (
       case TLBlockAddrBits => site(PAddrBits) - site(CacheBlockOffsetBits)
       case TLNClients => site(TLNCachingClients) + site(TLNCachelessClients)
       case TLDataBits => site(CacheBlockBytes)*8/site(TLDataBeats)
+      case TagTLDataBits => site(TLDataBits) + site(TagBits) * (site(TLDataBits) / site(CacheBlockBytes))
       case TLWriteMaskBits => (site(TLDataBits) - 1) / 8 + 1
+      //case TLWriteMaskBits => (site(TagTLDataBits) - 1) / 8 + 1 //Correct solution?
       case TLDataBeats => 4
       case TLNetworkIsOrderedP2P => false
       case TLNManagers => findBy(TLId)
@@ -201,7 +213,7 @@ class DefaultConfig extends ChiselConfig (
     case "TC_XACTORS" => 1
     case "TC_SETS" => 64
     case "TC_WAYS" => 8
-    case "TC_BASE_ADDR" => 15 << 28 // 0xf000_0000
+    case "TC_BASE_ADDR" =>  0x7FFFFFFF //<< 20 //0x7FF00000 //Strart Tag segment for DRAM
   }
 )
 
