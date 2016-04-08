@@ -44,6 +44,7 @@ class Top extends Module with TopLevelParameters {
         tiles(i).io.dbgnet(0).dii_in <> tiles(i-1).io.dbgnet(0).dii_out
         tiles(i).io.dbgnet(1).dii_in <> tiles(i-1).io.dbgnet(1).dii_out
       }
+    tiles(i).io.dbgrst := io.debug_rst
     }
 
     (0 until 2) foreach { i =>
@@ -56,8 +57,6 @@ class Top extends Module with TopLevelParameters {
         bbox_port.io.chisel.dii_out <> tiles(nTiles - 1).io.dbgnet(i).dii_out
       }
     }
-
-    tiles(i).io.dbgrst := io.debug_rst
   }
 
   // PCR controller
