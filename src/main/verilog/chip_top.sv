@@ -240,7 +240,8 @@ module chip_top
       .io_debug_mam_rdata_ready      ( mam_read_ready                         ),
       .io_debug_mam_rdata_valid      ( mam_read_valid                         ),
       .io_debug_mam_rdata_bits_data  ( mam_read_data                          ),
-      .io_debug_rst                  ( cpu_rst                                )
+      .io_debug_rst                  ( rst                                    ),
+      .io_cpu_rst                    ( cpu_rst                                )
       );
 
    // the memory contoller
