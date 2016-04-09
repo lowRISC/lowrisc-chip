@@ -25,6 +25,7 @@ class TopIO extends Bundle {
   val host        = new HostIO
   val interrupt   = UInt(INPUT, params(XLen))
   val debug_mam   = (new MamIO).flip
+  val cpu_rst     = Bool(INPUT)
   val debug_rst   = Bool(INPUT)
   val debug_net   = Vec(2, new DiiBBoxIO)       // debug network
 }
@@ -43,6 +44,7 @@ class Top extends Module with TopLevelParameters {
         tiles(i).io.dbgnet(0).dii_in <> tiles(i-1).io.dbgnet(0).dii_out
         tiles(i).io.dbgnet(1).dii_in <> tiles(i-1).io.dbgnet(1).dii_out
       }
+    tiles(i).io.dbgrst := io.debug_rst
     }
 
     (0 until 2) foreach { i =>
@@ -63,7 +65,7 @@ class Top extends Module with TopLevelParameters {
   pcrControl.io.interrupt <> io.interrupt
   pcrControl.io.pcr_req <> (tiles.map(_.io.pcr.req))
   (0 until nTiles) foreach { i =>
-    tiles(i).io.soft_reset := pcrControl.io.soft_reset || io.debug_rst
+    tiles(i).io.soft_reset := pcrControl.io.soft_reset || io.cpu_rst
     tiles(i).io.pcr.resp := pcrControl.io.pcr_resp
     tiles(i).io.pcr.update := pcrControl.io.pcr_update
     tiles(i).io.irq := pcrControl.io.irq(i)
