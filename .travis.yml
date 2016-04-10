@@ -29,7 +29,7 @@ addons:
     # Need gcc-4.8
     - gcc-4.8
     - g++-4.8
-    - boost1.55
+    - libboost-dev
 
 # Environment
 env:
