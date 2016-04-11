@@ -29,6 +29,7 @@ int main(int argc, char** argv) {
   // handle arguements
   bool vcd_enable = false;
   string vcd_name = "verilated.vcd";
+  bool wait_debug = false;
 
   vector<string> args(argv + 1, argv + argc);
   for(vector<string>::iterator it = args.begin(); it != args.end(); ++it) {
@@ -46,6 +47,9 @@ int main(int argc, char** argv) {
     }
     else if(it->find("+vcd_name=") == 0) {
       vcd_name = it->substr(strlen("+vcd_name="));
+    }
+    else if(it->find("+waitdebug") == 0) {
+      wait_debug = true;
     }
   }
 
@@ -67,7 +71,7 @@ int main(int argc, char** argv) {
         (max_time == 0 || main_time < max_time) &&
         (exit_delay != 1)
         ) {
-    if (!glip.connected()) {
+    if (!glip.connected() && wait_debug) {
       continue;
     }
     if(main_time > 133) {
