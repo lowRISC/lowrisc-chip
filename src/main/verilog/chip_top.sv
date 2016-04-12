@@ -2,8 +2,8 @@
 
 import dii_package::dii_flit;
 
-`include "config.vh"
 `include "consts.vh"
+`include "config.vh"
 
 module chip_top
   (
