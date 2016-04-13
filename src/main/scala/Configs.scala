@@ -168,6 +168,7 @@ class DefaultConfig extends Config (
       case FastLoadByte => false
       case FastMulDiv => true
       case XLen => 64
+      case NSCR => 64
       case UseFPU => true
       case FDivSqrt => true
       case SFMALatency => 2
@@ -240,15 +241,13 @@ class DefaultConfig extends Config (
         NastiParameters(
           dataBits = site(MIFDataBits),
           addrBits = site(PAddrBits),
-          idBits = site(MIFTagBits),
-          handlers = 4
+          idBits = site(MIFTagBits)
         )
       case NastiKey("lite") =>
         NastiParameters(
-          dataBits = site(XLen),   // site(IODataBits), ??? Wrong
+          dataBits = site(XLen),
           addrBits = site(PAddrBits),
-          idBits = site(MIFTagBits),
-          handlers = 1
+          idBits = site(MIFTagBits)
         )
       
       case MMIOBase => Dump("MEM_SIZE", BigInt(1 << 30)) // 1 GB

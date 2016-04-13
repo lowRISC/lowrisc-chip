@@ -9,12 +9,22 @@ import uncore._
 import rocket._
 import rocket.Util._
 
+case object UseDma extends Field[Boolean]
+case object NBanks extends Field[Int]
+case object NSCR extends Field[UInt]
+case object BankIdLSB extends Field[Int]
+case object IODataBits extends Field[UInt]
+
 trait HasTopLevelParameters {
   implicit val p: Parameters
   lazy val nTiles : Int = p(NTiles)
   lazy val nBanks : Int = p(NBanks)
-  lazy val bankLSB : Int = p(BankIdLSB)
-  lazy val bankMSB = bankLSB + log2Up(nBanks) - 1
+  lazy val lsb : Int = p(BankIdLSB)
+  lazy val xLen : Int = p(XLen)
+  lazy val nSCR : Int = p(NSCR)
+  lazy val scrAddrBits = log2Up(nSCR)
+  val csrAddrBits = 12
+  lazy val mmioBase : BigInt = p(MMIOBase)
   require(isPow2(nBanks))
 }
 
@@ -22,6 +32,26 @@ class TopIO(implicit val p: Parameters) extends ParameterizedBundle()(p) with Ha
   val nasti       = new NastiIO()(p.alterPartial({case BusId => "nasti"}))
   val nasti_lite  = new NastiIO()(p.alterPartial({case BusId => "lite"}))
   val interrupt   = UInt(INPUT, p(XLen))
+  val cpu_rst     = Bool(INPUT)
+}
+
+object TopUtils {
+  // Connect two Nasti interfaces with queues in-between
+  def connectNasti(outer: NastiIO, inner: NastiIO)(implicit p: Parameters) {
+    outer.ar <> Queue(inner.ar)
+    outer.aw <> Queue(inner.aw)
+    outer.w  <> Queue(inner.w)
+    inner.r  <> Queue(outer.r)
+    inner.b  <> Queue(outer.b)
+  }
+
+  // connect uncached tilelike -> nasti
+  def connectTilelinkNasti(nasti: NastiIO, tl: ClientUncachedTileLinkIO)(implicit p: Parameters) = {
+    val conv = Module(new NastiIOTileLinkIOConverter())
+    conv.io.tl <> tl
+    connectNasti(nasti, conv.io.nasti)
+  }
+
 }
 
 class Top(topParams: Parameters) extends Module with HasTopLevelParameters {
@@ -29,120 +59,127 @@ class Top(topParams: Parameters) extends Module with HasTopLevelParameters {
   val io = new TopIO
 
   ////////////////////////////////////////////
-  // Rocket Tiles
-  val tiles = (0 until nTiles) map { i =>
-    Module(new RocketTile(i)(p.alterPartial({case TLId => "L1toL2", case IOTLId => "L1toIO" })))
-  }
+  // local parameters
 
-  // DMA and IO space
-  val dmaOpt = if (p(UseDma))
-    Some(Module(new DmaEngine(
-      DmaCtrlRegNumbers.CSR_BASE + DmaCtrlRegNumbers.OUTSTANDING)))
-    else None
+  // partial configuration ids
+  val l1tol2TLId = "L1toL2"
+  val l2totcTLId = "L2toTC"
+  val l1toioTLId = "L1toIO"
+  val l2CacheId  = "L2BanK"
+  val tagCacheId = "TagCache"
+  val memBusId = "nasti"
+  val ioBusId = "lite"
+
+  val rocketParams = p.alterPartial({ case TLId => l1tol2TLId; case IOTLId => l1toioTLId })
+  val coherentNetParams = p.alterPartial({ case TLId => l1tol2TLId })
+  val tagCacheParams = p.alterPartial({ case TLId => l2totcTLId; case CacheName => tagCacheId })
+  val tagNetParams = p.alterPartial({ case TLId => l2totcTLId })
+  val ioNetParams = p.alterPartial({ case TLId => l1toioTLId })
+  val memConvParams = p.alterPartial({ case TLId => l2totcTLId; case BusId => memBusId })
+  val smiConvParams = p.alterPartial({ case BusId => ioBusId })
+  val ioConvParams = p.alterPartial({ case TLId => l1toioTLId; case BusId => ioBusId })
+
   val mmioBase = p(MMIOBase)
+
+  // IO space configuration
+  val addrMap = p(GlobalAddrMap)
+  val addrHashMap = new AddrHashMap(addrMap, mmioBase)
+  val nSlaves = addrHashMap.nEntries
+
+  // TODO: the code to print this stuff should live somewhere else
+  println("Generated Address Map")
+  for ((name, base, size, _) <- addrHashMap.sortedEntries) {
+    println(f"\t$name%s $base%x - ${base + size - 1}%x")
+  }
+  println("Generated Configuration String")
+  println(new String(p(ConfigString)))
+
+  ////////////////////////////////////////////
+  // Global real time counter (wall clock)
+  val rtc = Module(new RTC(CSRs.mtime))
+
+  ////////////////////////////////////////////
+  // Rocket Tiles
+  val tileList = (0 until nTiles) map ( i => Module(new RocketTile(i, io.cpu_rst)(rocketParams)))
 
   ////////////////////////////////////////////
   // The crossbar between tiles and L2
-  def routeL1ToL2(addr: UInt) = if (nBanks > 1) addr(bankMSB,bankLSB) else UInt(0)
-  def routeL2ToL1(id: UInt) = id
-  val l2Network = Module(new TileLinkCrossbar(
-    routeL1ToL2, routeL2ToL1,
-    TileLinkDepths(2,2,2,2,2),
-    TileLinkDepths(0,0,1,0,0)   //Berkeley: TODO: had EOS24 crit path on inner.release
-  )(p.alterPartial({case TLId => "L1toL2"})))
+  def sharerToClientId(sharerId: UInt) = sharerId
+  def addrToBank(addr: UInt): UInt = (addr >> lsb) % UInt(nBanks)
+  val preBuffering = TileLinkDepths(2,2,2,2,2)
+  val mem_net = Module(new PortedTileLinkCrossbar(addrToBank, sharerToClientId, preBuffering)(coherentNetParams))
 
-  l2Network.io.clients <>
-  ( tiles.map(_.io.cached).flatten ++
-    tiles.map(_.io.uncached).flatten.map(
-      TileLinkIOWrapper(_)(p.alterPartial({case TLId => "L1toL2"}))
-    ) ++
-    dmaOpt.map(_.io.mem)
-  )
+  mem_net.io.clients_cached <> tileList.map(_.io.cached)
+  mem_net.io.clients_uncached <> tileList.map(_.io.uncached) ++ Seq(rtc.io)
 
   ////////////////////////////////////////////
-  // L2 Banks
-  val banks = (0 until nBanks) map { i =>
+  // L2 cache coherence managers
+  val managerEndpoints = List.tabulate(nBanks){ id =>
     Module(new L2HellaCacheBank()(p.alterPartial({
-      case CacheId => i
-      case CacheName => "L2Bank"
-      case InnerTLId => "L1toL2"
-      case OuterTLId => "L2toTC"
-      case TLId => "L1toL2"   // dummy
-    })))
-  }
+      case CacheId => id
+      case CacheName => l2CacheId
+      case InnerTLId => l1tol2TLId
+      case OuterTLId => l2totcTLId})))}
 
-  l2Network.io.managers <> banks.map(_.innerTL)
-  banks.foreach(_.incoherent := UInt(0)) // !!! need to revise
+  mem_net.io.managers <> managerEndpoints.map(_.innerTL)
+  managerEndpoints.foreach { _.incoherent := io.cpu_rst } // revise when tiles are reset separately
 
   ////////////////////////////////////////////
   // the network between L2 and tag cache
   def routeL2ToTC(addr: UInt) = UInt(0)
   def routeTCToL2(id: UInt) = id
-  val tcNetwork = Module(new TileLinkCrossbar(routeL2ToTC, routeTCToL2)(p.alterPartial({case TLId => "L2toTC" })))
-
-  tcNetwork.io.clients <> banks.map(_.outerTL)
+  val tc_net = Module(new ClientUncachedTileLinkIOCrossbar(nBanks, 1, routeL2ToTC)(tagNetParams))
+  tc_net.io.in <> managerEndpoints.map(_.outerTL).map(ClientTileLinkIOUnwrapper(_)(tagNetParams))
 
   ////////////////////////////////////////////
   // tag cache
   //val tc = Module(new TagCache, {case TLId => "L2ToTC"; case CacheName => "TagCache"})
   // currently a TileLink to NASTI converter
-  val conv = Module(new NastiMasterIOTileLinkIOConverter()(p.alterPartial({case BusId => "nasti"; case TLId => "L2toTC"})))
-
-  tcNetwork.io.managers(0) <> conv.io.tl
-  io.nasti.ar              <> Queue(conv.io.nasti.ar)
-  io.nasti.aw              <> Queue(conv.io.nasti.aw)
-  io.nasti.w               <> Queue(conv.io.nasti.w)
-  conv.io.nasti.r          <> Queue(io.nasti.r)
-  conv.io.nasti.b          <> Queue(io.nasti.b)
+  TopUtils.connectTilelinkNasti(io.nasti, tc_net.io.out(0))(memConvParams)
 
   ////////////////////////////////////////////
-  // MMIO TileLink
-  def routeL1ToIO(addr: UInt) = UInt(0)
-  def routeIOToL1(id: UInt) = id
-  val mmioTileLink = Module(new TileLinkCrossbar(
-    routeL1ToIO, routeIOToL1,
-    TileLinkDepths(1,1,1,1,1),
-    TileLinkDepths(0,0,0,0,0)
-  )(p.alterPartial({case TLId => "L1toIO"})))
+  // MMIO interconnect
 
-  val mmioManager = Module(new MMIOTileLinkManager()(p.alterPartial({
-    case TLId => "L1toIO"
-    case InnerTLId => "L1toIO"
-    case OuterTLId => "L1ToIO"
-  })))
-  mmioTileLink.io.managers(0) <> mmioManager.io.inner
+  // mmio interconnect
+  val mmio_net = Module(new TileLinkRecursiveInterconnect(
+    nTiles, addrHashMap.nInternalPorts, addrMap, mmioBase)(ioNetParams))
 
-  val mmioConv = Module(new NastiIOTileLinkIOConverter()(p.alterPartial({case BusId => "lite"; case TLId => "L1ToIO"})))
-  mmioConv.io.tl <> mmioTileLink.io.outer
+  for (i <- 0 until nTiles) {
+    // mmio
+    mmio_net.io.in(i) <> tileList(i).io.io
 
-  ////////////////////////////////////////////
-  // IO space
-  val addrMap = p(GlobalAddrMap)
-  val addrHashMap = new AddrHashMap(addrMap, mmioBase)
-  val nIOMasters = (if (dmaOpt.isEmpty) 2 else 3)
-  val nIOSlaves = addrHashMap.nInternalPorts
-
-  println("Generated Address Map")
-  for ((name, base, size, _) <- addrHashMap.sortedEntries) {
-    println(f"\t$name%s $base%x - ${base + size - 1}%x")
+    // memory mapped csr
+    val csrName = s"conf:csr$i"
+    val csrPort = addrHashMap(csrName).port
+    val conv = Module(new SmiIONastiIOConverter(xLen, csrAddrBits)(smiConvParams))
+    TopUtils.connectTilelinkNasti(conv.io.nasti, mmio_net.io.out(csrPort))(ioConvParams)
+    tileList(i).io.mmcsr <> conv.io.smi
   }
 
-  ////////////////////////////////////////////
-  // IO interconnet
-  val mmio_ic = Module(new NastiRecursiveInterconnect(nIOMasters, nIOSlaves, addrMap, mmioBase)(p.alterPartial({case BusId => "lite"})))
+  // scr
+  val scrFile = Module(new SCRFile("UNCORE_SCR",addrHashMap("conf:scr").start))
+  scrFile.io.scr.attach(Wire(init = UInt(nTiles)), "N_CORES")
+  scrFile.io.scr.attach(Wire(init = UInt(p(MMIOBase) >> 20)), "MMIO_BASE")
 
-  // Rocket cores (master)
-  mmio_ic.io.master(0) <> mmioConv.io.nasti
+  val scrPort = addrHashMap("conf:scr").port
+  val scr_conv = Module(new SmiIONastiIOConverter(xLen, scrAddrBits)(smiConvParams))
+  TopUtils.connectTilelinkNasti(scr_conv.io.nasti, mmio_net.io.out(scrPort))(ioConvParams)
+  scrFile.io.smi <> scr_conv.io.smi
 
-  // RTC (master)
-  val rtc = Module(new RTC(CSRs.mtime))
-  mmio_ic.io.masters(1) <> rtc.io
+  // device tree
+  val deviceTree = Module(new NastiROM(p(ConfigString).toSeq))
+  val dtPort = addrHashMap("conf:devicetree").port
+  TopUtils.connectTilelinkNasti(deviceTree.io, mmio_net.io.out(dtPort))(ioConvParams)
 
   // DMA (master)
-  dmaOpt.foreach { dma =>
-    mmio_ic.io.masters(2) <> dma.io.mmio
-    dma.io.ctrl <> mmio_ic.io.slaves(addrHashMap("devices:dma").port)
-  }
+  //dmaOpt.foreach { dma =>
+  //  mmio_ic.io.masters(2) <> dma.io.mmio
+  //  dma.io.ctrl <> mmio_ic.io.slaves(addrHashMap("devices:dma").port)
+  //}
+
+  // outer IO devices
+  val outerPort = addrHashMap("conf:external").port
+  TopUtils.connectTilelinkNasti(io.nasti_lite, mmio_net.io.out(outerPort))(ioConvParams)
 }
 
 object Run extends App with FileSystemUtilities {
@@ -172,4 +209,17 @@ object Run extends App with FileSystemUtilities {
   val pdFile = createOutputFile(s"$topModuleName.$configClassName.prm")
   pdFile.write(ParameterDump.getDump)
   pdFile.close
+  val v = createOutputFile(configClassName + ".knb")
+  v.write(world.getKnobs)
+  v.close
+  val d = new java.io.FileOutputStream(Driver.targetDir + "/" + configClassName + ".cfg")
+  d.write(paramsFromConfig(ConfigString))
+  d.close
+  val w = createOutputFile(configClassName + ".cst")
+  w.write(world.getConstraints)
+  w.close
+  val scr_map_hdr = createOutputFile(topModuleName + "." + configClassName + ".scr_map.h")
+  AllSCRFiles.foreach{ map => scr_map_hdr.write(map.as_c_header) }
+  scr_map_hdr.close
+
 }
