@@ -14,60 +14,51 @@ class DefaultConfig extends Config (
   topDefinitions = { (pname,site,here) => 
     type PF = PartialFunction[Any,Any]
     def findBy(sname:Any):Any = here[PF](site[Any](sname))(pname)
+
+    // Generate address map for device tree, CSR and SCR
     def genCsrAddrMap: AddrMap = {
+      val ext = AddrMapEntry("external", None, MemSize(1 << 30, AddrMapConsts.RW))
       val deviceTree = AddrMapEntry("devicetree", None, MemSize(1 << 15, AddrMapConsts.R))
       val csrSize = (1 << 12) * (site(XLen) / 8)
       val csrs = (0 until site(NTiles)).map{ i => 
         AddrMapEntry(s"csr$i", None, MemSize(csrSize, AddrMapConsts.RW))
       }
-      val scrSize = 64 * (site(XLen) / 8)
+      val scrSize = site(NSCR) * (site(XLen) / 8)
       val scr = AddrMapEntry("scr", None, MemSize(scrSize, AddrMapConsts.RW))
-      new AddrMap(deviceTree +: csrs :+ scr)
+      new AddrMap(ext +: deviceTree +: csrs :+ scr)
     }
-    def makeDeviceTree() = {
+
+    // content of the device tree ROM, core and CSR
+    def makeConfigString() = {
       val addrMap = new AddrHashMap(site(GlobalAddrMap), site(MMIOBase))
-      val devices = site(GlobalDeviceSet)
-      val dt = new DeviceTreeGenerator
-      dt.beginNode("")
-      dt.addProp("#address-cells", 2)
-      dt.addProp("#size-cells", 2)
-      dt.addProp("model", "Rocket-Chip")
-        dt.beginNode("memory@0")
-          dt.addProp("device_type", "memory")
-          dt.addReg(0, site(MMIOBase).toLong)
-        dt.endNode()
-        dt.beginNode("cpus")
-          dt.addProp("#address-cells", 2)
-          dt.addProp("#size-cells", 2)
-          for (i <- 0 until site(NTiles)) {
-            val csrs = addrMap(s"conf:csr$i")
-            dt.beginNode(s"cpu@${csrs.start.toLong.toHexString}")
-              dt.addProp("device_type", "cpu")
-              dt.addProp("compatible", "riscv")
-              dt.addProp("isa", s"rv${site(XLen)}")
-              dt.addReg(csrs.start.toLong)
-            dt.endNode()
-          }
-        dt.endNode()
-        val scrs = addrMap("conf:scr")
-        dt.beginNode(s"scr@${scrs.start.toLong.toHexString}")
-          dt.addProp("device_type", "scr")
-          dt.addProp("compatible", "riscv")
-          dt.addProp("protection", scrs.prot)
-          dt.addReg(scrs.start.toLong, scrs.size.toLong)
-        dt.endNode()
-        for (dev <- devices.toSeq) {
-          val entry = addrMap(s"devices:${dev.name}")
-          dt.beginNode(s"${dev.name}@${entry.start}")
-            dt.addProp("device_type", s"${dev.dtype}")
-            dt.addProp("compatible", "riscv")
-            dt.addProp("protection", entry.prot)
-            dt.addReg(entry.start.toLong, entry.size.toLong)
-          dt.endNode()
-        }
-      dt.endNode()
-      dt.toArray()
+      val xLen = site(XLen)
+      val res = new StringBuilder
+      res append  "platform {\n"
+      res append  "  vendor lowRISC;\n"
+      res append  "  arch rocket;\n"
+      res append  "};\n"
+      res append  "ram {\n"
+      res append  "  0 {\n"
+      res append  "    addr 0;\n"
+      res append s"    size 0x${site(MMIOBase).toString(16)};\n"
+      res append  "  };\n"
+      res append  "};\n"
+      res append  "core {\n"
+      for (i <- 0 until site(NTiles)) {
+        val csrAddr = addrMap(s"conf:csr$i").start
+        res append s"  $i {\n"
+        res append  "    0 {\n"
+        res append s"      isa rv$xLen;\n"
+        res append s"      addr 0x${csrAddr.toString(16)};\n"
+        res append  "    };\n"
+        res append  "  };\n"
+      }
+      res append  "};\n"
+      res append '\u0000'
+      res.toString.getBytes
     }
+
+    // parameter definitions
     pname match {
       //Memory Parameters
       case CacheBlockBytes => 64
@@ -81,7 +72,7 @@ class DefaultConfig extends Config (
       case VAddrBits => site(VPNBits) + site(PgIdxBits)
       case ASIdBits => 7
       case MIFTagBits => Dump("MEM_TAG_WIDTH", 8)
-      case MIFDataBits => Dump("MEM_DAT_WIDTH", 128)
+      case MIFDataBits => Dump("MEM_DAT_WIDTH", site(TLKey("TCtoMem")).dataBitsPerBeat)
       case IODataBits => Dump("IO_DAT_WIDTH", 32)   // assume 32-bit IO NASTI-Lite bus
 
       //Params used by all caches
@@ -176,7 +167,10 @@ class DefaultConfig extends Config (
       case CoreInstBits => 32
       case CoreDataBits => site(XLen)
       case NCustomMRWCSRs => 0
-      case MtvecInit => BigInt(0x100)
+      case ResetVector => BigInt(0x0)
+      case MtvecInit => BigInt(0x8)
+      case MtvecWritable => false
+
       //Uncore Paramters
       case RTCPeriod => 100 // gives 10 MHz RTC assuming 1 GHz uncore clock
       case NBanks => Knob("NBANKS")
@@ -184,56 +178,60 @@ class DefaultConfig extends Config (
       case LNEndpoints => site(TLKey(site(TLId))).nManagers + site(TLKey(site(TLId))).nClients
       case LNHeaderBits => log2Up(max(site(TLKey(site(TLId))).nManagers,
         site(TLKey(site(TLId))).nClients))
-      
+      case SCRKey => SCRParameters(
+                       nSCR = 64,
+                       csrDataBits = site(XLen),
+                       offsetBits = site(CacheBlockOffsetBits),
+                       nCores = site(NTiles))
+
       case TLKey("L1toL2") =>
         TileLinkParameters(
           coherencePolicy = new MESICoherence(site(L2DirectoryRepresentation)),
-          nManagers = 2,   // site(NBanks) + 1,   ??? WRONG
+          nManagers = site(NBanks),
           nCachingClients = site(NTiles),
-          nCachelessClients = (if (site(UseDma)) 2 else 1) + 1, // site(NTiles),  ??? WRONG
-          maxClientXacts = max(site(NMSHRs) + 1, if (site(UseDma)) 4 else 1),
-          maxClientsPerPort = if (site(UseDma)) site(NDmaTransactors) + 1 else 1,
-          maxManagerXacts = site(NAcquireTransactors) + 2,
+          nCachelessClients = site(NTiles),
+          maxClientXacts = site(NMSHRs),
+          maxClientsPerPort = 1,
+          maxManagerXacts = site(NAcquireTransactors) + 2, // acquire, release, writeback
           dataBits = site(CacheBlockBytes)*8,
           dataBeats = 4
+        )
+      case TLKey("L1toIO") =>
+        TileLinkParameters(
+          coherencePolicy = new MICoherence(new NullRepresentation(site(NTiles))),
+          nManagers = 1,
+          nCachingClients = 0,
+          nCachelessClients = site(NTiles) + 1, // core, rtc
+          maxClientXacts = 1,
+          maxClientsPerPort = 1,
+          maxManagerXacts = 1,
+          dataBits = site(XLen),
+          dataBeats = 1
         )
       case TLKey("L2toTC") =>
         TileLinkParameters(
           coherencePolicy = new MEICoherence(new NullRepresentation(site(NBanks))),
           nManagers = 1,
-          nCachingClients = site(NBanks),
-          nCachelessClients = 0,
-          maxClientXacts = 1,
-          maxClientsPerPort = site(NAcquireTransactors) + 2,
-          maxManagerXacts = 1,
+          nCachingClients = 0,
+          nCachelessClients = site(NBanks),
+          maxClientXacts = site(NAcquireTransactors) + 2,
+          maxClientsPerPort = 1,
+          maxManagerXacts = site(TCTransactors),
           dataBits = site(CacheBlockBytes)*8,
           dataBeats = 4
         )
-      case TLKey("L2toIO") =>
+
+      case TLKey("TCtoMem") =>
         TileLinkParameters(
-          coherencePolicy = new MICoherence(new NullRepresentation(site(NTiles))),
-          nManagers = 1,
-          nCachingClients = 0,
-          nCachelessClients = site(NTiles),
-          maxClientXacts = 1,
-          maxClientsPerPort = 1,
-          maxManagerXacts = site(NTiles),
-          dataBits = site(XLen),
-          dataBeats = 4,                             // no multi-beat is support, set to 4 due to require in uncore HasCoherenceAgentParameters
-          overrideDataBitsPerBeat = Some(site(XLen)) // override beat width to the full width
-        )
-      case TLKey("IONoC") =>
-        TileLinkParameters(
-          coherencePolicy = new MICoherence(new NullRepresentation(site(NTiles))),
+          coherencePolicy = new MEICoherence(new NullRepresentation(site(NBanks))),
           nManagers = 1,
           nCachingClients = 0,
           nCachelessClients = 1,
-          maxClientXacts = site(NTiles),
+          maxClientXacts = site(TCTransactors),
           maxClientsPerPort = 1,
-          maxManagerXacts = site(NTiles),
-          dataBits = site(XLen),
-          dataBeats = 4,                             // no multi-beat is support, set to 4 due to require in uncore HasCoherenceAgentParameters
-          overrideDataBitsPerBeat = Some(site(XLen)) // override beat width to the full width
+          maxManagerXacts = 1,
+          dataBits = site(CacheBlockBytes)*8,
+          dataBeats = 8
         )
 
       // NASTI BUS parameters
@@ -247,11 +245,11 @@ class DefaultConfig extends Config (
         NastiParameters(
           dataBits = site(XLen),
           addrBits = site(PAddrBits),
-          idBits = site(MIFTagBits)
+          idBits = 1
         )
       
       case MMIOBase => Dump("MEM_SIZE", BigInt(1 << 30)) // 1 GB
-      case DeviceTree => makeDeviceTree()
+      case ConfigString => makeConfigString()
       case GlobalAddrMap => {
         AddrMap(
           AddrMapEntry("conf", None,
@@ -261,9 +259,6 @@ class DefaultConfig extends Config (
       }
       case GlobalDeviceSet => {
         val devset = new DeviceSet
-        if (site(UseDma)) {
-          devset.addDevice("dma", site(CacheBlockBytes), "dma")
-        }
         devset
       }
     }},

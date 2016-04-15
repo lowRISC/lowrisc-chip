@@ -11,9 +11,11 @@ import rocket.Util._
 
 case object UseDma extends Field[Boolean]
 case object NBanks extends Field[Int]
-case object NSCR extends Field[UInt]
+case object NSCR extends Field[Int]
 case object BankIdLSB extends Field[Int]
 case object IODataBits extends Field[UInt]
+case object ConfigString extends Field[Array[Byte]]
+case object NTiles extends Field[Int]
 
 trait HasTopLevelParameters {
   implicit val p: Parameters
@@ -23,9 +25,16 @@ trait HasTopLevelParameters {
   lazy val xLen : Int = p(XLen)
   lazy val nSCR : Int = p(NSCR)
   lazy val scrAddrBits = log2Up(nSCR)
+  lazy val mmioBase = p(MMIOBase)
   val csrAddrBits = 12
-  lazy val mmioBase : BigInt = p(MMIOBase)
-  require(isPow2(nBanks))
+  val l1tol2TLId = "L1toL2"
+  val l2totcTLId = "L2toTC"
+  val tctomemTLId = "TCtoMem"
+  val l1toioTLId = "L1toIO"
+  val l2CacheId  = "L2Bank"
+  val tagCacheId = "TagCache"
+  val memBusId = "nasti"
+  val ioBusId = "lite"
 }
 
 class TopIO(implicit val p: Parameters) extends ParameterizedBundle()(p) with HasTopLevelParameters {
@@ -59,27 +68,16 @@ class Top(topParams: Parameters) extends Module with HasTopLevelParameters {
   val io = new TopIO
 
   ////////////////////////////////////////////
-  // local parameters
-
-  // partial configuration ids
-  val l1tol2TLId = "L1toL2"
-  val l2totcTLId = "L2toTC"
-  val l1toioTLId = "L1toIO"
-  val l2CacheId  = "L2BanK"
-  val tagCacheId = "TagCache"
-  val memBusId = "nasti"
-  val ioBusId = "lite"
+  // local partial parameter overrides
 
   val rocketParams = p.alterPartial({ case TLId => l1tol2TLId; case IOTLId => l1toioTLId })
   val coherentNetParams = p.alterPartial({ case TLId => l1tol2TLId })
   val tagCacheParams = p.alterPartial({ case TLId => l2totcTLId; case CacheName => tagCacheId })
   val tagNetParams = p.alterPartial({ case TLId => l2totcTLId })
-  val ioNetParams = p.alterPartial({ case TLId => l1toioTLId })
-  val memConvParams = p.alterPartial({ case TLId => l2totcTLId; case BusId => memBusId })
+  val ioNetParams = p.alterPartial({ case TLId => l1toioTLId; case BusId => ioBusId })
+  val memConvParams = p.alterPartial({ case TLId => tctomemTLId; case BusId => memBusId })
   val smiConvParams = p.alterPartial({ case BusId => ioBusId })
   val ioConvParams = p.alterPartial({ case TLId => l1toioTLId; case BusId => ioBusId })
-
-  val mmioBase = p(MMIOBase)
 
   // IO space configuration
   val addrMap = p(GlobalAddrMap)
@@ -95,10 +93,6 @@ class Top(topParams: Parameters) extends Module with HasTopLevelParameters {
   println(new String(p(ConfigString)))
 
   ////////////////////////////////////////////
-  // Global real time counter (wall clock)
-  val rtc = Module(new RTC(CSRs.mtime))
-
-  ////////////////////////////////////////////
   // Rocket Tiles
   val tileList = (0 until nTiles) map ( i => Module(new RocketTile(i, io.cpu_rst)(rocketParams)))
 
@@ -109,14 +103,15 @@ class Top(topParams: Parameters) extends Module with HasTopLevelParameters {
   val preBuffering = TileLinkDepths(2,2,2,2,2)
   val mem_net = Module(new PortedTileLinkCrossbar(addrToBank, sharerToClientId, preBuffering)(coherentNetParams))
 
-  mem_net.io.clients_cached <> tileList.map(_.io.cached)
-  mem_net.io.clients_uncached <> tileList.map(_.io.uncached) ++ Seq(rtc.io)
+  mem_net.io.clients_cached <> tileList.map(_.io.cached).flatten
+  mem_net.io.clients_uncached <> tileList.map(_.io.uncached).flatten
 
   ////////////////////////////////////////////
   // L2 cache coherence managers
   val managerEndpoints = List.tabulate(nBanks){ id =>
     Module(new L2HellaCacheBank()(p.alterPartial({
       case CacheId => id
+      case TLId => l1tol2TLId
       case CacheName => l2CacheId
       case InnerTLId => l1tol2TLId
       case OuterTLId => l2totcTLId})))}
@@ -135,14 +130,16 @@ class Top(topParams: Parameters) extends Module with HasTopLevelParameters {
   // tag cache
   //val tc = Module(new TagCache, {case TLId => "L2ToTC"; case CacheName => "TagCache"})
   // currently a TileLink to NASTI converter
-  TopUtils.connectTilelinkNasti(io.nasti, tc_net.io.out(0))(memConvParams)
+  val mem_narrow = Module(new TileLinkIONarrower(l2totcTLId, tctomemTLId)(memConvParams))
+  mem_narrow.io.in <> tc_net.io.out(0)
+  TopUtils.connectTilelinkNasti(io.nasti, mem_narrow.io.out)(memConvParams)
 
   ////////////////////////////////////////////
   // MMIO interconnect
 
   // mmio interconnect
   val mmio_net = Module(new TileLinkRecursiveInterconnect(
-    nTiles, addrHashMap.nInternalPorts, addrMap, mmioBase)(ioNetParams))
+    nTiles + 1, addrHashMap.nInternalPorts, addrMap, mmioBase)(ioNetParams))
 
   for (i <- 0 until nTiles) {
     // mmio
@@ -156,6 +153,10 @@ class Top(topParams: Parameters) extends Module with HasTopLevelParameters {
     tileList(i).io.mmcsr <> conv.io.smi
   }
 
+  // Global real time counter (wall clock)
+  val rtc = Module(new RTC(CSRs.mtime)(ioNetParams))
+  mmio_net.io.in(nTiles) <> rtc.io
+
   // scr
   val scrFile = Module(new SCRFile("UNCORE_SCR",addrHashMap("conf:scr").start))
   scrFile.io.scr.attach(Wire(init = UInt(nTiles)), "N_CORES")
@@ -167,7 +168,7 @@ class Top(topParams: Parameters) extends Module with HasTopLevelParameters {
   scrFile.io.smi <> scr_conv.io.smi
 
   // device tree
-  val deviceTree = Module(new NastiROM(p(ConfigString).toSeq))
+  val deviceTree = Module(new NastiROM(p(ConfigString).toSeq)(ioNetParams))
   val dtPort = addrHashMap("conf:devicetree").port
   TopUtils.connectTilelinkNasti(deviceTree.io, mmio_net.io.out(dtPort))(ioConvParams)
 
