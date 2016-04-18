@@ -92,28 +92,6 @@ class Top(topParams: Parameters) extends Module with HasTopLevelParameters {
   println("Generated Address Map")
   for ((name, base, size, _) <- addrHashMap.sortedEntries) {
     println(f"\t$name%s $base%x - ${base + size - 1}%x")
-
-  if(params(UseDebug)) {
-    (0 until nTiles) foreach { i =>
-      if(nTiles > 1 && i != 0) {
-        tiles(i).io.dbgnet(0).dii_in <> tiles(i-1).io.dbgnet(0).dii_out
-        tiles(i).io.dbgnet(1).dii_in <> tiles(i-1).io.dbgnet(1).dii_out
-      }
-    tiles(i).io.dbgrst := io.debug_rst
-    }
-
-    (0 until 2) foreach { i =>
-      val bbox_port = Module(new DiiBBoxPort)
-      io.debug_net(i) <> bbox_port.io.bbox
-      bbox_port.io.chisel.dii_in <> tiles(0).io.dbgnet(i).dii_in
-      if(nTiles == 1) {
-        bbox_port.io.chisel.dii_out <> tiles(0).io.dbgnet(i).dii_out
-      } else {
-        bbox_port.io.chisel.dii_out <> tiles(nTiles - 1).io.dbgnet(i).dii_out
-      }
-    }
-  }
-
   }
   println("Generated Configuration String")
   println(new String(p(ConfigString)))
@@ -207,6 +185,30 @@ class Top(topParams: Parameters) extends Module with HasTopLevelParameters {
   // outer IO devices
   val outerPort = addrHashMap("conf:external").port
   TopUtils.connectTilelinkNasti(io.nasti_lite, mmio_net.io.out(outerPort))(ioConvParams)
+
+  ////////////////////////////////////////////
+  // trace debugger
+  if(p(UseDebug)) {
+    (0 until nTiles) foreach { i =>
+      if(nTiles > 1 && i != 0) {
+        tileList(i).io.dbgnet(0).dii_in <> tileList(i-1).io.dbgnet(0).dii_out
+        tileList(i).io.dbgnet(1).dii_in <> tileList(i-1).io.dbgnet(1).dii_out
+      }
+    tileList(i).io.dbgrst := io.debug_rst
+    }
+
+    (0 until 2) foreach { i =>
+      val bbox_port = Module(new DiiBBoxPort)
+      io.debug_net(i) <> bbox_port.io.bbox
+      bbox_port.io.chisel.dii_in <> tileList(0).io.dbgnet(i).dii_in
+      if(nTiles == 1) {
+        bbox_port.io.chisel.dii_out <> tileList(0).io.dbgnet(i).dii_out
+      } else {
+        bbox_port.io.chisel.dii_out <> tileList(nTiles - 1).io.dbgnet(i).dii_out
+      }
+    }
+  }
+
 }
 
 object Run extends App with FileSystemUtilities {

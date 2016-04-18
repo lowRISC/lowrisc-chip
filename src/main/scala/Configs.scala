@@ -296,7 +296,7 @@ class DefaultConfig extends Config (
 
 
 
-class WithDebugConfig extends ChiselConfig (
+class WithDebugConfig extends Config (
   (pname,site,here) => pname match {
     case UseDebug => Dump("ENABLE_DEBUG", true)
     case MamIODataWidth => Dump("MAM_IO_DWIDTH", 16)
@@ -311,4 +311,4 @@ class WithDebugConfig extends ChiselConfig (
   }
 )
 
-class DebugConfig extends ChiselConfig(new WithDebugConfig ++ new DefaultConfig)
+class DebugConfig extends Config(new WithDebugConfig ++ new DefaultConfig)
