@@ -416,34 +416,6 @@ module chip_top
   `endif // !`elsif ADD_DDR_SIM
 
    /////////////////////////////////////////////////////////////
-   // Host interface, legacy due to regression tests
-
-   logic  host_req_valid, host_req_ready, host_resp_valid, host_resp_ready;
-   logic [$clog2(`NTILES)-1:0] host_req_id, host_resp_id;
-   logic [63:0]                host_req_data, host_resp_data;
-
-  `ifdef ADD_HOST_IF
-   host_behav #(.nCores(`NTILES))
-   host
-     (
-      .*,
-      .req_valid    ( host_req_valid   ),
-      .req_ready    ( host_req_ready   ),
-      .req_id       ( host_req_id      ),
-      .req          ( host_req_data    ),
-      .resp_valid   ( host_resp_valid  ),
-      .resp_ready   ( host_resp_ready  ),
-      .resp_id      ( host_resp_id     ),
-      .resp         ( host_resp_data   )
-      );
-  `else
-   assign host_req_ready = 1'b0;
-   assign host_resp_id = 0;
-   assign host_resp_data = 0;
-   assign host_resp_valid = 1'b0;
-  `endif // !`ifdef ADD_HOST_IF
-
-   /////////////////////////////////////////////////////////////
    // UART
    nasti_channel
      #(
