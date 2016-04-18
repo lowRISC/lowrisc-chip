@@ -8,6 +8,7 @@ import junctions._
 import uncore._
 import rocket._
 import rocket.Util._
+import open_soc_debug._
 
 case object UseDma extends Field[Boolean]
 case object NBanks extends Field[Int]
@@ -41,7 +42,10 @@ class TopIO(implicit val p: Parameters) extends ParameterizedBundle()(p) with Ha
   val nasti       = new NastiIO()(p.alterPartial({case BusId => "nasti"}))
   val nasti_lite  = new NastiIO()(p.alterPartial({case BusId => "lite"}))
   val interrupt   = UInt(INPUT, p(XLen))
+  val debug_mam   = (new MamIO).flip
   val cpu_rst     = Bool(INPUT)
+  val debug_rst   = Bool(INPUT)
+  val debug_net   = Vec(2, new DiiBBoxIO)       // debug network
 }
 
 object TopUtils {
@@ -88,6 +92,28 @@ class Top(topParams: Parameters) extends Module with HasTopLevelParameters {
   println("Generated Address Map")
   for ((name, base, size, _) <- addrHashMap.sortedEntries) {
     println(f"\t$name%s $base%x - ${base + size - 1}%x")
+
+  if(params(UseDebug)) {
+    (0 until nTiles) foreach { i =>
+      if(nTiles > 1 && i != 0) {
+        tiles(i).io.dbgnet(0).dii_in <> tiles(i-1).io.dbgnet(0).dii_out
+        tiles(i).io.dbgnet(1).dii_in <> tiles(i-1).io.dbgnet(1).dii_out
+      }
+    tiles(i).io.dbgrst := io.debug_rst
+    }
+
+    (0 until 2) foreach { i =>
+      val bbox_port = Module(new DiiBBoxPort)
+      io.debug_net(i) <> bbox_port.io.bbox
+      bbox_port.io.chisel.dii_in <> tiles(0).io.dbgnet(i).dii_in
+      if(nTiles == 1) {
+        bbox_port.io.chisel.dii_out <> tiles(0).io.dbgnet(i).dii_out
+      } else {
+        bbox_port.io.chisel.dii_out <> tiles(nTiles - 1).io.dbgnet(i).dii_out
+      }
+    }
+  }
+
   }
   println("Generated Configuration String")
   println(new String(p(ConfigString)))

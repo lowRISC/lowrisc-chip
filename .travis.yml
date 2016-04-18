@@ -1,12 +1,10 @@
 # Run in container-based environment
-sudo: false
+sudo: required
+dist: trusty
 
 # Install the build requirements
 addons:
   apt:
-   sources:
-    # For gcc-4.8
-    - ubuntu-toolchain-r-test
    packages:
     # Dependencies from tutorial
     - autoconf
@@ -25,9 +23,6 @@ addons:
     - libncurses5-dev
     - libusb-1.0-0
     - libboost-dev
-    # Need gcc-4.8
-    - gcc-4.8
-    - g++-4.8
 
 # Environment
 env:
@@ -53,15 +48,15 @@ install:
  # Build RISC-V cross-compilation tools
  - cd $TOP/riscv-tools
  - sed -i 's/JOBS=16/JOBS=$JOBS/' build.common
- - CC=gcc-4.8 CXX=g++-4.8 ./build.sh
+ - ./build.sh
 
 script:
  # Build RTL simulation
  - cd $TOP/vsim
- - make sim CC=gcc-4.8 CXX=g++-4.8
+ - make sim
  # Build RTL simulation with vcd
  - cd $TOP/vsim
- - make sim-debug CC=gcc-4.8 CXX=g++-4.8
+ - make sim-debug
  # Run asm tests
  # Add . to PATH so that make finds it (will be changed)
  - export PATH=.:$PATH

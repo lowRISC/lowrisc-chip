@@ -19,7 +19,8 @@ sim_dir = .
 output_dir = $(sim_dir)/output
 
 BACKEND ?= lowrisc_chip.LowRISCBackend
-CONFIG ?= DefaultConfig
+#CONFIG ?= DefaultConfig
+CONFIG ?= DebugConfig
 
 include $(base_dir)/Makefrag
 
@@ -33,7 +34,7 @@ include $(base_dir)/Makefrag
 
 sim_vsrcs = \
 	$(generated_dir)/$(MODEL).$(CONFIG).v \
-	$(generated_dir)/consts.$(CONFIG).vh \
+	$(generated_dir)/consts.vh \
 
 #--------------------------------------------------------------------
 # Build Verilog
@@ -41,18 +42,7 @@ sim_vsrcs = \
 
 verilog: $(sim_vsrcs)
 
-$(generated_dir)/$(MODEL).$(CONFIG).v: $(chisel_srcs)
-	cd $(base_dir) && mkdir -p $(generated_dir) && $(SBT) "run $(CHISEL_ARGS) --configDump --noInlineMem"
-	cd $(generated_dir) && \
-	if [ -a $(MODEL).$(CONFIG).conf ]; then \
-	  $(mem_gen) $(generated_dir)/$(MODEL).$(CONFIG).conf >> $(generated_dir)/$(MODEL).$(CONFIG).v; \
-	fi
-
-$(generated_dir)/consts.$(CONFIG).vh: $(generated_dir)/$(MODEL).$(CONFIG).v
-	echo "\`ifndef CONST_VH" > $@
-	echo "\`define CONST_VH" >> $@
-	sed -r 's/\(([A-Za-z0-9_]+),([A-Za-z0-9_]+)\)/`define \1 \2/' $(patsubst %.v,%.prm,$<) >> $@
-	echo "\`endif // CONST_VH" >> $@
+include $(base_dir)/Makefrag-build
 
 .PHONY: verilog
 junk += $(generated_dir)
@@ -70,9 +60,10 @@ veri_flags = \
 	--top-module $(tb_top) \
 	--unroll-count 256 \
 	--trace \
-	-Wno-lint -Wno-style -Wno-STMTDLY -Wno-ASSIGNIN \
+	-Wno-lint -Wno-style -Wno-STMTDLY \
 	-CFLAGS "-std=c++11" \
-	-CFLAGS "-I$(base_dir)/src/test/cxx/common -I$(base_dir)/src/test/cxx/veri" \
+	-CFLAGS "-I$(base_dir)/src/test/cxx/common -I$(base_dir)/src/test/cxx/veri -I$(base_dir)/opensocdebug/glip/src/backend_tcp/logic/dpi" \
+        -LDFLAGS "-pthread" \
 	--exe \
 	--Mdir $(sim_dir)/verilator
 
@@ -81,7 +72,27 @@ veri_flags = \
 veri_opt_flags =
 
 veri_vsrcs = \
+	$(base_dir)/opensocdebug/hardware/interfaces/common/dii_channel.sv \
 	$(base_dir)/src/main/verilog/chip_top.sv \
+	$(base_dir)/opensocdebug/glip/src/common/logic/interface/glip_channel.sv \
+	$(base_dir)/opensocdebug/hardware/modules/him/common/osd_him.sv \
+	$(base_dir)/opensocdebug/hardware/modules/scm/common/osd_scm.sv \
+	$(base_dir)/opensocdebug/hardware/blocks/regaccess/common/osd_regaccess.sv \
+	$(base_dir)/opensocdebug/hardware/blocks/regaccess/common/osd_regaccess_demux.sv \
+	$(base_dir)/opensocdebug/hardware/blocks/regaccess/common/osd_regaccess_layer.sv \
+	$(base_dir)/opensocdebug/hardware/modules/dem_uart/common/osd_dem_uart.sv \
+	$(base_dir)/opensocdebug/hardware/modules/dem_uart/common/osd_dem_uart_16550.sv \
+	$(base_dir)/opensocdebug/hardware/modules/dem_uart/common/osd_dem_uart_nasti.sv \
+	$(base_dir)/opensocdebug/hardware/modules/mam/common/osd_mam.sv \
+	$(base_dir)/opensocdebug/hardware/modules/stm/common/osd_stm.sv \
+	$(base_dir)/opensocdebug/hardware/modules/ctm/common/osd_ctm.sv \
+	$(base_dir)/opensocdebug/hardware/blocks/buffer/common/dii_buffer.sv \
+	$(base_dir)/opensocdebug/hardware/interconnect/common/debug_ring.sv \
+	$(base_dir)/opensocdebug/hardware/interconnect/common/ring_router.sv \
+	$(base_dir)/opensocdebug/hardware/interconnect/common/ring_router_mux.sv \
+	$(base_dir)/opensocdebug/hardware/interconnect/common/ring_router_mux_rr.sv \
+	$(base_dir)/opensocdebug/hardware/interconnect/common/ring_router_demux.sv \
+	$(base_dir)/src/main/verilog/debug_system.sv \
 	$(generated_dir)/$(MODEL).$(CONFIG).v \
 	$(base_dir)/src/test/verilog/nasti_ram_behav.sv \
 	$(base_dir)/src/test/verilog/host_behav.sv \
@@ -98,12 +109,15 @@ veri_vsrcs = \
 	$(base_dir)/socip/nasti/nasti_mux.sv \
 	$(base_dir)/socip/nasti/nasti_slicer.sv \
 	$(base_dir)/socip/util/arbiter.sv \
+	$(base_dir)/opensocdebug/glip/src/backend_tcp/logic/dpi/glip_tcp_toplevel.sv
 
 veri_csrcs = \
 	$(base_dir)/src/test/cxx/common/globals.cpp \
 	$(base_dir)/src/test/cxx/common/dpi_ram_behav.cpp \
 	$(base_dir)/src/test/cxx/common/dpi_host_behav.cpp \
 	$(base_dir)/src/test/cxx/veri/veri_top.cc \
+	$(base_dir)/opensocdebug/glip/src/backend_tcp/logic/dpi/glip_tcp_dpi.cpp \
+	$(base_dir)/opensocdebug/glip/src/backend_tcp/logic/dpi/GlipTcp.cpp \
 
 #--------------------------------------------------------------------
 # Build the simulator (verilator)

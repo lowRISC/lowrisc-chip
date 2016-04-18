@@ -4,6 +4,7 @@ package lowrisc_chip
 
 import Chisel._
 import junctions._
+import open_soc_debug._
 import uncore._
 import rocket._
 import rocket.Util._
@@ -234,6 +235,14 @@ class DefaultConfig extends Config (
           dataBeats = 8
         )
 
+      // debug
+      // disabled in Default
+      case DiiIOWidth => 16
+      case MamIODataWidth => 16
+      case MamIOAddrWidth => 39
+      case MamIOBeatsBits => 14
+      case UseDebug => false
+
       // NASTI BUS parameters
       case NastiKey("nasti") =>
         NastiParameters(
@@ -286,8 +295,20 @@ class DefaultConfig extends Config (
 )
 
 
-class FPGAConfig extends ChiselConfig (
-  knobValues = {
-    case "TC_BASE_ADDR" => 15 << 24 // 0xf00,0000
+
+class WithDebugConfig extends ChiselConfig (
+  (pname,site,here) => pname match {
+    case UseDebug => Dump("ENABLE_DEBUG", true)
+    case MamIODataWidth => Dump("MAM_IO_DWIDTH", 16)
+    case MamIOAddrWidth => site(PAddrBits)
+    case MamIOBeatsBits => 14
+    case DebugCtmID => 0
+    case DebugStmID => 1
+    case DebugBaseID => 8
+    case DebugCtmScorBoardSize => site(NMSHRs)
+    case DebugStmCsrAddr => 0x8f0 // not synced with instruction.scala
+    case DebugRouterBufferSize => 4
   }
 )
+
+class DebugConfig extends ChiselConfig(new WithDebugConfig ++ new DefaultConfig)

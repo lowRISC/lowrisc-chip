@@ -10,6 +10,8 @@
 #include <vector>
 #include <iostream>
 
+#include "GlipTcp.h"
+
 using std::string;
 using std::vector;
 
@@ -27,6 +29,7 @@ int main(int argc, char** argv) {
   // handle arguements
   bool vcd_enable = false;
   string vcd_name = "verilated.vcd";
+  bool wait_debug = false;
 
   vector<string> args(argv + 1, argv + argc);
   for(vector<string>::iterator it = args.begin(); it != args.end(); ++it) {
@@ -45,6 +48,9 @@ int main(int argc, char** argv) {
     else if(it->find("+vcd_name=") == 0) {
       vcd_name = it->substr(strlen("+vcd_name="));
     }
+    else if(it->find("+waitdebug") == 0) {
+      wait_debug = true;
+    }
   }
 
   top = new Vchip_top;
@@ -57,11 +63,17 @@ int main(int argc, char** argv) {
     top->trace(vcd, 99);
     vcd->open(vcd_name.c_str());
   }
+
+  top->eval();
   
+  GlipTcp &glip = GlipTcp::instance();
   while(!Verilated::gotFinish() && (!exit_code || exit_delay > 1) &&
         (max_time == 0 || main_time < max_time) &&
         (exit_delay != 1)
         ) {
+    if (!glip.connected() && wait_debug) {
+      continue;
+    }
     if(main_time > 133) {
       top->rst_top = 0;
     }
