@@ -5,7 +5,6 @@
 #include "Vchip_top.h"
 #include "globals.h"
 #include "dpi_ram_behav.h"
-#include "dpi_host_behav.h"
 #include <string>
 #include <vector>
 #include <iostream>

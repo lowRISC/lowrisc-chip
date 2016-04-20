@@ -46,8 +46,6 @@
   `define ADD_SPI
   `define ADD_SPI_IO
 
-  `define ADD_BOOT_MEM
-
   `ifdef FPGA_FULL
    `define ADD_DDR
    `define ADD_DDR_IO
@@ -62,6 +60,8 @@
   `define ADD_HOST_IF
 
  `endif
+
+`define IO_DAT_WIDTH 32
 
 function int NUM_OF_IO_DEVICE();
    NUM_OF_IO_DEVICE = 0;
@@ -85,10 +85,6 @@ function int NUM_OF_MEM();
    // either hebavioural memory or DDR memory
    NUM_OF_MEM = 1;
 
- `ifdef ADD_BOOT_MEM
-   // have a on-chip boot-ram
-   NUM_OF_MEM++;
- `endif
 endfunction
 
 
