@@ -18,7 +18,6 @@ class DefaultConfig extends Config (
 
     // Generate address map for device tree, CSR and SCR
     def genCsrAddrMap: AddrMap = {
-      val ext = AddrMapEntry("external", None, MemSize(1 << 30, AddrMapConsts.RW))
       val deviceTree = AddrMapEntry("devicetree", None, MemSize(1 << 15, AddrMapConsts.R))
       val csrSize = (1 << 12) * (site(XLen) / 8)
       val csrs = (0 until site(NTiles)).map{ i => 
@@ -26,7 +25,7 @@ class DefaultConfig extends Config (
       }
       val scrSize = site(NSCR) * (site(XLen) / 8)
       val scr = AddrMapEntry("scr", None, MemSize(scrSize, AddrMapConsts.RW))
-      new AddrMap(ext +: deviceTree +: csrs :+ scr)
+      new AddrMap(deviceTree +: csrs :+ scr)
     }
 
     // content of the device tree ROM, core and CSR
@@ -268,6 +267,7 @@ class DefaultConfig extends Config (
       }
       case GlobalDeviceSet => {
         val devset = new DeviceSet
+        devset.addDevice("external", 1 << 30, "general")
         devset
       }
     }},

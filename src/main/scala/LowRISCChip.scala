@@ -125,7 +125,7 @@ class Top(topParams: Parameters) extends Module with HasTopLevelParameters {
 
   ////////////////////////////////////////////
   // the network between L2 and tag cache
-  def routeL2ToTC(addr: UInt) = UInt(0)
+  def routeL2ToTC(addr: UInt) = UInt(1) // this route function is one-hot
   def routeTCToL2(id: UInt) = id
   val tc_net = Module(new ClientUncachedTileLinkIOCrossbar(nBanks, 1, routeL2ToTC)(tagNetParams))
   tc_net.io.in <> managerEndpoints.map(_.outerTL).map(ClientTileLinkIOUnwrapper(_)(tagNetParams))
@@ -183,7 +183,7 @@ class Top(topParams: Parameters) extends Module with HasTopLevelParameters {
   //}
 
   // outer IO devices
-  val outerPort = addrHashMap("conf:external").port
+  val outerPort = addrHashMap("devices:external").port
   TopUtils.connectTilelinkNasti(io.nasti_lite, mmio_net.io.out(outerPort))(ioConvParams)
 
   ////////////////////////////////////////////
