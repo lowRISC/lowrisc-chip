@@ -86,7 +86,6 @@ class Top(topParams: Parameters) extends Module with HasTopLevelParameters {
   // IO space configuration
   val addrMap = p(GlobalAddrMap)
   val addrHashMap = new AddrHashMap(addrMap, mmioBase)
-  val nSlaves = addrHashMap.nEntries
 
   // TODO: the code to print this stuff should live somewhere else
   println("Generated Address Map")
@@ -143,7 +142,7 @@ class Top(topParams: Parameters) extends Module with HasTopLevelParameters {
 
   // mmio interconnect
   val mmio_net = Module(new TileLinkRecursiveInterconnect(
-    nTiles + 1, addrHashMap.nInternalPorts, addrMap, mmioBase)(ioNetParams))
+    nTiles + 1, addrHashMap.nPorts, addrMap, mmioBase)(ioNetParams))
 
   for (i <- 0 until nTiles) {
     // mmio
@@ -179,11 +178,11 @@ class Top(topParams: Parameters) extends Module with HasTopLevelParameters {
   // DMA (master)
   //dmaOpt.foreach { dma =>
   //  mmio_ic.io.masters(2) <> dma.io.mmio
-  //  dma.io.ctrl <> mmio_ic.io.slaves(addrHashMap("devices:dma").port)
+  //  dma.io.ctrl <> mmio_ic.io.slaves(addrHashMap("internal:dma").port)
   //}
 
   // outer IO devices
-  val outerPort = addrHashMap("devices:external").port
+  val outerPort = addrHashMap("external").port
   TopUtils.connectTilelinkNasti(io.nasti_lite, mmio_net.io.out(outerPort))(ioConvParams)
 
   ////////////////////////////////////////////

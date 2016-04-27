@@ -11,6 +11,8 @@ import rocket.Util._
 import scala.math.max
 import cde.{Parameters, Config, Dump, Knob}
 
+case object UseHost extends Field[Boolean]
+
 class DefaultConfig extends Config (
   topDefinitions = { (pname,site,here) => 
     type PF = PartialFunction[Any,Any]
@@ -241,6 +243,7 @@ class DefaultConfig extends Config (
       case MamIOAddrWidth => 39
       case MamIOBeatsBits => 14
       case UseDebug => false
+      case UseHost => false
 
       // NASTI BUS parameters
       case NastiKey("nasti") =>
@@ -262,12 +265,18 @@ class DefaultConfig extends Config (
         AddrMap(
           AddrMapEntry("conf", None,
             MemSubmap(BigInt(1L << 30), genCsrAddrMap)),
-          AddrMapEntry("devices", None,
-            MemSubmap(BigInt(1L << 31), site(GlobalDeviceSet).getAddrMap)))
+          AddrMapEntry("internal", None,
+            MemSubmap(BigInt(1L << 30), site(InternalDeviceSet).getAddrMap)),
+          AddrMapEntry("external", None,
+            MemSubmap(BigInt(1L << 30), site(ExternalDeviceSet).getAddrMap, true)))
       }
-      case GlobalDeviceSet => {
+      case ExternalDeviceSet => {
         val devset = new DeviceSet
-        devset.addDevice("external", 1 << 30, "general")
+        if(site(UseHost)) devset.addDevice("host", 1<<6, "general")
+        devset
+      }
+      case InternalDeviceSet => {
+        val devset = new DeviceSet
         devset
       }
     }},
@@ -312,3 +321,11 @@ class WithDebugConfig extends Config (
 )
 
 class DebugConfig extends Config(new WithDebugConfig ++ new DefaultConfig)
+
+class WithHostConfig extends Config (
+  (pname,site,here) => pname match {
+    case UseHost => true
+  }
+)
+
+class RegressionConfig extends Config(new WithHostConfig ++ new DefaultConfig)

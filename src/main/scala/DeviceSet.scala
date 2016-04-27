@@ -6,7 +6,8 @@ import scala.collection.mutable.HashMap
 import junctions._
 import junctions.AddrMapConsts._
 
-case object GlobalDeviceSet extends Field[DeviceSet]
+case object InternalDeviceSet extends Field[DeviceSet]
+case object ExternalDeviceSet extends Field[DeviceSet]
 
 case class Device(name: String, size: Int, dtype: String,
   readable: Boolean = true, writeable: Boolean = true)
