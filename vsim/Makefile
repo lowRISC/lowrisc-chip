@@ -94,6 +94,7 @@ veri_vsrcs = \
 	$(base_dir)/src/main/verilog/debug_system.sv \
 	$(generated_dir)/$(MODEL).$(CONFIG).v \
 	$(base_dir)/src/test/verilog/nasti_ram_behav.sv \
+	$(base_dir)/src/test/verilog/host_behav.sv \
 	$(base_dir)/socip/nasti/channel.sv \
 	$(base_dir)/socip/nasti/lite_nasti_reader.sv \
 	$(base_dir)/socip/nasti/lite_nasti_writer.sv \
@@ -112,6 +113,7 @@ veri_vsrcs = \
 veri_csrcs = \
 	$(base_dir)/src/test/cxx/common/globals.cpp \
 	$(base_dir)/src/test/cxx/common/dpi_ram_behav.cpp \
+	$(base_dir)/src/test/cxx/common/dpi_host_behav.cpp \
 	$(base_dir)/src/test/cxx/veri/veri_top.cc \
 	$(base_dir)/opensocdebug/glip/src/backend_tcp/logic/dpi/glip_tcp_dpi.cpp \
 	$(base_dir)/opensocdebug/glip/src/backend_tcp/logic/dpi/GlipTcp.cpp \

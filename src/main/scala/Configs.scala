@@ -12,6 +12,8 @@ import scala.math.max
 import cde.{Parameters, Config, Dump, Knob}
 
 case object UseHost extends Field[Boolean]
+case object UseUART extends Field[Boolean]
+case object UseSPI extends Field[Boolean]
 
 class DefaultConfig extends Config (
   topDefinitions = { (pname,site,here) => 
@@ -243,7 +245,11 @@ class DefaultConfig extends Config (
       case MamIOAddrWidth => 39
       case MamIOBeatsBits => 14
       case UseDebug => false
+
+      // IO devices
       case UseHost => false
+      case UseUART => false
+      case UseSPI => false
 
       // NASTI BUS parameters
       case NastiKey("nasti") =>
@@ -273,6 +279,8 @@ class DefaultConfig extends Config (
       case ExternalDeviceSet => {
         val devset = new DeviceSet
         if(site(UseHost)) devset.addDevice("host", 1<<6, "general")
+        if(site(UseUART)) devset.addDevice("uart", 1<<16, "general")
+        if(site(UseSPI))  devset.addDevice("spi", 1<<16, "general")
         devset
       }
       case InternalDeviceSet => {
@@ -324,7 +332,7 @@ class DebugConfig extends Config(new WithDebugConfig ++ new DefaultConfig)
 
 class WithHostConfig extends Config (
   (pname,site,here) => pname match {
-    case UseHost => true
+    case UseHost => Dump("ENABLE_HOST", true)
   }
 )
 

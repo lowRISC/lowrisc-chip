@@ -51,35 +51,15 @@
    `define ADD_DDR_IO
   `else
    `define ADD_DDR_SIM
-   `define ADD_HOST_IF
   `endif
 
  `elsif SIMULATION
 
   `define ADD_DDR_SIM
-  `define ADD_HOST_IF
 
  `endif
 
 `define IO_DAT_WIDTH 32
-
-function int NUM_OF_IO_DEVICE();
-   NUM_OF_IO_DEVICE = 0;
-
- `ifdef ENABLE_DEBUG
-   // debug equiv UART
-   NUM_OF_IO_DEVICE++;
- `elsif ADD_UART
-   // actual UART
-   NUM_OF_IO_DEVICE++;
- `endif
-
- `ifdef ADD_SPI
-   // have a SPI (SD card)
-   NUM_OF_IO_DEVICE++;
- `endif
-
-endfunction
 
 function int NUM_OF_MEM();
    // either hebavioural memory or DDR memory

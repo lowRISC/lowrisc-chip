@@ -86,6 +86,7 @@ class Top(topParams: Parameters) extends Module with HasTopLevelParameters {
   // IO space configuration
   val addrMap = p(GlobalAddrMap)
   val addrHashMap = new AddrHashMap(addrMap, mmioBase)
+  AllDeviceEntries.entries = addrHashMap.ends
 
   // TODO: the code to print this stuff should live somewhere else
   println("Generated Address Map")
@@ -164,6 +165,8 @@ class Top(topParams: Parameters) extends Module with HasTopLevelParameters {
   val scrFile = Module(new SCRFile("UNCORE_SCR",addrHashMap("conf:scr").start))
   scrFile.io.scr.attach(Wire(init = UInt(nTiles)), "N_CORES")
   scrFile.io.scr.attach(Wire(init = UInt(p(MMIOBase) >> 20)), "MMIO_BASE")
+  if (p(UseHost))
+    scrFile.io.scr.attach(Wire(init = UInt(addrHashMap("external:host").start)), "DEV_HOST_BASE")
 
   val scrPort = addrHashMap("conf:scr").port
   val scr_conv = Module(new SmiIONastiIOConverter(xLen, scrAddrBits)(smiConvParams))
@@ -249,5 +252,7 @@ object Run extends App with FileSystemUtilities {
   val scr_map_hdr = createOutputFile(topModuleName + "." + configClassName + ".scr_map.h")
   AllSCRFiles.foreach{ map => scr_map_hdr.write(map.as_c_header) }
   scr_map_hdr.close
-
+  val device_map_hdr = createOutputFile(topModuleName + "." + configClassName + ".dev_map.h")
+  device_map_hdr.write(AllDeviceEntries.as_c_header)
+  device_map_hdr.close
 }

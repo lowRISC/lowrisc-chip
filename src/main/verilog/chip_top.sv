@@ -505,21 +505,19 @@ module chip_top
    /////////////////////////////////////////////////////////////
    // IO crossbar
 
-   generate
-      if(NUM_OF_IO_DEVICE() > 0) begin
-         // output of the IO crossbar
-         nasti_channel
-           #(
-             .N_PORT      ( NUM_OF_IO_DEVICE() ),
-             .ADDR_WIDTH  ( `PADDR_WIDTH       ),
-             .DATA_WIDTH  ( `IO_DAT_WIDTH      ))
-         io_cbo_lite();
+   // output of the IO crossbar
+   nasti_channel
+     #(
+       .N_PORT      ( NUM_OF_IO_DEVICE() ),
+       .ADDR_WIDTH  ( `PADDR_WIDTH       ),
+       .DATA_WIDTH  ( `IO_DAT_WIDTH      ))
+   io_cbo_lite();
 
-         nasti_channel ios_dmm2(), ios_dmm3(), ios_dmm4(), ios_dmm5(), ios_dmm6(), ios_dmm7(); // dummy channels
+   nasti_channel ios_dmm3(), ios_dmm4(), ios_dmm5(), ios_dmm6(), ios_dmm7(); // dummy channels
 
-         nasti_channel_slicer #(NUM_OF_IO_DEVICE())
-         io_slicer (.s(io_cbo_lite), .m0(io_uart_lite), .m1(io_spi_lite), .m2(ios_dmm2),
-                    .m3(ios_dmm3), .m4(ios_dmm4), .m5(ios_dmm5), .m6(ios_dmm6), .m7(ios_dmm7));
+   nasti_channel_slicer #(NUM_OF_IO_DEVICE())
+   io_slicer (.s(io_cbo_lite), .m0(io_uart_lite), .m1(io_spi_lite), .m2(io_host_lite),
+              .m3(ios_dmm3), .m4(ios_dmm4), .m5(ios_dmm5), .m6(ios_dmm6), .m7(ios_dmm7));
 
          // the io crossbar
          nasti_crossbar
