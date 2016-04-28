@@ -390,6 +390,7 @@ module chip_top
    io_uart_lite();
    logic                       uart_irq;
 
+  `ifdef ENABLE_DEBUG
    // Debug MAM signals
    logic                              mam_req_valid;
    logic                              mam_req_ready;
@@ -411,7 +412,6 @@ module chip_top
    dii_flit [1:0]                     debug_ring_end; // ending connector
    logic [1:0]                        debug_ring_end_ready;
 
-  `ifdef ENABLE_DEBUG
    debug_system
      #(
        .MAM_DATA_WIDTH   ( `MAM_IO_DWIDTH   ),
@@ -462,7 +462,7 @@ module chip_top
   `else
 
    assign sys_rst = rst;
-   assign cpu_rst = 1'b0;
+   assign cpu_rst = rst;
 
    `ifdef ADD_UART
    axi_uart16550_0 uart_i
@@ -632,6 +632,7 @@ module chip_top
       .io_nasti_lite_r_bits_resp     ( io_lite.r_resp                         ),
       .io_nasti_lite_r_bits_user     ( io_lite.r_user                         ),
       .io_interrupt                  ( interrupt                              ),
+  `ifdef ENABLE_DEBUG
       .io_debug_net_0_dii_in         ( debug_ring_start[0]                    ),
       .io_debug_net_0_dii_in_ready   ( debug_ring_start_ready[0]              ),
       .io_debug_net_1_dii_in         ( debug_ring_start[1]                    ),
@@ -653,6 +654,7 @@ module chip_top
       .io_debug_mam_rdata_ready      ( mam_read_ready                         ),
       .io_debug_mam_rdata_valid      ( mam_read_valid                         ),
       .io_debug_mam_rdata_bits_data  ( mam_read_data                          ),
+  `endif
       .io_debug_rst                  ( rst                                    ),
       .io_cpu_rst                    ( cpu_rst                                )
       );
