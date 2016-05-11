@@ -117,9 +117,12 @@ module debug_system
           .fifo_out  (fifo_out));
 `endif
 
-   parameter N_CORES = 0;
+   parameter N_CORES = 1;
+   parameter PERCORE = 2;
    localparam N_OSD = 4;
-   localparam N = N_CORES+N_OSD;
+   localparam N = N_CORES*PERCORE+N_OSD;
+
+   localparam PORTIDMAP = { 10'h3, 10'h2, 10'h1, 10'h0 };
 
    dii_flit [N_OSD-1:0] dii_out; logic [N_OSD-1:0] dii_out_ready;
    dii_flit [N_OSD-1:0] dii_in; logic [N_OSD-1:0] dii_in_ready;
@@ -139,7 +142,7 @@ module debug_system
      #(.SYSTEMID(16'hdead), .NUM_MOD(N-1),
        .MAX_PKT_LEN(MAX_PKT_LEN))
    u_scm(.*,
-         .id              ({7'd1, 3'd0}),
+         .id              ( PORTIDMAP[19:10] ),
          .debug_in        ( dii_in[1]        ),
          .debug_in_ready  ( dii_in_ready[1]  ),
          .debug_out       ( dii_out[1]       ),
@@ -150,7 +153,7 @@ module debug_system
    
    osd_dem_uart_nasti
      u_uart (.*,
-             .id ({7'd2, 3'd0}),
+             .id ( PORTIDMAP[29:20] ),
 
              .ar_addr (uart_ar_addr[4:2]),
              .ar_valid (uart_ar_valid),
@@ -180,7 +183,7 @@ module debug_system
        .BASE_ADDR0(MAM_BASE_ADDR0), .MEM_SIZE0(MAM_MEM_SIZE0),
        .ADDR_WIDTH(MAM_ADDR_WIDTH), .MAX_PKT_LEN(MAX_PKT_LEN))
    u_mam (.*,
-          .id ({7'd3, 3'd0}),
+          .id ( PORTIDMAP[39:30] ),
           .debug_in        ( dii_in[3]        ),
           .debug_in_ready  ( dii_in_ready[3]  ),
           .debug_out       ( dii_out[3]       ),
@@ -191,7 +194,7 @@ module debug_system
    dii_flit [1:0] ext_out; logic [1:0] ext_out_ready;
 
    debug_ring_expand
-     #(.PORTS(N_OSD), .ID_BASE(0))
+     #(.PORTS(N_OSD), .PORTIDMAP(PORTIDMAP))
    u_ring(.*,
           .dii_in        ( dii_out        ),
           .dii_in_ready  ( dii_out_ready  ),
