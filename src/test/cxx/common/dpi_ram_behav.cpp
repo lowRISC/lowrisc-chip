@@ -8,6 +8,7 @@
 #include <fstream>
 #include <boost/lexical_cast.hpp>
 #include <boost/format.hpp>
+#include <iostream>
 
 using std::pair;
 using std::list;
