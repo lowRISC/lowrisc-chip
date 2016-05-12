@@ -48,8 +48,12 @@ module host_behav
    assign nasti.b_resp = 0;
    assign nasti.b_user = b_user;
 
+   logic [15:0]           msg_id, msg_data;
+   assign msg_id = nasti.w_data >> 16;
+   assign msg_data = nasti.w_data;
+
    always @(posedge clk)
      if(nasti.w_valid && nasti.w_ready)
-       host_req(nasti.w_data >> 16, nasti.w_data & 0xffff);
+       host_req(msg_id, msg_data);
 
 endmodule // host_behav

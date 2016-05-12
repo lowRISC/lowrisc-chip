@@ -38,34 +38,20 @@
  //----------- Detailed configuration -------------//
  `ifdef FPGA
 
-  `ifndef ENABLE_DEBUG
-   `define ADD_UART
+  `ifdef ADD_UART
+   `define ADD_UART_IO
   `endif
-  `define ADD_UART_IO
 
-  `define ADD_SPI
-  `define ADD_SPI_IO
+  `ifdef ADD_SPI
+   `define ADD_SPI_IO
+  `endif
 
   `ifdef FPGA_FULL
-   `define ADD_DDR
-   `define ADD_DDR_IO
-  `else
-   `define ADD_DDR_SIM
+   `define ADD_PHY_DDR
   `endif
-
- `elsif SIMULATION
-
-  `define ADD_DDR_SIM
 
  `endif
 
-`define IO_DAT_WIDTH 32
-
-function int NUM_OF_MEM();
-   // either hebavioural memory or DDR memory
-   NUM_OF_MEM = 1;
-
-endfunction
-
+ `define IO_DAT_WIDTH 32
 
 `endif

@@ -15,12 +15,20 @@ $(generated_dir)/$(MODEL).$(CONFIG).v: $(chisel_srcs)
 $(generated_dir)/consts.vh: $(generated_dir)/consts.$(CONFIG).vh
 	cp $^ $@
 
+$(generated_dir)/dev_map.vh: $(generated_dir)/$(MODEL).$(CONFIG).dev_map.vh
+	cp $^ $@
+
 $(generated_dir)/consts.$(CONFIG).vh: $(generated_dir)/$(MODEL).$(CONFIG).v
 	echo "\`ifndef CONST_VH" > $@
 	echo "\`define CONST_VH" >> $@
 	sed -r 's/\(([A-Za-z0-9_]+),([A-Za-z0-9_]+)\)/`define \1 \2/' $(patsubst %.v,%.prm,$<) >> $@
 	echo "\`endif // CONST_VH" >> $@
 
+$(generated_dir)/$(MODEL).$(CONFIG).dev_map.vh: $(generated_dir)/$(MODEL).$(CONFIG).v
+	echo "\`ifndef DEV_MAP_VH" > $@
+	echo "\`define DEV_MAP_VH" >> $@
+	sed -r 's/#define ([A-Za-z0-9_]+) 0x([A-Za-z0-9_]+)/`define \1 '\''h\2/' $(patsubst %.v,%.dev_map.h,$<) >> $@
+	echo "\`endif // DEV_MAP_VH" >> $@
 
 # emacs local variable
 

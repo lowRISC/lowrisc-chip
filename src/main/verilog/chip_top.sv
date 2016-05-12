@@ -3,11 +3,12 @@
 import dii_package::dii_flit;
 
 `include "consts.vh"
+`include "dev_map.vh"
 `include "config.vh"
 
 module chip_top
   (
-`ifdef ADD_DDR_IO
+`ifdef ADD_PHY_DDR
  `ifdef KC705
    // DDR3 RAM
    inout [63:0]  ddr_dq,
@@ -49,7 +50,7 @@ module chip_top
    output        txd,
 `endif
 
-`ifdef ADD_SPI_IO
+`ifdef ADD_SPI
    inout         spi_cs,
    inout         spi_sclk,
    inout         spi_mosi,
@@ -93,7 +94,7 @@ module chip_top
    /////////////////////////////////////////////////////////////
    // Memory System
 
-`ifdef ADD_DDR
+`ifdef ADD_PHY_DDR
 
    // the NASTI bus for off-FPGA DRAM, converted to High frequency
    nasti_channel   
@@ -295,7 +296,7 @@ module chip_top
       .s_axi_rready         ( mem_mig_nasti.r_ready  )
       );
 
-  `elsif ADD_DDR_SIM
+  `else
 
    assign clk = clk_p;
    assign rstn = !rst_top;
@@ -313,7 +314,7 @@ module chip_top
       .rstn          ( rstn        ),
       .nasti         ( mem_nasti   )
       );
-  `endif // !`elsif ADD_DDR_SIM
+  `endif // !`ifdef ADD_PHY_DDR
 
    /////////////////////////////////////////////////////////////
    // SPI
@@ -325,7 +326,7 @@ module chip_top
    logic                       spi_irq;
 
   `ifdef ADD_SPI
-    axi_quad_spi_0 spi_i
+   axi_quad_spi_0 spi_i
      (
       .ext_spi_clk     ( clk                   ),
       .s_axi_aclk      ( clk                   ),
@@ -437,7 +438,7 @@ module chip_top
       .uart_w_data     ( io_uart_lite.w_data    ),
       .uart_w_ready    ( io_uart_lite.w_ready   ),
       .uart_w_valid    ( io_uart_lite.w_valid   ),
-      .rx              ( rxd                    ),
+      .rx              ( rxd                    ),// will this works for actual FPGA ?
       .tx              ( txd                    ),
       .sys_rst         ( sys_rst                ),
       .cpu_rst         ( cpu_rst                ),
@@ -503,48 +504,74 @@ module chip_top
   `endif // !`ifdef ENABLE_DEBUG
 
    /////////////////////////////////////////////////////////////
+   // Host for ISA regression
+
+   nasti_channel
+     #(
+       .ADDR_WIDTH  ( `PADDR_WIDTH       ),
+       .DATA_WIDTH  ( `IO_DAT_WIDTH      ))
+   io_host_lite();
+
+  `ifdef ADD_HOST
+   host_behav host
+     (
+      .clk          ( clk          ),
+      .rstn         ( rstn         ),
+      .nasti        ( io_host_lite )
+      );
+  `endif
+
+   /////////////////////////////////////////////////////////////
    // IO crossbar
 
    // output of the IO crossbar
    nasti_channel
      #(
-       .N_PORT      ( NUM_OF_IO_DEVICE() ),
+       .N_PORT      ( 3                  ),
        .ADDR_WIDTH  ( `PADDR_WIDTH       ),
        .DATA_WIDTH  ( `IO_DAT_WIDTH      ))
    io_cbo_lite();
 
    nasti_channel ios_dmm3(), ios_dmm4(), ios_dmm5(), ios_dmm6(), ios_dmm7(); // dummy channels
 
-   nasti_channel_slicer #(NUM_OF_IO_DEVICE())
-   io_slicer (.s(io_cbo_lite), .m0(io_uart_lite), .m1(io_spi_lite), .m2(io_host_lite),
+   nasti_channel_slicer #(3)
+   io_slicer (.s(io_cbo_lite), .m0(io_host_lite), .m1(io_uart_lite), .m2(io_spi_lite),
               .m3(ios_dmm3), .m4(ios_dmm4), .m5(ios_dmm5), .m6(ios_dmm6), .m7(ios_dmm7));
 
-         // the io crossbar
-         nasti_crossbar
-           #(
-             .N_INPUT    ( 1                      ),
-             .N_OUTPUT   ( NUM_OF_IO_DEVICE()     ),
-             .IB_DEPTH   ( 0                      ),
-             .OB_DEPTH   ( 1                      ), // some IPs response only with data, which will cause deadlock in nasti_demux (no lock)
-             .W_MAX      ( 1                      ),
-             .R_MAX      ( 1                      ),
-             .ADDR_WIDTH ( `PADDR_WIDTH           ),
-             .DATA_WIDTH ( `IO_DAT_WIDTH          ),
-             .LITE_MODE  ( 1                      ),
-             .BASE0      ( 32'h80000000           ), // UART
-             .MASK0      ( 32'h0000ffff           ),
-             .BASE1      ( 32'h80010000           ), // SPI
-             .MASK1      ( 32'h0000ffff           )
-             )
-         io_crossbar
-           (
-            .*,
-            .s ( io_lite     ),
-            .m ( io_cbo_lite )
-            );
+   // the io crossbar
+   nasti_crossbar
+     #(
+       .N_INPUT    ( 1             ),
+       .N_OUTPUT   ( 3             ),
+       .IB_DEPTH   ( 0             ),
+       .OB_DEPTH   ( 1             ), // some IPs response only with data, which will cause deadlock in nasti_demux (no lock)
+       .W_MAX      ( 1             ),
+       .R_MAX      ( 1             ),
+       .ADDR_WIDTH ( `PADDR_WIDTH  ),
+       .DATA_WIDTH ( `IO_DAT_WIDTH ),
+       .LITE_MODE  ( 1             )
+       )
+   io_crossbar
+     (
+      .*,
+      .s ( io_lite     ),
+      .m ( io_cbo_lite )
+      );
 
-      end
-   endgenerate
+  `ifdef ADD_HOST
+   defparam io_crossbar.BASE0 = `DEV_MAP__io_ext_host__BASE ;
+   defparam io_crossbar.MASK0 = `DEV_MAP__io_ext_host__MASK ;
+  `endif
+
+  `ifdef ADD_UART
+   defparam io_crossbar.BASE1 = `DEV_MAP__io_ext_uart__BASE;
+   defparam io_crossbar.MASK1 = `DEV_MAP__io_ext_uart__MASK;
+  `endif
+
+  `ifdef ADD_SPI
+   defparam io_crossbar.BASE2 = `DEV_MAP__io_ext_spi__BASE;
+   defparam io_crossbar.MASK2 = `DEV_MAP__io_ext_spi__MASK;
+  `endif
 
    /////////////////////////////////////////////////////////////
    // the Rocket chip

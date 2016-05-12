@@ -22,7 +22,6 @@ class DefaultConfig extends Config (
 
     lazy val internalIOAddrMap: AddrMap = {
       val entries = collection.mutable.ArrayBuffer[AddrMapEntry]()
-      //entries += AddrMapEntry("debug", MemSize(1<<12, 1<<12, MemAttr(0)))
       entries += AddrMapEntry("bootrom", MemSize(1<<13, 1<<12, MemAttr(AddrMapProt.RX)))
       entries += AddrMapEntry("rtc", MemSize(1<<12, 1<<12, MemAttr(AddrMapProt.RW)))
       for (i <- 0 until site(NTiles))
@@ -32,9 +31,18 @@ class DefaultConfig extends Config (
 
     lazy val externalIOAddrMap: AddrMap = {
       val entries = collection.mutable.ArrayBuffer[AddrMapEntry]()
-      if(site(UseHost)) entries += AddrMapEntry("host", MemSize(1<<6, 1<<12, MemAttr(AddrMapProt.W)))
-      if(site(UseUART)) entries += AddrMapEntry("uart", MemSize(1<<12, 1<<12, MemAttr(AddrMapProt.RW)))
-      if(site(UseSPI))  entries += AddrMapEntry("spi", MemSize(1<<12, 1<<12, MemAttr(AddrMapProt.RW)))
+      if (site(UseHost)) {
+        entries += AddrMapEntry("host", MemSize(1<<6, 1<<12, MemAttr(AddrMapProt.W)))
+        Dump("ADD_HOST", true)
+      }
+      if (site(UseUART)) {
+        entries += AddrMapEntry("uart", MemSize(1<<12, 1<<12, MemAttr(AddrMapProt.RW)))
+        Dump("ADD_UART", true)
+      }
+      if (site(UseSPI)) {
+        entries += AddrMapEntry("spi", MemSize(1<<12, 1<<12, MemAttr(AddrMapProt.RW)))
+        Dump("ADD_SPI", true)
+      }
       new AddrMap(entries)
     }
 
@@ -328,6 +336,7 @@ class DefaultConfig extends Config (
 class WithDebugConfig extends Config (
   (pname,site,here) => pname match {
     case UseDebug => Dump("ENABLE_DEBUG", true)
+    case UseUART => true
     case MamIODataWidth => Dump("MAM_IO_DWIDTH", 16)
     case MamIOAddrWidth => site(PAddrBits)
     case MamIOBeatsBits => 14
@@ -344,8 +353,26 @@ class DebugConfig extends Config(new WithDebugConfig ++ new DefaultConfig)
 
 class WithHostConfig extends Config (
   (pname,site,here) => pname match {
-    case UseHost => Dump("ENABLE_HOST", true)
+    case UseHost => true
   }
 )
 
 class RegressionConfig extends Config(new WithHostConfig ++ new DefaultConfig)
+
+class WithSPIConfig extends Config (
+  (pname,site,here) => pname match {
+    case UseSPI => true
+  }
+)
+
+class WithUARTConfig extends Config (
+  (pname,site,here) => pname match {
+    case UseUART => true
+  }
+)
+
+class FPGAConfig extends
+    Config(new WithSPIConfig ++ new WithUARTConfig ++ new DefaultConfig)
+
+class FPGADebugConfig extends
+    Config(new WithSPIConfig ++ new WithDebugConfig ++ new DefaultConfig)

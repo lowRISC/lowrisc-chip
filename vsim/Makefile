@@ -34,6 +34,7 @@ include $(base_dir)/Makefrag
 sim_vsrcs = \
 	$(generated_dir)/$(MODEL).$(CONFIG).v \
 	$(generated_dir)/consts.vh \
+	$(generated_dir)/dev_map.vh \
 
 #--------------------------------------------------------------------
 # Build Verilog
