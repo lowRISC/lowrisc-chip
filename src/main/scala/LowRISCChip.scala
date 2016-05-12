@@ -16,7 +16,6 @@ case object NSCR extends Field[Int]
 case object BankIdLSB extends Field[Int]
 case object IODataBits extends Field[UInt]
 case object ConfigString extends Field[Array[Byte]]
-case object NTiles extends Field[Int]
 
 trait HasTopLevelParameters {
   implicit val p: Parameters
@@ -26,7 +25,6 @@ trait HasTopLevelParameters {
   lazy val xLen : Int = p(XLen)
   lazy val nSCR : Int = p(NSCR)
   lazy val scrAddrBits = log2Up(nSCR)
-  lazy val mmioBase = p(MMIOBase)
   val csrAddrBits = 12
   val l1tol2TLId = "L1toL2"
   val l2totcTLId = "L2toTC"
@@ -65,6 +63,28 @@ object TopUtils {
     connectNasti(nasti, conv.io.nasti)
   }
 
+  def makeBootROM()(implicit p: Parameters) = {
+    val rom = java.nio.ByteBuffer.allocate(32)
+    rom.order(java.nio.ByteOrder.LITTLE_ENDIAN)
+
+    // for now, have the reset vector jump straight to memory
+    val addrHashMap = p(GlobalAddrHashMap)
+    val resetToMemDist = addrHashMap("mem").start - p(ResetVector)
+    require(resetToMemDist == (resetToMemDist.toInt >> 12 << 12))
+    val configStringAddr = p(ResetVector).toInt + rom.capacity
+
+    rom.putInt(0x00000297 + resetToMemDist.toInt) // auipc t0, &mem - &here
+    rom.putInt(0x00028067)                        // jr t0
+    rom.putInt(0)                                 // reserved
+    rom.putInt(configStringAddr)                  // pointer to config string
+    rom.putInt(0)                                 // default trap vector
+    rom.putInt(0)                                 //   ...
+    rom.putInt(0)                                 //   ...
+    rom.putInt(0)                                 //   ...
+
+    rom.array() ++ p(ConfigString).toSeq
+  }
+
 }
 
 class Top(topParams: Parameters) extends Module with HasTopLevelParameters {
@@ -85,14 +105,14 @@ class Top(topParams: Parameters) extends Module with HasTopLevelParameters {
 
   // IO space configuration
   val addrMap = p(GlobalAddrMap)
-  val addrHashMap = new AddrHashMap(addrMap, mmioBase)
-  AllDeviceEntries.entries = addrHashMap.ends
+  val addrHashMap = p(GlobalAddrHashMap)
+  AllAddrMapEntries += addrHashMap
 
   // TODO: the code to print this stuff should live somewhere else
   println("Generated Address Map")
-  for ((name, base, size, _) <- addrHashMap.sortedEntries) {
-    println(f"\t$name%s $base%x - ${base + size - 1}%x")
-  }
+  addrHashMap.getEntries map { case (name, AddrHashMapEntry(_, base, region)) => {
+    println(f"\t$name%s $base%x - ${base + region.size - 1}%x")
+  }}
   println("Generated Configuration String")
   println(new String(p(ConfigString)))
 
@@ -142,51 +162,62 @@ class Top(topParams: Parameters) extends Module with HasTopLevelParameters {
   // MMIO interconnect
 
   // mmio interconnect
-  val mmio_net = Module(new TileLinkRecursiveInterconnect(
-    nTiles + 1, addrHashMap.nPorts, addrMap, mmioBase)(ioNetParams))
+  val (ioBase, ioAddrMap) = addrHashMap.subMap("io")
+  val ioAddrHashMap = new AddrHashMap(ioAddrMap, ioBase)
+  val mmio_net = Module(new TileLinkRecursiveInterconnect(nTiles, ioAddrMap, ioBase)(ioNetParams))
 
+  // Global real time counter (wall clock)
+  val rtc = Module(new RTC(nTiles)(ioNetParams))
+  val rtcAddr = ioAddrHashMap("int:rtc")
+  require(rtc.size <= rtcAddr.region.size)
+  rtc.io.tl <> mmio_net.io.out(rtcAddr.port)
+
+  // scr
+  //val scrFile = Module(new SCRFile("UNCORE_SCR", ioAddrHashMap("int:scr").start))
+  //scrFile.io.scr.attach(Wire(init = UInt(nTiles)), "N_CORES")
+  //scrFile.io.scr.attach(Wire(init = UInt(ioBase) >> 20), "MMIO_BASE")
+  //if (p(UseHost))
+  //  scrFile.io.scr.attach(Wire(init = UInt(ioAddrHashMap("ext:host").start)), "DEV_HOST_BASE")
+
+  //val scrPort = ioAddrHashMap("int:scr").port
+  //val scr_conv = Module(new SmiIONastiIOConverter(xLen, scrAddrBits)(smiConvParams))
+  //TopUtils.connectTilelinkNasti(scr_conv.io.nasti, mmio_net.io.out(scrPort))(ioConvParams)
+  //scrFile.io.smi <> scr_conv.io.smi
+
+  // boot ROM
+  val bootROM = Module(new ROMSlave(TopUtils.makeBootROM())(ioNetParams))
+  val bootROMAddr = ioAddrHashMap("int:bootrom")
+  bootROM.io <> mmio_net.io.out(bootROMAddr.port)
+
+  // DMA (master)
+  //dmaOpt.foreach { dma =>
+  //  mmio_ic.io.masters(2) <> dma.io.mmio
+  //  dma.io.ctrl <> mmio_ic.io.slaves(ioAddrHashMap("int:dma").port)
+  //}
+
+  // outer IO devices
+  val outerPort = ioAddrHashMap("ext").port
+  TopUtils.connectTilelinkNasti(io.nasti_lite, mmio_net.io.out(outerPort))(ioConvParams)
+
+  // connection to tiles
   for (i <- 0 until nTiles) {
     // mmio
     mmio_net.io.in(i) <> tileList(i).io.io
 
     // memory mapped csr
-    val csrName = s"conf:csr$i"
-    val csrPort = addrHashMap(csrName).port
-    val conv = Module(new SmiIONastiIOConverter(xLen, csrAddrBits)(smiConvParams))
-    TopUtils.connectTilelinkNasti(conv.io.nasti, mmio_net.io.out(csrPort))(ioConvParams)
-    tileList(i).io.mmcsr <> conv.io.smi
+    val prci = Module(new PRCI()(ioNetParams))
+    val prciAddr = ioAddrHashMap(s"int:prci$i")
+    prci.io.tl <> mmio_net.io.out(prciAddr.port)
+
+    prci.io.id := UInt(i)
+    prci.io.interrupts.mtip := rtc.io.irqs(i)
+    prci.io.interrupts.meip := Bool(false)
+    prci.io.interrupts.seip := Bool(false)
+    prci.io.interrupts.debug := Bool(false)
+
+    tileList(i).io.prci := prci.io.tile
+    tileList(i).io.prci.reset := Bool(false)
   }
-
-  // Global real time counter (wall clock)
-  val rtc = Module(new RTC(CSRs.mtime)(ioNetParams))
-  mmio_net.io.in(nTiles) <> rtc.io
-
-  // scr
-  val scrFile = Module(new SCRFile("UNCORE_SCR",addrHashMap("conf:scr").start))
-  scrFile.io.scr.attach(Wire(init = UInt(nTiles)), "N_CORES")
-  scrFile.io.scr.attach(Wire(init = UInt(p(MMIOBase) >> 20)), "MMIO_BASE")
-  if (p(UseHost))
-    scrFile.io.scr.attach(Wire(init = UInt(addrHashMap("external:host").start)), "DEV_HOST_BASE")
-
-  val scrPort = addrHashMap("conf:scr").port
-  val scr_conv = Module(new SmiIONastiIOConverter(xLen, scrAddrBits)(smiConvParams))
-  TopUtils.connectTilelinkNasti(scr_conv.io.nasti, mmio_net.io.out(scrPort))(ioConvParams)
-  scrFile.io.smi <> scr_conv.io.smi
-
-  // device tree
-  val deviceTree = Module(new NastiROM(p(ConfigString).toSeq)(ioNetParams))
-  val dtPort = addrHashMap("conf:devicetree").port
-  TopUtils.connectTilelinkNasti(deviceTree.io, mmio_net.io.out(dtPort))(ioConvParams)
-
-  // DMA (master)
-  //dmaOpt.foreach { dma =>
-  //  mmio_ic.io.masters(2) <> dma.io.mmio
-  //  dma.io.ctrl <> mmio_ic.io.slaves(addrHashMap("internal:dma").port)
-  //}
-
-  // outer IO devices
-  val outerPort = addrHashMap("external").port
-  TopUtils.connectTilelinkNasti(io.nasti_lite, mmio_net.io.out(outerPort))(ioConvParams)
 
   ////////////////////////////////////////////
   // trace debugger
@@ -252,7 +283,7 @@ object Run extends App with FileSystemUtilities {
   val scr_map_hdr = createOutputFile(topModuleName + "." + configClassName + ".scr_map.h")
   AllSCRFiles.foreach{ map => scr_map_hdr.write(map.as_c_header) }
   scr_map_hdr.close
-  val device_map_hdr = createOutputFile(topModuleName + "." + configClassName + ".dev_map.h")
-  device_map_hdr.write(AllDeviceEntries.as_c_header)
-  device_map_hdr.close
+  val dev_map_hdr = createOutputFile(topModuleName + "." + configClassName + ".dev_map.h")
+  AllAddrMapEntries.foreach{ map => dev_map_hdr.write(map.as_c_header) }
+  dev_map_hdr.close
 }

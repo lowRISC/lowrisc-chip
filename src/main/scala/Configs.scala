@@ -9,7 +9,7 @@ import uncore._
 import rocket._
 import rocket.Util._
 import scala.math.max
-import cde.{Parameters, Config, Dump, Knob}
+import cde.{Parameters, Config, Dump, Knob, CDEMatchError}
 
 case object UseHost extends Field[Boolean]
 case object UseUART extends Field[Boolean]
@@ -20,40 +20,70 @@ class DefaultConfig extends Config (
     type PF = PartialFunction[Any,Any]
     def findBy(sname:Any):Any = here[PF](site[Any](sname))(pname)
 
-    // Generate address map for device tree, CSR and SCR
-    def genCsrAddrMap: AddrMap = {
-      val deviceTree = AddrMapEntry("devicetree", None, MemSize(1 << 15, AddrMapConsts.R))
-      val csrSize = (1 << 12) * (site(XLen) / 8)
-      val csrs = (0 until site(NTiles)).map{ i => 
-        AddrMapEntry(s"csr$i", None, MemSize(csrSize, AddrMapConsts.RW))
-      }
-      val scrSize = site(NSCR) * (site(XLen) / 8)
-      val scr = AddrMapEntry("scr", None, MemSize(scrSize, AddrMapConsts.RW))
-      new AddrMap(deviceTree +: csrs :+ scr)
+    lazy val internalIOAddrMap: AddrMap = {
+      val entries = collection.mutable.ArrayBuffer[AddrMapEntry]()
+      //entries += AddrMapEntry("debug", MemSize(1<<12, 1<<12, MemAttr(0)))
+      entries += AddrMapEntry("bootrom", MemSize(1<<13, 1<<12, MemAttr(AddrMapProt.RX)))
+      entries += AddrMapEntry("rtc", MemSize(1<<12, 1<<12, MemAttr(AddrMapProt.RW)))
+      for (i <- 0 until site(NTiles))
+        entries += AddrMapEntry(s"prci$i", MemSize(1<<12, 1<<12, MemAttr(AddrMapProt.RW)))
+      new AddrMap(entries)
+    }
+
+    lazy val externalIOAddrMap: AddrMap = {
+      val entries = collection.mutable.ArrayBuffer[AddrMapEntry]()
+      if(site(UseHost)) entries += AddrMapEntry("host", MemSize(1<<6, 1<<12, MemAttr(AddrMapProt.W)))
+      if(site(UseUART)) entries += AddrMapEntry("uart", MemSize(1<<12, 1<<12, MemAttr(AddrMapProt.RW)))
+      if(site(UseSPI))  entries += AddrMapEntry("spi", MemSize(1<<12, 1<<12, MemAttr(AddrMapProt.RW)))
+      new AddrMap(entries)
+    }
+
+    lazy val (globalAddrMap, globalAddrHashMap) = {
+      val memSize = 1L << 31
+      val memAlign = 1L << 30
+      val io = AddrMap(
+        AddrMapEntry("int", MemSubmap(internalIOAddrMap.computeSize, internalIOAddrMap)),
+        AddrMapEntry("ext", MemSubmap(externalIOAddrMap.computeSize, externalIOAddrMap, true)))
+      val addrMap = AddrMap(
+        AddrMapEntry("io", MemSubmap(io.computeSize, io)),
+        AddrMapEntry("mem", MemSize(memSize, memAlign, MemAttr(AddrMapProt.RWX, true))))
+
+      val addrHashMap = new AddrHashMap(addrMap)
+      Dump("MEM_BASE", addrHashMap("mem").start)
+      Dump("MEM_SIZE", memSize)
+      Dump("IO_BASE", addrHashMap("io:ext").start)
+      Dump("IO_SIZE", addrHashMap("io:ext").region.size)
+      (addrMap, addrHashMap)
     }
 
     // content of the device tree ROM, core and CSR
     def makeConfigString() = {
-      val addrMap = new AddrHashMap(site(GlobalAddrMap), site(MMIOBase))
+      val addrMap = globalAddrHashMap
       val xLen = site(XLen)
       val res = new StringBuilder
       res append  "platform {\n"
       res append  "  vendor lowRISC;\n"
       res append  "  arch rocket;\n"
       res append  "};\n"
+      res append  "rtc {\n"
+      res append s"  addr 0x${addrMap("io:int:rtc").start.toString(16)};\n"
+      res append  "};\n"
       res append  "ram {\n"
       res append  "  0 {\n"
-      res append  "    addr 0;\n"
-      res append s"    size 0x${site(MMIOBase).toString(16)};\n"
+      res append s"    addr 0x${addrMap("mem").start.toString(16)};\n"
+      res append s"    size 0x${addrMap("mem").region.size.toString(16)};\n"
       res append  "  };\n"
       res append  "};\n"
       res append  "core {\n"
       for (i <- 0 until site(NTiles)) {
-        val csrAddr = addrMap(s"conf:csr$i").start
+        val isa = s"rv${site(XLen)}ima${if (site(UseFPU)) "fd" else ""}"
+        val timecmpAddr = addrMap("io:int:rtc").start + 8*(i+1)
+        val prciAddr = addrMap(s"io:int:prci$i").start
         res append s"  $i {\n"
         res append  "    0 {\n"
-        res append s"      isa rv$xLen;\n"
-        res append s"      addr 0x${csrAddr.toString(16)};\n"
+        res append s"      isa $isa;\n"
+        res append s"      timecmp 0x${timecmpAddr.toString(16)};\n"
+        res append s"      ipi 0x${prciAddr.toString(16)};\n"
         res append  "    };\n"
         res append  "  };\n"
       }
@@ -151,7 +181,7 @@ class DefaultConfig extends Config (
       case RoccNCSRs => site(BuildRoCC).map(_.csrs.size).foldLeft(0)(_ + _)
       case UseDma => false
       case NDmaTransactors => 3
-      case NDmaXacts => site(NDmaTransactors) * 1 // site(NTiles)   ????? WRONG
+      case NDmaXacts => site(NDmaTransactors) * site(NTiles)
       case NDmaClients => site(NTiles)
 
       //Rocket Core Constants
@@ -265,29 +295,11 @@ class DefaultConfig extends Config (
           idBits = 1
         )
       
-      case MMIOBase => Dump("MEM_SIZE", BigInt(1 << 30)) // 1 GB
       case ConfigString => makeConfigString()
-      case GlobalAddrMap => {
-        AddrMap(
-          AddrMapEntry("conf", None,
-            MemSubmap(BigInt(1L << 30), genCsrAddrMap)),
-          AddrMapEntry("internal", None,
-            MemSubmap(BigInt(1L << 30), site(InternalDeviceSet).getAddrMap)),
-          AddrMapEntry("external", None,
-            MemSubmap(BigInt(1L << 30), site(ExternalDeviceSet).getAddrMap, true)))
-      }
-      case ExternalDeviceSet => {
-        val devset = new DeviceSet
-        if(site(UseHost)) devset.addDevice("host", 1<<6, "general")
-        if(site(UseUART)) devset.addDevice("uart", 1<<16, "general")
-        if(site(UseSPI))  devset.addDevice("spi", 1<<16, "general")
-        devset
-      }
-      case InternalDeviceSet => {
-        val devset = new DeviceSet
-        devset
-      }
-    }},
+      case GlobalAddrMap => globalAddrMap
+      case GlobalAddrHashMap => globalAddrHashMap
+      //case _ => throw new CDEMatchError
+  }},
   knobValues = {
     case "NTILES" => Dump("NTILES", 1)
     case "NBANKS" => 1
