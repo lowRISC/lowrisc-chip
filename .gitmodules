@@ -28,3 +28,6 @@
 [submodule "opensocdebug/glip"]
 	path = opensocdebug/glip
 	url = https://github.com/tum-lis/glip
+[submodule "opensocdebug/software"]
+	path = opensocdebug/software
+	url = https://github.com/opensocdebug/software
