@@ -444,6 +444,30 @@ module chip_top
   `endif // !`ifdef ADD_HOST_IF
 
    /////////////////////////////////////////////////////////////
+   // Signals for debug system
+
+   // Debug MAM signals
+   logic                              mam_req_valid;
+   logic                              mam_req_ready;
+   logic                              mam_req_rw;
+   logic [`PADDR_WIDTH-1:0]           mam_req_addr;
+   logic                              mam_req_burst;
+   logic [13:0]                       mam_req_beats;
+   logic                              mam_write_valid;
+   logic [`MAM_IO_DWIDTH-1:0]         mam_write_data;
+   logic [`MAM_IO_DWIDTH/8-1:0]       mam_write_strb;
+   logic                              mam_write_ready;
+   logic                              mam_read_valid;
+   logic [`MAM_IO_DWIDTH-1:0]         mam_read_data;
+   logic                              mam_read_ready;
+
+   // Debug ring connections
+   dii_flit [1:0]                     debug_ring_start; // starting connector
+   logic [1:0]                        debug_ring_start_ready;
+   dii_flit [1:0]                     debug_ring_end; // ending connector
+   logic [1:0]                        debug_ring_end_ready;
+
+   /////////////////////////////////////////////////////////////
    // UART
    nasti_channel
      #(
@@ -451,6 +475,58 @@ module chip_top
        .DATA_WIDTH  ( `IO_DAT_WIDTH      ))
    io_uart_lite();
    logic                       uart_irq;
+
+ `ifdef ENABLE_DEBUG
+   debug_system
+     #(
+       .MAM_DATA_WIDTH   ( `MAM_IO_DWIDTH   ),
+       .MAM_ADDR_WIDTH   ( `PADDR_WIDTH     )
+       )
+   u_debug_system
+     (
+      .*,
+      .uart_irq        (uart_irq),
+      .uart_ar_addr    ( io_uart_lite.ar_addr   ),
+      .uart_ar_ready   ( io_uart_lite.ar_ready  ),
+      .uart_ar_valid   ( io_uart_lite.ar_valid  ),
+      .uart_aw_addr    ( io_uart_lite.aw_addr   ),
+      .uart_aw_ready   ( io_uart_lite.aw_ready  ),
+      .uart_aw_valid   ( io_uart_lite.aw_valid  ),
+      .uart_b_ready    ( io_uart_lite.b_ready   ),
+      .uart_b_resp     ( io_uart_lite.b_resp    ),
+      .uart_b_valid    ( io_uart_lite.b_valid   ),
+      .uart_r_data     ( io_uart_lite.r_data    ),
+      .uart_r_ready    ( io_uart_lite.r_ready   ),
+      .uart_r_resp     ( io_uart_lite.r_resp    ),
+      .uart_r_valid    ( io_uart_lite.r_valid   ),
+      .uart_w_data     ( io_uart_lite.w_data    ),
+      .uart_w_ready    ( io_uart_lite.w_ready   ),
+      .uart_w_valid    ( io_uart_lite.w_valid   ),
+      .rx              ( rxd                    ),
+      .tx              ( txd                    ),
+      .sys_rst         ( sys_rst                ),
+      .cpu_rst         ( cpu_rst                ),
+      .ring_out        ( debug_ring_start       ),
+      .ring_out_ready  ( debug_ring_start_ready ),
+      .ring_in         ( debug_ring_end         ),
+      .ring_in_ready   ( debug_ring_end_ready   ),
+      .req_valid       ( mam_req_valid          ),
+      .req_ready       ( mam_req_ready          ),
+      .req_rw          ( mam_req_rw             ),
+      .req_addr        ( mam_req_addr           ),
+      .req_burst       ( mam_req_burst          ),
+      .req_beats       ( mam_req_beats          ),
+      .write_valid     ( mam_write_valid        ),
+      .write_ready     ( mam_write_ready        ),
+      .write_data      ( mam_write_data         ),
+      .write_strb      ( mam_write_strb         ),
+      .read_valid      ( mam_read_valid         ),
+      .read_data       ( mam_read_data          ),
+      .read_ready      ( mam_read_ready         )
+      );
+ `else // !`ifdef ENABLE_DEBUG
+   assign sys_rst = rst;
+   assign cpu_rst = 1'b0;
 
   `ifdef ADD_UART
    axi_uart16550_0 uart_i
@@ -490,6 +566,8 @@ module chip_top
    assign uart_irq = 1'b0;
 
   `endif // !`ifdef ADD_UART
+
+ `endif
 
    /////////////////////////////////////////////////////////////
    // SPI
@@ -556,83 +634,6 @@ module chip_top
    assign spi_irq = 1'b0;
 
   `endif // !`ifdef ADD_SPI
-
-   /////////////////////////////////////////////////////////////
-   // Signals for debug system
-
-   // Debug MAM signals
-   logic                              mam_req_valid;
-   logic                              mam_req_ready;
-   logic                              mam_req_rw;
-   logic [`PADDR_WIDTH-1:0]           mam_req_addr;
-   logic                              mam_req_burst;
-   logic [13:0]                       mam_req_beats;
-   logic                              mam_write_valid;
-   logic [`MAM_IO_DWIDTH-1:0]         mam_write_data;
-   logic [`MAM_IO_DWIDTH/8-1:0]       mam_write_strb;
-   logic                              mam_write_ready;
-   logic                              mam_read_valid;
-   logic [`MAM_IO_DWIDTH-1:0]         mam_read_data;
-   logic                              mam_read_ready;
-
-   // Debug ring connections
-   dii_flit [1:0]                     debug_ring_start; // starting connector
-   logic [1:0]                        debug_ring_start_ready;
-   dii_flit [1:0]                     debug_ring_end; // ending connector
-   logic [1:0]                        debug_ring_end_ready;
-
- `ifdef ENABLE_DEBUG
-   debug_system
-     #(
-       .MAM_DATA_WIDTH   ( `MAM_IO_DWIDTH   ),
-       .MAM_ADDR_WIDTH   ( `PADDR_WIDTH     )
-       )
-   u_debug_system
-     (
-      .*,
-      .uart_irq        (uart_irq),
-      .uart_ar_addr    ( io_uart_lite.ar_addr   ),
-      .uart_ar_ready   ( io_uart_lite.ar_ready  ),
-      .uart_ar_valid   ( io_uart_lite.ar_valid  ),
-      .uart_aw_addr    ( io_uart_lite.aw_addr   ),
-      .uart_aw_ready   ( io_uart_lite.aw_ready  ),
-      .uart_aw_valid   ( io_uart_lite.aw_valid  ),
-      .uart_b_ready    ( io_uart_lite.b_ready   ),
-      .uart_b_resp     ( io_uart_lite.b_resp    ),
-      .uart_b_valid    ( io_uart_lite.b_valid   ),
-      .uart_r_data     ( io_uart_lite.r_data    ),
-      .uart_r_ready    ( io_uart_lite.r_ready   ),
-      .uart_r_resp     ( io_uart_lite.r_resp    ),
-      .uart_r_valid    ( io_uart_lite.r_valid   ),
-      .uart_w_data     ( io_uart_lite.w_data    ),
-      .uart_w_ready    ( io_uart_lite.w_ready   ),
-      .uart_w_valid    ( io_uart_lite.w_valid   ),
-      .rx              ( rxd                    ),
-      .tx              ( txd                    ),
-      .sys_rst         ( sys_rst                ),
-      .cpu_rst         ( cpu_rst                ),
-      .ring_out        ( debug_ring_start       ),
-      .ring_out_ready  ( debug_ring_start_ready ),
-      .ring_in         ( debug_ring_end         ),
-      .ring_in_ready   ( debug_ring_end_ready   ),
-      .req_valid       ( mam_req_valid          ),
-      .req_ready       ( mam_req_ready          ),
-      .req_rw          ( mam_req_rw             ),
-      .req_addr        ( mam_req_addr           ),
-      .req_burst       ( mam_req_burst          ),
-      .req_beats       ( mam_req_beats          ),
-      .write_valid     ( mam_write_valid        ),
-      .write_ready     ( mam_write_ready        ),
-      .write_data      ( mam_write_data         ),
-      .write_strb      ( mam_write_strb         ),
-      .read_valid      ( mam_read_valid         ),
-      .read_data       ( mam_read_data          ),
-      .read_ready      ( mam_read_ready         )
-      );
- `else
-   assign sys_rst = rst;
-   assign cpu_rst = 1'b0;
- `endif
 
    /////////////////////////////////////////////////////////////
    // IO crossbar

@@ -71,7 +71,7 @@ module debug_system
    
    logic  logic_rst, com_rst;
    
-`ifdef FPGA 
+`ifdef FPGA_FULL
    logic [15:0]  fifo_out_data;
    logic         fifo_out_valid;
    logic         fifo_out_ready;
