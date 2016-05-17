@@ -40,7 +40,9 @@ svBit memory_write_req (
 
   // call axi controller
   if(axi_mem_writer->write_addr_req(tag, addr, len, size)) {
+#ifdef VERBOSE_MEMORY
     std::cout << format("memory write request: %1$x @ %2$x [%3$x]") % tag % addr % (len+1) << std::endl;
+#endif
     return sv_1;
   } else
     return sv_0;
@@ -61,7 +63,9 @@ svBit memory_write_data (
 
   // call axi controller
   if(axi_mem_writer->write_data_req(data, strb, last_m)) {
+#ifdef VERBOSE_MEMORY
     std::cout << format("memory write data: %1$08x %2$08x %3$08x %4$08x") % data[3] % data[2] % data[1] % data[0] << std::endl;
+#endif
     return sv_1;
   } else
     return sv_0;
@@ -105,7 +109,9 @@ svBit memory_read_req (
 
   // call axi controller
   if(axi_mem_reader->reader_addr_req(tag, addr, len, size)) {
+#ifdef VERBOSE_MEMORY
     std::cout << format("memory read request: %1$x @ %2$x") % tag % addr << std::endl;
+#endif
     return sv_1;
   } else
     return sv_0;
@@ -125,7 +131,9 @@ svBit memory_read_resp (
   bool last_m;
 
   if(axi_mem_reader->reader_data_req(&tag, data, &resp, &last_m, 8)) {
+#ifdef VERBOSE_MEMORY
     std::cout << format("memory read resp: %1$x with data %2$08x %3$08x %4$08x %5$08x") % tag % data[3] % data[2] % data[1] % data[0]<< std::endl;
+#endif
     id_16b[0] = tag & 0xffff;
     for(int i=0; i<8; i++) {
       data_256b[i] = data[i];
