@@ -29,7 +29,8 @@ trait HasTopLevelParameters {
   val l1tol2TLId = "L1toL2"
   val l2totcTLId = "L2toTC"
   val tctomemTLId = "TCtoMem"
-  val l1toioTLId = "L1toIO"
+  val l2toioTLId = "L2toIO"
+  val ioTLId = "IONet"
   val l2CacheId  = "L2Bank"
   val tagCacheId = "TagCache"
   val memBusId = "nasti"
@@ -94,14 +95,14 @@ class Top(topParams: Parameters) extends Module with HasTopLevelParameters {
   ////////////////////////////////////////////
   // local partial parameter overrides
 
-  val rocketParams = p.alterPartial({ case TLId => l1tol2TLId; case IOTLId => l1toioTLId })
+  val rocketParams = p.alterPartial({ case TLId => l1tol2TLId })
   val coherentNetParams = p.alterPartial({ case TLId => l1tol2TLId })
   val tagCacheParams = p.alterPartial({ case TLId => l2totcTLId; case CacheName => tagCacheId })
   val tagNetParams = p.alterPartial({ case TLId => l2totcTLId })
-  val ioNetParams = p.alterPartial({ case TLId => l1toioTLId; case BusId => ioBusId })
+  val ioNetParams = p.alterPartial({ case TLId => ioTLId; case BusId => ioBusId })
   val memConvParams = p.alterPartial({ case TLId => tctomemTLId; case BusId => memBusId })
   val smiConvParams = p.alterPartial({ case BusId => ioBusId })
-  val ioConvParams = p.alterPartial({ case TLId => l1toioTLId; case BusId => ioBusId })
+  val ioConvParams = p.alterPartial({ case TLId => ioTLId; case BusId => ioBusId })
 
   // IO space configuration
   val addrMap = p(GlobalAddrMap)
@@ -123,7 +124,10 @@ class Top(topParams: Parameters) extends Module with HasTopLevelParameters {
   ////////////////////////////////////////////
   // The crossbar between tiles and L2
   def sharerToClientId(sharerId: UInt) = sharerId
-  def addrToBank(addr: UInt): UInt = (addr >> lsb) % UInt(nBanks)
+  def addrToBank(addr: UInt): UInt = {
+    val isMemory = addrHashMap.isInRegion("mem", addr << log2Up(p(CacheBlockBytes)))
+    Mux(isMemory, (addr >> lsb) % UInt(nBanks), UInt(nBanks))
+  }
   val preBuffering = TileLinkDepths(2,2,2,2,2)
   val mem_net = Module(new PortedTileLinkCrossbar(addrToBank, sharerToClientId, preBuffering)(coherentNetParams))
 
@@ -140,7 +144,13 @@ class Top(topParams: Parameters) extends Module with HasTopLevelParameters {
       case InnerTLId => l1tol2TLId
       case OuterTLId => l2totcTLId})))}
 
-  mem_net.io.managers <> managerEndpoints.map(_.innerTL)
+  val mmioManager = Module(new MMIOTileLinkManager()(p.alterPartial({
+    case TLId => l1tol2TLId
+    case InnerTLId => l1tol2TLId
+    case OuterTLId => l2toioTLId
+  })))
+
+  mem_net.io.managers <> managerEndpoints.map(_.innerTL) :+ mmioManager.io.inner
   managerEndpoints.foreach { _.incoherent := io.cpu_rst } // revise when tiles are reset separately
 
   ////////////////////////////////////////////
@@ -161,10 +171,14 @@ class Top(topParams: Parameters) extends Module with HasTopLevelParameters {
   ////////////////////////////////////////////
   // MMIO interconnect
 
+  val mmioNarrower = Module(new TileLinkIONarrower(l2toioTLId, ioTLId)(ioNetParams))
+  mmioNarrower.io.in <> mmioManager.io.outer
+
   // mmio interconnect
   val (ioBase, ioAddrMap) = addrHashMap.subMap("io")
   val ioAddrHashMap = new AddrHashMap(ioAddrMap, ioBase)
-  val mmio_net = Module(new TileLinkRecursiveInterconnect(nTiles, ioAddrMap, ioBase)(ioNetParams))
+  val mmio_net = Module(new TileLinkRecursiveInterconnect(1, ioAddrMap, ioBase)(ioNetParams))
+  mmio_net.io.in.head <> mmioNarrower.io.out
 
   // Global real time counter (wall clock)
   val rtc = Module(new RTC(nTiles)(ioNetParams))
@@ -201,9 +215,6 @@ class Top(topParams: Parameters) extends Module with HasTopLevelParameters {
 
   // connection to tiles
   for (i <- 0 until nTiles) {
-    // mmio
-    mmio_net.io.in(i) <> tileList(i).io.io
-
     // memory mapped csr
     val prci = Module(new PRCI()(ioNetParams))
     val prciAddr = ioAddrHashMap(s"int:prci$i")

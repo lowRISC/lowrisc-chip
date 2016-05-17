@@ -70,6 +70,8 @@ public:
 
   // write a value
   bool write(const uint32_t addr, const uint32_t& data, const uint32_t& mask);
+  // burst write
+  bool write(const uint32_t addr, const uint32_t size, const uint8_t* buf);
   // read a value
   bool read(const uint32_t addr, uint32_t &data);
 };

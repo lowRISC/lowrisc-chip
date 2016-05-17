@@ -229,7 +229,7 @@ class DefaultConfig extends Config (
       case TLKey("L1toL2") =>
         TileLinkParameters(
           coherencePolicy = new MESICoherence(site(L2DirectoryRepresentation)),
-          nManagers = site(NBanks),
+          nManagers = site(NBanks) + 1,
           nCachingClients = site(NTiles),
           nCachelessClients = site(NTiles),
           maxClientXacts = site(NMSHRs),
@@ -238,17 +238,28 @@ class DefaultConfig extends Config (
           dataBits = site(CacheBlockBytes)*8,
           dataBeats = 4
         )
-      case TLKey("L1toIO") =>
+      case TLKey("L2toIO") =>
         TileLinkParameters(
-          coherencePolicy = new MICoherence(new NullRepresentation(site(NTiles))),
+          coherencePolicy = new MICoherence(new NullRepresentation(site(NBanks))),
           nManagers = 1,
           nCachingClients = 0,
-          nCachelessClients = site(NTiles) + 1, // core, rtc
+          nCachelessClients = 1,
           maxClientXacts = 1,
           maxClientsPerPort = 1,
           maxManagerXacts = 1,
-          dataBits = site(XLen),
-          dataBeats = 1
+          dataBits = site(CacheBlockBytes)*8
+        )
+      case TLKey("IONet") =>
+        TileLinkParameters(
+          coherencePolicy = new MICoherence(new NullRepresentation(site(NBanks))),
+          nManagers = 1,
+          nCachingClients = 0,
+          nCachelessClients = 1,
+          maxClientXacts = 1,
+          maxClientsPerPort = 1,
+          maxManagerXacts = 1,
+          dataBits = site(CacheBlockBytes)*8,
+          dataBeats = site(CacheBlockBytes)*8 / site(XLen)
         )
       case TLKey("L2toTC") =>
         TileLinkParameters(
