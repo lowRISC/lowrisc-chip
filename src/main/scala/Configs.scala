@@ -225,7 +225,7 @@ class WithFPGATagCacheConfig extends ChiselConfig (
 class WithDebugConfig extends ChiselConfig (
   (pname,site,here) => pname match {
     case UseDebug => Dump("ENABLE_DEBUG", true)
-    case EmitLogMessages => Dump("EMIT_LOGS", false)
+    case EmitLogMessages => false
     case MamIODataWidth => Dump("MAM_IO_DWIDTH", 16)
     case MamIOAddrWidth => site(PAddrBits)
     case MamIOBeatsBits => 14
