@@ -11,4 +11,4 @@ fi
 export RISCV=$TOP/riscv
 export PATH=$PATH:$RISCV/bin
 # choose the FPGA board (KC705 in default)
-export FPGA_BOARD=kc705
+export FPGA_BOARD=nexys4
