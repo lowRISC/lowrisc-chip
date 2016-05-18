@@ -140,6 +140,7 @@ class DefaultConfig extends ChiselConfig (
       case MamIOAddrWidth => 39
       case MamIOBeatsBits => 14
       case UseDebug => false
+      case EmitLogMessages => true
 
       case "L1ToL2" => {
         case TLNManagers => site(NBanks)
@@ -224,6 +225,7 @@ class WithFPGATagCacheConfig extends ChiselConfig (
 class WithDebugConfig extends ChiselConfig (
   (pname,site,here) => pname match {
     case UseDebug => Dump("ENABLE_DEBUG", true)
+    case EmitLogMessages => Dump("EMIT_LOGS", false)
     case MamIODataWidth => Dump("MAM_IO_DWIDTH", 16)
     case MamIOAddrWidth => site(PAddrBits)
     case MamIOBeatsBits => 14
