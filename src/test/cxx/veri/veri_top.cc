@@ -36,10 +36,7 @@ int main(int argc, char** argv) {
       vcd_enable = true;
     else if(it->find("+load=") == 0) {
       string filename = it->substr(strlen("+load="));
-      if(!memory_controller->load_mem(filename)) {
-        std::cout << "fail to load memory file " << filename << endl;
-        return 0;
-      }
+      memory_controller->load_mem(filename);
     }
     else if(it->find("+max-cycles=") == 0) {
       max_time = 10 * strtoul(it->substr(strlen("+max-cycles=")).c_str(), NULL, 10);

@@ -8,6 +8,8 @@
 #include <fstream>
 #include <boost/lexical_cast.hpp>
 #include <boost/format.hpp>
+#include <functional>
+#include "loadelf.hpp"
 
 using std::pair;
 using std::list;
@@ -171,8 +173,39 @@ bool Memory32::write(const uint32_t addr, const uint32_t& data, const uint32_t& 
   }
   mem[addr] = data_m;
 
-  //std::cout << format("memory write [%1$x] = %2$x") % addr % data_m << std::endl;
+  //std::cout << format("memory write [%1$08x] = %2$08x") % addr % data_m << std::endl;
   return true;
+}
+
+void Memory32::write_block(uint32_t addr, uint32_t size, const uint8_t* buf) {
+  uint32_t burst_size = 4;
+  uint32_t mask = (1 << burst_size) - 1;
+
+  // prologue
+  if(uint32_t offset = addr%4) {
+    uint32_t m_size = 4 - offset;
+    mask >>= (m_size > size) ? m_size - size : 0;
+    m_size = (m_size > size) ? size : m_size;
+    mask <<= offset;
+    write(addr - offset, *((uint32_t*)(buf - offset)), mask);
+    size -= m_size;
+    buf += m_size;
+    addr += m_size;
+  }
+
+  // block write
+  mask = (1 << burst_size) - 1;
+  while(size >= burst_size) {
+    write(addr, *((uint32_t*)(buf)), mask);
+    size -= burst_size;
+    buf += burst_size;
+    addr += burst_size;
+  }
+
+  // epilogue
+  if(size) {
+    write(addr, *((uint32_t*)(buf)), (1 << size) - 1);
+  }
 }
 
 bool Memory32::read(const uint32_t addr, uint32_t &data) {
@@ -181,7 +214,7 @@ bool Memory32::read(const uint32_t addr, uint32_t &data) {
 
   data = mem[addr];
 
-  //std::cout << format("memory read [%1$x] = %2$x") % addr % data << std::endl;
+  //std::cout << format("memory read [%1$08x] = %2$08x") % addr % data << std::endl;
   return true;
 }
 
@@ -197,7 +230,7 @@ std::ostream& MemoryOperation::streamout(std::ostream& os) const {
 
 void MemoryController::add_read_req(const unsigned int fifo, const uint32_t tag, const uint32_t addr) {
   assert(fifo < op_max);
-  //std::cout << format("Memory controller read req from fifo %1% (%2$x @ %3$x)") % fifo % tag % addr << std::endl;
+  //std::cout << format("Memory controller read req from fifo %1% (%2$x @ %3$08x)") % fifo % tag % addr << std::endl;
   op_fifo[fifo].push_back(MemoryOperation(0, tag, addr));
 }
 
@@ -263,31 +296,12 @@ std::list<uint32_t>* MemoryController::get_resp(uint32_t &tag) {
 }
 
 // load initial memory
-bool MemoryController::load_mem(const string& filename) {
-  ifstream ifs;
-  ifs.open(filename.c_str());
-
-  char buf [36];
-  uint32_t addr = 0;
-
-  if(ifs.is_open()) {
-    while(ifs.good()) {
-      ifs.getline(buf, 36);
-      string line(buf);
-      if(line != "") {
-        for(int i=3; i>=0; i--) {
-          uint32_t data = strtoul(line.substr(i*8, 8).c_str(), NULL, 16);
-          mem.write(addr, data, 0xf);
-          addr += 4;
-        }
-      }
-    }
-  } else {
-    std::cerr << "Error: Fail to open memory file " << filename << std::endl;
-    exit(1);
-  }
-
-  return true;
+void MemoryController::load_mem(const string& filename) {
+  using namespace std::placeholders;
+  std::function<void(uint32_t, uint32_t, const uint8_t*)> f =
+    std::bind(&Memory32::write_block, &mem, _1, _2, _3);
+  elfLoader loader = elfLoader(f);
+  loader(filename);
 }
 
 // AXI controllers

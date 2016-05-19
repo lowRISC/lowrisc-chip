@@ -71,7 +71,7 @@ public:
   // write a value
   bool write(const uint32_t addr, const uint32_t& data, const uint32_t& mask);
   // burst write
-  bool write(const uint32_t addr, const uint32_t size, const uint8_t* buf);
+  void write_block(uint32_t addr, uint32_t size, const uint8_t* buf);
   // read a value
   bool read(const uint32_t addr, uint32_t &data);
 };
@@ -138,7 +138,7 @@ public:
   std::list<uint32_t>* get_resp(uint32_t &tag);
 
   // load an initial memory
-  bool load_mem(const std::string& filename);
+  void load_mem(const std::string& filename);
 };
 
 // global memory controller

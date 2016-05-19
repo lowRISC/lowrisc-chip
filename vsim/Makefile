@@ -113,6 +113,7 @@ veri_vsrcs = \
 
 veri_csrcs = \
 	$(base_dir)/src/test/cxx/common/globals.cpp \
+	$(base_dir)/src/test/cxx/common/loadelf.cpp \
 	$(base_dir)/src/test/cxx/common/dpi_ram_behav.cpp \
 	$(base_dir)/src/test/cxx/common/dpi_host_behav.cpp \
 	$(base_dir)/src/test/cxx/veri/veri_top.cc \
@@ -191,15 +192,14 @@ bmarks_tests += $(addsuffix .riscv, $(bmarks))
 riscv_test_asm_dir = $(base_dir)/riscv-tools/riscv-tests/isa
 riscv_test_bmarks_dir = $(base_dir)/riscv-tools/riscv-tests/benchmarks
 
-%.hex:
-	$(MAKE) -C $(dir $@) $(notdir $@)
-
-$(addprefix $(output_dir)/, $(addsuffix .hex, $(asm_p_tests) $(asm_pt_tests) $(asm_pm_tests) $(asm_v_tests))): $(output_dir)/%.hex: $(riscv_test_asm_dir)/%.hex
+$(addprefix $(output_dir)/, $(addsuffix .riscv, $(asm_p_tests) $(asm_pt_tests) $(asm_pm_tests) $(asm_v_tests))): $(output_dir)/%.riscv: $(riscv_test_asm_dir)/%
 	mkdir -p $(output_dir)
+	$(MAKE) -C $(dir $<) $(notdir $<)
 	ln -fs $< $@
 
-$(addprefix $(output_dir)/, $(addsuffix .hex, $(bmarks_tests))): $(output_dir)/%.hex: $(riscv_test_bmarks_dir)/%.hex
+$(addprefix $(output_dir)/, $(addsuffix .riscv, $(bmarks_tests))): $(output_dir)/%.riscv: $(riscv_test_bmarks_dir)/%
 	mkdir -p $(output_dir)
+	$(MAKE) -C $(dir $<) $(notdir $<)
 	ln -fs $< $@
 
 #--------------------------------------------------------------------
@@ -210,17 +210,17 @@ bmarks_out = $(foreach test, $(bmarks_tests), $(output_dir)/$(test).verilator.ou
 exec_simv = $(CONFIG)-sim
 exec_simv_vcd = $(CONFIG)-sim-debug +vcd
 
-$(output_dir)/%.verilator.out: $(output_dir)/%.hex $(CONFIG)-sim
+$(output_dir)/%.verilator.out: $(output_dir)/%.riscv $(CONFIG)-sim
 	$(exec_simv) +max-cycles=$(timeout_cycles) +load=$< $(disasm) $@ && [ $$PIPESTATUS -eq 0 ]
 
 .PRECIOUS: $(output_dir)/%.verilator.out
 
-$(output_dir)/%.verilator.vcd: $(output_dir)/%.hex $(CONFIG)-sim-debug
+$(output_dir)/%.verilator.vcd: $(output_dir)/%.riscv $(CONFIG)-sim-debug
 	$(exec_simv_vcd) +vcd_name=$@ +max-cycles=$(timeout_cycles) +load=$< $(disasm) $(patsubst %.vcd,%.out,$@) && [ $$PIPESTATUS -eq 0 ]
 
 .PRECIOUS: $(output_dir)/%.verilator.vcd
 
-$(output_dir)/%.verilator.vpd: $(output_dir)/%.hex $(CONFIG)-sim-debug
+$(output_dir)/%.verilator.vpd: $(output_dir)/%.riscv $(CONFIG)-sim-debug
 	rm -rf $(patsubst %.vpd,%.vcd,$@) && mkfifo $(patsubst %.vpd,%.vcd,$@)
 	vcd2vpd $(patsubst %.vpd,%.vcd,$@) $@ > /dev/null &
 	$(exec_simv_vcd) +vcd_name=$@ +max-cycles=$(timeout_cycles) +load=$< $(disasm) $(patsubst %.vpd,%.out,$@) && [ $$PIPESTATUS -eq 0 ]
