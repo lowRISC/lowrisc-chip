@@ -294,6 +294,7 @@ class DefaultConfig extends Config (
       case MamIOAddrWidth => 39
       case MamIOBeatsBits => 14
       case UseDebug => false
+      case EmitLogMessages => true
 
       // IO devices
       case UseHost => false
@@ -348,12 +349,14 @@ class WithDebugConfig extends Config (
   (pname,site,here) => pname match {
     case UseDebug => Dump("ENABLE_DEBUG", true)
     case UseUART => true
+    case EmitLogMessages => false
     case MamIODataWidth => Dump("MAM_IO_DWIDTH", 16)
     case MamIOAddrWidth => site(PAddrBits)
     case MamIOBeatsBits => 14
     case DebugCtmID => 0
     case DebugStmID => 1
-    case DebugBaseID => 8
+    case DebugBaseID => 4
+    case DebugSubIDSize => 2
     case DebugCtmScorBoardSize => site(NMSHRs)
     case DebugStmCsrAddr => 0x8f0 // not synced with instruction.scala
     case DebugRouterBufferSize => 4

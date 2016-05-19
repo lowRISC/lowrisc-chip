@@ -87,7 +87,12 @@ veri_vsrcs = \
 	$(base_dir)/opensocdebug/hardware/modules/stm/common/osd_stm.sv \
 	$(base_dir)/opensocdebug/hardware/modules/ctm/common/osd_ctm.sv \
 	$(base_dir)/opensocdebug/hardware/blocks/buffer/common/dii_buffer.sv \
+	$(base_dir)/opensocdebug/hardware/blocks/buffer/common/osd_fifo.sv \
+	$(base_dir)/opensocdebug/hardware/blocks/timestamp/common/osd_timestamp.sv \
+	$(base_dir)/opensocdebug/hardware/blocks/tracepacket/common/osd_trace_packetization.sv \
+	$(base_dir)/opensocdebug/hardware/blocks/tracesample/common/osd_tracesample.sv \
 	$(base_dir)/opensocdebug/hardware/interconnect/common/debug_ring.sv \
+	$(base_dir)/opensocdebug/hardware/interconnect/common/debug_ring_expand.sv \
 	$(base_dir)/opensocdebug/hardware/interconnect/common/ring_router.sv \
 	$(base_dir)/opensocdebug/hardware/interconnect/common/ring_router_mux.sv \
 	$(base_dir)/opensocdebug/hardware/interconnect/common/ring_router_mux_rr.sv \

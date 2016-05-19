@@ -413,6 +413,16 @@ module chip_top
    dii_flit [1:0]                     debug_ring_end; // ending connector
    logic [1:0]                        debug_ring_end_ready;
 
+   /////////////////////////////////////////////////////////////
+   // UART
+   nasti_channel
+     #(
+       .ADDR_WIDTH  ( `PADDR_WIDTH       ),
+       .DATA_WIDTH  ( `IO_DAT_WIDTH      ))
+   io_uart_lite();
+   logic                       uart_irq;
+
+ `ifdef ENABLE_DEBUG
    debug_system
      #(
        .MAM_DATA_WIDTH   ( `MAM_IO_DWIDTH   ),
@@ -438,7 +448,7 @@ module chip_top
       .uart_w_data     ( io_uart_lite.w_data    ),
       .uart_w_ready    ( io_uart_lite.w_ready   ),
       .uart_w_valid    ( io_uart_lite.w_valid   ),
-      .rx              ( rxd                    ),// will this works for actual FPGA ?
+      .rx              ( rxd                    ),
       .tx              ( txd                    ),
       .sys_rst         ( sys_rst                ),
       .cpu_rst         ( cpu_rst                ),
@@ -460,33 +470,32 @@ module chip_top
       .read_data       ( mam_read_data          ),
       .read_ready      ( mam_read_ready         )
       );
-  `else
-
+ `else // !`ifdef ENABLE_DEBUG
    assign sys_rst = rst;
-   assign cpu_rst = rst;
+   assign cpu_rst = 1'b0;
 
-   `ifdef ADD_UART
+  `ifdef ADD_UART
    axi_uart16550_0 uart_i
      (
       .s_axi_aclk      ( clk                    ),
       .s_axi_aresetn   ( rstn                   ),
-      .s_axi_araddr    ( io_uart_lite.ar_addr   ),
-      .s_axi_arready   ( io_uart_lite.ar_ready  ),
-      .s_axi_arvalid   ( io_uart_lite.ar_valid  ),
-      .s_axi_awaddr    ( io_uart_lite.aw_addr   ),
-      .s_axi_awready   ( io_uart_lite.aw_ready  ),
-      .s_axi_awvalid   ( io_uart_lite.aw_valid  ),
-      .s_axi_bready    ( io_uart_lite.b_ready   ),
-      .s_axi_bresp     ( io_uart_lite.b_resp    ),
-      .s_axi_bvalid    ( io_uart_lite.b_valid   ),
-      .s_axi_rdata     ( io_uart_lite.r_data    ),
-      .s_axi_rready    ( io_uart_lite.r_ready   ),
-      .s_axi_rresp     ( io_uart_lite.r_resp    ),
-      .s_axi_rvalid    ( io_uart_lite.r_valid   ),
-      .s_axi_wdata     ( io_uart_lite.w_data    ),
-      .s_axi_wready    ( io_uart_lite.w_ready   ),
-      .s_axi_wstrb     ( io_uart_lite.w_strb    ),
-      .s_axi_wvalid    ( io_uart_lite.w_valid   ),
+      .s_axi_araddr    ( io_uart_lite.ar_addr  ),
+      .s_axi_arready   ( io_uart_lite.ar_ready ),
+      .s_axi_arvalid   ( io_uart_lite.ar_valid ),
+      .s_axi_awaddr    ( io_uart_lite.aw_addr  ),
+      .s_axi_awready   ( io_uart_lite.aw_ready ),
+      .s_axi_awvalid   ( io_uart_lite.aw_valid ),
+      .s_axi_bready    ( io_uart_lite.b_ready  ),
+      .s_axi_bresp     ( io_uart_lite.b_resp   ),
+      .s_axi_bvalid    ( io_uart_lite.b_valid  ),
+      .s_axi_rdata     ( io_uart_lite.r_data   ),
+      .s_axi_rready    ( io_uart_lite.r_ready  ),
+      .s_axi_rresp     ( io_uart_lite.r_resp   ),
+      .s_axi_rvalid    ( io_uart_lite.r_valid  ),
+      .s_axi_wdata     ( io_uart_lite.w_data   ),
+      .s_axi_wready    ( io_uart_lite.w_ready  ),
+      .s_axi_wstrb     ( io_uart_lite.w_strb   ),
+      .s_axi_wvalid    ( io_uart_lite.w_valid  ),
       .ip2intc_irpt    ( uart_irq               ),
       .freeze          ( 1'b0                   ),
       .rin             ( 1'b1                   ),
@@ -498,10 +507,13 @@ module chip_top
       .rtsn            (                        )
       );
 
-   `else // !`ifdef ADD_UART
+  `else // !`ifdef ADD_UART
+
    assign uart_irq = 1'b0;
-   `endif // !`ifdef ADD_UART
-  `endif // !`ifdef ENABLE_DEBUG
+
+  `endif // !`ifdef ADD_UART
+
+ `endif
 
    /////////////////////////////////////////////////////////////
    // Host for ISA regression
