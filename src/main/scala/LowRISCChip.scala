@@ -119,7 +119,7 @@ class Top(topParams: Parameters) extends Module with HasTopLevelParameters {
 
   ////////////////////////////////////////////
   // Rocket Tiles
-  val tileList = (0 until nTiles) map ( i => Module(new RocketTile(i, io.cpu_rst)(rocketParams)))
+  val tileList = (0 until nTiles) map ( i => Module(new RocketTile(i, reset || io.cpu_rst)(rocketParams)))
 
   ////////////////////////////////////////////
   // The crossbar between tiles and L2

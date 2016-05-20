@@ -195,7 +195,7 @@ module chip_top
       .m_axi_rready         ( mem_mig_nasti.r_ready    )
       );
 
-  `ifdef NEXYS4
+ `ifdef NEXYS4
    //clock generator
    logic mig_sys_clk, clk_locked;
    clk_wiz_0 clk_gen
@@ -205,12 +205,12 @@ module chip_top
       .resetn      ( rst_top       ),
       .locked      ( clk_locked    )
       );
-  `endif //  `ifdef NEXYS4
+ `endif //  `ifdef NEXYS4
 
    // DRAM controller
    mig_7series_0 dram_ctl
      (
-   `ifdef KC705
+ `ifdef KC705
       .sys_clk_p            ( clk_p                  ),
       .sys_clk_n            ( clk_n                  ),
       .sys_rst              ( rst_top                ),
@@ -230,7 +230,7 @@ module chip_top
       .ddr3_cs_n            ( ddr_cs_n               ),
       .ddr3_dm              ( ddr_dm                 ),
       .ddr3_odt             ( ddr_odt                ),
-   `elsif NEXYS4
+ `elsif NEXYS4
       .sys_clk_i            ( mig_sys_clk            ),
       .sys_rst              ( clk_locked             ),
       .ui_addn_clk_0        ( clk                    ),
@@ -249,7 +249,7 @@ module chip_top
       .ddr2_cs_n            ( ddr_cs_n               ),
       .ddr2_dm              ( ddr_dm                 ),
       .ddr2_odt             ( ddr_odt                ),
-   `endif // !`elsif NEXYS4
+ `endif // !`elsif NEXYS4
       .ui_clk               ( mig_ui_clk             ),
       .ui_clk_sync_rst      ( mig_ui_rst             ),
       .mmcm_locked          ( rstn                   ),
@@ -296,7 +296,7 @@ module chip_top
       .s_axi_rready         ( mem_mig_nasti.r_ready  )
       );
 
-  `else
+`else
 
    assign clk = clk_p;
    assign rstn = !rst_top;
@@ -314,7 +314,7 @@ module chip_top
       .rstn          ( rstn        ),
       .nasti         ( mem_nasti   )
       );
-  `endif // !`ifdef ADD_PHY_DDR
+`endif // !`ifdef ADD_PHY_DDR
 
    /////////////////////////////////////////////////////////////
    // SPI
@@ -325,7 +325,7 @@ module chip_top
    io_spi_lite();
    logic                       spi_irq;
 
-  `ifdef ADD_SPI
+`ifdef ADD_SPI
    axi_quad_spi_0 spi_i
      (
       .ext_spi_clk     ( clk                   ),
@@ -376,11 +376,11 @@ module chip_top
    assign spi_cs = !spi_cs_t ? spi_cs_o : 1'bz;
    assign spi_cs_i = 1'b1;;     // always in master mode
 
-  `else // !`ifdef ADD_SPI
+`else // !`ifdef ADD_SPI
 
    assign spi_irq = 1'b0;
 
-  `endif // !`ifdef ADD_SPI
+`endif // !`ifdef ADD_SPI
 
    /////////////////////////////////////////////////////////////
    // UART or trace debugger
@@ -391,7 +391,7 @@ module chip_top
    io_uart_lite();
    logic                       uart_irq;
 
-  `ifdef ENABLE_DEBUG
+ `ifdef ENABLE_DEBUG
    // Debug MAM signals
    logic                              mam_req_valid;
    logic                              mam_req_ready;
@@ -413,16 +413,6 @@ module chip_top
    dii_flit [1:0]                     debug_ring_end; // ending connector
    logic [1:0]                        debug_ring_end_ready;
 
-   /////////////////////////////////////////////////////////////
-   // UART
-   nasti_channel
-     #(
-       .ADDR_WIDTH  ( `PADDR_WIDTH       ),
-       .DATA_WIDTH  ( `IO_DAT_WIDTH      ))
-   io_uart_lite();
-   logic                       uart_irq;
-
- `ifdef ENABLE_DEBUG
    debug_system
      #(
        .MAM_DATA_WIDTH   ( `MAM_IO_DWIDTH   ),
@@ -524,14 +514,14 @@ module chip_top
        .DATA_WIDTH  ( `IO_DAT_WIDTH      ))
    io_host_lite();
 
-  `ifdef ADD_HOST
+ `ifdef ADD_HOST
    host_behav host
      (
       .clk          ( clk          ),
       .rstn         ( rstn         ),
       .nasti        ( io_host_lite )
       );
-  `endif
+ `endif
 
    /////////////////////////////////////////////////////////////
    // IO crossbar
@@ -570,20 +560,20 @@ module chip_top
       .m ( io_cbo_lite )
       );
 
-  `ifdef ADD_HOST
+ `ifdef ADD_HOST
    defparam io_crossbar.BASE0 = `DEV_MAP__io_ext_host__BASE ;
    defparam io_crossbar.MASK0 = `DEV_MAP__io_ext_host__MASK ;
-  `endif
+ `endif
 
-  `ifdef ADD_UART
+ `ifdef ADD_UART
    defparam io_crossbar.BASE1 = `DEV_MAP__io_ext_uart__BASE;
    defparam io_crossbar.MASK1 = `DEV_MAP__io_ext_uart__MASK;
-  `endif
+ `endif
 
-  `ifdef ADD_SPI
+ `ifdef ADD_SPI
    defparam io_crossbar.BASE2 = `DEV_MAP__io_ext_spi__BASE;
    defparam io_crossbar.MASK2 = `DEV_MAP__io_ext_spi__MASK;
-  `endif
+ `endif
 
    /////////////////////////////////////////////////////////////
    // the Rocket chip
@@ -669,7 +659,7 @@ module chip_top
       .io_nasti_lite_r_bits_resp     ( io_lite.r_resp                         ),
       .io_nasti_lite_r_bits_user     ( io_lite.r_user                         ),
       .io_interrupt                  ( interrupt                              ),
-  `ifdef ENABLE_DEBUG
+ `ifdef ENABLE_DEBUG
       .io_debug_net_0_dii_in         ( debug_ring_start[0]                    ),
       .io_debug_net_0_dii_in_ready   ( debug_ring_start_ready[0]              ),
       .io_debug_net_1_dii_in         ( debug_ring_start[1]                    ),
@@ -691,7 +681,7 @@ module chip_top
       .io_debug_mam_rdata_ready      ( mam_read_ready                         ),
       .io_debug_mam_rdata_valid      ( mam_read_valid                         ),
       .io_debug_mam_rdata_bits_data  ( mam_read_data                          ),
-  `endif
+ `endif
       .io_debug_rst                  ( rst                                    ),
       .io_cpu_rst                    ( cpu_rst                                )
       );

@@ -209,8 +209,8 @@ class DefaultConfig extends Config (
       case CoreInstBits => 32
       case CoreDataBits => site(XLen)
       case NCustomMRWCSRs => 0
-      case ResetVector => BigInt(0x0)
-      case MtvecInit => BigInt(0x8)
+      case ResetVector => BigInt(0x00000000)
+      case MtvecInit =>   BigInt(0x40000004)
       case MtvecWritable => false
 
       //Uncore Paramters

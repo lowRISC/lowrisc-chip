@@ -9,8 +9,7 @@ $(generated_dir)/$(MODEL).$(CONFIG).v: $(chisel_srcs)
 	cd $(generated_dir) && \
 	if [ -a $(MODEL).$(CONFIG).conf ]; then \
 	  $(mem_gen) $(generated_dir)/$(MODEL).$(CONFIG).conf >> $(generated_dir)/$(MODEL).$(CONFIG).v; \
-	fi && \
-	sed -i.bak "s|fwrite(32'h80000002, |display(|" $(generated_dir)/$(MODEL).$(CONFIG).v
+	fi
 
 $(generated_dir)/consts.vh: $(generated_dir)/consts.$(CONFIG).vh
 	cp $^ $@
@@ -21,13 +20,13 @@ $(generated_dir)/dev_map.vh: $(generated_dir)/$(MODEL).$(CONFIG).dev_map.vh
 $(generated_dir)/consts.$(CONFIG).vh: $(generated_dir)/$(MODEL).$(CONFIG).v
 	echo "\`ifndef CONST_VH" > $@
 	echo "\`define CONST_VH" >> $@
-	sed -r 's/\(([A-Za-z0-9_]+),([A-Za-z0-9_]+)\)/`define \1 \2/' $(patsubst %.v,%.prm,$<) >> $@
+	sed -r 's/\(([A-Za-z0-9_]+),([A-Za-z0-9_]+)\)/  `define \1 \2/' $(patsubst %.v,%.prm,$<) >> $@
 	echo "\`endif // CONST_VH" >> $@
 
 $(generated_dir)/$(MODEL).$(CONFIG).dev_map.vh: $(generated_dir)/$(MODEL).$(CONFIG).v
 	echo "\`ifndef DEV_MAP_VH" > $@
 	echo "\`define DEV_MAP_VH" >> $@
-	sed -r 's/#define ([A-Za-z0-9_]+) 0x([A-Za-z0-9_]+)/`define \1 '\''h\2/' $(patsubst %.v,%.dev_map.h,$<) >> $@
+	sed -r 's/#define ([A-Za-z0-9_]+) 0x([A-Za-z0-9_]+)/  `define \1 '\''h\2/' $(patsubst %.v,%.dev_map.h,$<) >> $@
 	echo "\`endif // DEV_MAP_VH" >> $@
 
 # emacs local variable
