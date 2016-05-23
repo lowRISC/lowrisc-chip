@@ -210,8 +210,8 @@ class DefaultConfig extends Config (
       case CoreDataBits => site(XLen)
       case NCustomMRWCSRs => 0
       case ResetVector => BigInt(0x00000000)
-      case MtvecInit =>   BigInt(0x40000004)
-      case MtvecWritable => false
+      case MtvecInit =>   BigInt(0x00000000)  // should have something default in ROM?
+      case MtvecWritable => true
 
       //Uncore Paramters
       case RTCPeriod => 100 // gives 10 MHz RTC assuming 1 GHz uncore clock
@@ -235,8 +235,7 @@ class DefaultConfig extends Config (
           maxClientXacts = site(NMSHRs),
           maxClientsPerPort = 1,
           maxManagerXacts = site(NAcquireTransactors) + 2, // acquire, release, writeback
-          dataBits = site(CacheBlockBytes)*8,
-          dataBeats = 4
+          dataBits = site(CacheBlockBytes)*8
         )
       case TLKey("L2toIO") =>
         TileLinkParameters(
@@ -250,15 +249,7 @@ class DefaultConfig extends Config (
           dataBits = site(CacheBlockBytes)*8
         )
       case TLKey("IONet") =>
-        TileLinkParameters(
-          coherencePolicy = new MICoherence(new NullRepresentation(site(NBanks))),
-          nManagers = 1,
-          nCachingClients = 0,
-          nCachelessClients = 1,
-          maxClientXacts = 1,
-          maxClientsPerPort = 1,
-          maxManagerXacts = 1,
-          dataBits = site(CacheBlockBytes)*8,
+        site(TLKey("L2toIO")).copy(
           dataBeats = site(CacheBlockBytes)*8 / site(XLen)
         )
       case TLKey("L2toTC") =>
@@ -273,19 +264,24 @@ class DefaultConfig extends Config (
           dataBits = site(CacheBlockBytes)*8,
           dataBeats = 4
         )
-
       case TLKey("TCtoMem") =>
-        TileLinkParameters(
-          coherencePolicy = new MEICoherence(new NullRepresentation(site(NBanks))),
-          nManagers = 1,
-          nCachingClients = 0,
-          nCachelessClients = 1,
-          maxClientXacts = site(TCTransactors),
-          maxClientsPerPort = 1,
-          maxManagerXacts = 1,
-          dataBits = site(CacheBlockBytes)*8,
+        site(TLKey("L2toTC")).copy(
           dataBeats = 8
         )
+
+//      case TLKey("TCtoMem") =>
+//        TileLinkParameters(
+//          coherencePolicy = new MEICoherence(new NullRepresentation(site(NBanks))),
+//          nManagers = 1,
+//          nCachingClients = 0,
+//          nCachelessClients = 1,
+//          maxClientXacts = site(TCTransactors),
+//          maxClientsPerPort = 1,
+//          maxManagerXacts = 1,
+//          dataBits = site(CacheBlockBytes)*8,
+//          dataBeats = 8
+//        )
+
 
       // debug
       // disabled in Default
