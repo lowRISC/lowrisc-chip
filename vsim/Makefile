@@ -9,38 +9,105 @@ endif
 # global define
 #--------------------------------------------------------------------
 
-default: all
+default: sim
 
 base_dir = $(abspath ..)
-generated_dir = $(abspath ./generated-src)
-mem_gen = $(abspath ./vlsi_mem_gen)
-
 sim_dir = .
 output_dir = $(sim_dir)/output
+mem_gen = $(abspath ./vlsi_mem_gen)
+generated_dir = $(abspath ./generated-src)
+
+glip_dir = $(base_dir)/opensocdebug/glip/src
+osd_dir = $(base_dir)/opensocdebug/hardware
 
 BACKEND ?= lowrisc_chip.LowRISCBackend
 CONFIG ?= RegressionConfig
+#CONFIG ?= DebugConfig
 
 include $(base_dir)/Makefrag
 
-.PHONY: default all
+.PHONY: default
 
 #--------------------------------------------------------------------
 # Sources
 #--------------------------------------------------------------------
 
-# Verilog sources
-
-sim_vsrcs = \
+lowrisc_srcs = \
 	$(generated_dir)/$(MODEL).$(CONFIG).v \
+
+lowrisc_headers = \
 	$(generated_dir)/consts.vh \
 	$(generated_dir)/dev_map.vh \
+	$(generated_dir)/dev_map.h \
+
+verilog_srcs = \
+	$(osd_dir)/interfaces/common/dii_channel.sv \
+	$(base_dir)/src/main/verilog/chip_top.sv \
+	$(base_dir)/socip/nasti/channel.sv \
+	$(base_dir)/socip/nasti/lite_nasti_reader.sv \
+	$(base_dir)/socip/nasti/lite_nasti_writer.sv \
+	$(base_dir)/socip/nasti/nasti_buf.sv \
+	$(base_dir)/socip/nasti/nasti_combiner.sv \
+	$(base_dir)/socip/nasti/nasti_crossbar.sv \
+	$(base_dir)/socip/nasti/nasti_demux.sv \
+	$(base_dir)/socip/nasti/nasti_lite_bridge.sv \
+	$(base_dir)/socip/nasti/nasti_lite_reader.sv \
+	$(base_dir)/socip/nasti/nasti_lite_writer.sv \
+	$(base_dir)/socip/nasti/nasti_mux.sv \
+	$(base_dir)/socip/nasti/nasti_slicer.sv \
+	$(base_dir)/socip/util/arbiter.sv \
+	$(base_dir)/src/main/verilog/debug_system.sv \
+	$(osd_dir)/interconnect/common/debug_ring_expand.sv \
+	$(osd_dir)/interconnect/common/ring_router.sv \
+	$(osd_dir)/interconnect/common/ring_router_mux.sv \
+	$(osd_dir)/interconnect/common/ring_router_mux_rr.sv \
+	$(osd_dir)/interconnect/common/ring_router_demux.sv \
+	$(osd_dir)/blocks/buffer/common/dii_buffer.sv \
+	$(osd_dir)/blocks/buffer/common/osd_fifo.sv \
+	$(osd_dir)/blocks/timestamp/common/osd_timestamp.sv \
+	$(osd_dir)/blocks/tracepacket/common/osd_trace_packetization.sv \
+	$(osd_dir)/blocks/tracesample/common/osd_tracesample.sv \
+	$(osd_dir)/blocks/regaccess/common/osd_regaccess.sv \
+	$(osd_dir)/blocks/regaccess/common/osd_regaccess_demux.sv \
+	$(osd_dir)/blocks/regaccess/common/osd_regaccess_layer.sv \
+	$(osd_dir)/modules/dem_uart/common/osd_dem_uart.sv \
+	$(osd_dir)/modules/dem_uart/common/osd_dem_uart_16550.sv \
+	$(osd_dir)/modules/dem_uart/common/osd_dem_uart_nasti.sv \
+	$(osd_dir)/modules/him/common/osd_him.sv \
+	$(osd_dir)/modules/scm/common/osd_scm.sv \
+	$(osd_dir)/modules/mam/common/osd_mam.sv \
+	$(osd_dir)/modules/stm/common/osd_stm.sv \
+	$(osd_dir)/modules/ctm/common/osd_ctm.sv \
+	$(glip_dir)/common/logic/interface/glip_channel.sv \
+
+verilog_headers = \
+	$(base_dir)/src/main/verilog/config.vh \
+
+test_verilog_srcs = \
+	$(base_dir)/src/test/verilog/host_behav.sv \
+	$(base_dir)/src/test/verilog/nasti_ram_behav.sv \
+	$(glip_dir)/backend_tcp/logic/dpi/glip_tcp_toplevel.sv \
+
+test_cxx_srcs = \
+	$(base_dir)/src/test/cxx/common/globals.cpp \
+	$(base_dir)/src/test/cxx/common/loadelf.cpp \
+	$(base_dir)/src/test/cxx/common/dpi_ram_behav.cpp \
+	$(base_dir)/src/test/cxx/common/dpi_host_behav.cpp \
+	$(base_dir)/opensocdebug/glip/src/backend_tcp/logic/dpi/glip_tcp_dpi.cpp \
+	$(base_dir)/opensocdebug/glip/src/backend_tcp/logic/dpi/GlipTcp.cpp \
+	$(base_dir)/src/test/cxx/veri/veri_top.cc \
+
+test_cxx_headers = \
+	$(base_dir)/src/test/cxx/common/globals.h \
+	$(base_dir)/src/test/cxx/common/loadelf.hpp \
+	$(base_dir)/src/test/cxx/common/dpi_ram_behav.h \
+	$(base_dir)/src/test/cxx/common/dpi_host_behav.h \
 
 #--------------------------------------------------------------------
 # Build Verilog
 #--------------------------------------------------------------------
 
-verilog: $(sim_vsrcs)
+verilog: $(verilog_lowrisc)
 
 include $(base_dir)/Makefrag-build
 
@@ -62,7 +129,7 @@ veri_flags = \
 	--trace \
 	-Wno-lint -Wno-style -Wno-STMTDLY -Wno-ASSIGNIN\
 	-CFLAGS "-std=c++11" \
-	-CFLAGS "-I$(base_dir)/src/test/cxx/common -I$(base_dir)/src/test/cxx/veri -I$(base_dir)/opensocdebug/glip/src/backend_tcp/logic/dpi" \
+	-CFLAGS "-I$(base_dir)/src/test/cxx/common -I$(base_dir)/src/test/cxx/veri -I$(glip_dir)/backend_tcp/logic/dpi" \
         -LDFLAGS "-pthread" \
 	--exe \
 	--Mdir $(sim_dir)/verilator
@@ -71,81 +138,26 @@ veri_flags = \
 #veri_opt_flags = -O3 -CFLAGS "-O1"
 veri_opt_flags =
 
-veri_vsrcs = \
-	$(base_dir)/opensocdebug/hardware/interfaces/common/dii_channel.sv \
-	$(base_dir)/src/main/verilog/chip_top.sv \
-	$(base_dir)/opensocdebug/glip/src/common/logic/interface/glip_channel.sv \
-	$(base_dir)/opensocdebug/hardware/modules/him/common/osd_him.sv \
-	$(base_dir)/opensocdebug/hardware/modules/scm/common/osd_scm.sv \
-	$(base_dir)/opensocdebug/hardware/blocks/regaccess/common/osd_regaccess.sv \
-	$(base_dir)/opensocdebug/hardware/blocks/regaccess/common/osd_regaccess_demux.sv \
-	$(base_dir)/opensocdebug/hardware/blocks/regaccess/common/osd_regaccess_layer.sv \
-	$(base_dir)/opensocdebug/hardware/modules/dem_uart/common/osd_dem_uart.sv \
-	$(base_dir)/opensocdebug/hardware/modules/dem_uart/common/osd_dem_uart_16550.sv \
-	$(base_dir)/opensocdebug/hardware/modules/dem_uart/common/osd_dem_uart_nasti.sv \
-	$(base_dir)/opensocdebug/hardware/modules/mam/common/osd_mam.sv \
-	$(base_dir)/opensocdebug/hardware/modules/stm/common/osd_stm.sv \
-	$(base_dir)/opensocdebug/hardware/modules/ctm/common/osd_ctm.sv \
-	$(base_dir)/opensocdebug/hardware/blocks/buffer/common/dii_buffer.sv \
-	$(base_dir)/opensocdebug/hardware/blocks/buffer/common/osd_fifo.sv \
-	$(base_dir)/opensocdebug/hardware/blocks/timestamp/common/osd_timestamp.sv \
-	$(base_dir)/opensocdebug/hardware/blocks/tracepacket/common/osd_trace_packetization.sv \
-	$(base_dir)/opensocdebug/hardware/blocks/tracesample/common/osd_tracesample.sv \
-	$(base_dir)/opensocdebug/hardware/interconnect/common/debug_ring.sv \
-	$(base_dir)/opensocdebug/hardware/interconnect/common/debug_ring_expand.sv \
-	$(base_dir)/opensocdebug/hardware/interconnect/common/ring_router.sv \
-	$(base_dir)/opensocdebug/hardware/interconnect/common/ring_router_mux.sv \
-	$(base_dir)/opensocdebug/hardware/interconnect/common/ring_router_mux_rr.sv \
-	$(base_dir)/opensocdebug/hardware/interconnect/common/ring_router_demux.sv \
-	$(base_dir)/src/main/verilog/debug_system.sv \
-	$(generated_dir)/$(MODEL).$(CONFIG).v \
-	$(base_dir)/src/test/verilog/nasti_ram_behav.sv \
-	$(base_dir)/src/test/verilog/host_behav.sv \
-	$(base_dir)/socip/nasti/channel.sv \
-	$(base_dir)/socip/nasti/lite_nasti_reader.sv \
-	$(base_dir)/socip/nasti/lite_nasti_writer.sv \
-	$(base_dir)/socip/nasti/nasti_buf.sv \
-	$(base_dir)/socip/nasti/nasti_combiner.sv \
-	$(base_dir)/socip/nasti/nasti_crossbar.sv \
-	$(base_dir)/socip/nasti/nasti_demux.sv \
-	$(base_dir)/socip/nasti/nasti_lite_bridge.sv \
-	$(base_dir)/socip/nasti/nasti_lite_reader.sv \
-	$(base_dir)/socip/nasti/nasti_lite_writer.sv \
-	$(base_dir)/socip/nasti/nasti_mux.sv \
-	$(base_dir)/socip/nasti/nasti_slicer.sv \
-	$(base_dir)/socip/util/arbiter.sv \
-	$(base_dir)/opensocdebug/glip/src/backend_tcp/logic/dpi/glip_tcp_toplevel.sv
-
-veri_csrcs = \
-	$(base_dir)/src/test/cxx/common/globals.cpp \
-	$(base_dir)/src/test/cxx/common/loadelf.cpp \
-	$(base_dir)/src/test/cxx/common/dpi_ram_behav.cpp \
-	$(base_dir)/src/test/cxx/common/dpi_host_behav.cpp \
-	$(base_dir)/src/test/cxx/veri/veri_top.cc \
-	$(base_dir)/opensocdebug/glip/src/backend_tcp/logic/dpi/glip_tcp_dpi.cpp \
-	$(base_dir)/opensocdebug/glip/src/backend_tcp/logic/dpi/GlipTcp.cpp \
 
 #--------------------------------------------------------------------
 # Build the simulator (verilator)
 #--------------------------------------------------------------------
 verilator: verilator.log
-verilator.log: $(sim_vsrcs) $(veri_vsrcs) $(veri_csrcs) Makefile
+verilator.log: $(lowrisc_srcs) $(lowrisc_headers) $(verilog_srcs) $(verilog_headers) $(test_verilog_srcs) $(test_cxx_srcs) $(test_cxx_headers)
 	rm -fr $(sim_dir)/verilator
-	$(veri) --cc $(veri_vsrcs) $(veri_csrcs) $(veri_flags) $(veri_opt_flags) -o ../$(CONFIG)-sim 2>&1 | tee $@
+	$(veri) --cc $(lowrisc_srcs) $(verilog_srcs) $(test_verilog_srcs) $(test_cxx_srcs) $(veri_flags) $(veri_opt_flags) -o ../$(CONFIG)-sim 2>&1 | tee $@
 
 sim: $(CONFIG)-sim
 $(CONFIG)-sim: verilator.log
 	cd verilator && make -f V$(tb_top).mk
 
-verilator.debug.log: $(sim_vsrcs) $(veri_vsrcs) $(veri_csrcs)
+verilator.debug.log: $(lowrisc_srcs) $(lowrisc_headers) $(verilog_srcs) $(verilog_headers) $(test_verilog_srcs) $(test_cxx_srcs) $(test_cxx_headers)
 	rm -fr $(sim_dir)/verilator
-	$(veri) --cc $(veri_vsrcs) $(veri_csrcs) $(veri_flags) -CFLAGS "-g -DDELAY_EXIT" -o ../$(CONFIG)-sim-debug | tee $@
+	$(veri) --cc $(lowrisc_srcs) $(verilog_srcs) $(test_verilog_srcs) $(test_cxx_srcs) $(veri_flags) -CFLAGS "-g -DDELAY_EXIT" -o ../$(CONFIG)-sim-debug | tee $@
 
 sim-debug: $(CONFIG)-sim-debug
 $(CONFIG)-sim-debug: verilator.debug.log
 	cd verilator && make -f V$(tb_top).mk
-
-all: sim
 
 .PHONY: verilator sim
 
