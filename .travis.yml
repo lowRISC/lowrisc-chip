@@ -5,6 +5,15 @@ sudo: required
 services:
   - docker
 
+# define test
+env:
+  global:
+    - DOCKER_TOP=/opt/lowrisc
+  matrix:
+    - CONFIG=DefaultConfig TEST_CASE=run-asm-tests
+
+# actual test build
+
 before_install:
  - docker pull lowrisc/lowrisc-docker:untether-v0.2
 
@@ -13,7 +22,7 @@ before_script:
  - docker start test
 
 script:
- - docker exec test /bin/bash -c "make -C \$TOP/vsim run-asm-tests"
+ - docker exec test make -C $DOCKER_TOP/vsim CONFIG=$CONFIG $TEST_CASE
 
 after_script:
  - docker stop test

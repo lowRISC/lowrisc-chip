@@ -192,8 +192,8 @@ $(addprefix $(output_dir)/, $(addsuffix .hex, $(bmarks_tests))): $(output_dir)/%
 #--------------------------------------------------------------------
 asm_tests_out = $(foreach test, $(asm_p_tests) $(asm_pt_tests) $(asm_v_tests), $(output_dir)/$(test).verilator.out)
 bmarks_out = $(foreach test, $(bmarks_tests), $(output_dir)/$(test).verilator.out)
-exec_simv = $(CONFIG)-sim
-exec_simv_vcd = $(CONFIG)-sim-debug +vcd
+exec_simv = ./$(CONFIG)-sim
+exec_simv_vcd = ./$(CONFIG)-sim-debug +vcd
 
 $(output_dir)/%.verilator.out: $(output_dir)/%.hex $(CONFIG)-sim
 	$(exec_simv) +max-cycles=$(timeout_cycles) +load=$< $(disasm) $@ && [ $$PIPESTATUS -eq 0 ]
