@@ -9,16 +9,17 @@ services:
 env:
   global:
     - DOCKER_TOP=/opt/lowrisc
+    - DOCKER_TAG=untether-v0.2
   matrix:
     - CONFIG=DefaultConfig TEST_CASE=run-asm-tests
 
 # actual test build
 
 before_install:
- - docker pull lowrisc/lowrisc-docker:untether-v0.2
+ - docker pull lowrisc/lowrisc-docker:$DOCKER_TAG
 
 before_script:
- - docker create -v $PWD:/opt/lowrisc -e TOP=/opt/lowrisc -t --name=test lowrisc/lowrisc-docker:untether-v0.2
+ - docker create -v $PWD:/opt/lowrisc -e TOP=/opt/lowrisc -t --name=test lowrisc/lowrisc-docker:$DOCKER_TAG
  - docker start test
 
 script:
