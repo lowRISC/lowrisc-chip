@@ -15,7 +15,7 @@ case object UseHost extends Field[Boolean]
 case object UseUART extends Field[Boolean]
 case object UseSPI extends Field[Boolean]
 
-class DefaultConfig extends Config (
+class BaseConfig extends Config (
   topDefinitions = { (pname,site,here) => 
     type PF = PartialFunction[Any,Any]
     def findBy(sname:Any):Any = here[PF](site[Any](sname))(pname)
@@ -359,7 +359,7 @@ class WithDebugConfig extends Config (
   }
 )
 
-class DebugConfig extends Config(new WithDebugConfig ++ new DefaultConfig)
+class DebugConfig extends Config(new WithDebugConfig ++ new BaseConfig)
 
 class WithHostConfig extends Config (
   (pname,site,here) => pname match {
@@ -367,7 +367,7 @@ class WithHostConfig extends Config (
   }
 )
 
-class RegressionConfig extends Config(new WithHostConfig ++ new DefaultConfig)
+class DefaultConfig extends Config(new WithHostConfig ++ new BaseConfig)
 
 class WithSPIConfig extends Config (
   (pname,site,here) => pname match {
@@ -382,7 +382,7 @@ class WithUARTConfig extends Config (
 )
 
 class FPGAConfig extends
-    Config(new WithSPIConfig ++ new WithUARTConfig ++ new DefaultConfig)
+    Config(new WithSPIConfig ++ new WithUARTConfig ++ new BaseConfig)
 
 class FPGADebugConfig extends
-    Config(new WithSPIConfig ++ new WithDebugConfig ++ new DefaultConfig)
+    Config(new WithSPIConfig ++ new WithDebugConfig ++ new BaseConfig)
