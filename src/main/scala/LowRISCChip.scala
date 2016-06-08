@@ -132,7 +132,12 @@ class Top(topParams: Parameters) extends Module with HasTopLevelParameters {
   val mem_net = Module(new PortedTileLinkCrossbar(addrToBank, sharerToClientId, preBuffering)(coherentNetParams))
 
   mem_net.io.clients_cached <> tileList.map(_.io.cached).flatten
-  mem_net.io.clients_uncached <> tileList.map(_.io.uncached).flatten
+  if(p(UseDebug)) {
+    val debug_mam = Module(new TileLinkIOMamIOConverter()(coherentNetParams))
+    debug_mam.io.mam <> io.debug_mam
+    mem_net.io.clients_uncached <> tileList.map(_.io.uncached).flatten :+ debug_mam.io.tl
+  } else
+    mem_net.io.clients_uncached <> tileList.map(_.io.uncached).flatten
 
   ////////////////////////////////////////////
   // L2 cache coherence managers

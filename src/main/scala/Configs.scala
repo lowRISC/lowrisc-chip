@@ -231,8 +231,8 @@ class BaseConfig extends Config (
           coherencePolicy = new MESICoherence(site(L2DirectoryRepresentation)),
           nManagers = site(NBanks) + 1,
           nCachingClients = site(NTiles),
-          nCachelessClients = site(NTiles),
-          maxClientXacts = site(NMSHRs),
+          nCachelessClients = if(site(UseDebug)) site(NTiles) + 1 else site(NTiles),
+          maxClientXacts = site(NMSHRs) + 1,
           maxClientsPerPort = 1,
           maxManagerXacts = site(NAcquireTransactors) + 2, // acquire, release, writeback
           dataBits = site(CacheBlockBytes)*8
