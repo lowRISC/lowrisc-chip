@@ -14,6 +14,7 @@ import cde.{Parameters, Config, Dump, Knob, CDEMatchError}
 case object UseHost extends Field[Boolean]
 case object UseUART extends Field[Boolean]
 case object UseSPI extends Field[Boolean]
+case object RAMSize extends Field[BigInt]
 
 class BaseConfig extends Config (
   topDefinitions = { (pname,site,here) => 
@@ -47,7 +48,7 @@ class BaseConfig extends Config (
     }
 
     lazy val (globalAddrMap, globalAddrHashMap) = {
-      val memSize = 1L << 31
+      val memSize:BigInt = site(RAMSize)
       val memAlign = 1L << 30
       val io = AddrMap(
         AddrMapEntry("int", MemSubmap(internalIOAddrMap.computeSize, internalIOAddrMap)),
@@ -252,6 +253,10 @@ class BaseConfig extends Config (
         site(TLKey("L2toIO")).copy(
           dataBeats = site(CacheBlockBytes)*8 / site(XLen)
         )
+      case TLKey("ExtIONet") =>
+        site(TLKey("L2toIO")).copy(
+          dataBeats = site(CacheBlockBytes)*8 / site(IODataBits)
+        )
       case TLKey("L2toTC") =>
         TileLinkParameters(
           coherencePolicy = new MEICoherence(new NullRepresentation(site(NBanks))),
@@ -293,6 +298,7 @@ class BaseConfig extends Config (
       case EmitLogMessages => true
 
       // IO devices
+      case RAMSize => BigInt(1L << 31)  // 2 GB
       case UseHost => false
       case UseUART => false
       case UseSPI => false
@@ -306,7 +312,7 @@ class BaseConfig extends Config (
         )
       case NastiKey("lite") =>
         NastiParameters(
-          dataBits = site(XLen),
+          dataBits = site(IODataBits),
           addrBits = site(PAddrBits),
           idBits = 1
         )
@@ -345,7 +351,7 @@ class WithDebugConfig extends Config (
   (pname,site,here) => pname match {
     case UseDebug => Dump("ENABLE_DEBUG", true)
     case UseUART => true
-    case EmitLogMessages => false
+//    case EmitLogMessages => false
     case MamIODataWidth => Dump("MAM_IO_DWIDTH", 16)
     case MamIOAddrWidth => site(PAddrBits)
     case MamIOBeatsBits => 14
@@ -381,8 +387,23 @@ class WithUARTConfig extends Config (
   }
 )
 
+class With256MRamConfig extends Config (
+  (pname,site,here) => pname match {
+    case RAMSize => BigInt(1L << 28)  // 256 MB
+  }
+)
+
 class FPGAConfig extends
-    Config(new WithSPIConfig ++ new WithUARTConfig ++ new BaseConfig)
+    Config(new WithUARTConfig ++ new BaseConfig)
+//    Config(new WithSPIConfig ++ new WithUARTConfig ++ new BaseConfig)
 
 class FPGADebugConfig extends
-    Config(new WithSPIConfig ++ new WithDebugConfig ++ new BaseConfig)
+    Config(new WithDebugConfig ++ new BaseConfig)
+//    Config(new WithSPIConfig ++ new WithDebugConfig ++ new BaseConfig)
+
+class Nexys4Config extends
+    Config(new With256MRamConfig ++ new FPGAConfig)
+
+class Nexys4DebugConfig extends
+    Config(new With256MRamConfig ++ new FPGADebugConfig)
+

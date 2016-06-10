@@ -14,7 +14,7 @@ case object UseDma extends Field[Boolean]
 case object NBanks extends Field[Int]
 case object NSCR extends Field[Int]
 case object BankIdLSB extends Field[Int]
-case object IODataBits extends Field[UInt]
+case object IODataBits extends Field[Int]
 case object ConfigString extends Field[Array[Byte]]
 
 trait HasTopLevelParameters {
@@ -31,6 +31,7 @@ trait HasTopLevelParameters {
   val tctomemTLId = "TCtoMem"
   val l2toioTLId = "L2toIO"
   val ioTLId = "IONet"
+  val extIoTLId = "ExtIONet"
   val l2CacheId  = "L2Bank"
   val tagCacheId = "TagCache"
   val memBusId = "nasti"
@@ -99,10 +100,11 @@ class Top(topParams: Parameters) extends Module with HasTopLevelParameters {
   val coherentNetParams = p.alterPartial({ case TLId => l1tol2TLId })
   val tagCacheParams = p.alterPartial({ case TLId => l2totcTLId; case CacheName => tagCacheId })
   val tagNetParams = p.alterPartial({ case TLId => l2totcTLId })
+  val ioManagerParams = p.alterPartial({ case TLId => l2toioTLId })
   val ioNetParams = p.alterPartial({ case TLId => ioTLId; case BusId => ioBusId })
   val memConvParams = p.alterPartial({ case TLId => tctomemTLId; case BusId => memBusId })
   val smiConvParams = p.alterPartial({ case BusId => ioBusId })
-  val ioConvParams = p.alterPartial({ case TLId => ioTLId; case BusId => ioBusId })
+  val ioConvParams = p.alterPartial({ case TLId => extIoTLId; case BusId => ioBusId })
 
   // IO space configuration
   val addrMap = p(GlobalAddrMap)
@@ -144,15 +146,15 @@ class Top(topParams: Parameters) extends Module with HasTopLevelParameters {
   val managerEndpoints = List.tabulate(nBanks){ id =>
     Module(new L2HellaCacheBank()(p.alterPartial({
       case CacheId => id
-      case TLId => l1tol2TLId
+      case TLId => coherentNetParams(TLId)
       case CacheName => l2CacheId
-      case InnerTLId => l1tol2TLId
-      case OuterTLId => l2totcTLId})))}
+      case InnerTLId => coherentNetParams(TLId)
+      case OuterTLId => tagNetParams(TLId)})))}
 
   val mmioManager = Module(new MMIOTileLinkManager()(p.alterPartial({
-    case TLId => l1tol2TLId
-    case InnerTLId => l1tol2TLId
-    case OuterTLId => l2toioTLId
+    case TLId => coherentNetParams(TLId)
+    case InnerTLId => coherentNetParams(TLId)
+    case OuterTLId => ioManagerParams(TLId)
   })))
 
   mem_net.io.managers <> managerEndpoints.map(_.innerTL) :+ mmioManager.io.inner
@@ -169,14 +171,16 @@ class Top(topParams: Parameters) extends Module with HasTopLevelParameters {
   // tag cache
   //val tc = Module(new TagCache, {case TLId => "L2ToTC"; case CacheName => "TagCache"})
   // currently a TileLink to NASTI converter
-  val mem_narrow = Module(new TileLinkIONarrower(l2totcTLId, tctomemTLId)(memConvParams))
+  val mem_narrow = Module(
+    new TileLinkIONarrower(tagNetParams(TLId), memConvParams(TLId))(memConvParams))
   mem_narrow.io.in <> tc_net.io.out(0)
   TopUtils.connectTilelinkNasti(io.nasti, mem_narrow.io.out)(memConvParams)
 
   ////////////////////////////////////////////
   // MMIO interconnect
 
-  val mmioNarrower = Module(new TileLinkIONarrower(l2toioTLId, ioTLId)(ioNetParams))
+  val mmioNarrower = Module(
+    new TileLinkIONarrower(ioManagerParams(TLId), ioNetParams(TLId))(ioNetParams))
   mmioNarrower.io.in <> mmioManager.io.outer
 
   // mmio interconnect
@@ -216,7 +220,13 @@ class Top(topParams: Parameters) extends Module with HasTopLevelParameters {
 
   // outer IO devices
   val outerPort = ioAddrHashMap("ext").port
-  TopUtils.connectTilelinkNasti(io.nasti_lite, mmio_net.io.out(outerPort))(ioConvParams)
+  if(p(TLKey(ioNetParams(TLId))).dataBeats < p(TLKey(ioConvParams(TLId))).dataBeats) {
+    val ext_io_narrow = Module(
+      new TileLinkIONarrower(ioNetParams(TLId), ioConvParams(TLId))(ioConvParams))
+    ext_io_narrow.io.in <> mmio_net.io.out(outerPort)
+    TopUtils.connectTilelinkNasti(io.nasti_lite, ext_io_narrow.io.out)(ioConvParams)
+  } else
+    TopUtils.connectTilelinkNasti(io.nasti_lite, mmio_net.io.out(outerPort))(ioConvParams)
 
   // connection to tiles
   for (i <- 0 until nTiles) {
