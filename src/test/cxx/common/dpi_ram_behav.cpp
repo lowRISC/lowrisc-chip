@@ -237,30 +237,24 @@ std::ostream& MemoryOperation::streamout(std::ostream& os) const {
 
 // Memory controller
 
-void MemoryController::add_read_req(const unsigned int fifo, const uint32_t tag, const uint32_t addr) {
-  assert(fifo < op_max);
-  //std::cout << format("Memory controller read req from fifo %1% (%2$x @ %3$08x)") % fifo % tag % addr << std::endl;
-  op_fifo[fifo].push_back(MemoryOperation(0, tag, addr));
+void MemoryController::add_read_req(const uint32_t tag, const uint32_t addr) {
+  op_fifo.push_back(MemoryOperation(0, tag, addr));
 }
 
-void MemoryController::add_write_req(const unsigned int fifo, const uint32_t tag, const uint32_t addr, 
+void MemoryController::add_write_req(const uint32_t tag, const uint32_t addr, 
                                      const uint32_t data, const uint32_t mask) {
-  assert(fifo < op_max);
-  op_fifo[fifo].push_back(MemoryOperation(1, tag, addr, data, mask));
+  op_fifo.push_back(MemoryOperation(1, tag, addr, data, mask));
 }
 
 void MemoryController::step() {
   // decide to handle how many operations
-  const unsigned int max_random = 2048;
-  const double random_step = (double)(max_random) / op_max;
-  unsigned int rand_num = rand() % max_random;
-  unsigned int op_total = ceil(rand_num / random_step);
-
-  for(int i=0; i<op_total; i++) {
-    if(!op_fifo[rr_index].empty()) {
+  unsigned int rand_num = 1 + (rand() % op_max);
+  
+  for(int i=0; i<rand_num; i++) {
+    if(!op_fifo.empty()) {
       // get the operation
-      MemoryOperation op = op_fifo[rr_index].front();
-      op_fifo[rr_index].pop_front();
+      MemoryOperation op = op_fifo.front();
+      op_fifo.pop_front();
 
       if(op.rw) {
         mem.write(op.addr, op.data, op.mask);
@@ -276,24 +270,12 @@ void MemoryController::step() {
         }
       }
     }
-    rr_index = (rr_index + 1) % op_max;
   }
 }
   
 // return the least loaded queue
-bool MemoryController::load_balance(unsigned int &chosen) {
-  chosen = rr_index;
-  for(int i=0; i<op_max; i++) {
-    if(op_fifo[chosen].empty())
-      return true;
-    else
-      chosen = (chosen + 1) % op_max;
-  }
-  std::cout << "all op_fifo occupied!" << std::endl;
-  for(int i=0; i<op_max; i++) {
-    std::cout << "op_fifo[" << i << "]: " << op_fifo[i].front() << std::endl;
-  }
-  return false;                 // all fifos occupied
+bool MemoryController::busy() {
+  return op_fifo.size() >= pending_max;
 }
 
 // find if there is any response ready
@@ -321,7 +303,7 @@ bool AXIMemWriter::write_addr_req(const uint32_t tag, const uint32_t addr,
   if(valid) return false;       // another AXI write in operation
 
   // check whether there is an empty queue
-  if(!memory_controller->load_balance(this->fifo))
+  if(memory_controller->busy())
     return false;               // no empty queue
 
   // register the request
@@ -343,11 +325,11 @@ bool AXIMemWriter::write_data_req(const uint32_t *data, const uint32_t mask,
   if(!valid) return false;      // have not received an address request yet
   
   if(size < 4) {
-    memory_controller->add_write_req(fifo, tag, addr, data[0], this->mask & mask);
+    memory_controller->add_write_req(tag, addr, data[0], this->mask & mask);
     addr += size;
   } else {
     for(int i=0; i<size/4; i++) {
-      memory_controller->add_write_req(fifo, tag, addr, data[i], mask_m & 0xf);
+      memory_controller->add_write_req(tag, addr, data[i], mask_m & 0xf);
       addr += 4;
       mask_m >>= 4;
     }
@@ -386,7 +368,7 @@ bool AXIMemReader::reader_addr_req(const uint32_t tag, const uint32_t addr, cons
   uint32_t addr_m = addr;
 
   // check whether there is an empty queue
-  if(!memory_controller->load_balance(fifo))
+  if(memory_controller->busy())
     return false;               // no empty queue
 
   // fire the read requests
@@ -395,13 +377,13 @@ bool AXIMemReader::reader_addr_req(const uint32_t tag, const uint32_t addr, cons
 
   if(size_m < 4) {
     for(int i=0; i<len_m; i++) {
-      memory_controller->add_read_req(fifo, tag, addr_m);
+      memory_controller->add_read_req(tag, addr_m);
       addr_m += size_m;
     }
     memory_controller->record_read_size(tag, 1);
   } else {
     for(int i=0; i<len_m*size_m/4; i++) {
-      memory_controller->add_read_req(fifo, tag, addr_m);
+      memory_controller->add_read_req(tag, addr_m);
       addr_m += 4;
     }
     memory_controller->record_read_size(tag, size_m/4);

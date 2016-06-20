@@ -108,33 +108,26 @@ inline std::ostream& operator<< (std::ostream& os, const MemoryOperation& rhs) {
 class MemoryController {
   Memory32 mem;
   const unsigned int op_max;            // maximal parallel operation FIFOs
-  std::list<MemoryOperation> *op_fifo;  // parallel operation FIFOs
+  const unsigned int pending_max;       // maximal number of pending operations
+  std::list<MemoryOperation> op_fifo;   // parallel operation FIFOs
   std::map<uint32_t, std::list<uint32_t> > resp_map; // the read response map
   std::map<uint32_t, unsigned int>         resp_len; // the len of each response
   std::list<uint32_t>                      resp_que;
-  unsigned int rr_index;              // round-robin index used to randomize writes
 
 public:
-  MemoryController(const unsigned int op_max = 4)
-    : op_max(op_max), rr_index(0)
-  {
-    op_fifo = new std::list<MemoryOperation> [op_max];
-  }
+  MemoryController(const unsigned int op_max = 8, const unsigned int pending_max = 128)
+    : op_max(op_max), pending_max(pending_max) {}
 
-  virtual ~MemoryController() {
-    delete[] op_fifo;
-  }
-
-  void add_read_req(const unsigned int fifo, const uint32_t tag, const uint32_t addr);
+  void add_read_req(const uint32_t tag, const uint32_t addr);
   void record_read_size(const uint32_t tag, const unsigned int beat_size) {
     resp_len[tag] = beat_size;
   }
-  void add_write_req(const unsigned int fifo, const uint32_t tag, const uint32_t addr,
+  void add_write_req(const uint32_t tag, const uint32_t addr,
                      const uint32_t data, const uint32_t mask);
   // simulation step function
   void step();
   // get an empty queue
-  bool load_balance(unsigned int&);
+  bool busy();
   std::list<uint32_t>* get_resp(uint32_t &tag);
 
   // load an initial memory

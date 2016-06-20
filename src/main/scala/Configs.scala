@@ -132,7 +132,7 @@ class BaseConfig extends Config (
       case "L1I" => {
         case NSets => Knob("L1I_SETS")
         case NWays => Knob("L1I_WAYS")
-        case RowBits => 4*site(CoreInstBits)
+        case RowBits => site(TLKey(site(TLId))).dataBitsPerBeat
         case NTLBEntries => 8
         case CacheIdBits => 0
 	    case SplitMetadata => false
@@ -146,7 +146,7 @@ class BaseConfig extends Config (
       case "L1D" => {
         case NSets => Knob("L1D_SETS")
         case NWays => Knob("L1D_WAYS")
-        case RowBits => 2*site(CoreDataBits)
+        case RowBits => site(TLKey(site(TLId))).dataBitsPerBeat
         case NTLBEntries => 8
         case CacheIdBits => 0
 	    case SplitMetadata => false
@@ -158,6 +158,7 @@ class BaseConfig extends Config (
 
       //L2 $
       case NAcquireTransactors => Knob("L2_XACTORS")
+      case L2StoreDataQueueDepth => 1
       case NSecondaryMisses => 4
       case L2DirectoryRepresentation => new FullRepresentation(site(NTiles))
       case L2Replacer => () => new SeqRandom(site(NWays))
@@ -236,7 +237,8 @@ class BaseConfig extends Config (
           maxClientXacts = site(NMSHRs) + 1,
           maxClientsPerPort = 1,
           maxManagerXacts = site(NAcquireTransactors) + 2, // acquire, release, writeback
-          dataBits = site(CacheBlockBytes)*8
+          dataBits = site(CacheBlockBytes)*8,
+          dataBeats = 8
         )
       case TLKey("L2toIO") =>
         TileLinkParameters(
@@ -247,7 +249,8 @@ class BaseConfig extends Config (
           maxClientXacts = 1,
           maxClientsPerPort = 1,
           maxManagerXacts = 1,
-          dataBits = site(CacheBlockBytes)*8
+          dataBits = site(CacheBlockBytes)*8,
+          dataBeats = 8
         )
       case TLKey("IONet") =>
         site(TLKey("L2toIO")).copy(
@@ -267,7 +270,7 @@ class BaseConfig extends Config (
           maxClientsPerPort = 1,
           maxManagerXacts = site(TCTransactors),
           dataBits = site(CacheBlockBytes)*8,
-          dataBeats = 4
+          dataBeats = 8
         )
       case TLKey("TCtoMem") =>
         site(TLKey("L2toTC")).copy(

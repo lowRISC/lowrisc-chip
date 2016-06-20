@@ -171,23 +171,16 @@ class Top(topParams: Parameters) extends Module with HasTopLevelParameters {
   // tag cache
   //val tc = Module(new TagCache, {case TLId => "L2ToTC"; case CacheName => "TagCache"})
   // currently a TileLink to NASTI converter
-  val mem_narrow = Module(
-    new TileLinkIONarrower(tagNetParams(TLId), memConvParams(TLId))(memConvParams))
-  mem_narrow.io.in <> tc_net.io.out(0)
-  TopUtils.connectTilelinkNasti(io.nasti, mem_narrow.io.out)(memConvParams)
+  TopUtils.connectTilelinkNasti(io.nasti, tc_net.io.out(0))(memConvParams)
 
   ////////////////////////////////////////////
   // MMIO interconnect
-
-  val mmioNarrower = Module(
-    new TileLinkIONarrower(ioManagerParams(TLId), ioNetParams(TLId))(ioNetParams))
-  mmioNarrower.io.in <> mmioManager.io.outer
 
   // mmio interconnect
   val (ioBase, ioAddrMap) = addrHashMap.subMap("io")
   val ioAddrHashMap = new AddrHashMap(ioAddrMap, ioBase)
   val mmio_net = Module(new TileLinkRecursiveInterconnect(1, ioAddrMap, ioBase)(ioNetParams))
-  mmio_net.io.in.head <> mmioNarrower.io.out
+  mmio_net.io.in.head <> mmioManager.io.outer
 
   // Global real time counter (wall clock)
   val rtc = Module(new RTC(nTiles)(ioNetParams))
@@ -220,13 +213,7 @@ class Top(topParams: Parameters) extends Module with HasTopLevelParameters {
 
   // outer IO devices
   val outerPort = ioAddrHashMap("ext").port
-  if(p(TLKey(ioNetParams(TLId))).dataBeats < p(TLKey(ioConvParams(TLId))).dataBeats) {
-    val ext_io_narrow = Module(
-      new TileLinkIONarrower(ioNetParams(TLId), ioConvParams(TLId))(ioConvParams))
-    ext_io_narrow.io.in <> mmio_net.io.out(outerPort)
-    TopUtils.connectTilelinkNasti(io.nasti_lite, ext_io_narrow.io.out)(ioConvParams)
-  } else
-    TopUtils.connectTilelinkNasti(io.nasti_lite, mmio_net.io.out(outerPort))(ioConvParams)
+  TopUtils.connectTilelinkNasti(io.nasti_lite, mmio_net.io.out(outerPort))(ioConvParams)
 
   // connection to tiles
   for (i <- 0 until nTiles) {

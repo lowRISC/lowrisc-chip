@@ -106,7 +106,7 @@ test_cxx_headers = \
 # Build Verilog
 #--------------------------------------------------------------------
 
-verilog: $(verilog_lowrisc)
+verilog: $(lowrisc_srcs)
 
 include $(base_dir)/Makefrag-build
 
@@ -152,7 +152,7 @@ $(CONFIG)-sim: verilator.log
 
 verilator.debug.log: $(lowrisc_srcs) $(lowrisc_headers) $(verilog_srcs) $(verilog_headers) $(test_verilog_srcs) $(test_cxx_srcs) $(test_cxx_headers)
 	rm -fr $(sim_dir)/verilator
-	$(veri) --cc $(lowrisc_srcs) $(verilog_srcs) $(test_verilog_srcs) $(test_cxx_srcs) $(veri_flags) -CFLAGS "-g -DDELAY_EXIT" -o ../$(CONFIG)-sim-debug | tee $@
+	$(veri) --cc $(lowrisc_srcs) $(verilog_srcs) $(test_verilog_srcs) $(test_cxx_srcs) $(veri_flags) -CFLAGS "-g -DDELAY_EXIT -DVERBOSE_MEMORY" -o ../$(CONFIG)-sim-debug | tee $@
 
 sim-debug: $(CONFIG)-sim-debug
 $(CONFIG)-sim-debug: verilator.debug.log
