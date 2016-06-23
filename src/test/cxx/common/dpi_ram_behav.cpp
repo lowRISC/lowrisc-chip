@@ -182,7 +182,7 @@ bool Memory32::write(const uint32_t addr, const uint32_t& data, const uint32_t& 
   }
   mem[addr] = data_m;
 
-  //std::cout << format("memory write [%1$08x] = %2$08x") % addr % data_m << std::endl;
+  //std::cout << format("memory32 write [%1$08x] = %2$08x") % addr % data_m << std::endl;
   return true;
 }
 
@@ -223,7 +223,7 @@ bool Memory32::read(const uint32_t addr, uint32_t &data) {
 
   data = mem[addr];
 
-  //std::cout << format("memory read [%1$08x] = %2$08x") % addr % data << std::endl;
+  //std::cout << format("memory32 read [%1$08x] = %2$08x") % addr % data << std::endl;
   return true;
 }
 

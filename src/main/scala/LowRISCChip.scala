@@ -71,7 +71,9 @@ object TopUtils {
 
     // for now, have the reset vector jump straight to memory
     val addrHashMap = p(GlobalAddrHashMap)
-    val resetToMemDist = addrHashMap("mem").start - p(ResetVector)
+    val resetToMemDist =
+      if(p(UseBootRAM)) addrHashMap("io:ext:bram").start - p(ResetVector) // start from on-chip BRAM
+      else              addrHashMap("mem").start - p(ResetVector)  // start from DDRx
     require(resetToMemDist == (resetToMemDist.toInt >> 12 << 12))
     val configStringAddr = p(ResetVector).toInt + rom.capacity
 
@@ -144,7 +146,8 @@ class Top(topParams: Parameters) extends Module with HasTopLevelParameters {
   ////////////////////////////////////////////
   // L2 cache coherence managers
   val managerEndpoints = List.tabulate(nBanks){ id =>
-    Module(new L2HellaCacheBank()(p.alterPartial({
+    Module(new L2BroadcastHub()(p.alterPartial({
+    //Module(new L2HellaCacheBank()(p.alterPartial({
       case CacheId => id
       case TLId => coherentNetParams(TLId)
       case CacheName => l2CacheId

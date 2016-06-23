@@ -52,6 +52,4 @@
 
  `endif
 
- `define IO_DAT_WIDTH 32
-
 `endif

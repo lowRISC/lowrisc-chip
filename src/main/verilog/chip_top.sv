@@ -317,6 +317,88 @@ module chip_top
 `endif // !`ifdef ADD_PHY_DDR
 
    /////////////////////////////////////////////////////////////
+   // On-chip Block RAM
+
+   nasti_channel
+     #(
+       .ADDR_WIDTH  ( `PADDR_WIDTH       ),
+       .DATA_WIDTH  ( `IO_DAT_WIDTH      ))
+   io_bram_lite();
+
+`ifdef ADD_BRAM
+   localparam BRAM_SIZE          = 16;        // 2^16 -> 64 KB
+   localparam BRAM_WIDTH         = 128;       // always 128-bit wide
+   localparam BRAM_LINE          = 2 ** BRAM_SIZE / BRAM_WIDTH;
+   localparam BRAM_OFFSET_BITS   = $clog2(`IO_DAT_WIDTH/8);
+   localparam BRAM_ADDR_LSB_BITS = $clog2(BRAM_WIDTH / `IO_DAT_WIDTH);
+   localparam BRAM_ADDR_BLK_BITS = BRAM_SIZE - BRAM_ADDR_LSB_BITS - BRAM_OFFSET_BITS;
+
+   initial assert (BRAM_OFFSET_BITS < 7) else $fatal(1, "Do not support BRAM AXI width > 64-bit!");
+
+   // BRAM controller
+   logic ram_clk, ram_rst, ram_en;
+   logic [`IO_DAT_WIDTH/8-1:0] ram_we;
+   logic [BRAM_SIZE-1:0]       ram_addr;
+   logic [`IO_DAT_WIDTH-1:0]   ram_wrdata, ram_rddata;
+
+   axi_bram_ctrl_0 BramCtl
+     (
+      .s_axi_aclk      ( clk                     ),
+      .s_axi_aresetn   ( rstn                    ),
+      .s_axi_araddr    ( io_bram_lite.ar_addr    ),
+      .s_axi_arprot    ( 3'b000                  ),
+      .s_axi_arready   ( io_bram_lite.ar_ready   ),
+      .s_axi_arvalid   ( io_bram_lite.ar_valid   ),
+      .s_axi_awaddr    ( io_bram_lite.aw_addr    ),
+      .s_axi_awprot    ( 3'b000                  ),
+      .s_axi_awready   ( io_bram_lite.aw_ready   ),
+      .s_axi_awvalid   ( io_bram_lite.aw_valid   ),
+      .s_axi_bready    ( io_bram_lite.b_ready    ),
+      .s_axi_bresp     ( io_bram_lite.b_resp     ),
+      .s_axi_bvalid    ( io_bram_lite.b_valid    ),
+      .s_axi_rdata     ( io_bram_lite.r_data     ),
+      .s_axi_rready    ( io_bram_lite.r_ready    ),
+      .s_axi_rresp     ( io_bram_lite.r_resp     ),
+      .s_axi_rvalid    ( io_bram_lite.r_valid    ),
+      .s_axi_wdata     ( io_bram_lite.w_data     ),
+      .s_axi_wready    ( io_bram_lite.w_ready    ),
+      .s_axi_wstrb     ( io_bram_lite.w_strb     ),
+      .s_axi_wvalid    ( io_bram_lite.w_valid    ),
+      .bram_rst_a      ( ram_rst                 ),
+      .bram_clk_a      ( ram_clk                 ),
+      .bram_en_a       ( ram_en                  ),
+      .bram_we_a       ( ram_we                  ),
+      .bram_addr_a     ( ram_addr                ),
+      .bram_wrdata_a   ( ram_wrdata              ),
+      .bram_rddata_a   ( ram_rddata              )
+      );
+
+   // the inferred BRAMs
+   reg   [BRAM_WIDTH-1:0]         ram [0 : BRAM_LINE-1];
+   logic [BRAM_ADDR_BLK_BITS-1:0] ram_block_addr, ram_block_addr_delay;
+   logic [BRAM_ADDR_LSB_BITS-1:0] ram_lsb_addr, ram_lsb_addr_delay;
+   logic [BRAM_WIDTH/8-1:0]       ram_we_full;
+   logic [BRAM_WIDTH-1:0]         ram_wrdata_full;
+
+   assign ram_block_addr = ram_addr >> BRAM_ADDR_LSB_BITS + BRAM_OFFSET_BITS;
+   assign ram_lsb_addr = ram_addr >> BRAM_OFFSET_BITS;
+   assign ram_we_full = ram_we << (ram_lsb_addr << BRAM_OFFSET_BITS);
+   assign ram_wrdata_full = {(BRAM_WIDTH / `IO_DAT_WIDTH){ram_wrdata}};
+
+   always_ff @(posedge ram_clk)
+     if(ram_en) begin
+        ram_block_addr_delay <= ram_block_addr;
+        ram_lsb_addr_delay <= ram_lsb_addr;
+        foreach (ram_we_full[i])
+          if(ram_we_full[i]) ram[ram_block_addr][i*8 +:8] <= ram_wrdata_full[i*8 +: 8];
+     end
+
+   assign ram_rddata = ram[ram_block_addr_delay] >> (ram_lsb_addr_delay << (BRAM_OFFSET_BITS + 3));
+
+   initial $readmemh("boot.mem", ram);
+`endif
+
+   /////////////////////////////////////////////////////////////
    // SPI
    nasti_channel
      #(
@@ -526,25 +608,27 @@ module chip_top
    /////////////////////////////////////////////////////////////
    // IO crossbar
 
+   localparam NUM_DEVICE = 4;
+
    // output of the IO crossbar
    nasti_channel
      #(
-       .N_PORT      ( 3                  ),
+       .N_PORT      ( NUM_DEVICE         ),
        .ADDR_WIDTH  ( `PADDR_WIDTH       ),
        .DATA_WIDTH  ( `IO_DAT_WIDTH      ))
    io_cbo_lite();
 
-   nasti_channel ios_dmm3(), ios_dmm4(), ios_dmm5(), ios_dmm6(), ios_dmm7(); // dummy channels
+   nasti_channel ios_dmm4(), ios_dmm5(), ios_dmm6(), ios_dmm7(); // dummy channels
 
-   nasti_channel_slicer #(3)
+   nasti_channel_slicer #(NUM_DEVICE)
    io_slicer (.s(io_cbo_lite), .m0(io_host_lite), .m1(io_uart_lite), .m2(io_spi_lite),
-              .m3(ios_dmm3), .m4(ios_dmm4), .m5(ios_dmm5), .m6(ios_dmm6), .m7(ios_dmm7));
+              .m3(io_bram_lite), .m4(ios_dmm4), .m5(ios_dmm5), .m6(ios_dmm6), .m7(ios_dmm7));
 
    // the io crossbar
    nasti_crossbar
      #(
        .N_INPUT    ( 1             ),
-       .N_OUTPUT   ( 3             ),
+       .N_OUTPUT   ( NUM_DEVICE    ),
        .IB_DEPTH   ( 0             ),
        .OB_DEPTH   ( 1             ), // some IPs response only with data, which will cause deadlock in nasti_demux (no lock)
        .W_MAX      ( 1             ),
@@ -573,6 +657,11 @@ module chip_top
  `ifdef ADD_SPI
    defparam io_crossbar.BASE2 = `DEV_MAP__io_ext_spi__BASE;
    defparam io_crossbar.MASK2 = `DEV_MAP__io_ext_spi__MASK;
+ `endif
+
+ `ifdef ADD_BRAM
+   defparam io_crossbar.BASE3 = `DEV_MAP__io_ext_bram__BASE;
+   defparam io_crossbar.MASK3 = `DEV_MAP__io_ext_bram__MASK;
  `endif
 
    /////////////////////////////////////////////////////////////
