@@ -34,13 +34,13 @@ trait HasTopLevelParameters {
   val extIoTLId = "ExtIONet"
   val l2CacheId  = "L2Bank"
   val tagCacheId = "TagCache"
-  val memBusId = "nasti"
-  val ioBusId = "lite"
+  val memBusId = "mem"
+  val ioBusId = "io"
 }
 
 class TopIO(implicit val p: Parameters) extends ParameterizedBundle()(p) with HasTopLevelParameters {
-  val nasti       = new NastiIO()(p.alterPartial({case BusId => "nasti"}))
-  val nasti_lite  = new NastiIO()(p.alterPartial({case BusId => "lite"}))
+  val nasti_mem   = new NastiIO()(p.alterPartial({case BusId => "mem"}))
+  val nasti_io    = new NastiIO()(p.alterPartial({case BusId => "io"}))
   val interrupt   = UInt(INPUT, p(XLen))
   val debug_mam   = (new MamIO).flip
   val cpu_rst     = Bool(INPUT)
@@ -174,7 +174,7 @@ class Top(topParams: Parameters) extends Module with HasTopLevelParameters {
   // tag cache
   //val tc = Module(new TagCache, {case TLId => "L2ToTC"; case CacheName => "TagCache"})
   // currently a TileLink to NASTI converter
-  TopUtils.connectTilelinkNasti(io.nasti, tc_net.io.out(0))(memConvParams)
+  TopUtils.connectTilelinkNasti(io.nasti_mem, tc_net.io.out(0))(memConvParams)
 
   ////////////////////////////////////////////
   // MMIO interconnect
@@ -216,7 +216,7 @@ class Top(topParams: Parameters) extends Module with HasTopLevelParameters {
 
   // outer IO devices
   val outerPort = ioAddrHashMap("ext").port
-  TopUtils.connectTilelinkNasti(io.nasti_lite, mmio_net.io.out(outerPort))(ioConvParams)
+  TopUtils.connectTilelinkNasti(io.nasti_io, mmio_net.io.out(outerPort))(ioConvParams)
 
   // connection to tiles
   for (i <- 0 until nTiles) {
