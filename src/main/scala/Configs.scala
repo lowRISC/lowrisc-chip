@@ -63,10 +63,10 @@ class BaseConfig extends Config (
         AddrMapEntry("mem", MemSize(memSize, memAlign, MemAttr(AddrMapProt.RWX, true))))
 
       val addrHashMap = new AddrHashMap(addrMap)
-      Dump("MEM_BASE", addrHashMap("mem").start)
-      Dump("MEM_SIZE", memSize)
-      Dump("IO_BASE", addrHashMap("io:ext").start)
-      Dump("IO_SIZE", addrHashMap("io:ext").region.size)
+      Dump("ROCKET_MEM_BASE", addrHashMap("mem").start)
+      Dump("ROCKET_MEM_SIZE", memSize)
+      Dump("ROCKET_IO_BASE", addrHashMap("io:ext").start)
+      Dump("ROCKET_IO_SIZE", addrHashMap("io:ext").region.size)
       (addrMap, addrHashMap)
     }
 
@@ -111,7 +111,7 @@ class BaseConfig extends Config (
       //Memory Parameters
       case CacheBlockBytes => 64
       case CacheBlockOffsetBits => log2Up(here(CacheBlockBytes))
-      case PAddrBits => Dump("PADDR_WIDTH", 32)
+      case PAddrBits => Dump("ROCKET_PADDR_WIDTH", 32)
       case PgIdxBits => 12
       case PgLevels => if (site(XLen) == 64) 3 /* Sv39 */ else 2 /* Sv32 */
       case PgLevelBits => site(PgIdxBits) - log2Up(site(XLen)/8)
@@ -119,9 +119,9 @@ class BaseConfig extends Config (
       case PPNBits => site(PAddrBits) - site(PgIdxBits)
       case VAddrBits => site(VPNBits) + site(PgIdxBits)
       case ASIdBits => 7
-      case MIFTagBits => Dump("MEM_TAG_WIDTH", 8)
-      case MIFDataBits => Dump("MEM_DAT_WIDTH", site(TLKey("TCtoMem")).dataBitsPerBeat)
-      case IODataBits => Dump("IO_DAT_WIDTH", 32)   // assume 32-bit IO NASTI-Lite bus
+      case MIFTagBits => Dump("ROCKET_MEM_TAG_WIDTH", 8)
+      case MIFDataBits => Dump("ROCKET_MEM_DAT_WIDTH", site(TLKey("TCtoMem")).dataBitsPerBeat)
+      case IODataBits => Dump("ROCKET_IO_DAT_WIDTH", 64)
 
       //Params used by all caches
       case NSets => findBy(CacheName)
@@ -332,7 +332,7 @@ class BaseConfig extends Config (
       //case _ => throw new CDEMatchError
   }},
   knobValues = {
-    case "NTILES" => Dump("NTILES", 1)
+    case "NTILES" => Dump("ROCKET_NTILES", 1)
     case "NBANKS" => 1
 
     case "L1D_MSHRS" => 2
@@ -361,7 +361,7 @@ class WithDebugConfig extends Config (
     case UseDebug => Dump("ENABLE_DEBUG", true)
     case UseUART => true
     //case EmitLogMessages => false
-    case MamIODataWidth => Dump("MAM_IO_DWIDTH", 16)
+    case MamIODataWidth => Dump("ROCKET_MAM_IO_DWIDTH", 16)
     case MamIOAddrWidth => site(PAddrBits)
     case MamIOBeatsBits => 14
     case DebugCtmID => 0

@@ -36,6 +36,9 @@
  // FPGA_FULL             : simulation/implement very ip of FPGA
 
  //----------- Detailed configuration -------------//
+
+ `define LOWRISC_IO_DAT_WIDTH 32
+
  `ifdef FPGA
 
   `ifdef ADD_UART

@@ -79,18 +79,25 @@ module chip_top
    // Rocket memory nasti bus
    nasti_channel
      #(
-       .ID_WIDTH    ( `MEM_TAG_WIDTH ),
-       .ADDR_WIDTH  ( `PADDR_WIDTH   ),
-       .DATA_WIDTH  ( `MEM_DAT_WIDTH ))
+       .ID_WIDTH    ( `ROCKET_MEM_TAG_WIDTH ),
+       .ADDR_WIDTH  ( `ROCKET_PADDR_WIDTH   ),
+       .DATA_WIDTH  ( `ROCKET_MEM_DAT_WIDTH ))
    mem_nasti();
 
    // Rocket IO nasti-lite bus
    nasti_channel
      #(
        .ID_WIDTH    ( 1              ),
-       .ADDR_WIDTH  ( `PADDR_WIDTH   ),
-       .DATA_WIDTH  ( `IO_DAT_WIDTH  ))
-   io_nasti(), io_lite();
+       .ADDR_WIDTH  ( `ROCKET_PADDR_WIDTH   ),
+       .DATA_WIDTH  ( `ROCKET_IO_DAT_WIDTH  ))
+   io_nasti();
+
+   nasti_channel
+     #(
+       .ID_WIDTH    ( 1              ),
+       .ADDR_WIDTH  ( `ROCKET_PADDR_WIDTH   ),
+       .DATA_WIDTH  ( `LOWRISC_IO_DAT_WIDTH ))
+   io_lite();
 
    /////////////////////////////////////////////////////////////
    // Memory System
@@ -100,9 +107,9 @@ module chip_top
    // the NASTI bus for off-FPGA DRAM, converted to High frequency
    nasti_channel   
      #(
-       .ID_WIDTH    ( `MEM_TAG_WIDTH ),
-       .ADDR_WIDTH  ( `PADDR_WIDTH   ),
-       .DATA_WIDTH  ( `MEM_DAT_WIDTH ))
+       .ID_WIDTH    ( `ROCKET_MEM_TAG_WIDTH ),
+       .ADDR_WIDTH  ( `ROCKET_PADDR_WIDTH   ),
+       .DATA_WIDTH  ( `ROCKET_MEM_DAT_WIDTH ))
    mem_mig_nasti();
 
    // MIG clock
@@ -304,9 +311,9 @@ module chip_top
 
    nasti_ram_behav
      #(
-       .ID_WIDTH     ( `MEM_TAG_WIDTH   ),
-       .ADDR_WIDTH   ( `PADDR_WIDTH     ),
-       .DATA_WIDTH   ( `MEM_DAT_WIDTH   ),
+       .ID_WIDTH     ( `ROCKET_MEM_TAG_WIDTH   ),
+       .ADDR_WIDTH   ( `ROCKET_PADDR_WIDTH     ),
+       .DATA_WIDTH   ( `ROCKET_MEM_DAT_WIDTH   ),
        .USER_WIDTH   ( 1                )
        )
    ram_behav
@@ -322,25 +329,25 @@ module chip_top
 
    nasti_channel
      #(
-       .ADDR_WIDTH  ( `PADDR_WIDTH       ),
-       .DATA_WIDTH  ( `IO_DAT_WIDTH      ))
+       .ADDR_WIDTH  ( `ROCKET_PADDR_WIDTH       ),
+       .DATA_WIDTH  ( `LOWRISC_IO_DAT_WIDTH     ))
    io_bram_lite();
 
 `ifdef ADD_BRAM
    localparam BRAM_SIZE          = 16;        // 2^16 -> 64 KB
    localparam BRAM_WIDTH         = 128;       // always 128-bit wide
    localparam BRAM_LINE          = 2 ** BRAM_SIZE / BRAM_WIDTH;
-   localparam BRAM_OFFSET_BITS   = $clog2(`IO_DAT_WIDTH/8);
-   localparam BRAM_ADDR_LSB_BITS = $clog2(BRAM_WIDTH / `IO_DAT_WIDTH);
+   localparam BRAM_OFFSET_BITS   = $clog2(`LOWRISC_IO_DAT_WIDTH/8);
+   localparam BRAM_ADDR_LSB_BITS = $clog2(BRAM_WIDTH / `LOWRISC_IO_DAT_WIDTH);
    localparam BRAM_ADDR_BLK_BITS = BRAM_SIZE - BRAM_ADDR_LSB_BITS - BRAM_OFFSET_BITS;
 
    initial assert (BRAM_OFFSET_BITS < 7) else $fatal(1, "Do not support BRAM AXI width > 64-bit!");
 
    // BRAM controller
    logic ram_clk, ram_rst, ram_en;
-   logic [`IO_DAT_WIDTH/8-1:0] ram_we;
-   logic [BRAM_SIZE-1:0]       ram_addr;
-   logic [`IO_DAT_WIDTH-1:0]   ram_wrdata, ram_rddata;
+   logic [`LOWRISC_IO_DAT_WIDTH/8-1:0] ram_we;
+   logic [BRAM_SIZE-1:0]               ram_addr;
+   logic [`LOWRISC_IO_DAT_WIDTH-1:0]   ram_wrdata, ram_rddata;
 
    axi_bram_ctrl_0 BramCtl
      (
@@ -386,7 +393,7 @@ module chip_top
    assign ram_lsb_addr = ram_addr >> BRAM_OFFSET_BITS;
    assign ram_we_shift = ram_lsb_addr << BRAM_OFFSET_BITS; // avoid ISim error
    assign ram_we_full = ram_we << ram_we_shift;
-   assign ram_wrdata_full = {(BRAM_WIDTH / `IO_DAT_WIDTH){ram_wrdata}};
+   assign ram_wrdata_full = {(BRAM_WIDTH / `LOWRISC_IO_DAT_WIDTH){ram_wrdata}};
 
    always_ff @(posedge ram_clk)
      if(ram_en) begin
@@ -407,8 +414,8 @@ module chip_top
    // SPI
    nasti_channel
      #(
-       .ADDR_WIDTH  ( `PADDR_WIDTH       ),
-       .DATA_WIDTH  ( `IO_DAT_WIDTH      ))
+       .ADDR_WIDTH  ( `ROCKET_PADDR_WIDTH       ),
+       .DATA_WIDTH  ( `LOWRISC_IO_DAT_WIDTH     ))
    io_spi_lite();
    logic                       spi_irq;
 
@@ -478,26 +485,26 @@ module chip_top
    // UART or trace debugger
    nasti_channel
      #(
-       .ADDR_WIDTH  ( `PADDR_WIDTH       ),
-       .DATA_WIDTH  ( `IO_DAT_WIDTH      ))
+       .ADDR_WIDTH  ( `ROCKET_PADDR_WIDTH       ),
+       .DATA_WIDTH  ( `LOWRISC_IO_DAT_WIDTH     ))
    io_uart_lite();
    logic                       uart_irq;
 
  `ifdef ENABLE_DEBUG
    // Debug MAM signals
-   logic                              mam_req_valid;
-   logic                              mam_req_ready;
-   logic                              mam_req_rw;
-   logic [`PADDR_WIDTH-1:0]           mam_req_addr;
-   logic                              mam_req_burst;
-   logic [13:0]                       mam_req_beats;
-   logic                              mam_write_valid;
-   logic [`MAM_IO_DWIDTH-1:0]         mam_write_data;
-   logic [`MAM_IO_DWIDTH/8-1:0]       mam_write_strb;
-   logic                              mam_write_ready;
-   logic                              mam_read_valid;
-   logic [`MAM_IO_DWIDTH-1:0]         mam_read_data;
-   logic                              mam_read_ready;
+   logic                               mam_req_valid;
+   logic                               mam_req_ready;
+   logic                               mam_req_rw;
+   logic [`ROCKET_PADDR_WIDTH-1:0]     mam_req_addr;
+   logic                               mam_req_burst;
+   logic [13:0]                        mam_req_beats;
+   logic                               mam_write_valid;
+   logic [`ROCKET_MAM_IO_DWIDTH-1:0]   mam_write_data;
+   logic [`ROCKET_MAM_IO_DWIDTH/8-1:0] mam_write_strb;
+   logic                               mam_write_ready;
+   logic                               mam_read_valid;
+   logic [`ROCKET_MAM_IO_DWIDTH-1:0]   mam_read_data;
+   logic                               mam_read_ready;
 
    // Debug ring connections
    dii_flit [1:0]                     debug_ring_start; // starting connector
@@ -507,8 +514,9 @@ module chip_top
 
    debug_system
      #(
-       .MAM_DATA_WIDTH   ( `MAM_IO_DWIDTH   ),
-       .MAM_ADDR_WIDTH   ( `PADDR_WIDTH     )
+       .N_CORES          ( `ROCKET_NTILES          ),
+       .MAM_DATA_WIDTH   ( `ROCKET_MAM_IO_DWIDTH   ),
+       .MAM_ADDR_WIDTH   ( `ROCKET_PADDR_WIDTH     )
        )
    u_debug_system
      (
@@ -602,8 +610,8 @@ module chip_top
 
    nasti_channel
      #(
-       .ADDR_WIDTH  ( `PADDR_WIDTH       ),
-       .DATA_WIDTH  ( `IO_DAT_WIDTH      ))
+       .ADDR_WIDTH  ( `ROCKET_PADDR_WIDTH       ),
+       .DATA_WIDTH  ( `LOWRISC_IO_DAT_WIDTH     ))
    io_host_lite();
 
  `ifdef ADD_HOST
@@ -623,9 +631,9 @@ module chip_top
    // output of the IO crossbar
    nasti_channel
      #(
-       .N_PORT      ( NUM_DEVICE         ),
-       .ADDR_WIDTH  ( `PADDR_WIDTH       ),
-       .DATA_WIDTH  ( `IO_DAT_WIDTH      ))
+       .N_PORT      ( NUM_DEVICE                ),
+       .ADDR_WIDTH  ( `ROCKET_PADDR_WIDTH       ),
+       .DATA_WIDTH  ( `LOWRISC_IO_DAT_WIDTH     ))
    io_cbo_lite();
 
    nasti_channel ios_dmm4(), ios_dmm5(), ios_dmm6(), ios_dmm7(); // dummy channels
@@ -637,15 +645,15 @@ module chip_top
    // the io crossbar
    nasti_crossbar
      #(
-       .N_INPUT    ( 1             ),
-       .N_OUTPUT   ( NUM_DEVICE    ),
-       .IB_DEPTH   ( 0             ),
-       .OB_DEPTH   ( 1             ), // some IPs response only with data, which will cause deadlock in nasti_demux (no lock)
-       .W_MAX      ( 1             ),
-       .R_MAX      ( 1             ),
-       .ADDR_WIDTH ( `PADDR_WIDTH  ),
-       .DATA_WIDTH ( `IO_DAT_WIDTH ),
-       .LITE_MODE  ( 1             )
+       .N_INPUT    ( 1                     ),
+       .N_OUTPUT   ( NUM_DEVICE            ),
+       .IB_DEPTH   ( 0                     ),
+       .OB_DEPTH   ( 1                     ), // some IPs response only with data, which will cause deadlock in nasti_demux (no lock)
+       .W_MAX      ( 1                     ),
+       .R_MAX      ( 1                     ),
+       .ADDR_WIDTH ( `ROCKET_PADDR_WIDTH   ),
+       .DATA_WIDTH ( `LOWRISC_IO_DAT_WIDTH ),
+       .LITE_MODE  ( 1                     )
        )
    io_crossbar
      (
@@ -803,10 +811,10 @@ module chip_top
    // convert io_nasti to io_lite
    nasti_lite_bridge
      #(
-       .ID_WIDTH          ( 1              ),
-       .ADDR_WIDTH        ( `PADDR_WIDTH   ),
-       .NASTI_DATA_WIDTH  ( `IO_DAT_WIDTH  ),
-       .LITE_DATA_WIDTH   ( `IO_DAT_WIDTH  )
+       .ID_WIDTH          ( 1                     ),
+       .ADDR_WIDTH        ( `ROCKET_PADDR_WIDTH   ),
+       .NASTI_DATA_WIDTH  ( `ROCKET_IO_DAT_WIDTH  ),
+       .LITE_DATA_WIDTH   ( `LOWRISC_IO_DAT_WIDTH )
        )
    io_bridge
      (

@@ -3,7 +3,8 @@ import dii_package::dii_flit;
 `include "consts.vh"
 
 module debug_system
-  #(parameter MAM_DATA_WIDTH = 512,
+  #(parameter N_CORES        = 1,
+    parameter MAM_DATA_WIDTH = 512,
     parameter MAM_REGIONS    = 1,
     parameter MAM_BASE_ADDR0 = 0,
     parameter MAM_MEM_SIZE0  = 1024*1024*1024,
@@ -119,7 +120,6 @@ module debug_system
           .fifo_out  (fifo_out));
 `endif
 
-   parameter N_CORES = `NTILES;
    parameter PERCORE = 2;
    localparam N_OSD = 4;
    localparam N = N_CORES*PERCORE+N_OSD;
