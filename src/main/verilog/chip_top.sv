@@ -336,7 +336,7 @@ module chip_top
 `ifdef ADD_BRAM
    localparam BRAM_SIZE          = 16;        // 2^16 -> 64 KB
    localparam BRAM_WIDTH         = 128;       // always 128-bit wide
-   localparam BRAM_LINE          = 2 ** BRAM_SIZE / BRAM_WIDTH;
+   localparam BRAM_LINE          = 2 ** BRAM_SIZE / (BRAM_WIDTH/8);
    localparam BRAM_OFFSET_BITS   = $clog2(`LOWRISC_IO_DAT_WIDTH/8);
    localparam BRAM_ADDR_LSB_BITS = $clog2(BRAM_WIDTH / `LOWRISC_IO_DAT_WIDTH);
    localparam BRAM_ADDR_BLK_BITS = BRAM_SIZE - BRAM_ADDR_LSB_BITS - BRAM_OFFSET_BITS;
