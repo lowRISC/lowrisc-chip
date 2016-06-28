@@ -146,8 +146,8 @@ class Top(topParams: Parameters) extends Module with HasTopLevelParameters {
   ////////////////////////////////////////////
   // L2 cache coherence managers
   val managerEndpoints = List.tabulate(nBanks){ id =>
-    Module(new L2BroadcastHub()(p.alterPartial({
-    //Module(new L2HellaCacheBank()(p.alterPartial({
+    //Module(new L2BroadcastHub()(p.alterPartial({
+    Module(new L2HellaCacheBank()(p.alterPartial({
       case CacheId => id
       case TLId => coherentNetParams(TLId)
       case CacheName => l2CacheId
