@@ -6,6 +6,7 @@
 #include <cmath>
 #include <algorithm>
 #include <fstream>
+#include <iostream>
 #include <boost/lexical_cast.hpp>
 #include <boost/format.hpp>
 
