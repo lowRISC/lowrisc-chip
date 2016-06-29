@@ -124,7 +124,11 @@ module debug_system
    localparam N_OSD = 4;
    localparam N = N_CORES*PERCORE+N_OSD;
 
-   localparam PORTIDMAP = { 10'h3, 10'h2, 10'h1, 10'h0 };
+   logic [N_OSD-1:0][9:0] id_map;
+   assign id_map[0] = 0;        // HIM
+   assign id_map[1] = 1;        // SCM
+   assign id_map[2] = 2;        // UART
+   assign id_map[3] = 3;        // MAM
 
    dii_flit [N_OSD-1:0] dii_out; logic [N_OSD-1:0] dii_out_ready;
    dii_flit [N_OSD-1:0] dii_in; logic [N_OSD-1:0] dii_in_ready;
@@ -144,7 +148,7 @@ module debug_system
      #(.SYSTEMID(16'hdead), .NUM_MOD(N-1),
        .MAX_PKT_LEN(MAX_PKT_LEN))
    u_scm(.*,
-         .id              ( PORTIDMAP[19:10] ),
+         .id              ( id_map[1]        ),
          .debug_in        ( dii_in[1]        ),
          .debug_in_ready  ( dii_in_ready[1]  ),
          .debug_out       ( dii_out[1]       ),
@@ -155,7 +159,7 @@ module debug_system
    
    osd_dem_uart_nasti
      u_uart (.*,
-             .id ( PORTIDMAP[29:20] ),
+             .id ( id_map[2] ),
 
              .ar_addr (uart_ar_addr[4:2]),
              .ar_valid (uart_ar_valid),
@@ -185,7 +189,7 @@ module debug_system
        .BASE_ADDR0(MAM_BASE_ADDR0), .MEM_SIZE0(MAM_MEM_SIZE0),
        .ADDR_WIDTH(MAM_ADDR_WIDTH), .MAX_PKT_LEN(MAX_PKT_LEN))
    u_mam (.*,
-          .id ( PORTIDMAP[39:30] ),
+          .id              ( id_map[3]        ),
           .debug_in        ( dii_in[3]        ),
           .debug_in_ready  ( dii_in_ready[3]  ),
           .debug_out       ( dii_out[3]       ),
@@ -196,7 +200,7 @@ module debug_system
    dii_flit [1:0] ext_out; logic [1:0] ext_out_ready;
 
    debug_ring_expand
-     #(.PORTS(N_OSD), .PORTIDMAP(PORTIDMAP))
+     #(.PORTS(N_OSD))
    u_ring(.*,
           .dii_in        ( dii_out        ),
           .dii_in_ready  ( dii_out_ready  ),
