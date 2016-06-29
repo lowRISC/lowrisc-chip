@@ -38,15 +38,15 @@ class BaseConfig extends Config (
         Dump("ADD_BRAM", true)
       }
       if (site(UseHost)) {
-        entries += AddrMapEntry("host", MemSize(1<<6, 1<<12, MemAttr(AddrMapProt.W)))
+        entries += AddrMapEntry("host", MemSize(1<<6, 1<<13, MemAttr(AddrMapProt.W)))
         Dump("ADD_HOST", true)
       }
       if (site(UseUART)) {
-        entries += AddrMapEntry("uart", MemSize(1<<12, 1<<12, MemAttr(AddrMapProt.RW)))
+        entries += AddrMapEntry("uart", MemSize(1<<13, 1<<13, MemAttr(AddrMapProt.RW)))
         Dump("ADD_UART", true)
       }
       if (site(UseSPI)) {
-        entries += AddrMapEntry("spi", MemSize(1<<12, 1<<12, MemAttr(AddrMapProt.RW)))
+        entries += AddrMapEntry("spi", MemSize(1<<13, 1<<13, MemAttr(AddrMapProt.RW)))
         Dump("ADD_SPI", true)
       }
       new AddrMap(entries)
