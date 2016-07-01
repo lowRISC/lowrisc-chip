@@ -4,8 +4,8 @@ echo "Setting up lowRISC/RISC-V and SoC Debug SoC environment..."
 echo "Make sure you source this script at the top of lowrisc-chip."
 
 # Variables for lowRISC/RISC-V
-if [ -d $TOP ]; then
-    echo "\$TOP is not defined."
+if [ ! -d $TOP ]; then
+    echo "\$TOP is not defined or does not point to a directory."
     echo "Set \$TOP to the top of lowrisc-chip which is the current directory."
     export TOP=$PWD
 fi
