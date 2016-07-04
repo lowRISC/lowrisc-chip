@@ -90,7 +90,7 @@ module debug_system
    assign fifo_out.ready = fifo_out_ready;
 
    glip_uart_toplevel
-     #(.WIDTH(16), .BAUD(1000000), .FREQ(25000000))
+     #(.WIDTH(16), .BAUD(3000000), .FREQ(25000000))
    u_glip(.clk_io    (clk),
           .clk_logic (clk),
           .rst       (rst),
