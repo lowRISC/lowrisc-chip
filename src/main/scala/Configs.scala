@@ -412,7 +412,7 @@ class FPGAConfig extends
     Config(new WithUARTConfig ++ new WithSPIConfig ++ new WithBootRAMConfig ++ new BaseConfig)
 
 class FPGADebugConfig extends
-    Config(new WithDebugConfig ++ new WithSPIConfig ++ new BaseConfig)
+    Config(new WithDebugConfig ++ new WithSPIConfig ++ new WithBootRAMConfig ++ new BaseConfig)
 
 class Nexys4Config extends
     Config(new With256MRamConfig ++ new FPGAConfig)
