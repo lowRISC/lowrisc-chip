@@ -521,7 +521,7 @@ module chip_top
    u_debug_system
      (
       .*,
-      .uart_irq        (uart_irq),
+      .uart_irq        ( uart_irq               ),
       .uart_ar_addr    ( io_uart_lite.ar_addr   ),
       .uart_ar_ready   ( io_uart_lite.ar_ready  ),
       .uart_ar_valid   ( io_uart_lite.ar_valid  ),

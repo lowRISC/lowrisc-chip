@@ -235,6 +235,11 @@ class Top(topParams: Parameters) extends Module with HasTopLevelParameters {
     tileList(i).io.prci.reset := Bool(false)
   }
 
+  // interrupt, currently just ORed
+  for (i <- 0 until nTiles) {
+    tileList(i).io.irq := io.interrupt.orR
+  }
+
   ////////////////////////////////////////////
   // trace debugger
   if(p(UseDebug)) {
