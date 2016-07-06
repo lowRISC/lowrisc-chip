@@ -6,8 +6,12 @@
 #include <cmath>
 #include <algorithm>
 #include <fstream>
+#include <iostream>
 #include <boost/lexical_cast.hpp>
 #include <boost/format.hpp>
+#include <iostream>
+#include <functional>
+#include "loadelf.hpp"
 
 using std::pair;
 using std::list;
@@ -39,7 +43,9 @@ svBit memory_write_req (
 
   // call axi controller
   if(axi_mem_writer->write_addr_req(tag, addr, len, size)) {
+#ifdef VERBOSE_MEMORY
     std::cout << format("memory write request: %1$x @ %2$x [%3$x]") % tag % addr % (len+1) << std::endl;
+#endif
     return sv_1;
   } else
     return sv_0;
@@ -60,7 +66,9 @@ svBit memory_write_data (
 
   // call axi controller
   if(axi_mem_writer->write_data_req(data, strb, last_m)) {
+#ifdef VERBOSE_MEMORY
     std::cout << format("memory write data: %1$08x %2$08x %3$08x %4$08x") % data[3] % data[2] % data[1] % data[0] << std::endl;
+#endif
     return sv_1;
   } else
     return sv_0;
@@ -104,7 +112,9 @@ svBit memory_read_req (
 
   // call axi controller
   if(axi_mem_reader->reader_addr_req(tag, addr, len, size)) {
+#ifdef VERBOSE_MEMORY
     std::cout << format("memory read request: %1$x @ %2$x") % tag % addr << std::endl;
+#endif
     return sv_1;
   } else
     return sv_0;
@@ -124,7 +134,9 @@ svBit memory_read_resp (
   bool last_m;
 
   if(axi_mem_reader->reader_data_req(&tag, data, &resp, &last_m, 8)) {
+#ifdef VERBOSE_MEMORY
     std::cout << format("memory read resp: %1$x with data %2$08x %3$08x %4$08x %5$08x") % tag % data[3] % data[2] % data[1] % data[0]<< std::endl;
+#endif
     id_16b[0] = tag & 0xffff;
     for(int i=0; i<8; i++) {
       data_256b[i] = data[i];
@@ -171,8 +183,39 @@ bool Memory32::write(const uint32_t addr, const uint32_t& data, const uint32_t& 
   }
   mem[addr] = data_m;
 
-  //std::cout << format("memory write [%1$x] = %2$x") % addr % data_m << std::endl;
+  //std::cout << format("memory32 write [%1$08x] = %2$08x") % addr % data_m << std::endl;
   return true;
+}
+
+void Memory32::write_block(uint32_t addr, uint32_t size, const uint8_t* buf) {
+  uint32_t burst_size = 4;
+  uint32_t mask = (1 << burst_size) - 1;
+
+  // prologue
+  if(uint32_t offset = addr%4) {
+    uint32_t m_size = 4 - offset;
+    mask >>= (m_size > size) ? m_size - size : 0;
+    m_size = (m_size > size) ? size : m_size;
+    mask <<= offset;
+    write(addr - offset, *((uint32_t*)(buf - offset)), mask);
+    size -= m_size;
+    buf += m_size;
+    addr += m_size;
+  }
+
+  // block write
+  mask = (1 << burst_size) - 1;
+  while(size >= burst_size) {
+    write(addr, *((uint32_t*)(buf)), mask);
+    size -= burst_size;
+    buf += burst_size;
+    addr += burst_size;
+  }
+
+  // epilogue
+  if(size) {
+    write(addr, *((uint32_t*)(buf)), (1 << size) - 1);
+  }
 }
 
 bool Memory32::read(const uint32_t addr, uint32_t &data) {
@@ -181,7 +224,7 @@ bool Memory32::read(const uint32_t addr, uint32_t &data) {
 
   data = mem[addr];
 
-  //std::cout << format("memory read [%1$x] = %2$x") % addr % data << std::endl;
+  //std::cout << format("memory32 read [%1$08x] = %2$08x") % addr % data << std::endl;
   return true;
 }
 
@@ -195,30 +238,24 @@ std::ostream& MemoryOperation::streamout(std::ostream& os) const {
 
 // Memory controller
 
-void MemoryController::add_read_req(const unsigned int fifo, const uint32_t tag, const uint32_t addr) {
-  assert(fifo < op_max);
-  //std::cout << format("Memory controller read req from fifo %1% (%2$x @ %3$x)") % fifo % tag % addr << std::endl;
-  op_fifo[fifo].push_back(MemoryOperation(0, tag, addr));
+void MemoryController::add_read_req(const uint32_t tag, const uint32_t addr) {
+  op_fifo.push_back(MemoryOperation(0, tag, addr));
 }
 
-void MemoryController::add_write_req(const unsigned int fifo, const uint32_t tag, const uint32_t addr, 
+void MemoryController::add_write_req(const uint32_t tag, const uint32_t addr, 
                                      const uint32_t data, const uint32_t mask) {
-  assert(fifo < op_max);
-  op_fifo[fifo].push_back(MemoryOperation(1, tag, addr, data, mask));
+  op_fifo.push_back(MemoryOperation(1, tag, addr, data, mask));
 }
 
 void MemoryController::step() {
   // decide to handle how many operations
-  const unsigned int max_random = 2048;
-  const double random_step = (double)(max_random) / op_max;
-  unsigned int rand_num = rand() % max_random;
-  unsigned int op_total = ceil(rand_num / random_step);
-
-  for(int i=0; i<op_total; i++) {
-    if(!op_fifo[rr_index].empty()) {
+  unsigned int rand_num = 1 + (rand() % op_max);
+  
+  for(int i=0; i<rand_num; i++) {
+    if(!op_fifo.empty()) {
       // get the operation
-      MemoryOperation op = op_fifo[rr_index].front();
-      op_fifo[rr_index].pop_front();
+      MemoryOperation op = op_fifo.front();
+      op_fifo.pop_front();
 
       if(op.rw) {
         mem.write(op.addr, op.data, op.mask);
@@ -234,24 +271,12 @@ void MemoryController::step() {
         }
       }
     }
-    rr_index = (rr_index + 1) % op_max;
   }
 }
   
 // return the least loaded queue
-bool MemoryController::load_balance(unsigned int &chosen) {
-  chosen = rr_index;
-  for(int i=0; i<op_max; i++) {
-    if(op_fifo[chosen].empty())
-      return true;
-    else
-      chosen = (chosen + 1) % op_max;
-  }
-  std::cout << "all op_fifo occupied!" << std::endl;
-  for(int i=0; i<op_max; i++) {
-    std::cout << "op_fifo[" << i << "]: " << op_fifo[i].front() << std::endl;
-  }
-  return false;                 // all fifos occupied
+bool MemoryController::busy() {
+  return op_fifo.size() >= pending_max;
 }
 
 // find if there is any response ready
@@ -263,31 +288,12 @@ std::list<uint32_t>* MemoryController::get_resp(uint32_t &tag) {
 }
 
 // load initial memory
-bool MemoryController::load_mem(const string& filename) {
-  ifstream ifs;
-  ifs.open(filename.c_str());
-
-  char buf [36];
-  uint32_t addr = 0;
-
-  if(ifs.is_open()) {
-    while(ifs.good()) {
-      ifs.getline(buf, 36);
-      string line(buf);
-      if(line != "") {
-        for(int i=3; i>=0; i--) {
-          uint32_t data = strtoul(line.substr(i*8, 8).c_str(), NULL, 16);
-          mem.write(addr, data, 0xf);
-          addr += 4;
-        }
-      }
-    }
-  } else {
-    std::cerr << "Error: Fail to open memory file " << filename << std::endl;
-    exit(1);
-  }
-
-  return true;
+void MemoryController::load_mem(const string& filename) {
+  using namespace std::placeholders;
+  std::function<void(uint32_t, uint32_t, const uint8_t*)> f =
+    std::bind(&Memory32::write_block, &mem, _1, _2, _3);
+  elfLoader loader = elfLoader(f);
+  loader(filename);
 }
 
 // AXI controllers
@@ -298,7 +304,7 @@ bool AXIMemWriter::write_addr_req(const uint32_t tag, const uint32_t addr,
   if(valid) return false;       // another AXI write in operation
 
   // check whether there is an empty queue
-  if(!memory_controller->load_balance(this->fifo))
+  if(memory_controller->busy())
     return false;               // no empty queue
 
   // register the request
@@ -320,11 +326,11 @@ bool AXIMemWriter::write_data_req(const uint32_t *data, const uint32_t mask,
   if(!valid) return false;      // have not received an address request yet
   
   if(size < 4) {
-    memory_controller->add_write_req(fifo, tag, addr, data[0], this->mask & mask);
+    memory_controller->add_write_req(tag, addr, data[0], this->mask & mask);
     addr += size;
   } else {
     for(int i=0; i<size/4; i++) {
-      memory_controller->add_write_req(fifo, tag, addr, data[i], mask_m & 0xf);
+      memory_controller->add_write_req(tag, addr, data[i], mask_m & 0xf);
       addr += 4;
       mask_m >>= 4;
     }
@@ -363,7 +369,7 @@ bool AXIMemReader::reader_addr_req(const uint32_t tag, const uint32_t addr, cons
   uint32_t addr_m = addr;
 
   // check whether there is an empty queue
-  if(!memory_controller->load_balance(fifo))
+  if(memory_controller->busy())
     return false;               // no empty queue
 
   // fire the read requests
@@ -372,13 +378,13 @@ bool AXIMemReader::reader_addr_req(const uint32_t tag, const uint32_t addr, cons
 
   if(size_m < 4) {
     for(int i=0; i<len_m; i++) {
-      memory_controller->add_read_req(fifo, tag, addr_m);
+      memory_controller->add_read_req(tag, addr_m);
       addr_m += size_m;
     }
     memory_controller->record_read_size(tag, 1);
   } else {
     for(int i=0; i<len_m*size_m/4; i++) {
-      memory_controller->add_read_req(fifo, tag, addr_m);
+      memory_controller->add_read_req(tag, addr_m);
       addr_m += 4;
     }
     memory_controller->record_read_size(tag, size_m/4);

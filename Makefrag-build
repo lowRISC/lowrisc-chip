@@ -1,0 +1,38 @@
+# See LICENSE for license details.
+
+#--------------------------------------------------------------------
+# Build Verilog
+#--------------------------------------------------------------------
+
+$(generated_dir)/$(MODEL).$(CONFIG).v: $(chisel_srcs)
+	cd $(base_dir) && mkdir -p $(generated_dir) && $(SBT) "run $(CHISEL_ARGS) --configDump --noInlineMem"
+	cd $(generated_dir) && \
+	if [ -a $(MODEL).$(CONFIG).conf ]; then \
+	  $(mem_gen) $(generated_dir)/$(MODEL).$(CONFIG).conf >> $(generated_dir)/$(MODEL).$(CONFIG).v; \
+	fi
+
+$(generated_dir)/consts.vh: $(generated_dir)/$(MODEL).$(CONFIG).v
+	echo "\`ifndef CONST_VH" > $@
+	echo "\`define CONST_VH" >> $@
+	sed -r 's/\(([A-Za-z0-9_]+),([A-Za-z0-9_]+)\)/  `define \1 \2/' \
+	$(generated_dir)/$(MODEL).$(CONFIG).prm >> $@
+	echo "\`endif // CONST_VH" >> $@
+
+$(generated_dir)/dev_map.vh: $(generated_dir)/$(MODEL).$(CONFIG).v
+	echo "\`ifndef DEV_MAP_VH" > $@
+	echo "\`define DEV_MAP_VH" >> $@
+	sed -r 's/#define ([A-Za-z0-9_]+) 0x([A-Za-z0-9_]+)/  `define \1 '\''h\2/' \
+	$(generated_dir)/$(MODEL).$(CONFIG).dev_map.h >> $@
+	echo "\`endif // DEV_MAP_VH" >> $@
+
+$(generated_dir)/dev_map.h: $(generated_dir)/$(MODEL).$(CONFIG).v
+	echo "#ifndef DEV_MAP_HEADER" > $@
+	echo "#define DEV_MAP_HEADER" >> $@
+	cat $(generated_dir)/$(MODEL).$(CONFIG).dev_map.h >> $@
+	echo "#endif // DEV_MAP_HEADER" >> $@
+
+# emacs local variable
+
+# Local Variables:
+# mode: makefile
+# End:
