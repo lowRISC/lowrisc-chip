@@ -402,9 +402,9 @@ class WithBootRAMConfig extends Config (
   }
 )
 
-class With256MRamConfig extends Config (
+class With128MRamConfig extends Config (
   (pname,site,here) => pname match {
-    case RAMSize => BigInt(1L << 28)  // 256 MB
+    case RAMSize => BigInt(1L << 27)  // 128 MB
   }
 )
 
@@ -415,8 +415,8 @@ class FPGADebugConfig extends
     Config(new WithDebugConfig ++ new WithSPIConfig ++ new WithBootRAMConfig ++ new BaseConfig)
 
 class Nexys4Config extends
-    Config(new With256MRamConfig ++ new FPGAConfig)
+    Config(new With128MRamConfig ++ new FPGAConfig)
 
 class Nexys4DebugConfig extends
-    Config(new With256MRamConfig ++ new FPGADebugConfig)
+    Config(new With128MRamConfig ++ new FPGADebugConfig)
 
