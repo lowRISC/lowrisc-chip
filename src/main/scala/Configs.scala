@@ -16,6 +16,7 @@ case object UseUART extends Field[Boolean]
 case object UseSPI extends Field[Boolean]
 case object UseBootRAM extends Field[Boolean]
 case object RAMSize extends Field[BigInt]
+case object MemAlign extends Field[BigInt]
 
 class BaseConfig extends Config (
   topDefinitions = { (pname,site,here) => 
@@ -54,7 +55,7 @@ class BaseConfig extends Config (
 
     lazy val (globalAddrMap, globalAddrHashMap) = {
       val memSize:BigInt = site(RAMSize)
-      val memAlign = 1L << 30
+      val memAlign:BigInt = site(MemAlign)
       val io = AddrMap(
         AddrMapEntry("int", MemSubmap(internalIOAddrMap.computeSize, internalIOAddrMap)),
         AddrMapEntry("ext", MemSubmap(externalIOAddrMap.computeSize, externalIOAddrMap, true)))
@@ -219,6 +220,7 @@ class BaseConfig extends Config (
       case ResetVector => BigInt(0x00000000)
       case MtvecInit =>   BigInt(0x00000000)  // should have something default in ROM?
       case MtvecWritable => true
+      case MemAlign => BigInt(1L << 30)
 
       //Uncore Paramters
       case RTCPeriod => 100 // gives 10 MHz RTC assuming 1 GHz uncore clock
@@ -374,7 +376,13 @@ class WithDebugConfig extends Config (
   }
 )
 
-class DebugConfig extends Config(new WithDebugConfig ++ new BaseConfig)
+class SmallMemoryAlign extends Config (
+  (pname,site,here) => pname match {
+    case MemAlign => BigInt(1L << 29)
+  }
+)
+
+class DebugConfig extends Config(new WithDebugConfig ++ new SmallMemoryAlign ++ new BaseConfig)
 
 class WithHostConfig extends Config (
   (pname,site,here) => pname match {
@@ -382,7 +390,7 @@ class WithHostConfig extends Config (
   }
 )
 
-class DefaultConfig extends Config(new WithHostConfig ++ new BaseConfig)
+class DefaultConfig extends Config(new WithHostConfig ++ new SmallMemoryAlign ++ new BaseConfig)
 
 class WithSPIConfig extends Config (
   (pname,site,here) => pname match {
