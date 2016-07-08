@@ -369,7 +369,7 @@ class WithDebugConfig extends Config (
     case DebugBaseID => 4
     case DebugSubIDSize => 2
     case DebugCtmScorBoardSize => site(NMSHRs)
-    case DebugStmCsrAddr => 0x8f0 // not synced with instruction.scala
+    case DebugStmCsrAddr => 0x8ff // not synced with instruction.scala
     case DebugRouterBufferSize => 4
   }
 )
