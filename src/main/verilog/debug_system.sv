@@ -7,7 +7,7 @@ module debug_system
     parameter MAM_DATA_WIDTH = 512,
     parameter MAM_REGIONS    = 2,
     parameter MAM_BASE_ADDR0 = 0,
-    parameter MAM_MEM_SIZE0  = 'h4000,
+    parameter MAM_MEM_SIZE0  = 'h10000,
     parameter MAM_BASE_ADDR1 = 'h40000000,
     parameter MAM_MEM_SIZE1  = 'h8000000,
     parameter MAM_ADDR_WIDTH = 64)
