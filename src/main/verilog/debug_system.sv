@@ -5,9 +5,11 @@ import dii_package::dii_flit;
 module debug_system
   #(parameter N_CORES        = 1,
     parameter MAM_DATA_WIDTH = 512,
-    parameter MAM_REGIONS    = 1,
+    parameter MAM_REGIONS    = 2,
     parameter MAM_BASE_ADDR0 = 0,
-    parameter MAM_MEM_SIZE0  = 1024*1024*1024,
+    parameter MAM_MEM_SIZE0  = 'h4000,
+    parameter MAM_BASE_ADDR1 = 'h40000000,
+    parameter MAM_MEM_SIZE1  = 'h8000000,
     parameter MAM_ADDR_WIDTH = 64)
   (
    input                        clk, rstn,
@@ -185,6 +187,7 @@ module debug_system
    osd_mam
      #(.DATA_WIDTH(MAM_DATA_WIDTH), .REGIONS(MAM_REGIONS),
        .BASE_ADDR0(MAM_BASE_ADDR0), .MEM_SIZE0(MAM_MEM_SIZE0),
+       .BASE_ADDR1(MAM_BASE_ADDR1), .MEM_SIZE1(MAM_MEM_SIZE1),
        .ADDR_WIDTH(MAM_ADDR_WIDTH), .MAX_PKT_LEN(MAX_PKT_LEN))
    u_mam (.*,
           .id              ( id_map[3]        ),
