@@ -107,7 +107,7 @@ test_cxx_headers = \
 # Build Verilog
 #--------------------------------------------------------------------
 
-verilog: $(lowrisc_srcs)
+verilog: $(lowrisc_srcs) $(lowrisc_headers)
 
 include $(base_dir)/Makefrag-build
 
