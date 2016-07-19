@@ -82,6 +82,16 @@ class BaseConfig extends Config (
       res append  "rtc {\n"
       res append s"  addr 0x${addrMap("io:int:rtc").start.toString(16)};\n"
       res append  "};\n"
+      if(site(UseUART)) {
+        res append  "uart {\n"
+        res append s"  addr 0x${addrMap("io:ext:uart").start.toString(16)};\n"
+        res append  "};\n"
+      }
+      if(site(UseSPI)) {
+        res append  "spi {\n"
+        res append s"  addr 0x${addrMap("io:ext:spi").start.toString(16)};\n"
+        res append  "};\n"
+      }
       res append  "ram {\n"
       res append  "  0 {\n"
       res append s"    addr 0x${addrMap("mem").start.toString(16)};\n"
