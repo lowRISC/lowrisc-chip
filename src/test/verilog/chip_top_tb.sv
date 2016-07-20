@@ -122,6 +122,7 @@ module tb;
 
    // spi
    wire spi_cs, spi_sclk, spi_mosi, spi_miso;
+   wire sd_reset;
    assign spi_cs = 1'bz;
    assign spi_sclk = 1'bz;
    assign spi_mosi = 1'bz;

@@ -55,6 +55,7 @@ module chip_top
    inout         spi_sclk,
    inout         spi_mosi,
    inout         spi_miso,
+   output        sd_reset,
 `endif
 
    // clock and reset
@@ -425,28 +426,15 @@ module chip_top
    wire                        spi_sclk_i, spi_sclk_o, spi_sclk_t;
    wire                        spi_cs_i,   spi_cs_o,   spi_cs_t;
 
-   axi_quad_spi_0 spi_i
+   spi_wrapper
+     #(
+       .ADDR_WIDTH  ( 7                      ),
+       .DATA_WIDTH  ( `LOWRISC_IO_DAT_WIDTH  )
+       )
+   spi_i
      (
-      .ext_spi_clk     ( clk                   ),
-      .s_axi_aclk      ( clk                   ),
-      .s_axi_aresetn   ( rstn                  ),
-      .s_axi_araddr    ( io_spi_lite.ar_addr   ),
-      .s_axi_arready   ( io_spi_lite.ar_ready  ),
-      .s_axi_arvalid   ( io_spi_lite.ar_valid  ),
-      .s_axi_awaddr    ( io_spi_lite.aw_addr   ),
-      .s_axi_awready   ( io_spi_lite.aw_ready  ),
-      .s_axi_awvalid   ( io_spi_lite.aw_valid  ),
-      .s_axi_bready    ( io_spi_lite.b_ready   ),
-      .s_axi_bresp     ( io_spi_lite.b_resp    ),
-      .s_axi_bvalid    ( io_spi_lite.b_valid   ),
-      .s_axi_rdata     ( io_spi_lite.r_data    ),
-      .s_axi_rready    ( io_spi_lite.r_ready   ),
-      .s_axi_rresp     ( io_spi_lite.r_resp    ),
-      .s_axi_rvalid    ( io_spi_lite.r_valid   ),
-      .s_axi_wdata     ( io_spi_lite.w_data    ),
-      .s_axi_wready    ( io_spi_lite.w_ready   ),
-      .s_axi_wstrb     ( io_spi_lite.w_strb    ),
-      .s_axi_wvalid    ( io_spi_lite.w_valid   ),
+      .*,
+      .nasti           ( io_spi_lite           ),
       .io0_i           ( spi_mosi_i            ),
       .io0_o           ( spi_mosi_o            ),
       .io0_t           ( spi_mosi_t            ),
@@ -459,8 +447,9 @@ module chip_top
       .ss_i            ( spi_cs_i              ),
       .ss_o            ( spi_cs_o              ),
       .ss_t            ( spi_cs_t              ),
-      .ip2intc_irpt    ( spi_irq               )  // polling for now
+      .ip2intc_irpt    ( spi_irq               ) // polling for now
       );
+
 
    // tri-state gate to protect SPI IOs
    assign spi_mosi = !spi_mosi_t ? spi_mosi_o : 1'bz;
