@@ -808,8 +808,8 @@ module chip_top
    io_bridge
      (
       .*,
-      .nasti_s  ( io_nasti  ),
-      .lite_m   ( io_lite   )
+      .nasti_m  ( io_nasti  ),
+      .lite_s   ( io_lite   )
       );
 
 endmodule // chip_top
