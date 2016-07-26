@@ -16,6 +16,7 @@ case object UseUART extends Field[Boolean]
 case object UseSPI extends Field[Boolean]
 case object UseBootRAM extends Field[Boolean]
 case object RAMSize extends Field[BigInt]
+case object IOTagBits extends Field[Int]
 
 class BaseConfig extends Config (
   topDefinitions = { (pname,site,here) => 
@@ -132,6 +133,7 @@ class BaseConfig extends Config (
       case MIFTagBits => Dump("ROCKET_MEM_TAG_WIDTH", 8)
       case MIFDataBits => Dump("ROCKET_MEM_DAT_WIDTH", site(TLKey("TCtoMem")).dataBitsPerBeat)
       case IODataBits => Dump("ROCKET_IO_DAT_WIDTH", 64)
+      case IOTagBits => Dump("ROCKET_IO_TAG_WIDTH", 8)
 
       //Params used by all caches
       case NSets => findBy(CacheName)
@@ -262,7 +264,7 @@ class BaseConfig extends Config (
           nCachingClients = 0,
           nCachelessClients = 1,
           maxClientXacts = 1,
-          maxClientsPerPort = 1,
+          maxClientsPerPort = site(NAcquireTransactors) + 2,
           maxManagerXacts = 1,
           dataBits = site(CacheBlockBytes)*8,
           dataBeats = 8
@@ -281,9 +283,9 @@ class BaseConfig extends Config (
           nManagers = 1,
           nCachingClients = 0,
           nCachelessClients = site(NBanks),
-          maxClientXacts = site(NAcquireTransactors) + 2,
-          maxClientsPerPort = 1,
-          maxManagerXacts = site(TCTransactors),
+          maxClientXacts = 1,
+          maxClientsPerPort = site(NAcquireTransactors) + 2,
+          maxManagerXacts = 1, //site(TCTransactors),
           dataBits = site(CacheBlockBytes)*8,
           dataBeats = 8
         )
@@ -333,7 +335,7 @@ class BaseConfig extends Config (
         NastiParameters(
           dataBits = site(IODataBits),
           addrBits = site(PAddrBits),
-          idBits = 1
+          idBits = site(IOTagBits)
         )
       
       case ConfigString => makeConfigString()
@@ -392,7 +394,13 @@ class WithHostConfig extends Config (
   }
 )
 
-class DefaultConfig extends Config(new WithHostConfig ++ new BaseConfig)
+class With4Banks extends Config (
+  knobValues = {
+    case "NBANKS" => 4
+  }
+)
+
+class DefaultConfig extends Config(new With4Banks ++ new WithHostConfig ++ new BaseConfig)
 
 class WithSPIConfig extends Config (
   (pname,site,here) => pname match {

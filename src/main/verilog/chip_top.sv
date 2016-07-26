@@ -312,7 +312,7 @@ module chip_top
 
    nasti_channel
      #(
-       .ID_WIDTH    ( 1                     ),
+       .ID_WIDTH    ( `ROCKET_IO_TAG_WIDTH  ),
        .ADDR_WIDTH  ( `ROCKET_PADDR_WIDTH   ),
        .DATA_WIDTH  ( `ROCKET_IO_DAT_WIDTH  ))
    io_nasti(),      // IO nasti interface From Rocket
@@ -321,14 +321,13 @@ module chip_top
    // non-memory IO nasti-lite for peripherals
    nasti_channel
      #(
-       .ID_WIDTH    ( 1                     ),
        .ADDR_WIDTH  ( `ROCKET_PADDR_WIDTH   ),
        .DATA_WIDTH  ( `LOWRISC_IO_DAT_WIDTH ))
    io_lite();
 
    nasti_lite_bridge
      #(
-       .ID_WIDTH          ( 1                     ),
+       .ID_WIDTH          ( `ROCKET_IO_TAG_WIDTH  ),
        .ADDR_WIDTH        ( `ROCKET_PADDR_WIDTH   ),
        .NASTI_DATA_WIDTH  ( `ROCKET_IO_DAT_WIDTH  ),
        .LITE_DATA_WIDTH   ( `LOWRISC_IO_DAT_WIDTH )
@@ -345,6 +344,7 @@ module chip_top
 
    nasti_channel
      #(
+       .ID_WIDTH    ( `ROCKET_IO_TAG_WIDTH      ),
        .ADDR_WIDTH  ( `ROCKET_PADDR_WIDTH       ),
        .DATA_WIDTH  ( `ROCKET_IO_DAT_WIDTH      ))
    io_bram_nasti();
@@ -353,12 +353,14 @@ module chip_top
 
    nasti_channel
      #(
+       .ID_WIDTH    ( `ROCKET_IO_TAG_WIDTH      ),
        .ADDR_WIDTH  ( `ROCKET_PADDR_WIDTH       ),
        .DATA_WIDTH  ( `LOWRISC_IO_DAT_WIDTH     ))
    local_bram_nasti();
 
    nasti_narrower
      #(
+       .ID_WIDTH          ( `ROCKET_IO_TAG_WIDTH  ),
        .ADDR_WIDTH        ( `ROCKET_PADDR_WIDTH   ),
        .MASTER_DATA_WIDTH ( `ROCKET_IO_DAT_WIDTH  ),
        .SLAVE_DATA_WIDTH  ( `LOWRISC_IO_DAT_WIDTH ))
@@ -856,6 +858,7 @@ module chip_top
    nasti_channel
      #(
        .N_PORT      ( NUM_IO_MEM + 1            ),
+       .ID_WIDTH    ( `ROCKET_IO_TAG_WIDTH      ),
        .ADDR_WIDTH  ( `ROCKET_PADDR_WIDTH       ),
        .DATA_WIDTH  ( `ROCKET_IO_DAT_WIDTH      ))
    io_mem_cbo_nasti();
@@ -884,6 +887,7 @@ module chip_top
        .OB_DEPTH      ( 1                     ), // some IPs response only with data, which will cause deadlock in nasti_demux (no lock)
        .W_MAX         ( 1                     ),
        .R_MAX         ( 1                     ),
+       .ID_WIDTH      ( `ROCKET_IO_TAG_WIDTH  ),
        .ADDR_WIDTH    ( `ROCKET_PADDR_WIDTH   ),
        .DATA_WIDTH    ( `ROCKET_IO_DAT_WIDTH  ),
        .LITE_MODE     ( 0                     ),
