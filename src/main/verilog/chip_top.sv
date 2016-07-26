@@ -892,8 +892,8 @@ module chip_top
    io_mem_crossbar
      (
       .*,
-      .master ( io_lite     ),
-      .slave  ( io_cbo_lite )
+      .master ( io_nasti         ),
+      .slave  ( io_mem_cbo_nasti )
       );
 
  `ifdef ADD_BRAM
