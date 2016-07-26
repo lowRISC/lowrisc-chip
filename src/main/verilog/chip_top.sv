@@ -88,14 +88,13 @@ module chip_top
    // Rocket IO nasti-lite bus
    nasti_channel
      #(
-       .ID_WIDTH    ( 1              ),
+       .ID_WIDTH    ( `ROCKET_IO_TAG_WIDTH  ),
        .ADDR_WIDTH  ( `ROCKET_PADDR_WIDTH   ),
        .DATA_WIDTH  ( `ROCKET_IO_DAT_WIDTH  ))
    io_nasti();
 
    nasti_channel
      #(
-       .ID_WIDTH    ( 1              ),
        .ADDR_WIDTH  ( `ROCKET_PADDR_WIDTH   ),
        .DATA_WIDTH  ( `LOWRISC_IO_DAT_WIDTH ))
    io_lite();
@@ -800,7 +799,7 @@ module chip_top
    // convert io_nasti to io_lite
    nasti_lite_bridge
      #(
-       .ID_WIDTH          ( 1                     ),
+       .ID_WIDTH          ( `ROCKET_IO_TAG_WIDTH  ),
        .ADDR_WIDTH        ( `ROCKET_PADDR_WIDTH   ),
        .NASTI_DATA_WIDTH  ( `ROCKET_IO_DAT_WIDTH  ),
        .LITE_DATA_WIDTH   ( `LOWRISC_IO_DAT_WIDTH )
