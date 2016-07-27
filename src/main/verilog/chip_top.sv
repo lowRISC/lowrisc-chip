@@ -58,11 +58,18 @@ module chip_top
    output        sd_reset,
 `endif
 
+`ifdef ADD_FLASH
+   inout         flash_ss,
+   inout [3:0]   flash_io,
+`endif
+
    // clock and reset
    input         clk_p,
    input         clk_n,
    input         rst_top
    );
+
+   genvar        i;
 
    // internal clock and reset signals
    logic  clk, rst, rstn;
@@ -390,6 +397,7 @@ module chip_top
      (
       .s_axi_aclk      ( clk                       ),
       .s_axi_aresetn   ( rstn                      ),
+      .s_axi_arid      ( local_bram_nasti.ar_id    ),
       .s_axi_araddr    ( local_bram_nasti.ar_addr  ),
       .s_axi_arlen     ( local_bram_nasti.ar_len   ),
       .s_axi_arsize    ( local_bram_nasti.ar_size  ),
@@ -399,6 +407,13 @@ module chip_top
       .s_axi_arprot    ( local_bram_nasti.ar_prot  ),
       .s_axi_arready   ( local_bram_nasti.ar_ready ),
       .s_axi_arvalid   ( local_bram_nasti.ar_valid ),
+      .s_axi_rid       ( local_bram_nasti.r_id     ),
+      .s_axi_rdata     ( local_bram_nasti.r_data   ),
+      .s_axi_rresp     ( local_bram_nasti.r_resp   ),
+      .s_axi_rlast     ( local_bram_nasti.r_last   ),
+      .s_axi_rready    ( local_bram_nasti.r_ready  ),
+      .s_axi_rvalid    ( local_bram_nasti.r_valid  ),
+      .s_axi_awid      ( local_bram_nasti.aw_id    ),
       .s_axi_awaddr    ( local_bram_nasti.aw_addr  ),
       .s_axi_awlen     ( local_bram_nasti.aw_len   ),
       .s_axi_awsize    ( local_bram_nasti.aw_size  ),
@@ -408,19 +423,15 @@ module chip_top
       .s_axi_awprot    ( local_bram_nasti.aw_prot  ),
       .s_axi_awready   ( local_bram_nasti.aw_ready ),
       .s_axi_awvalid   ( local_bram_nasti.aw_valid ),
-      .s_axi_bready    ( local_bram_nasti.b_ready  ),
-      .s_axi_bresp     ( local_bram_nasti.b_resp   ),
-      .s_axi_bvalid    ( local_bram_nasti.b_valid  ),
-      .s_axi_rdata     ( local_bram_nasti.r_data   ),
-      .s_axi_rready    ( local_bram_nasti.r_ready  ),
-      .s_axi_rresp     ( local_bram_nasti.r_resp   ),
-      .s_axi_rlast     ( local_bram_nasti.r_last   ),
-      .s_axi_rvalid    ( local_bram_nasti.r_valid  ),
       .s_axi_wdata     ( local_bram_nasti.w_data   ),
-      .s_axi_wready    ( local_bram_nasti.w_ready  ),
       .s_axi_wstrb     ( local_bram_nasti.w_strb   ),
       .s_axi_wlast     ( local_bram_nasti.w_last   ),
+      .s_axi_wready    ( local_bram_nasti.w_ready  ),
       .s_axi_wvalid    ( local_bram_nasti.w_valid  ),
+      .s_axi_bid       ( local_bram_nasti.b_id     ),
+      .s_axi_bresp     ( local_bram_nasti.b_resp   ),
+      .s_axi_bready    ( local_bram_nasti.b_ready  ),
+      .s_axi_bvalid    ( local_bram_nasti.b_valid  ),
       .bram_rst_a      ( ram_rst                   ),
       .bram_clk_a      ( ram_clk                   ),
       .bram_en_a       ( ram_en                    ),
@@ -457,6 +468,115 @@ module chip_top
    assign ram_rddata = ram_rddata_full >> ram_rddata_shift;
 
    initial $readmemh("boot.mem", ram);
+`endif
+
+   /////////////////////////////////////////////////////////////
+   // XIP SPI Flash
+   nasti_channel
+     #(
+       .ID_WIDTH    ( `ROCKET_IO_TAG_WIDTH      ),
+       .ADDR_WIDTH  ( `ROCKET_PADDR_WIDTH       ),
+       .DATA_WIDTH  ( `ROCKET_IO_DAT_WIDTH      ))
+   io_flash_nasti();
+
+`ifdef ADD_FLASH
+   nasti_channel
+     #(
+       .ID_WIDTH    ( `ROCKET_IO_TAG_WIDTH      ),
+       .ADDR_WIDTH  ( `ROCKET_PADDR_WIDTH       ),
+       .DATA_WIDTH  ( `LOWRISC_IO_DAT_WIDTH     ))
+   local_flash_nasti();
+
+   nasti_narrower
+     #(
+       .ID_WIDTH          ( `ROCKET_IO_TAG_WIDTH  ),
+       .ADDR_WIDTH        ( `ROCKET_PADDR_WIDTH   ),
+       .MASTER_DATA_WIDTH ( `ROCKET_IO_DAT_WIDTH  ),
+       .SLAVE_DATA_WIDTH  ( `LOWRISC_IO_DAT_WIDTH ))
+   flash_narrower
+     (
+      .*,
+      .master ( io_flash_nasti     ),
+      .slave  ( local_flash_nasti  )
+      );
+
+   wire       flash_ss_i,  flash_ss_o,  flash_ss_t;
+   wire [3:0] flash_io_i,  flash_io_o,  flash_io_t;
+
+   axi_quad_spi_1 flash_i
+     (
+      .ext_spi_clk      ( clk                           ),
+      .s_axi_aclk       ( clk                           ),
+      .s_axi_aresetn    ( rstn                          ),
+      .s_axi4_aclk      ( clk                           ),
+      .s_axi4_aresetn   ( rstn                          ),
+      .s_axi_awvalid    ( 1'b0                          ),
+      .s_axi_wvalid     ( 1'b0                          ),
+      .s_axi_bready     ( 1'b0                          ),
+      .s_axi_arvalid    ( 1'b0                          ),
+      .s_axi_rready     ( 1'b0                          ),
+      .s_axi4_awid      ( local_flash_nasti.aw_id       ),
+      .s_axi4_awaddr    ( local_flash_nasti.aw_addr     ),
+      .s_axi4_awlen     ( local_flash_nasti.aw_len      ),
+      .s_axi4_awsize    ( local_flash_nasti.aw_size     ),
+      .s_axi4_awburst   ( local_flash_nasti.aw_burst    ),
+      .s_axi4_awlock    ( local_flash_nasti.aw_lock     ),
+      .s_axi4_awcache   ( local_flash_nasti.aw_cache    ),
+      .s_axi4_awprot    ( local_flash_nasti.aw_prot     ),
+      .s_axi4_awvalid   ( local_flash_nasti.aw_valid    ),
+      .s_axi4_awready   ( local_flash_nasti.aw_ready    ),
+      .s_axi4_wdata     ( local_flash_nasti.w_data      ),
+      .s_axi4_wstrb     ( local_flash_nasti.w_strb      ),
+      .s_axi4_wlast     ( local_flash_nasti.w_last      ),
+      .s_axi4_wvalid    ( local_flash_nasti.w_valid     ),
+      .s_axi4_wready    ( local_flash_nasti.w_ready     ),
+      .s_axi4_bid       ( local_flash_nasti.b_id        ),
+      .s_axi4_bresp     ( local_flash_nasti.b_resp      ),
+      .s_axi4_bvalid    ( local_flash_nasti.b_valid     ),
+      .s_axi4_bready    ( local_flash_nasti.b_ready     ),
+      .s_axi4_arid      ( local_flash_nasti.ar_id       ),
+      .s_axi4_araddr    ( local_flash_nasti.ar_addr     ),
+      .s_axi4_arlen     ( local_flash_nasti.ar_len      ),
+      .s_axi4_arsize    ( local_flash_nasti.ar_size     ),
+      .s_axi4_arburst   ( local_flash_nasti.ar_burst    ),
+      .s_axi4_arlock    ( local_flash_nasti.ar_lock     ),
+      .s_axi4_arcache   ( local_flash_nasti.ar_cache    ),
+      .s_axi4_arprot    ( local_flash_nasti.ar_prot     ),
+      .s_axi4_arvalid   ( local_flash_nasti.ar_valid    ),
+      .s_axi4_arready   ( local_flash_nasti.ar_ready    ),
+      .s_axi4_rid       ( local_flash_nasti.r_id        ),
+      .s_axi4_rdata     ( local_flash_nasti.r_data      ),
+      .s_axi4_rresp     ( local_flash_nasti.r_resp      ),
+      .s_axi4_rlast     ( local_flash_nasti.r_last      ),
+      .s_axi4_rvalid    ( local_flash_nasti.r_valid     ),
+      .s_axi4_rready    ( local_flash_nasti.r_ready     ),
+      .io0_i            ( flash_io_i[0]                 ),
+      .io0_o            ( flash_io_o[0]                 ),
+      .io0_t            ( flash_io_t[0]                 ),
+      .io1_i            ( flash_io_i[1]                 ),
+      .io1_o            ( flash_io_o[1]                 ),
+      .io1_t            ( flash_io_t[1]                 ),
+      .io2_i            ( flash_io_i[2]                 ),
+      .io2_o            ( flash_io_o[2]                 ),
+      .io2_t            ( flash_io_t[2]                 ),
+      .io3_i            ( flash_io_i[3]                 ),
+      .io3_o            ( flash_io_o[3]                 ),
+      .io3_t            ( flash_io_t[3]                 ),
+      .ss_i             ( flash_ss_i                    ),
+      .ss_o             ( flash_ss_o                    ),
+      .ss_t             ( flash_ss_t                    )
+      );
+
+   // tri-state gates
+   generate for(i=0; i<4; i++) begin
+      assign flash_io[i] = !flash_io_t[i] ? flash_io_o[i] : 1'bz;
+      assign flash_io_i[i] = flash_io[i];
+   end
+   endgenerate
+
+   assign flash_ss = !flash_ss_t ? flash_ss_o : 1'bz;
+   assign flash_ss_i = flash_ss;
+
 `endif
 
    /////////////////////////////////////////////////////////////
@@ -499,7 +619,7 @@ module chip_top
       );
 
 
-   // tri-state gate to protect SPI IOs
+   // tri-state gate
    assign spi_mosi = !spi_mosi_t ? spi_mosi_o : 1'bz;
    assign spi_mosi_i = 1'b1;    // always in master mode
 
@@ -852,7 +972,7 @@ module chip_top
    /////////////////////////////////////////////////////////////
    // IO memory crossbar
 
-   localparam NUM_IO_MEM = 1;
+   localparam NUM_IO_MEM = 2;
 
    // output of the IO crossbar
    nasti_channel
@@ -863,14 +983,14 @@ module chip_top
        .DATA_WIDTH  ( `ROCKET_IO_DAT_WIDTH      ))
    io_mem_cbo_nasti();
 
-   nasti_channel io_mem_dmm2(), io_mem_dmm3(), io_mem_dmm4(), io_mem_dmm5(), io_mem_dmm6(), io_mem_dmm7(); // dummy channels
+   nasti_channel io_mem_dmm3(), io_mem_dmm4(), io_mem_dmm5(), io_mem_dmm6(), io_mem_dmm7(); // dummy channels
 
    nasti_channel_slicer #(NUM_IO_MEM + 1)
    io_mem_slicer (
                   .master   ( io_mem_cbo_nasti ),
                   .slave_0  ( io_io_nasti      ),
                   .slave_1  ( io_bram_nasti    ),
-                  .slave_2  ( io_mem_dmm2      ),
+                  .slave_2  ( io_flash_nasti   ),
                   .slave_3  ( io_mem_dmm3      ),
                   .slave_4  ( io_mem_dmm4      ),
                   .slave_5  ( io_mem_dmm5      ),
@@ -903,6 +1023,11 @@ module chip_top
  `ifdef ADD_BRAM
    defparam io_mem_crossbar.BASE1 = `DEV_MAP__io_ext_bram__BASE;
    defparam io_mem_crossbar.MASK1 = `DEV_MAP__io_ext_bram__MASK;
+ `endif
+
+ `ifdef ADD_FLASH
+   defparam io_mem_crossbar.BASE2 = `DEV_MAP__io_ext_flash__BASE;
+   defparam io_mem_crossbar.MASK2 = `DEV_MAP__io_ext_flash__MASK;
  `endif
 
 endmodule // chip_top
