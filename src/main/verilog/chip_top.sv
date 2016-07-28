@@ -42,7 +42,6 @@ module chip_top
      output        ddr_cke,
      output [1:0]  ddr_dm,
      output        ddr_odt,
-     output        init_calib_complete,
  `elsif NEXYS4
    // DDR2 RAM
    inout [15:0]  ddr_dq,
@@ -221,18 +220,13 @@ module chip_top
       );
 
  `ifdef NEXYS4_VIDEO
-   //clock generator
-   logic mig_sys_clk, clk_locked;
-   clk_wiz_0 clk_gen
-     (
-      .clk_in1     ( clk_p         ), // 100 MHz onboard
-      .clk_out1    ( mig_sys_clk   ), // 200 MHz
-      .reset       ( rst_top       ), // Active HIGH reset !
-      .locked      ( clk_locked    )
-      );
+  `define CLK_WIZ_0
+ `endif
+ `ifdef NEXYS4
+  `define CLK_WIZ_0
  `endif
 
- `ifdef NEXYS4
+ `ifdef CLK_WIZ_0   
    //clock generator
    logic mig_sys_clk, clk_locked;
    clk_wiz_0 clk_gen
@@ -242,7 +236,7 @@ module chip_top
       .resetn      ( rst_top       ),
       .locked      ( clk_locked    )
       );
- `endif //  `ifdef NEXYS4
+ `endif //  `ifdef CLK_WIZ_0
 
    // DRAM controller
    mig_7series_0 dram_ctl
@@ -285,7 +279,7 @@ module chip_top
      .ddr3_dq                        (ddr_dq),  // inout [15:0]        ddr3_dq
      .ddr3_dqs_n                     (ddr_dqs_n),  // inout [1:0]        ddr3_dqs_n
      .ddr3_dqs_p                     (ddr_dqs_p),  // inout [1:0]        ddr3_dqs_p
-     .init_calib_complete            (init_calib_complete),  // output   init_calib_complete
+     .init_calib_complete            (),  // output   init_calib_complete
      .ddr3_dm                        (ddr_dm),  // output [1:0]        ddr3_dm
      .ddr3_odt                       (ddr_odt),  // output [0:0]        ddr3_odt
  `elsif NEXYS4

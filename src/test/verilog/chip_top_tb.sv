@@ -14,7 +14,13 @@ module tb;
          .clk_p(clk),
          .clk_n(!clk),
 `ifdef FPGA_FULL
+ `ifdef NEXYS4_VIDEO
+  `define CLK_WIZ_0
+ `endif
  `ifdef NEXYS4
+  `define CLK_WIZ_0
+ `endif
+ `ifdef CLK_WIZ_0
          .rst_top(!rst)         // NEXYS4's cpu_reset is active low
  `else
          .rst_top(rst)
@@ -103,7 +109,6 @@ module tb;
    logic        ddr_cs_n;
    wire [1:0]   ddr_dm;
    logic        ddr_odt;
-   wire 	init_calib_complete;
    
    // behavioural DDR3 RAM
    genvar       i;
