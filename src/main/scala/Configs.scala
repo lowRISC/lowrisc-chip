@@ -40,7 +40,7 @@ class BaseConfig extends Config (
         Dump("ADD_BRAM", true)
       }
       if (site(UseFlash)) {
-        entries += AddrMapEntry("flash", MemSize(1<<24, 1<<24, MemAttr(AddrMapProt.RWX)))
+        entries += AddrMapEntry("flash", MemSize(1<<24, 1<<24, MemAttr(AddrMapProt.RX)))
           Dump("ADD_FLASH", true)
       }
       if (site(UseHost)) {
