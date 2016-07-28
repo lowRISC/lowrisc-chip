@@ -328,6 +328,7 @@ class BaseConfig extends Config (
       case UseUART => false
       case UseSPI => false
       case UseBootRAM => false
+      case UseFlash => false
 
       // NASTI BUS parameters
       case NastiKey("mem") =>
