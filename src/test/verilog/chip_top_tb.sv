@@ -183,6 +183,13 @@ module tb;
 
    assign spi_sclk = 1'bz;
 
+   // flash
+   wire flash_ss;
+   wire [3:0] flash_io;
+
+   assign flash_ss = 1'bz;
+   assign flash_io = 4'bzzzz;
+
 `endif
 
 endmodule // tb
