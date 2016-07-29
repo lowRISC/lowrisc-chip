@@ -15,6 +15,7 @@ case object UseHost extends Field[Boolean]
 case object UseUART extends Field[Boolean]
 case object UseSPI extends Field[Boolean]
 case object UseBootRAM extends Field[Boolean]
+case object UseFlash extends Field[Boolean]
 case object RAMSize extends Field[BigInt]
 case object IOTagBits extends Field[Int]
 
@@ -37,6 +38,10 @@ class BaseConfig extends Config (
       if (site(UseBootRAM)) {
         entries += AddrMapEntry("bram", MemSize(1<<16, 1<<30, MemAttr(AddrMapProt.RWX)))
         Dump("ADD_BRAM", true)
+      }
+      if (site(UseFlash)) {
+        entries += AddrMapEntry("flash", MemSize(1<<24, 1<<24, MemAttr(AddrMapProt.RX)))
+          Dump("ADD_FLASH", true)
       }
       if (site(UseHost)) {
         entries += AddrMapEntry("host", MemSize(1<<6, 1<<13, MemAttr(AddrMapProt.W)))
@@ -323,6 +328,7 @@ class BaseConfig extends Config (
       case UseUART => false
       case UseSPI => false
       case UseBootRAM => false
+      case UseFlash => false
 
       // NASTI BUS parameters
       case NastiKey("mem") =>
@@ -420,17 +426,26 @@ class WithBootRAMConfig extends Config (
   }
 )
 
+class WithFlashConfig extends Config (
+  (pname,site,here) => pname match {
+    case UseFlash => true
+  }
+)
+
 class With128MRamConfig extends Config (
   (pname,site,here) => pname match {
     case RAMSize => BigInt(1L << 27)  // 128 MB
   }
 )
 
+class BasicFPGAConfig extends
+    Config(new WithSPIConfig ++ new WithBootRAMConfig ++ new WithFlashConfig ++ new BaseConfig)
+
 class FPGAConfig extends
-    Config(new WithUARTConfig ++ new WithSPIConfig ++ new WithBootRAMConfig ++ new BaseConfig)
+    Config(new WithUARTConfig ++ new BasicFPGAConfig)
 
 class FPGADebugConfig extends
-    Config(new WithDebugConfig ++ new WithSPIConfig ++ new WithBootRAMConfig ++ new BaseConfig)
+    Config(new WithDebugConfig ++ new BasicFPGAConfig)
 
 class Nexys4Config extends
     Config(new With128MRamConfig ++ new FPGAConfig)

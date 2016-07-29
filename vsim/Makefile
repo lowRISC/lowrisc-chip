@@ -82,6 +82,7 @@ verilog_srcs = \
 
 verilog_headers = \
 	$(base_dir)/src/main/verilog/config.vh \
+	$(base_dir)/socip/nasti/nasti_request.vh \
 
 test_verilog_srcs = \
 	$(base_dir)/src/test/verilog/host_behav.sv \
@@ -124,13 +125,14 @@ veri_flags = \
 	-DVERILATOR_GCC \
 	+incdir+$(generated_dir) \
 	+incdir+$(base_dir)/src/main/verilog \
+	+incdir+$(base_dir)/socip/nasti \
 	--top-module $(tb_top) \
 	--unroll-count 256 \
 	--trace \
 	-Wno-lint -Wno-style -Wno-STMTDLY -Wno-ASSIGNIN\
 	-CFLAGS "-std=c++11" \
 	-CFLAGS "-I$(base_dir)/src/test/cxx/common -I$(base_dir)/src/test/cxx/veri -I$(glip_dir)/backend_tcp/logic/dpi" \
-        -LDFLAGS "-pthread" \
+	-LDFLAGS "-pthread" \
 	--exe \
 	--Mdir $(sim_dir)/verilator
 
