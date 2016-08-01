@@ -1,5 +1,7 @@
 // See LICENSE for license details.
 
+`include "consts.vh"
+
 module tb;
 
    logic clk, rst;
