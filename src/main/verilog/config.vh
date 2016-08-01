@@ -53,6 +53,14 @@
    `define ADD_PHY_DDR
   `endif
 
- `endif
+  `ifdef NEXYS4_VIDEO
+   `define NEXYS4_COMMON
+  `endif
+
+  `ifdef NEXYS4
+   `define NEXYS4_COMMON
+  `endif
+
+`endif
 
 `endif

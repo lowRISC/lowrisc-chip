@@ -14,13 +14,7 @@ module tb;
          .clk_p(clk),
          .clk_n(!clk),
 `ifdef FPGA_FULL
- `ifdef NEXYS4_VIDEO
-  `define CLK_WIZ_0
- `endif
- `ifdef NEXYS4
-  `define CLK_WIZ_0
- `endif
- `ifdef CLK_WIZ_0
+ `ifdef NEXYS4_COMMON
          .rst_top(!rst)         // NEXYS4's cpu_reset is active low
  `else
          .rst_top(rst)
