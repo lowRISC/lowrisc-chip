@@ -22,3 +22,15 @@
 [submodule "junctions"]
 	path = junctions
 	url = https://github.com/lowrisc/junctions.git
+[submodule "context-dependent-environments"]
+	path = context-dependent-environments
+	url = https://github.com/lowrisc/context-dependent-environments.git
+[submodule "opensocdebug/hardware"]
+	path = opensocdebug/hardware
+	url = https://github.com/opensocdebug/hardware
+[submodule "opensocdebug/glip"]
+	path = opensocdebug/glip
+	url = https://github.com/tum-lis/glip
+[submodule "opensocdebug/software"]
+	path = opensocdebug/software
+	url = https://github.com/opensocdebug/software

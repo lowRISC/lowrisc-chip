@@ -122,12 +122,20 @@ module tb;
 
    // spi
    wire spi_cs, spi_sclk, spi_mosi, spi_miso;
+   wire sd_reset;
    assign spi_cs = 1'bz;
    assign spi_sclk = 1'bz;
    assign spi_mosi = 1'bz;
    assign spi_miso = !spi_cs ? spi_mosi : 1'bz;
 
    assign spi_sclk = 1'bz;
+
+   // flash
+   wire flash_ss;
+   wire [3:0] flash_io;
+
+   assign flash_ss = 1'bz;
+   assign flash_io = 4'bzzzz;
 
 `endif
 
