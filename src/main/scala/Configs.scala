@@ -187,38 +187,24 @@ class BaseConfig extends Config (
       case "L2Bank" => {
         case NSets => Knob("L2_SETS")
         case NWays => Knob("L2_WAYS")
-<<<<<<< HEAD
-        case RowBits => site(TagTLDataBits)
-=======
         case RowBits => site(TLKey(site(TLId))).dataBitsPerBeat
         case CacheIdBits => log2Ceil(site(NBanks))
 	    case SplitMetadata => false
->>>>>>> origin/update
       }: PF
 
       // Tag Cache
-      case TagMemSize => 26 //64 MB for DRAM
-      case TagMemSizeBram => 12 //4kB for BRAM
+      case UseTagMem = false
       case TagBits => 4
-      case TCBlockBits => site(MIFDataBits)
+      case TagMapRatio => 1 << site(PgIdxBits)
       case TCTransactors => Knob("TC_XACTORS")
-      case TCBlockTags => 1 << log2Down(site(TCBlockBits) / site(TagBits))
-      case TCBaseAddr => Knob("TC_BASE_ADDR")
-      case TCBaseAddrBram => 0xFFFF
-      case TCTrackers => 1
-      case TagBlockBytes => site(CacheBlockBytes)
-      case TagRowBytes => site(MIFDataBits) / 8
-      case TagRowTags => 1 << log2Down((site(TagRowBytes) * 8) / site(TagBits))
-      case TagRowBlocks => site(TagRowTags) * 8 / site(CacheBlockBytes)
-      case TagBlockBlocks => site(TagBlockBytes) / site(TagRowBytes) * site(TagRowBlocks)
-      case TagBlockTagBits => site(TagBits) * site(CacheBlockBytes) / 8
       case "TagCache" => {
         case NSets => Knob("TC_SETS")
         case NWays => Knob("TC_WAYS")
-        case RowBits => site(TCBlockTags) * site(TagBits)
+        case RowBits => site(TLKey(site(TLId))).dataBitsPerBeat
         case CacheIdBits => 0
+	    case SplitMetadata => false
       }: PF
-      
+
       //Tile Constants
       case NTiles => Knob("NTILES")
       case BuildRoCC => Nil
@@ -273,7 +259,7 @@ class BaseConfig extends Config (
           maxClientXacts = site(NMSHRs) + 1,
           maxClientsPerPort = 1,
           maxManagerXacts = site(NAcquireTransactors) + 2, // acquire, release, writeback
-          dataBits = site(CacheBlockBytes)*8,
+          dataBits = TagUtil(site(TagBIts)).sizeWithTag(site(CacheBlockBytes)*8),
           dataBeats = 8
         )
       case TLKey("L2toIO") =>
@@ -285,15 +271,16 @@ class BaseConfig extends Config (
           maxClientXacts = 1,
           maxClientsPerPort = site(NAcquireTransactors) + 2,
           maxManagerXacts = 1,
-          dataBits = site(CacheBlockBytes)*8,
+          dataBits = TagUtil(site(TagBIts)).sizeWithTag(site(CacheBlockBytes)*8),
           dataBeats = 8
         )
       case TLKey("IONet") =>
         site(TLKey("L2toIO")).copy(
+          dataBits = site(CacheBlockBytes)*8,
           dataBeats = site(CacheBlockBytes)*8 / site(XLen)
         )
       case TLKey("ExtIONet") =>
-        site(TLKey("L2toIO")).copy(
+        site(TLKey("IONet")).copy(
           dataBeats = site(CacheBlockBytes)*8 / site(IODataBits)
         )
       case TLKey("L2toTC") =>
@@ -304,27 +291,22 @@ class BaseConfig extends Config (
           nCachelessClients = site(NBanks),
           maxClientXacts = 1,
           maxClientsPerPort = site(NAcquireTransactors) + 2,
-          maxManagerXacts = 1, //site(TCTransactors),
-          dataBits = site(CacheBlockBytes)*8,
+          maxManagerXacts = site(TCTransactors),
+          dataBits = TagUtil(site(TagBIts)).sizeWithTag(site(CacheBlockBytes)*8),
           dataBeats = 8
         )
       case TLKey("TCtoMem") =>
-        site(TLKey("L2toTC")).copy(
+        TileLinkParameters(
+          coherencePolicy = new MEICoherence(new NullRepresentation(site(NBanks))),
+          nManagers = 1,
+          nCachingClients = 0,
+          nCachelessClients = 1,
+          maxClientXacts = 1,
+          maxClientsPerPort = site(TCTransactors),
+          maxManagerXacts = 1,
+          dataBits = site(CacheBlockBytes)*8,
           dataBeats = 8
         )
-
-//      case TLKey("TCtoMem") =>
-//        TileLinkParameters(
-//          coherencePolicy = new MEICoherence(new NullRepresentation(site(NBanks))),
-//          nManagers = 1,
-//          nCachingClients = 0,
-//          nCachelessClients = 1,
-//          maxClientXacts = site(TCTransactors),
-//          maxClientsPerPort = 1,
-//          maxManagerXacts = 1,
-//          dataBits = site(CacheBlockBytes)*8,
-//          dataBeats = 8
-//        )
 
 
       // debug
@@ -382,11 +364,16 @@ class BaseConfig extends Config (
     case "TC_XACTORS" => 1
     case "TC_SETS" => 64
     case "TC_WAYS" => 8
-    case "TC_BASE_ADDR" =>  0x7FFFFFFF //<< 20 //0x7FF00000 //Strart Tag segment for DRAM
   }
 )
 
-
+class WithTagConfig extends Config (
+  (pname,site,here) => pname match {
+    case UseTag => true
+    case TagBits => 4
+    case TagMapRatio => 1 << site(PgIdxBits)
+  }
+)
 
 class WithDebugConfig extends Config (
   (pname,site,here) => pname match {
