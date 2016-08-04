@@ -26,6 +26,22 @@ module chip_top
    output        ddr_cs_n,
    output [7:0]  ddr_dm,
    output        ddr_odt,
+ `elsif NEXYS4_VIDEO
+   // DDR3 RAM
+   inout [15:0]  ddr_dq,
+   inout [1:0]   ddr_dqs_n,
+   inout [1:0]   ddr_dqs_p,
+   output [14:0] ddr_addr,
+   output [2:0]  ddr_ba,
+   output        ddr_ras_n,
+   output        ddr_cas_n,
+   output        ddr_we_n,
+   output        ddr_reset_n,
+   output        ddr_ck_n,
+   output        ddr_ck_p,
+   output        ddr_cke,
+   output [1:0]  ddr_dm,
+   output        ddr_odt,
  `elsif NEXYS4
    // DDR2 RAM
    inout [15:0]  ddr_dq,
@@ -193,7 +209,7 @@ module chip_top
       .m_axi_rready         ( mem_mig_nasti.r_ready    )
       );
 
- `ifdef NEXYS4
+ `ifdef NEXYS4_COMMON
    //clock generator
    logic mig_sys_clk, clk_locked;
    clk_wiz_0 clk_gen
@@ -203,7 +219,7 @@ module chip_top
       .resetn      ( rst_top       ),
       .locked      ( clk_locked    )
       );
- `endif //  `ifdef NEXYS4
+ `endif //  `ifdef NEXYS4_COMMON
 
    // DRAM controller
    mig_7series_0 dram_ctl
@@ -226,6 +242,24 @@ module chip_top
       .ddr3_ck_n            ( ddr_ck_n               ),
       .ddr3_cke             ( ddr_cke                ),
       .ddr3_cs_n            ( ddr_cs_n               ),
+      .ddr3_dm              ( ddr_dm                 ),
+      .ddr3_odt             ( ddr_odt                ),
+ `elsif NEXYS4_VIDEO
+      .sys_clk_i            ( mig_sys_clk            ),
+      .sys_rst              ( clk_locked             ),
+      .ui_addn_clk_0        ( clk                    ),
+      .ddr3_addr            ( ddr_addr               ),
+      .ddr3_ba              ( ddr_ba                 ),
+      .ddr3_cas_n           ( ddr_cas_n              ),
+      .ddr3_ck_n            ( ddr_ck_n               ),
+      .ddr3_ck_p            ( ddr_ck_p               ),
+      .ddr3_cke             ( ddr_cke                ),
+      .ddr3_ras_n           ( ddr_ras_n              ),
+      .ddr3_reset_n         ( ddr_reset_n            ),
+      .ddr3_we_n            ( ddr_we_n               ),
+      .ddr3_dq              ( ddr_dq                 ),
+      .ddr3_dqs_n           ( ddr_dqs_n              ),
+      .ddr3_dqs_p           ( ddr_dqs_p              ),
       .ddr3_dm              ( ddr_dm                 ),
       .ddr3_odt             ( ddr_odt                ),
  `elsif NEXYS4
