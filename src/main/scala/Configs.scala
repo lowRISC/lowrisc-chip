@@ -195,11 +195,17 @@ class BaseConfig extends Config (
       // Tag Cache
       case UseTagMem = false
       case TagBits => 4
-      case TagMapRatio => 1 << site(PgIdxBits)
+      case TagMapBits => 4
       case TCTransactors => Knob("TC_XACTORS")
       case "TagCache" => {
         case NSets => Knob("TC_SETS")
         case NWays => Knob("TC_WAYS")
+        case RowBits => site(TLKey(site(TLId))).dataBitsPerBeat
+        case CacheIdBits => 0
+	    case SplitMetadata => false
+      }: PF
+      case "TagMap" => {
+        case NSets => Knob("TM_SETS")
         case RowBits => site(TLKey(site(TLId))).dataBitsPerBeat
         case CacheIdBits => 0
 	    case SplitMetadata => false
@@ -259,8 +265,9 @@ class BaseConfig extends Config (
           maxClientXacts = site(NMSHRs) + 1,
           maxClientsPerPort = 1,
           maxManagerXacts = site(NAcquireTransactors) + 2, // acquire, release, writeback
-          dataBits = TagUtil(site(TagBIts)).sizeWithTag(site(CacheBlockBytes)*8),
-          dataBeats = 8
+          dataBits = site(CacheBlockBytes)*8,
+          dataBeats = 8,
+          withTag = site(UseTagMem)
         )
       case TLKey("L2toIO") =>
         TileLinkParameters(
@@ -271,13 +278,15 @@ class BaseConfig extends Config (
           maxClientXacts = 1,
           maxClientsPerPort = site(NAcquireTransactors) + 2,
           maxManagerXacts = 1,
-          dataBits = TagUtil(site(TagBIts)).sizeWithTag(site(CacheBlockBytes)*8),
-          dataBeats = 8
+          dataBits = site(CacheBlockBytes)*8,
+          dataBeats = 8,
+          withTag = site(UseTagMem)
         )
       case TLKey("IONet") =>
         site(TLKey("L2toIO")).copy(
           dataBits = site(CacheBlockBytes)*8,
-          dataBeats = site(CacheBlockBytes)*8 / site(XLen)
+          dataBeats = site(CacheBlockBytes)*8 / site(XLen),
+          withTag = false
         )
       case TLKey("ExtIONet") =>
         site(TLKey("IONet")).copy(
@@ -292,8 +301,9 @@ class BaseConfig extends Config (
           maxClientXacts = 1,
           maxClientsPerPort = site(NAcquireTransactors) + 2,
           maxManagerXacts = site(TCTransactors),
-          dataBits = TagUtil(site(TagBIts)).sizeWithTag(site(CacheBlockBytes)*8),
-          dataBeats = 8
+          dataBits = site(CacheBlockBytes)*8,
+          dataBeats = 8,
+          withTag = p(UseTagMem)
         )
       case TLKey("TCtoMem") =>
         TileLinkParameters(
@@ -305,7 +315,8 @@ class BaseConfig extends Config (
           maxClientsPerPort = site(TCTransactors),
           maxManagerXacts = 1,
           dataBits = site(CacheBlockBytes)*8,
-          dataBeats = 8
+          dataBeats = 8,
+          withTag = false
         )
 
 
