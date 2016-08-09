@@ -196,7 +196,8 @@ class BaseConfig extends Config (
       case UseTagMem = false
       case TagBits => 4
       case TagMapBits => 4
-      case TCTransactors => Knob("TC_XACTORS")
+      case TCMemTransactors   => Knob("TC_MEM_XACTORS")
+      case TCCacheTransactors => Knob("TC_C_XACTORS")
       case "TagCache" => {
         case NSets => Knob("TC_SETS")
         case NWays => Knob("TC_WAYS")
@@ -300,7 +301,7 @@ class BaseConfig extends Config (
           nCachelessClients = site(NBanks),
           maxClientXacts = 1,
           maxClientsPerPort = site(NAcquireTransactors) + 2,
-          maxManagerXacts = site(TCTransactors),
+          maxManagerXacts = site(TCMemTransactors),
           dataBits = site(CacheBlockBytes)*8,
           dataBeats = 8,
           withTag = p(UseTagMem)
@@ -312,7 +313,10 @@ class BaseConfig extends Config (
           nCachingClients = 0,
           nCachelessClients = 1,
           maxClientXacts = 1,
-          maxClientsPerPort = site(TCTransactors),
+          maxClientsPerPort =
+            site(TCMemTransactors)
+              + site(TCCTransactors)
+              + 1,
           maxManagerXacts = 1,
           dataBits = site(CacheBlockBytes)*8,
           dataBeats = 8,
@@ -372,7 +376,8 @@ class BaseConfig extends Config (
     case "L2_SETS" => 256 // 1024
     case "L2_WAYS" => 8
 
-    case "TC_XACTORS" => 1
+    case "TC_MEM_XACTORS" => 4
+    case "TC_C_XACTORS"   => 2
     case "TC_SETS" => 64
     case "TC_WAYS" => 8
   }
