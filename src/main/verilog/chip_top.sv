@@ -64,6 +64,8 @@ module chip_top
 `ifdef ADD_UART_IO
    input         rxd,
    output        txd,
+   output        rts,
+   input         cts,
 `endif
 
 `ifdef ADD_SPI
@@ -743,6 +745,8 @@ module chip_top
       .uart_w_valid    ( io_uart_lite.w_valid   ),
       .rx              ( rxd                    ),
       .tx              ( txd                    ),
+      .rts             ( rts                    ),
+      .cts             ( cts                    ),
       .sys_rst         ( sys_rst                ),
       .cpu_rst         ( cpu_rst                ),
       .ring_out        ( debug_ring_start       ),
@@ -796,8 +800,8 @@ module chip_top
       .dsrn            ( 1'b1                   ),
       .sin             ( rxd                    ),
       .sout            ( txd                    ),
-      .ctsn            ( 1'b1                   ),
-      .rtsn            (                        )
+      .ctsn            ( cts                    ),
+      .rtsn            ( rts                    )
       );
 
   `else // !`ifdef ADD_UART
