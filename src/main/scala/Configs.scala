@@ -195,18 +195,12 @@ class BaseConfig extends Config (
       // Tag Cache
       case UseTagMem = false
       case TagBits => 4
-      case TagMapBits => 4
-      case TCMemTransactors   => Knob("TC_MEM_XACTORS")
-      case TCCacheTransactors => Knob("TC_C_XACTORS")
+      case TagMapRatio => site(CacheBlockBytes) * 8
+      case TCMemTransactors  => Knob("TC_MEM_XACTORS")
+      case TCTagTransactors  => Knob("TC_TAG_XACTORS")
       case "TagCache" => {
         case NSets => Knob("TC_SETS")
         case NWays => Knob("TC_WAYS")
-        case RowBits => site(TLKey(site(TLId))).dataBitsPerBeat
-        case CacheIdBits => 0
-	    case SplitMetadata => false
-      }: PF
-      case "TagMap" => {
-        case NSets => Knob("TM_SETS")
         case RowBits => site(TLKey(site(TLId))).dataBitsPerBeat
         case CacheIdBits => 0
 	    case SplitMetadata => false
@@ -293,33 +287,36 @@ class BaseConfig extends Config (
         site(TLKey("IONet")).copy(
           dataBeats = site(CacheBlockBytes)*8 / site(IODataBits)
         )
-      case TLKey("L2toTC") =>
+      case TLKey("L2toMem") =>
         TileLinkParameters(
-          coherencePolicy = new MEICoherence(new NullRepresentation(site(NBanks))),
+          coherencePolicy = new MICoherence(new NullRepresentation(site(NBanks))),
           nManagers = 1,
-          nCachingClients = 0,
-          nCachelessClients = site(NBanks),
+          nCachingClients = site(NBanks),
+          nCachelessClients = 0,
           maxClientXacts = 1,
           maxClientsPerPort = site(NAcquireTransactors) + 2,
-          maxManagerXacts = site(TCMemTransactors),
-          dataBits = site(CacheBlockBytes)*8,
-          dataBeats = 8,
-          withTag = p(UseTagMem)
-        )
-      case TLKey("TCtoMem") =>
-        TileLinkParameters(
-          coherencePolicy = new MEICoherence(new NullRepresentation(site(NBanks))),
-          nManagers = 1,
-          nCachingClients = 0,
-          nCachelessClients = 1,
-          maxClientXacts = 1,
-          maxClientsPerPort =
-            site(TCMemTransactors)
-              + site(TCCTransactors)
-              + 1,
           maxManagerXacts = 1,
           dataBits = site(CacheBlockBytes)*8,
           dataBeats = 8,
+          withTag = false
+        )
+      case TLKey("L2toTC") =>
+        site(TLKey("L2toMem")).copy(
+          coherencePolicy = new MICoherence(new NullRepresentation(site(NBanks))),
+          maxManagerXacts = site(TCMemTransactors),
+          withTag = true
+        )
+      case TLKey("TC") =>
+        site(TLKey("L2toMem")).copy(
+          coherencePolicy = new MICoherence(new NullRepresentation(1)),
+        )
+      case TLKey("TCtoMem") =>
+        site(TLKey("L2toTC")).copy(
+          nCachingClients = 0,
+          nCachelessClients = 1,
+          maxClientXacts = 1,
+          maxClientsPerPort = site(TCMemTransactors) + site(TCTagTransactors) + 1,
+          maxManagerXacts = 1,
           withTag = false
         )
 
@@ -376,8 +373,8 @@ class BaseConfig extends Config (
     case "L2_SETS" => 256 // 1024
     case "L2_WAYS" => 8
 
-    case "TC_MEM_XACTORS" => 4
-    case "TC_C_XACTORS"   => 2
+    case "TC_MEM_XACTORS" => 2
+    case "TC_TAG_XACTORS" => 2
     case "TC_SETS" => 64
     case "TC_WAYS" => 8
   }
@@ -387,7 +384,6 @@ class WithTagConfig extends Config (
   (pname,site,here) => pname match {
     case UseTag => true
     case TagBits => 4
-    case TagMapRatio => 1 << site(PgIdxBits)
   }
 )
 
