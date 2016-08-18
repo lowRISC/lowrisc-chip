@@ -26,6 +26,22 @@ module chip_top
    output        ddr_cs_n,
    output [7:0]  ddr_dm,
    output        ddr_odt,
+ `elsif NEXYS4_VIDEO
+   // DDR3 RAM
+   inout [15:0]  ddr_dq,
+   inout [1:0]   ddr_dqs_n,
+   inout [1:0]   ddr_dqs_p,
+   output [14:0] ddr_addr,
+   output [2:0]  ddr_ba,
+   output        ddr_ras_n,
+   output        ddr_cas_n,
+   output        ddr_we_n,
+   output        ddr_reset_n,
+   output        ddr_ck_n,
+   output        ddr_ck_p,
+   output        ddr_cke,
+   output [1:0]  ddr_dm,
+   output        ddr_odt,
  `elsif NEXYS4
    // DDR2 RAM
    inout [15:0]  ddr_dq,
@@ -48,6 +64,8 @@ module chip_top
 `ifdef ADD_UART_IO
    input         rxd,
    output        txd,
+   output        rts,
+   input         cts,
 `endif
 
 `ifdef ADD_SPI
@@ -193,17 +211,20 @@ module chip_top
       .m_axi_rready         ( mem_mig_nasti.r_ready    )
       );
 
- `ifdef NEXYS4
+ `ifdef NEXYS4_COMMON
    //clock generator
    logic mig_sys_clk, clk_locked;
+   logic clk_io_uart; // UART IO clock for debug
+
    clk_wiz_0 clk_gen
      (
       .clk_in1     ( clk_p         ), // 100 MHz onboard
       .clk_out1    ( mig_sys_clk   ), // 200 MHz
+      .clk_io_uart ( clk_io_uart   ), // 60 MHz
       .resetn      ( rst_top       ),
       .locked      ( clk_locked    )
       );
- `endif //  `ifdef NEXYS4
+ `endif //  `ifdef NEXYS4_COMMON
 
    // DRAM controller
    mig_7series_0 dram_ctl
@@ -226,6 +247,24 @@ module chip_top
       .ddr3_ck_n            ( ddr_ck_n               ),
       .ddr3_cke             ( ddr_cke                ),
       .ddr3_cs_n            ( ddr_cs_n               ),
+      .ddr3_dm              ( ddr_dm                 ),
+      .ddr3_odt             ( ddr_odt                ),
+ `elsif NEXYS4_VIDEO
+      .sys_clk_i            ( mig_sys_clk            ),
+      .sys_rst              ( clk_locked             ),
+      .ui_addn_clk_0        ( clk                    ),
+      .ddr3_addr            ( ddr_addr               ),
+      .ddr3_ba              ( ddr_ba                 ),
+      .ddr3_cas_n           ( ddr_cas_n              ),
+      .ddr3_ck_n            ( ddr_ck_n               ),
+      .ddr3_ck_p            ( ddr_ck_p               ),
+      .ddr3_cke             ( ddr_cke                ),
+      .ddr3_ras_n           ( ddr_ras_n              ),
+      .ddr3_reset_n         ( ddr_reset_n            ),
+      .ddr3_we_n            ( ddr_we_n               ),
+      .ddr3_dq              ( ddr_dq                 ),
+      .ddr3_dqs_n           ( ddr_dqs_n              ),
+      .ddr3_dqs_p           ( ddr_dqs_p              ),
       .ddr3_dm              ( ddr_dm                 ),
       .ddr3_odt             ( ddr_odt                ),
  `elsif NEXYS4
@@ -685,11 +724,14 @@ module chip_top
      #(
        .N_CORES          ( `ROCKET_NTILES          ),
        .MAM_DATA_WIDTH   ( `ROCKET_MAM_IO_DWIDTH   ),
-       .MAM_ADDR_WIDTH   ( `ROCKET_PADDR_WIDTH     )
+       .MAM_ADDR_WIDTH   ( `ROCKET_PADDR_WIDTH     ),
+       .FREQ_CLK_IO      ( 60000000                ),
+       .UART_BAUD        ( 12000000                )
        )
    u_debug_system
      (
       .*,
+      .clk_io          ( clk_io_uart            ),
       .uart_irq        ( uart_irq               ),
       .uart_ar_addr    ( io_uart_lite.ar_addr   ),
       .uart_ar_ready   ( io_uart_lite.ar_ready  ),
@@ -709,6 +751,8 @@ module chip_top
       .uart_w_valid    ( io_uart_lite.w_valid   ),
       .rx              ( rxd                    ),
       .tx              ( txd                    ),
+      .rts             ( rts                    ),
+      .cts             ( cts                    ),
       .sys_rst         ( sys_rst                ),
       .cpu_rst         ( cpu_rst                ),
       .ring_out        ( debug_ring_start       ),
@@ -762,8 +806,8 @@ module chip_top
       .dsrn            ( 1'b1                   ),
       .sin             ( rxd                    ),
       .sout            ( txd                    ),
-      .ctsn            ( 1'b1                   ),
-      .rtsn            (                        )
+      .ctsn            ( cts                    ),
+      .rtsn            ( rts                    )
       );
 
   `else // !`ifdef ADD_UART

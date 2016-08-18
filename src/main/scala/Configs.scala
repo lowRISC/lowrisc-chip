@@ -452,6 +452,12 @@ class With128MRamConfig extends Config (
   }
 )
 
+class With512MRamConfig extends Config (
+  (pname,site,here) => pname match {
+    case RAMSize => BigInt(1L << 29)  // 512 MB
+  }
+)
+
 class BasicFPGAConfig extends
     Config(new WithSPIConfig ++ new WithBootRAMConfig ++ new WithFlashConfig ++ new BaseConfig)
 
@@ -466,4 +472,10 @@ class Nexys4Config extends
 
 class Nexys4DebugConfig extends
     Config(new With128MRamConfig ++ new FPGADebugConfig)
+
+class Nexys4VideoConfig extends
+    Config(new With512MRamConfig ++ new FPGAConfig)
+
+class Nexys4VideoDebugConfig extends
+    Config(new With512MRamConfig ++ new FPGADebugConfig)
 

@@ -10,19 +10,24 @@ module debug_system
     parameter MAM_MEM_SIZE0  = 'h10000,
     parameter MAM_BASE_ADDR1 = 'h40000000,
     parameter MAM_MEM_SIZE1  = 'h8000000,
-    parameter MAM_ADDR_WIDTH = 64)
+    parameter MAM_ADDR_WIDTH = 64,
+    parameter FREQ_CLK_IO    = 'x,
+    parameter UART_BAUD      = 'x)
   (
    input                        clk, rstn,
-   
+   input                        clk_io,
+
    input                        rx,
    output                       tx,
+   input                        cts,
+   output                       rts,
 
    output                       uart_irq,
 
    input [12:0]                 uart_ar_addr,
    input                        uart_ar_valid,
    output                       uart_ar_ready,
-    
+
    output [1:0]                 uart_r_resp,
    output [31:0]                uart_r_data,
    output                       uart_r_valid,
@@ -57,23 +62,23 @@ module debug_system
    output                       write_valid,
    input                        write_ready,
    output [MAM_DATA_WIDTH-1:0]  write_data,
-   logic [MAM_DATA_WIDTH/8-1:0] write_strb, 
-   
+   logic [MAM_DATA_WIDTH/8-1:0] write_strb,
+
    input                        read_valid,
    input [MAM_DATA_WIDTH-1:0]   read_data,
    output                       read_ready
    );
 
    localparam MAX_PKT_LEN = 16;
-   
+
    logic  rst;
    assign rst = ~rstn;
 
-   glip_channel #(.WIDTH(16)) fifo_in (.*); 
-   glip_channel #(.WIDTH(16)) fifo_out (.*);    
-   
+   glip_channel #(.WIDTH(16)) fifo_in (.*);
+   glip_channel #(.WIDTH(16)) fifo_out (.*);
+
    logic  logic_rst, com_rst;
-   
+
 `ifdef FPGA_FULL
    logic [15:0]  fifo_out_data;
    logic         fifo_out_valid;
@@ -90,11 +95,11 @@ module debug_system
    assign fifo_out.ready = fifo_out_ready;
 
    glip_uart_toplevel
-     #(.WIDTH(16), .BAUD(3000000), .FREQ(25000000))
-   u_glip(.clk_io    (clk),
-          .clk_logic (clk),
+     #(.WIDTH(16), .BAUD(UART_BAUD), .FREQ_CLK_IO(FREQ_CLK_IO))
+   u_glip(.clk_io    (clk_io),
+          .clk       (clk),
           .rst       (rst),
-          .logic_rst (logic_rst),
+          .ctrl_logic_rst (logic_rst),
           .com_rst   (com_rst),
           .fifo_in_data  (fifo_in_data[15:0]),
           .fifo_in_valid (fifo_in_valid),
@@ -104,11 +109,11 @@ module debug_system
           .fifo_out_ready (fifo_out_ready),
           .uart_rx (rx),
           .uart_tx (tx),
-          .uart_cts (0),
-          .uart_rts (),
+          .uart_cts_n (cts),
+          .uart_rts_n (rts),
           .error ());
 `else // !`ifdef FPGA
-   
+
    glip_tcp_toplevel
      #(.WIDTH(16))
    u_glip(.clk_io    (clk),
@@ -132,7 +137,7 @@ module debug_system
 
    dii_flit [N_OSD-1:0] dii_out; logic [N_OSD-1:0] dii_out_ready;
    dii_flit [N_OSD-1:0] dii_in; logic [N_OSD-1:0] dii_in_ready;
-   
+
    osd_him
      #(.MAX_PKT_LEN(MAX_PKT_LEN))
      u_him(.*,
@@ -143,7 +148,7 @@ module debug_system
            .dii_in         ( dii_in[0]         ),
            .dii_in_ready   ( dii_in_ready[0]   )
            );
-   
+
    osd_scm
      #(.SYSTEMID(16'hdead), .NUM_MOD(N-1),
        .MAX_PKT_LEN(MAX_PKT_LEN))
@@ -156,7 +161,7 @@ module debug_system
          );
 
    assign uart_r_data[31:8] = 0;
-   
+
    osd_dem_uart_nasti
      u_uart (.*,
              .id ( id_map[2] ),
@@ -177,7 +182,7 @@ module debug_system
              .b_valid (uart_b_valid),
              .b_ready (uart_b_ready),
              .b_resp (uart_b_resp),
-             
+
              .debug_in        ( dii_in[2]        ),
              .debug_in_ready  ( dii_in_ready[2]  ),
              .debug_out       ( dii_out[2]       ),
