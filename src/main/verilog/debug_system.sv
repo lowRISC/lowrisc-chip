@@ -10,9 +10,12 @@ module debug_system
     parameter MAM_MEM_SIZE0  = 'h10000,
     parameter MAM_BASE_ADDR1 = 'h40000000,
     parameter MAM_MEM_SIZE1  = 'h8000000,
-    parameter MAM_ADDR_WIDTH = 64)
+    parameter MAM_ADDR_WIDTH = 64,
+    parameter FREQ_CLK_IO    = 'x,
+    parameter UART_BAUD      = 'x)
   (
    input                        clk, rstn,
+   input                        clk_io,
 
    input                        rx,
    output                       tx,
@@ -92,8 +95,8 @@ module debug_system
    assign fifo_out.ready = fifo_out_ready;
 
    glip_uart_toplevel
-     #(.WIDTH(16), .BAUD(3000000), .FREQ_CLK_IO(25000000))
-   u_glip(.clk_io    (clk),
+     #(.WIDTH(16), .BAUD(UART_BAUD), .FREQ_CLK_IO(FREQ_CLK_IO))
+   u_glip(.clk_io    (clk_io),
           .clk       (clk),
           .rst       (rst),
           .ctrl_logic_rst (logic_rst),

@@ -214,10 +214,13 @@ module chip_top
  `ifdef NEXYS4_COMMON
    //clock generator
    logic mig_sys_clk, clk_locked;
+   logic clk_io_uart; // UART IO clock for debug
+
    clk_wiz_0 clk_gen
      (
       .clk_in1     ( clk_p         ), // 100 MHz onboard
       .clk_out1    ( mig_sys_clk   ), // 200 MHz
+      .clk_io_uart ( clk_io_uart   ), // 60 MHz
       .resetn      ( rst_top       ),
       .locked      ( clk_locked    )
       );
@@ -721,11 +724,14 @@ module chip_top
      #(
        .N_CORES          ( `ROCKET_NTILES          ),
        .MAM_DATA_WIDTH   ( `ROCKET_MAM_IO_DWIDTH   ),
-       .MAM_ADDR_WIDTH   ( `ROCKET_PADDR_WIDTH     )
+       .MAM_ADDR_WIDTH   ( `ROCKET_PADDR_WIDTH     ),
+       .FREQ_CLK_IO      ( 60000000                ),
+       .UART_BAUD        ( 12000000                )
        )
    u_debug_system
      (
       .*,
+      .clk_io          ( clk_io_uart            ),
       .uart_irq        ( uart_irq               ),
       .uart_ar_addr    ( io_uart_lite.ar_addr   ),
       .uart_ar_ready   ( io_uart_lite.ar_ready  ),
