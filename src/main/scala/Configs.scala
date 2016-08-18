@@ -198,6 +198,7 @@ class BaseConfig extends Config (
       case TagMapRatio => site(CacheBlockBytes) * 8
       case TCMemTransactors  => Knob("TC_MEM_XACTORS")
       case TCTagTransactors  => Knob("TC_TAG_XACTORS")
+      case TCEarlyAck => true
       case "TagCache" => {
         case NSets => Knob("TC_SETS")
         case NWays => Knob("TC_WAYS")
