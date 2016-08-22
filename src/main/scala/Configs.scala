@@ -16,7 +16,6 @@ case object UseUART extends Field[Boolean]
 case object UseSPI extends Field[Boolean]
 case object UseBootRAM extends Field[Boolean]
 case object UseFlash extends Field[Boolean]
-case object RAMSize extends Field[BigInt]
 case object IOTagBits extends Field[Int]
 
 class BaseConfig extends Config (
@@ -193,7 +192,7 @@ class BaseConfig extends Config (
       }: PF
 
       // Tag Cache
-      case UseTagMem = false
+      case UseTagMem => false
       case TagBits => 4
       case TagMapRatio => site(CacheBlockBytes) * 8
       case TCMemTransactors  => Knob("TC_MEM_XACTORS")
@@ -309,7 +308,7 @@ class BaseConfig extends Config (
         )
       case TLKey("TC") =>
         site(TLKey("L2toMem")).copy(
-          coherencePolicy = new MICoherence(new NullRepresentation(1)),
+          coherencePolicy = new MICoherence(new NullRepresentation(1))
         )
       case TLKey("TCtoMem") =>
         site(TLKey("L2toTC")).copy(
@@ -383,7 +382,7 @@ class BaseConfig extends Config (
 
 class WithTagConfig extends Config (
   (pname,site,here) => pname match {
-    case UseTag => true
+    case UseTagMem => true
     case TagBits => 4
   }
 )
