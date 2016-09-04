@@ -303,19 +303,15 @@ class BaseConfig extends Config (
       case TLKey("L2toTC") =>
         site(TLKey("L2toMem")).copy(
           coherencePolicy = new MICoherence(new NullRepresentation(site(NBanks))),
-          maxManagerXacts = site(TCMemTransactors),
+          maxManagerXacts = site(TCMemTransactors) + 1,
           withTag = true
-        )
-      case TLKey("TC") =>
-        site(TLKey("L2toMem")).copy(
-          coherencePolicy = new MICoherence(new NullRepresentation(1))
         )
       case TLKey("TCtoMem") =>
         site(TLKey("L2toTC")).copy(
           nCachingClients = 0,
           nCachelessClients = 1,
           maxClientXacts = 1,
-          maxClientsPerPort = site(TCMemTransactors) + site(TCTagTransactors) + 1,
+          maxClientsPerPort = site(TCMemTransactors) + 1 + site(TCTagTransactors) + 1,
           maxManagerXacts = 1,
           withTag = false
         )
@@ -420,6 +416,8 @@ class With4Banks extends Config (
 )
 
 class DefaultConfig extends Config(new With4Banks ++ new WithHostConfig ++ new BaseConfig)
+
+class TagConfig extends Config(new WithTagConfig ++ new DefaultConfig)
 
 class WithSPIConfig extends Config (
   (pname,site,here) => pname match {
