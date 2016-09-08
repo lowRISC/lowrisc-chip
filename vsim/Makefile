@@ -166,7 +166,7 @@ verilator.opt.log: $(lowrisc_srcs) $(lowrisc_headers) $(verilog_srcs) $(verilog_
 	rm -fr $(sim_dir)/verilator.opt
 	$(veri) --cc $(lowrisc_srcs) $(verilog_srcs) $(test_verilog_srcs) $(test_cxx_srcs) $(veri_flags) $(veri_norm_flags) -o ../$(CONFIG)-sim 2>&1 | tee $@
 
-sim: $(CONFIG)-opt
+sim-opt: $(CONFIG)-sim-opt
 $(CONFIG)-sim-opt: verilator.opt.log
 	VM_PARALLEL_BUILDS=1 $(MAKE) -C verilator.opt -f V$(tb_top).mk
 
