@@ -128,42 +128,51 @@ veri_flags = \
 	+incdir+$(base_dir)/socip/nasti \
 	--top-module $(tb_top) \
 	--unroll-count 256 \
-	--trace \
+    --output-split 80000 \
+	--output-split-cfuncs 10000 \
 	-Wno-lint -Wno-style -Wno-STMTDLY -Wno-ASSIGNIN\
 	-CFLAGS "-std=c++11" \
 	-CFLAGS "-I$(base_dir)/src/test/cxx/common -I$(base_dir)/src/test/cxx/veri -I$(glip_dir)/backend_tcp/logic/dpi" \
 	-LDFLAGS "-pthread" \
 	--exe \
-	--Mdir $(sim_dir)/verilator
 
 # remove optimization if compilation takes too long or run out of memory
-#veri_opt_flags = -O3 -CFLAGS "-O1"
-veri_opt_flags =
-
+veri_opt_flags = --Mdir $(sim_dir)/verilator.opt -O3 -CFLAGS "-O1"
+veri_norm_flags = --Mdir $(sim_dir)/verilator.norm -O1 -CFLAGS "-O0"
+veri_dbg_flags = --Mdir $(sim_dir)/verilator.debug --trace -O1 -CFLAGS "-g -DDELAY_EXIT -DVERBOSE_MEMOR -DTRACE_VCD"
 
 #--------------------------------------------------------------------
 # Build the simulator (verilator)
 #--------------------------------------------------------------------
-verilator: verilator.log
-verilator.log: $(lowrisc_srcs) $(lowrisc_headers) $(verilog_srcs) $(verilog_headers) $(test_verilog_srcs) $(test_cxx_srcs) $(test_cxx_headers)
-	rm -fr $(sim_dir)/verilator
-	$(veri) --cc $(lowrisc_srcs) $(verilog_srcs) $(test_verilog_srcs) $(test_cxx_srcs) $(veri_flags) $(veri_opt_flags) -o ../$(CONFIG)-sim 2>&1 | tee $@
+verilator: verilator.norm.log
+verilator.norm.log: $(lowrisc_srcs) $(lowrisc_headers) $(verilog_srcs) $(verilog_headers) $(test_verilog_srcs) $(test_cxx_srcs) $(test_cxx_headers)
+	rm -fr $(sim_dir)/verilator.norm
+	$(veri) --cc $(lowrisc_srcs) $(verilog_srcs) $(test_verilog_srcs) $(test_cxx_srcs) $(veri_flags) $(veri_norm_flags) -o ../$(CONFIG)-sim 2>&1 | tee $@
 
 sim: $(CONFIG)-sim
-$(CONFIG)-sim: verilator.log
-	cd verilator && make -f V$(tb_top).mk
+$(CONFIG)-sim: verilator.norm.log
+	VM_PARALLEL_BUILDS=1 $(MAKE) -C verilator.norm -f V$(tb_top).mk
 
 verilator.debug.log: $(lowrisc_srcs) $(lowrisc_headers) $(verilog_srcs) $(verilog_headers) $(test_verilog_srcs) $(test_cxx_srcs) $(test_cxx_headers)
-	rm -fr $(sim_dir)/verilator
-	$(veri) --cc $(lowrisc_srcs) $(verilog_srcs) $(test_verilog_srcs) $(test_cxx_srcs) $(veri_flags) -CFLAGS "-g -DDELAY_EXIT -DVERBOSE_MEMORY" -o ../$(CONFIG)-sim-debug | tee $@
+	rm -fr $(sim_dir)/verilator.debug
+	$(veri) --cc $(lowrisc_srcs) $(verilog_srcs) $(test_verilog_srcs) $(test_cxx_srcs) $(veri_flags) $(veri_dbg_flags) -o ../$(CONFIG)-sim-debug | tee $@
 
 sim-debug: $(CONFIG)-sim-debug
 $(CONFIG)-sim-debug: verilator.debug.log
-	cd verilator && make -f V$(tb_top).mk
+	VM_PARALLEL_BUILDS=1 $(MAKE) -C verilator.debug -f V$(tb_top).mk
 
-.PHONY: verilator sim
+verilator.opt.log: verilator.opt.log
+verilator.opt.log: $(lowrisc_srcs) $(lowrisc_headers) $(verilog_srcs) $(verilog_headers) $(test_verilog_srcs) $(test_cxx_srcs) $(test_cxx_headers)
+	rm -fr $(sim_dir)/verilator.opt
+	$(veri) --cc $(lowrisc_srcs) $(verilog_srcs) $(test_verilog_srcs) $(test_cxx_srcs) $(veri_flags) $(veri_norm_flags) -o ../$(CONFIG)-sim 2>&1 | tee $@
 
-junk += $(generated_dir) $(CONFIG)-sim verilator verilator.log $(CONFIG)-sim-debug verilator.debug.log
+sim: $(CONFIG)-opt
+$(CONFIG)-sim-opt: verilator.opt.log
+	VM_PARALLEL_BUILDS=1 $(MAKE) -C verilator.opt -f V$(tb_top).mk
+
+.PHONY: verilator sim sim-debug sim-opt
+
+junk += $(generated_dir) $(CONFIG)-sim verilator.norm verilator.norm.log $(CONFIG)-sim-debug verilator.debug verilator.debug.log $(CONFIG)-sim-opt verilator.opt verilator.opt.log
 
 #--------------------------------------------------------------------
 # Test cases

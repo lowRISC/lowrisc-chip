@@ -1,7 +1,9 @@
 // See LICENSE for license details.
 
 #include <verilated.h>
-#include <verilated_vcd_c.h>
+#ifdef TRACE_VCD
+ #include <verilated_vcd_c.h>
+#endif
 #include "Vchip_top.h"
 #include "globals.h"
 #include "dpi_ram_behav.h"
@@ -53,12 +55,14 @@ int main(int argc, char** argv) {
   top->rst_top = 1;
 
   // VCD dump
+#ifdef TRACE_VCD
   VerilatedVcdC* vcd = new VerilatedVcdC;
   if(vcd_enable) {
     Verilated::traceEverOn(true);
     top->trace(vcd, 99);
     vcd->open(vcd_name.c_str());
   }
+#endif
 
   top->eval();
   
@@ -84,7 +88,9 @@ int main(int argc, char** argv) {
 
     top->eval();
     if((main_time % 10) == 0) memory_controller->step();
+#ifdef TRACE_VCD
     if(vcd_enable) vcd->dump(main_time);       // do the dump
+#endif
 
     if(main_time < 140)
       main_time++;
@@ -96,7 +102,9 @@ int main(int argc, char** argv) {
   }
 
   top->final();
+#ifdef TRACE_VCD
   if(vcd_enable) vcd->close();
+#endif
 
   delete top;
   memory_model_close();
