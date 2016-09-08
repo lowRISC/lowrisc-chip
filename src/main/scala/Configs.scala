@@ -369,7 +369,7 @@ class BaseConfig extends Config (
     case "L2_SETS" => 256 // 1024
     case "L2_WAYS" => 8
 
-    case "TC_MEM_XACTORS" => 2
+    case "TC_MEM_XACTORS" => 3
     case "TC_TAG_XACTORS" => 2
     case "TC_SETS" => 64
     case "TC_WAYS" => 8
