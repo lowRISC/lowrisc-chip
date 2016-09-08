@@ -220,6 +220,7 @@ void Memory32::write_block(uint32_t addr, uint32_t size, const uint8_t* buf) {
 
 bool Memory32::read(const uint32_t addr, uint32_t &data) {
   assert((addr & 0x3) == 0);
+  //if((addr & 0x3) != 0) std::cout << format("unaligned memory32 read at %1$08x") % addr << std::endl;
   if(addr_max != 0 && addr >= addr_max || !mem.count(addr)) return false;
 
   data = mem[addr];
