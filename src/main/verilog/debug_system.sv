@@ -4,7 +4,7 @@ import dii_package::dii_flit;
 
 module debug_system
   #(parameter N_CORES        = 1,
-    parameter MAM_DATA_WIDTH = 512,
+    parameter MAM_DATA_WIDTH = 16,
     parameter MAM_REGIONS    = 2,
     parameter MAM_BASE_ADDR0 = 0,
     parameter MAM_MEM_SIZE0  = 'h10000,
@@ -70,6 +70,8 @@ module debug_system
    );
 
    localparam MAX_PKT_LEN = 16;
+
+   initial assert (MAM_DATA_WIDTH == 16) else $fatal(1, "MAM_DATA_WIDTH must be 16!");
 
    logic  rst;
    assign rst = ~rstn;
@@ -199,7 +201,9 @@ module debug_system
           .debug_in        ( dii_in[3]        ),
           .debug_in_ready  ( dii_in_ready[3]  ),
           .debug_out       ( dii_out[3]       ),
-          .debug_out_ready ( dii_out_ready[3] )
+          .debug_out_ready ( dii_out_ready[3] ),
+	  .read_data       ( { read_data[7:0], read_data[15:8] } ),
+	  .write_data      ( { write_data[7:0], write_data[15:8] } )
           );
 
    dii_flit [1:0] ext_in;  logic [1:0] ext_in_ready;
