@@ -195,15 +195,16 @@ module debug_system
      #(.DATA_WIDTH(MAM_DATA_WIDTH), .REGIONS(MAM_REGIONS),
        .BASE_ADDR0(MAM_BASE_ADDR0), .MEM_SIZE0(MAM_MEM_SIZE0),
        .BASE_ADDR1(MAM_BASE_ADDR1), .MEM_SIZE1(MAM_MEM_SIZE1),
-       .ADDR_WIDTH(MAM_ADDR_WIDTH), .MAX_PKT_LEN(MAX_PKT_LEN))
+       .ADDR_WIDTH(MAM_ADDR_WIDTH), .MAX_PKT_LEN(MAX_PKT_LEN),
+       .ENDIAN(0))
    u_mam (.*,
           .id              ( id_map[3]        ),
           .debug_in        ( dii_in[3]        ),
           .debug_in_ready  ( dii_in_ready[3]  ),
           .debug_out       ( dii_out[3]       ),
           .debug_out_ready ( dii_out_ready[3] ),
-	  .read_data       ( { read_data[7:0], read_data[15:8] } ),
-	  .write_data      ( { write_data[7:0], write_data[15:8] } )
+          .read_data       ( read_data        ),
+          .write_data      ( write_data       )
           );
 
    dii_flit [1:0] ext_in;  logic [1:0] ext_in_ready;
