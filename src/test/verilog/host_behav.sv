@@ -12,6 +12,7 @@ module host_behav
     );
 
    import "DPI-C" function void host_req ( input int unsigned id, input longint unsigned data);
+   import "DPI-C" function int check_exit ();
 
    assign nasti.ar_ready = 0;
    assign nasti.r_valid = 0;
