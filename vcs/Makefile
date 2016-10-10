@@ -142,6 +142,7 @@ VCS_FLAG = \
 	+incdir+$(generated_dir) \
 	+incdir+$(base_dir)/src/main/verilog \
 	+incdir+$(base_dir)/socip/nasti \
+	+define+SYNTHESIS \
 
 #--------------------------------------------------------------------
 # Build the simulator (VCS)
@@ -223,19 +224,19 @@ exec_simv = ./$(CONFIG)-sim
 exec_simv_vcd = ./$(CONFIG)-sim +vcd
 
 $(output_dir)/%.vcs.out: $(output_dir)/%.riscv $(CONFIG)-sim
-	$(exec_simv) +max-cycles=$(timeout_cycles) +load=$< $(disasm) $@ && [ $$PIPESTATUS -eq 0 ]
+	$(exec_simv) +max-cycles=$(timeout_cycles) +load=$< $(disasm) $@ && grep "finish" $@ > /dev/null
 
 .PRECIOUS: $(output_dir)/%.vcs.out
 
 $(output_dir)/%.vcs.vcd: $(output_dir)/%.riscv $(CONFIG)-sim
-	$(exec_simv_vcd) +vcd_name=$@ +max-cycles=$(timeout_cycles) +load=$< $(disasm) $(patsubst %.vcd,%.out,$@) && [ $$PIPESTATUS -eq 0 ]
+	$(exec_simv_vcd) +vcd_name=$@ +max-cycles=$(timeout_cycles) +load=$< $(disasm) $(patsubst %.vcd,%.out,$@) && grep "finish" $(patsubst %.vcd,%.out,$@)
 
 .PRECIOUS: $(output_dir)/%.vcs.vcd
 
 $(output_dir)/%.vcs.vpd: $(output_dir)/%.riscv $(CONFIG)-sim
 	rm -rf $(patsubst %.vpd,%.vcd,$@) && mkfifo $(patsubst %.vpd,%.vcd,$@)
 	vcd2vpd $(patsubst %.vpd,%.vcd,$@) $@ > /dev/null &
-	$(exec_simv_vcd) +vcd_name=$@ +max-cycles=$(timeout_cycles) +load=$< $(disasm) $(patsubst %.vpd,%.out,$@) && [ $$PIPESTATUS -eq 0 ]
+	$(exec_simv_vcd) +vcd_name=$@ +max-cycles=$(timeout_cycles) +load=$< $(disasm) $(patsubst %.vpd,%.out,$@) && grep "finish" $(patsubst %.vpd,%.out,$@)
 
 .PRECIOUS: $(output_dir)/%.vcs.vpd
 
