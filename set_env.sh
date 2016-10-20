@@ -24,6 +24,9 @@ if [ -z $OSD_ROOT ]; then
     export OSD_ROOT=$TOP/tools
 fi
 
+echo "Add opensocdebug to \$PYTHONPATH"
+export PYTHONPATH=$OSD_ROOT/lib/python2.7/site-packages:$PYTHONPATH
+
 if [ -z $LD_LIBRARY_PATH ]; then
   export LD_LIBRARY_PATH=$OSD_ROOT/lib
 else
@@ -48,9 +51,9 @@ echo "============================"
 echo "    export TOP=$TOP"
 echo "    export RISCV=$RISCV"
 echo "    export OSD_ROOT=$OSD_ROOT"
+echo "    export PYTHONPATH=$PYTHONPATH"
 echo "    export PATH=$PATH"
 echo "    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
 echo "    export PKG_CONFIG_PATH=$PKG_CONFIG_PATH"
 echo "    export FPGA_BOARD=$FPGA_BOARD"
 echo "============================"
-
