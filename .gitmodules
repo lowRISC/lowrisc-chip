@@ -34,3 +34,6 @@
 [submodule "opensocdebug/software"]
 	path = opensocdebug/software
 	url = https://github.com/opensocdebug/software
+[submodule "vsim/riscv-tests"]
+	path = vsim/riscv-tests
+	url = https://github.com/lowrisc/riscv-tests.git

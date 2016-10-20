@@ -220,18 +220,18 @@ asm_v_tests  += $(addprefix rv64uf-v-, $(rv64uf))
 bmarks_tests += $(bmarks)
 
 #--------------------------------------------------------------------
-riscv_test_asm_dir = $(base_dir)/riscv-tools/riscv-tests/isa
-riscv_test_bmarks_dir = $(base_dir)/riscv-tools/riscv-tests/benchmarks
+riscv_test_asm_dir = $(sim_dir)/riscv-tests/isa
+riscv_test_bmarks_dir = $(sim_dir)/riscv-tests/benchmarks
 
 $(addprefix $(output_dir)/, $(addsuffix .riscv, $(asm_p_tests) $(asm_v_tests))):
 	mkdir -p $(output_dir)
 	$(MAKE) -C $(riscv_test_asm_dir) $(basename $(notdir $@))
-	ln -fs $(riscv_test_asm_dir)/$(basename $(notdir $@)) $@
+	ln -fs ../$(riscv_test_asm_dir)/$(basename $(notdir $@)) $@
 
 $(addprefix $(output_dir)/, $(addsuffix .riscv, $(bmarks_tests))):
 	mkdir -p $(output_dir)
 	$(MAKE) -C $(riscv_test_bmarks_dir) $(basename $(notdir $@))
-	ln -fs $(riscv_test_asm_dir)/$(basename $(notdir $@)) $@
+	ln -fs ../$(riscv_test_asm_dir)/$(basename $(notdir $@)) $@
 
 #--------------------------------------------------------------------
 # Run (verilator)
