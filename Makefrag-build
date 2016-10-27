@@ -28,7 +28,8 @@ $(generated_dir)/dev_map.vh: $(generated_dir)/$(MODEL).$(CONFIG).v
 $(generated_dir)/dev_map.h: $(generated_dir)/$(MODEL).$(CONFIG).v
 	echo "#ifndef DEV_MAP_HEADER" > $@
 	echo "#define DEV_MAP_HEADER" >> $@
-	cat $(generated_dir)/$(MODEL).$(CONFIG).dev_map.h >> $@
+	sed -r 's/#define ([A-Za-z0-9_]+) 0x([A-Za-z0-9_]+)/  #define \1 0x\2llu/' \
+	$(generated_dir)/$(MODEL).$(CONFIG).dev_map.h >> $@
 	echo "#endif // DEV_MAP_HEADER" >> $@
 
 # emacs local variable
