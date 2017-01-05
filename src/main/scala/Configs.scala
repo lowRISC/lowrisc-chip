@@ -191,10 +191,12 @@ class BaseConfig extends Config (
 	    case SplitMetadata => false
       }: PF
 
-      // Tag Cache
+      // Tagged memory
       case UseTagMem => false
       case TagBits => 4
-      case TagRuleSize => 64
+      case TagRuleALUSize => 32 // number of rule table entries for non-memory (ALU) instructions
+      case TagRuleMemSize => 16 // number of rule table entries for memory instructions
+      case TagMemCheckFunc => (memTag:UInt, tagL:UInt, tagR:UInt) => (memTag & tagL) === tagR
       case TagMapRatio => site(CacheBlockBytes) * 8
       case TCMemTransactors  => Knob("TC_MEM_XACTORS")
       case TCTagTransactors  => Knob("TC_TAG_XACTORS")
