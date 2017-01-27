@@ -138,9 +138,10 @@ veri_flags = \
 	--exe \
 
 # remove optimization if compilation takes too long or run out of memory
-veri_opt_flags = --Mdir $(sim_dir)/verilator.opt -O3 -CFLAGS "-O1"
-veri_norm_flags = --Mdir $(sim_dir)/verilator.norm -O1 -CFLAGS "-O0"
-veri_dbg_flags = --Mdir $(sim_dir)/verilator.debug --trace -O1 -CFLAGS "-g -DDELAY_EXIT -DVERBOSE_MEMORY -DTRACE_VCD"
+veri_opt_flags = --Mdir $(sim_dir)/verilator.opt -O3 -CFLAGS "-O3"
+veri_norm_flags = --Mdir $(sim_dir)/verilator.norm -O1 -CFLAGS "-O3"
+#veri_dbg_flags = --Mdir $(sim_dir)/verilator.debug --trace -O1 -CFLAGS "-g -DDELAY_EXIT -DVERBOSE_MEMORY -DTRACE_VCD"
+veri_dbg_flags = --Mdir $(sim_dir)/verilator.debug --trace -O1 -CFLAGS "-O3 -DDELAY_EXIT -DTRACE_VCD"
 
 #--------------------------------------------------------------------
 # Build the simulator (verilator)
