@@ -261,8 +261,7 @@ class BaseConfig extends Config (
           maxClientsPerPort = 1,
           maxManagerXacts = site(NAcquireTransactors) + 2, // acquire, release, writeback
           dataBits = site(CacheBlockBytes)*8,
-          dataBeats = 8,
-          withTag = site(UseTagMem)
+          dataBeats = 8
         )
       case TLKey("L2toIO") =>
         TileLinkParameters(
@@ -274,14 +273,12 @@ class BaseConfig extends Config (
           maxClientsPerPort = site(NAcquireTransactors) + 2,
           maxManagerXacts = 1,
           dataBits = site(CacheBlockBytes)*8,
-          dataBeats = 8,
-          withTag = site(UseTagMem)
+          dataBeats = 8
         )
       case TLKey("IONet") =>
         site(TLKey("L2toIO")).copy(
           dataBits = site(CacheBlockBytes)*8,
-          dataBeats = site(CacheBlockBytes)*8 / site(XLen),
-          withTag = false
+          dataBeats = site(CacheBlockBytes)*8 / site(XLen)
         )
       case TLKey("ExtIONet") =>
         site(TLKey("IONet")).copy(
@@ -297,14 +294,12 @@ class BaseConfig extends Config (
           maxClientsPerPort = site(NAcquireTransactors) + 2,
           maxManagerXacts = 1,
           dataBits = site(CacheBlockBytes)*8,
-          dataBeats = 8,
-          withTag = false
+          dataBeats = 8
         )
       case TLKey("L2toTC") =>
         site(TLKey("L2toMem")).copy(
           coherencePolicy = new MICoherence(new NullRepresentation(site(NBanks))),
-          maxManagerXacts = site(TCMemTransactors) + 1,
-          withTag = true
+          maxManagerXacts = site(TCMemTransactors) + 1
         )
       case TLKey("TCtoMem") =>
         site(TLKey("L2toTC")).copy(
@@ -312,8 +307,7 @@ class BaseConfig extends Config (
           nCachelessClients = 1,
           maxClientXacts = 1,
           maxClientsPerPort = site(TCMemTransactors) + 1 + site(TCTagTransactors) + 1,
-          maxManagerXacts = 1,
-          withTag = false
+          maxManagerXacts = 1
         )
 
 
