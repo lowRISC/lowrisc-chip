@@ -12,6 +12,7 @@ env:
     - DOCKER_TAG=debug-v0.3
   matrix:
     - CONFIG=DefaultConfig TEST_CASE=run-asm-tests
+    - CONFIG=TagConfig     TEST_CASE=run-asm-tests
 
 # actual test build
 
