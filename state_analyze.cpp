@@ -33,7 +33,6 @@ int main(int argc, char *argv[]) {
   std::map<unsigned int, unsigned long int> view_day;
   std::map<unsigned int, unsigned long int> view_month;
 
-
   open_db(clone_day_file, clone_day);
   open_db(clone_month_file, clone_month);
   open_db(view_day_file, view_day);
@@ -93,24 +92,24 @@ void open_db(const std::string& db_name, database& db) {
 
 void update_db(database& day, database& month) {
   if(day.size() > 40) {
-    unsigned int month_2 = (day.begin()->first)%100;
+    unsigned int month_2 = (day.begin()->first)/100;
     unsigned int month_1 = 0;       // the second older month
     unsigned int month_0 = 0;
     unsigned long int count_2 = 0;
     unsigned long int count_1 = 0;
     std::list<unsigned int> old_days;
     for(database::iterator it=day.begin(); it != day.end(); ++it) {
-      if((it->first%100)==month_2) {
+      if((it->first/100)==month_2) {
         old_days.push_back(it->first);
         count_2 += it->second;
       } else {
         if(month_1 == 0)
-          month_1 = it->first%100;
+          month_1 = it->first/100;
 
-        if((it->first%100)==month_1) {
+        if((it->first/100)==month_1) {
           count_1 += it->second;
         } else {
-          month_0 = it->first%100;
+          month_0 = it->first/100;
           break;
         }
       }
