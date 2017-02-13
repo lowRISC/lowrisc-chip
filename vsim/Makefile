@@ -205,6 +205,8 @@ rv64mi = $(rv32mi)
 
 bmarks = median multiply qsort towers vvadd mm dhrystone spmv mt-vvadd mt-matmul
 
+rv64tag = tagrw
+
 #--------------------------------------------------------------------
 asm_p_tests  += $(addprefix rv64ui-p-, $(rv64ui))
 asm_p_tests  += $(addprefix rv64ui-p-, $(rv64um))
@@ -220,9 +222,13 @@ asm_v_tests  += $(addprefix rv64uf-v-, $(rv64uf))
 
 bmarks_tests += $(bmarks)
 
+tag_tests    += $(addprefix rv64tag-p-, $(rv64tag))
+tag_tests    += $(addprefix rv64tag-v-, $(rv64tag))
+
 #--------------------------------------------------------------------
-riscv_test_asm_dir = $(sim_dir)/riscv-tests/isa
+riscv_test_asm_dir    = $(sim_dir)/riscv-tests/isa
 riscv_test_bmarks_dir = $(sim_dir)/riscv-tests/benchmarks
+riscv_test_tag_dir    = $(sim_dir)/riscv-tests/tag
 
 $(addprefix $(output_dir)/, $(addsuffix .riscv, $(asm_p_tests) $(asm_v_tests))):
 	mkdir -p $(output_dir)
@@ -232,13 +238,19 @@ $(addprefix $(output_dir)/, $(addsuffix .riscv, $(asm_p_tests) $(asm_v_tests))):
 $(addprefix $(output_dir)/, $(addsuffix .riscv, $(bmarks_tests))):
 	mkdir -p $(output_dir)
 	$(MAKE) -C $(riscv_test_bmarks_dir) $(basename $(notdir $@))
-	ln -fs ../$(riscv_test_asm_dir)/$(basename $(notdir $@)) $@
+	ln -fs ../$(riscv_test_bmarks_dir)/$(basename $(notdir $@)) $@
+
+$(addprefix $(output_dir)/, $(addsuffix .riscv, $(tag_tests))):
+	mkdir -p $(output_dir)
+	$(MAKE) -C $(riscv_test_tag_dir) $(basename $(notdir $@))
+	ln -fs ../$(riscv_test_tag_dir)/$(basename $(notdir $@)) $@
 
 #--------------------------------------------------------------------
 # Run (verilator)
 #--------------------------------------------------------------------
-asm_tests_out = $(foreach test, $(asm_p_tests) $(asm_pt_tests) $(asm_v_tests), $(output_dir)/$(test).verilator.out)
-bmarks_out = $(foreach test, $(bmarks_tests), $(output_dir)/$(test).verilator.out)
+asm_tests_out = $(foreach test, $(asm_p_tests) $(asm_v_tests), $(output_dir)/$(test).verilator.out)
+bmarks_out    = $(foreach test, $(bmarks_tests),               $(output_dir)/$(test).verilator.out)
+asm_tag_out   = $(foreach test, $(tag_tests),                  $(output_dir)/$(test).verilator.out)
 exec_simv = ./$(CONFIG)-sim
 exec_simv_vcd = ./$(CONFIG)-sim-debug +vcd
 
@@ -259,8 +271,9 @@ $(output_dir)/%.verilator.vpd: $(output_dir)/%.riscv $(CONFIG)-sim-debug
 
 .PRECIOUS: $(output_dir)/%.verilator.vpd
 
-run-asm-tests: $(asm_tests_out)
-run-bmarks-test: $(bmarks_out)
+run-asm-tests:   $(asm_tests_out)
+run-bmark-tests: $(bmarks_out)
+run-tag-tests:   $(asm_tag_out)
 
 run: run-asm-tests run-bmarks-test
 
