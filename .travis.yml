@@ -9,10 +9,11 @@ services:
 env:
   global:
     - DOCKER_TOP=/opt/lowrisc
-    - DOCKER_TAG=debug-v0.3
+    - DOCKER_TAG=minion-v0.4
   matrix:
     - CONFIG=DefaultConfig TEST_CASE=run-asm-tests
     - CONFIG=TagConfig     TEST_CASE=run-asm-tests
+    - CONFIG=TagConfig     TEST_CASE=run-tag-tests
 
 # actual test build
 
