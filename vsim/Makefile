@@ -205,7 +205,7 @@ rv64mi = $(rv32mi)
 
 bmarks = median multiply qsort towers vvadd mm dhrystone spmv mt-vvadd mt-matmul
 
-rv64tag = tagrw alu
+rv64tag = tagrw alu load
 
 #--------------------------------------------------------------------
 asm_p_tests  += $(addprefix rv64ui-p-, $(rv64ui))
