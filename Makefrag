@@ -32,8 +32,8 @@ ifneq ($(which_disasm),)
 endif
 
 # define time-out for different types of simulation
-timeout_cycles = 100000000
-long_timeout_cycles = 1000000000
+timeout_cycles       = 1000000
+long_timeout_cycles  = 10000000
 linux_timeout_cycles = 5000000000
 
 # emacs local variable
