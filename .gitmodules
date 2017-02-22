@@ -1,15 +1,15 @@
 [submodule "riscv-tools"]
 	path = riscv-tools
-	url = https://github.com/lowRISC/riscv-tools.git
+	url = https://github.com/lowrisc/riscv-tools.git
 [submodule "chisel"]
 	path = chisel
-	url = https://github.com/ucb-bar/chisel.git
+	url = https://github.com/lowrisc/chisel.git
 [submodule "hardfloat"]
 	path = hardfloat
 	url = https://github.com/ucb-bar/berkeley-hardfloat.git
 [submodule "fpga"]
         path = fpga
-        url = https://github.com/lowRISC/lowrisc-fpga.git
+        url = https://github.com/lowrisc/lowrisc-fpga.git
 [submodule "rocket"]
 	path = rocket
 	url = https://github.com/lowrisc/rocket.git
