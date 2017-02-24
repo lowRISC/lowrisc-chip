@@ -205,7 +205,9 @@ rv64mi = $(rv32mi)
 
 bmarks = median multiply qsort towers vvadd mm dhrystone spmv mt-vvadd mt-matmul
 
-rv64tag = tagrw alu load store pctag
+rv64tag_ui = tagrw alu
+
+rv64tag_si = load store pctag
 
 #--------------------------------------------------------------------
 asm_p_tests  += $(addprefix rv64ui-p-, $(rv64ui))
@@ -222,8 +224,8 @@ asm_v_tests  += $(addprefix rv64uf-v-, $(rv64uf))
 
 bmarks_tests += $(bmarks)
 
-tag_tests    += $(addprefix rv64tag-p-, $(rv64tag))
-tag_tests    += $(addprefix rv64tag-v-, $(rv64tag))
+tag_tests    += $(addprefix rv64tag-p-, $(rv64tag_ui) $(rv64tag_si))
+tag_tests    += $(addprefix rv64tag-v-, $(rv64tag_ui))
 
 #--------------------------------------------------------------------
 riscv_test_asm_dir    = $(sim_dir)/riscv-tests/isa
