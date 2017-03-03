@@ -207,7 +207,7 @@ bmarks = median multiply qsort towers vvadd mm dhrystone spmv mt-vvadd mt-matmul
 
 rv64tag_ui = tagrw alu load store
 
-rv64tag_si = pctag storecheck
+rv64tag_si = pctag loadcheck storecheck
 
 #--------------------------------------------------------------------
 asm_p_tests  += $(addprefix rv64ui-p-, $(rv64ui))
@@ -255,6 +255,9 @@ bmarks_out    = $(foreach test, $(bmarks_tests),               $(output_dir)/$(t
 asm_tag_out   = $(foreach test, $(tag_tests),                  $(output_dir)/$(test).verilator.out)
 exec_simv = ./$(CONFIG)-sim
 exec_simv_vcd = ./$(CONFIG)-sim-debug +vcd
+
+$(output_dir)/%.verilator.dump: $(output_dir)/%.riscv
+	riscv64-unknown-elf-objdump -DSl $< > $@
 
 $(output_dir)/%.verilator.out: $(output_dir)/%.riscv $(CONFIG)-sim
 	$(exec_simv) +max-cycles=$(timeout_cycles) +load=$< $(disasm) $@ && [ $$PIPESTATUS -eq 0 ]
