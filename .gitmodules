@@ -8,8 +8,8 @@
 	path = hardfloat
 	url = https://github.com/ucb-bar/berkeley-hardfloat.git
 [submodule "fpga"]
-        path = fpga
-        url = https://github.com/furkanturan/lowrisc-fpga.git
+	path = fpga
+    url = https://github.com/furkanturan/lowrisc-fpga.git
 [submodule "rocket"]
 	path = rocket
 	url = https://github.com/lowrisc/rocket.git
