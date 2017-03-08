@@ -26,8 +26,10 @@ fi
 
 if [ -z $LD_LIBRARY_PATH ]; then
   export LD_LIBRARY_PATH=$OSD_ROOT/lib
+  export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$TOP/riscv/lib
 else
   export LD_LIBRARY_PATH=$OSD_ROOT/lib:$LD_LIBRARY_PATH
+  export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$TOP/riscv/lib
 fi
 
 export PATH=$OSD_ROOT/bin:$PATH
