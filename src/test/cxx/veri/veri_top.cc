@@ -109,5 +109,8 @@ int main(int argc, char** argv) {
   delete top;
   memory_model_close();
 
-  return exit_code;
+  if(max_time == 0 || main_time < max_time)
+    return exit_code;
+  else
+    return -1;                  // timeout
 }
