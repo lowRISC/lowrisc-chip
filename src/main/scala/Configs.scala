@@ -444,6 +444,13 @@ class With512MRamConfig extends Config (
   }
 )
 
+class With6BitTags extends Config(
+    (pname,site,here) => pname match {
+        case MIFTagBits => Dump("ROCKET_MEM_TAG_WIDTH", 6)
+        case IOTagBits => Dump("ROCKET_IO_TAG_WIDTH", 6)
+    }
+)
+
 class BasicFPGAConfig extends
     Config(new WithSPIConfig ++ new WithBootRAMConfig ++ new WithFlashConfig ++ new BaseConfig)
 
@@ -465,3 +472,5 @@ class Nexys4VideoConfig extends
 class Nexys4VideoDebugConfig extends
     Config(new With512MRamConfig ++ new FPGADebugConfig)
 
+class ZedConfig extends 
+    Config(new With6BitTags ++ new With128MRamConfig ++ new WithUARTConfig ++ new WithSPIConfig ++ new WithBootRAMConfig ++ new BaseConfig)
