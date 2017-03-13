@@ -209,7 +209,7 @@ rv64tag_ui = tagrw alu load store storekeep jmp
 
 rv64tag_mi = alucheck loadcheck storecheck pctag jmpcheck fetchcheck
 
-rv64tag_si = jmpcheck-s
+rv64tag_si = alucheck-s loadcheck-s storecheck-s pctag-s jmpcheck-s fetchcheck-s
 
 #--------------------------------------------------------------------
 asm_p_tests  += $(addprefix rv64ui-p-, $(rv64ui))
