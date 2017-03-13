@@ -207,7 +207,9 @@ bmarks = median multiply qsort towers vvadd mm dhrystone spmv mt-vvadd mt-matmul
 
 rv64tag_ui = tagrw alu load store storekeep jmp
 
-rv64tag_si = alucheck loadcheck storecheck pctag jmpcheck fetchcheck
+rv64tag_mi = alucheck loadcheck storecheck pctag jmpcheck fetchcheck
+
+rv64tag_si = jmpcheck-s
 
 #--------------------------------------------------------------------
 asm_p_tests  += $(addprefix rv64ui-p-, $(rv64ui))
