@@ -211,6 +211,8 @@ rv64tag_mi = alucheck loadcheck storecheck pctag jmpcheck fetchcheck
 
 rv64tag_si = alucheck-s loadcheck-s storecheck-s pctag-s jmpcheck-s fetchcheck-s
 
+tagcaches = loadstore
+
 #--------------------------------------------------------------------
 asm_p_tests  += $(addprefix rv64ui-p-, $(rv64ui))
 asm_p_tests  += $(addprefix rv64ui-p-, $(rv64um))
@@ -226,13 +228,16 @@ asm_v_tests  += $(addprefix rv64uf-v-, $(rv64uf))
 
 bmarks_tests += $(bmarks)
 
-tag_tests    += $(addprefix rv64tag-p-, $(rv64tag_ui) $(rv64tag_si))
+tag_tests    += $(addprefix rv64tag-p-, $(rv64tag_ui) $(rv64tag_mi) $(rv64tag_si))
 tag_tests    += $(addprefix rv64tag-v-, $(rv64tag_ui))
 
+tagcache_tests += $(tagcaches)
+
 #--------------------------------------------------------------------
-riscv_test_asm_dir    = $(sim_dir)/riscv-tests/isa
-riscv_test_bmarks_dir = $(sim_dir)/riscv-tests/benchmarks
-riscv_test_tag_dir    = $(sim_dir)/riscv-tests/tag
+riscv_test_asm_dir      = $(sim_dir)/riscv-tests/isa
+riscv_test_bmarks_dir   = $(sim_dir)/riscv-tests/benchmarks
+riscv_test_tag_dir      = $(sim_dir)/riscv-tests/tag
+riscv_test_tagcache_dir = $(sim_dir)/riscv-tests/tagcache
 
 $(addprefix $(output_dir)/, $(addsuffix .riscv, $(asm_p_tests) $(asm_v_tests))):
 	mkdir -p $(output_dir)
@@ -249,12 +254,19 @@ $(addprefix $(output_dir)/, $(addsuffix .riscv, $(tag_tests))):
 	$(MAKE) -C $(riscv_test_tag_dir) $(basename $(notdir $@))
 	ln -fs ../$(riscv_test_tag_dir)/$(basename $(notdir $@)) $@
 
+$(addprefix $(output_dir)/, $(addsuffix .riscv, $(tagcache_tests))):
+	mkdir -p $(output_dir)
+	$(MAKE) -C $(riscv_test_tagcache_dir) $(notdir $@)
+	ln -fs ../$(riscv_test_tagcache_dir)/$(notdir $@) $@
+
+
 #--------------------------------------------------------------------
 # Run (verilator)
 #--------------------------------------------------------------------
-asm_tests_out = $(foreach test, $(asm_p_tests) $(asm_v_tests), $(output_dir)/$(test).verilator.out)
-bmarks_out    = $(foreach test, $(bmarks_tests),               $(output_dir)/$(test).verilator.out)
-asm_tag_out   = $(foreach test, $(tag_tests),                  $(output_dir)/$(test).verilator.out)
+asm_tests_out    = $(foreach test, $(asm_p_tests) $(asm_v_tests), $(output_dir)/$(test).verilator.out)
+bmarks_out       = $(foreach test, $(bmarks_tests),               $(output_dir)/$(test).verilator.out)
+asm_tag_out      = $(foreach test, $(tag_tests),                  $(output_dir)/$(test).verilator.out)
+asm_tagcache_out = $(foreach test, $(tagcache_tests),             $(output_dir)/$(test).verilator.out)
 exec_simv = ./$(CONFIG)-sim
 exec_simv_vcd = ./$(CONFIG)-sim-debug +vcd
 
@@ -278,9 +290,10 @@ $(output_dir)/%.verilator.vpd: $(output_dir)/%.riscv $(CONFIG)-sim-debug
 
 .PRECIOUS: $(output_dir)/%.verilator.vpd
 
-run-asm-tests:   $(asm_tests_out)
-run-bmark-tests: $(bmarks_out)
-run-tag-tests:   $(asm_tag_out)
+run-asm-tests:      $(asm_tests_out)
+run-bmark-tests:    $(bmarks_out)
+run-tag-tests:      $(asm_tag_out)
+run-tagcache-tests: $(asm_tagcache_out)
 
 run: run-asm-tests run-bmarks-test
 
