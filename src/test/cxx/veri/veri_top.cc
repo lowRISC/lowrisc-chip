@@ -99,6 +99,9 @@ int main(int argc, char** argv) {
 
     if((main_time % 10) == 0 && exit_delay > 1)
       exit_delay--;             // postponed delay to allow VCD recording
+
+    if((main_time % 10000000) == 0)
+      std::cerr << "simulation has run for " << main_time/10 << " cycles..." << std::endl;
   }
 
   top->final();

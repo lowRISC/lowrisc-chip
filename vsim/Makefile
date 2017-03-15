@@ -21,9 +21,9 @@ glip_dir = $(base_dir)/opensocdebug/glip/src
 osd_dir = $(base_dir)/opensocdebug/hardware
 
 BACKEND ?= lowrisc_chip.LowRISCBackend
-#CONFIG ?= DebugConfig
-CONFIG ?= DefaultConfig
-#CONFIG ?= TagConfig
+#CONFIG ?= DebugL2Config
+CONFIG ?= DefaultL2Config
+#CONFIG ?= TagL2Config
 
 include $(base_dir)/Makefrag
 

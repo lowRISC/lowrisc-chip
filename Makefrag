@@ -28,7 +28,7 @@ chisel_srcs += $(osd_srcs)
 disasm := >
 which_disasm := $(shell which spike-dasm 2> /dev/null)
 ifneq ($(which_disasm),)
-	disasm := 2>&1 | $(which_disasm) $(DISASM_EXTENSION) >
+	disasm := | $(which_disasm) $(DISASM_EXTENSION) >
 endif
 
 # define time-out for different types of simulation

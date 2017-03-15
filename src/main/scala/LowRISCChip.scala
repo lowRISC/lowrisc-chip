@@ -16,6 +16,7 @@ case object NSCR extends Field[Int]
 case object BankIdLSB extends Field[Int]
 case object IODataBits extends Field[Int]
 case object ConfigString extends Field[Array[Byte]]
+case object UseL2Cache extends Field[Boolean]
 
 trait HasTopLevelParameters {
   implicit val p: Parameters
@@ -148,14 +149,26 @@ class Top(topParams: Parameters) extends Module with HasTopLevelParameters {
   ////////////////////////////////////////////
   // L2 cache coherence managers
   val managerEndpoints = List.tabulate(nBanks){ id =>
-    //Module(new L2BroadcastHub()(p.alterPartial({
-    Module(new L2HellaCacheBank()(p.alterPartial({
-      case CacheId => id
-      case TLId => coherentNetParams(TLId)
-      case CacheName => l2CacheId
-      case InnerTLId => coherentNetParams(TLId)
-      case OuterTLId => memNetParams(TLId)
-    })))}
+    {
+      if(p(UseL2Cache)) {
+        Module(new L2HellaCacheBank()(p.alterPartial({
+          case CacheId => id
+          case TLId => coherentNetParams(TLId)
+          case CacheName => l2CacheId
+          case InnerTLId => coherentNetParams(TLId)
+          case OuterTLId => memNetParams(TLId)
+        })))
+      } else { // broadcasting coherent hub
+        Module(new L2BroadcastHub()(p.alterPartial({
+          case CacheId => id
+          case TLId => coherentNetParams(TLId)
+          case CacheName => l2CacheId
+          case InnerTLId => coherentNetParams(TLId)
+          case OuterTLId => memNetParams(TLId)
+        })))
+      }
+    }
+  }
 
   val mmioManager = Module(new MMIOTileLinkManager()(p.alterPartial({
     case TLId => coherentNetParams(TLId)

@@ -178,6 +178,7 @@ class BaseConfig extends Config (
       case WordBits => site(XLen)
 
       //L2 $
+      case UseL2Cache => false
       case NAcquireTransactors => Knob("L2_XACTORS")
       case L2StoreDataQueueDepth => 1
       case NSecondaryMisses => 4
@@ -395,11 +396,15 @@ class WithDebugConfig extends Config (
   }
 )
 
-class DebugConfig extends Config(new WithDebugConfig ++ new BaseConfig)
-
 class WithHostConfig extends Config (
   (pname,site,here) => pname match {
     case UseHost => true
+  }
+)
+
+class WithL2 extends Config (
+  (pname,site,here) => pname match {
+    case UseL2Cache => true
   }
 )
 
@@ -409,9 +414,17 @@ class With4Banks extends Config (
   }
 )
 
-class DefaultConfig extends Config(new With4Banks ++ new WithHostConfig ++ new BaseConfig)
+class BaseL2Config extends Config(new WithL2 ++ new With4Banks ++ new BaseConfig)
+
+class DefaultConfig extends Config(new WithHostConfig ++ new BaseConfig)
+class DefaultL2Config extends Config(new WithL2 ++ new With4Banks ++ new DefaultConfig)
 
 class TagConfig extends Config(new WithTagConfig ++ new DefaultConfig)
+class TagL2Config extends Config(new WithTagConfig ++ new DefaultL2Config)
+
+class DebugConfig extends Config(new WithDebugConfig ++ new BaseConfig)
+class DebugL2Config extends Config(new WithDebugConfig ++ new BaseL2Config)
+class DebugTagL2Config extends Config(new WithTagConfig ++ new DebugL2Config)
 
 class WithSPIConfig extends Config (
   (pname,site,here) => pname match {
@@ -450,7 +463,7 @@ class With512MRamConfig extends Config (
 )
 
 class BasicFPGAConfig extends
-    Config(new WithSPIConfig ++ new WithBootRAMConfig ++ new WithFlashConfig ++ new BaseConfig)
+    Config(new WithSPIConfig ++ new WithBootRAMConfig ++ new WithFlashConfig ++ new BaseL2Config)
 
 class FPGAConfig extends
     Config(new WithUARTConfig ++ new BasicFPGAConfig)

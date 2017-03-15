@@ -15,6 +15,7 @@ env:
     - CONFIG=TagConfig     TEST_CASE=run-asm-tests
     - CONFIG=TagConfig     TEST_CASE=run-tag-tests
     - CONFIG=TagConfig     TEST_CASE=run-tagcache-tests
+    - CONFIG=TagL2Config   TEST_CASE=run-tagcache-tests
 
 # actual test build
 
