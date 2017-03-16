@@ -79,10 +79,67 @@ verilog_srcs = \
 	$(osd_dir)/modules/stm/common/osd_stm.sv \
 	$(osd_dir)/modules/ctm/common/osd_ctm.sv \
 	$(glip_dir)/common/logic/interface/glip_channel.sv \
+	$(base_dir)/minion_subsystem/verilog/coremem.sv \
+	$(base_dir)/minion_subsystem/verilog/debouncer.v \
+	$(base_dir)/minion_subsystem/verilog/dpram.v \
+	$(base_dir)/minion_subsystem/verilog/dualmem.v \
+	$(base_dir)/minion_subsystem/verilog/fstore2.v \
+	$(base_dir)/minion_subsystem/verilog/generic_dpram.v \
+	$(base_dir)/minion_subsystem/verilog/minion_soc.sv \
+	$(base_dir)/minion_subsystem/verilog/my_fifo.v \
+	$(base_dir)/minion_subsystem/verilog/ps2_keyboard.v \
+	$(base_dir)/minion_subsystem/verilog/ps2_translation_table.v \
+	$(base_dir)/minion_subsystem/verilog/ps2.v \
+	$(base_dir)/minion_subsystem/verilog/rachelset.v \
+	$(base_dir)/minion_subsystem/verilog/rambyte.v \
+	$(base_dir)/minion_subsystem/verilog/rx_delay.v \
+	$(base_dir)/minion_subsystem/verilog/sd_clock_divider.v \
+	$(base_dir)/minion_subsystem/verilog/sd_cmd_serial_host.v \
+	$(base_dir)/minion_subsystem/verilog/sd_crc_16.v \
+	$(base_dir)/minion_subsystem/verilog/sd_crc_7.v \
+	$(base_dir)/minion_subsystem/verilog/sd_data_serial_host.sv \
+	$(base_dir)/minion_subsystem/verilog/sd_top.sv \
+	$(base_dir)/minion_subsystem/verilog/Seg_7_Display.v \
+	$(base_dir)/minion_subsystem/verilog/uart.v \
+	$(base_dir)/minion_subsystem/verilog/vga_ctrl.v \
+	$(base_dir)/minion_subsystem/pulpino/ips/riscv/include/riscv_defines.sv \
+	$(base_dir)/minion_subsystem/pulpino/ips/riscv/controller.sv \
+	$(base_dir)/minion_subsystem/pulpino/ips/riscv/cs_registers.sv \
+	$(base_dir)/minion_subsystem/pulpino/ips/riscv/debug_unit.sv \
+	$(base_dir)/minion_subsystem/pulpino/ips/riscv/decoder.sv \
+	$(base_dir)/minion_subsystem/pulpino/ips/riscv/exc_controller.sv \
+	$(base_dir)/minion_subsystem/pulpino/ips/riscv/ex_stage.sv \
+	$(base_dir)/minion_subsystem/pulpino/ips/riscv/hwloop_controller.sv \
+	$(base_dir)/minion_subsystem/pulpino/ips/riscv/hwloop_regs.sv \
+	$(base_dir)/minion_subsystem/pulpino/ips/riscv/id_stage.sv \
+	$(base_dir)/minion_subsystem/pulpino/ips/riscv/if_stage.sv \
+	$(base_dir)/minion_subsystem/pulpino/ips/riscv/include/riscv_config.sv \
+	$(base_dir)/minion_subsystem/pulpino/ips/riscv/load_store_unit.sv \
+	$(base_dir)/minion_subsystem/pulpino/ips/riscv/mult.sv \
+	$(base_dir)/minion_subsystem/pulpino/ips/riscv/prefetch_L0_buffer.sv \
+	$(base_dir)/minion_subsystem/pulpino/ips/riscv/register_file_ff.sv \
+	$(base_dir)/minion_subsystem/pulpino/ips/riscv/riscv_core.sv \
+	$(base_dir)/minion_subsystem/pulpino/rtl/components/cluster_clock_gating.sv \
+	$(base_dir)/minion_subsystem/pulpino/ips/riscv/alu.sv \
+	$(base_dir)/minion_subsystem/pulpino/ips/riscv/alu_div.sv \
+	$(base_dir)/minion_subsystem/pulpino/ips/riscv/compressed_decoder.sv \
+	$(base_dir)/minion_subsystem/pulpino/ips/riscv/prefetch_buffer.sv \
+	$(base_dir)/minion_subsystem/software/bootstrap/code.v \
+	$(base_dir)/minion_subsystem/software/bootstrap/data.v \
+	$(base_dir)/vsim/RAMB16_S2_S2.v \
+	$(base_dir)/vsim/RAMB16_S1_S1.v \
+	$(base_dir)/vsim/RAMB16_S9.v \
+	$(base_dir)/vsim/FIFO18E1.v \
+	$(base_dir)/vsim/IOBUF.v \
+	$(base_dir)/vsim/BUFR.v \
 
 verilog_headers = \
 	$(base_dir)/src/main/verilog/config.vh \
 	$(base_dir)/socip/nasti/nasti_request.vh \
+	$(base_dir)/minion_subsystem/verilog/ps2_defines.v \
+	$(base_dir)/minion_subsystem/verilog/sd_defines.h \
+	$(base_dir)/minion_subsystem/verilog/ascii_code.v \
+	$(base_dir)/minion_subsystem/pulpino/rtl/includes/config.sv \
 
 test_verilog_srcs = \
 	$(base_dir)/src/test/verilog/host_behav.sv \
@@ -126,8 +183,12 @@ veri_flags = \
 	+incdir+$(generated_dir) \
 	+incdir+$(base_dir)/src/main/verilog \
 	+incdir+$(base_dir)/socip/nasti \
+	+incdir+$(base_dir)/minion_subsystem/verilog \
+        +incdir+$(base_dir)/minion_subsystem/pulpino/rtl/includes \
+        +incdir+$(base_dir)/minion_subsystem/pulpino/ips/riscv/include \
 	--top-module $(tb_top) \
 	--unroll-count 256 \
+	--error-limit 500 \
     --output-split 80000 \
 	--output-split-cfuncs 10000 \
 	-Wno-lint -Wno-style -Wno-STMTDLY -Wno-ASSIGNIN\

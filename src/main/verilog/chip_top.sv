@@ -4,129 +4,266 @@ import dii_package::dii_flit;
 
 `include "consts.vh"
 `include "dev_map.vh"
-`include "config.vh"
+`include "config.vh"  // For the definition of LOWRISC_IO_DAT_WIDTH
 
 module chip_top
-  (
+(
 `ifdef ADD_PHY_DDR
- `ifdef KC705
-   // DDR3 RAM
-   inout [63:0]  ddr_dq,
-   inout [7:0]   ddr_dqs_n,
-   inout [7:0]   ddr_dqs_p,
-   output [13:0] ddr_addr,
-   output [2:0]  ddr_ba,
-   output        ddr_ras_n,
-   output        ddr_cas_n,
-   output        ddr_we_n,
-   output        ddr_reset_n,
-   output        ddr_ck_n,
-   output        ddr_ck_p,
-   output        ddr_cke,
-   output        ddr_cs_n,
-   output [7:0]  ddr_dm,
-   output        ddr_odt,
- `elsif NEXYS4_VIDEO
-   // DDR3 RAM
-   inout [15:0]  ddr_dq,
-   inout [1:0]   ddr_dqs_n,
-   inout [1:0]   ddr_dqs_p,
-   output [14:0] ddr_addr,
-   output [2:0]  ddr_ba,
-   output        ddr_ras_n,
-   output        ddr_cas_n,
-   output        ddr_we_n,
-   output        ddr_reset_n,
-   output        ddr_ck_n,
-   output        ddr_ck_p,
-   output        ddr_cke,
-   output [1:0]  ddr_dm,
-   output        ddr_odt,
- `elsif NEXYS4
-   // DDR2 RAM
-   inout [15:0]  ddr_dq,
-   inout [1:0]   ddr_dqs_n,
-   inout [1:0]   ddr_dqs_p,
-   output [12:0] ddr_addr,
-   output [2:0]  ddr_ba,
-   output        ddr_ras_n,
-   output        ddr_cas_n,
-   output        ddr_we_n,
-   output        ddr_ck_n,
-   output        ddr_ck_p,
-   output        ddr_cke,
-   output        ddr_cs_n,
-   output [1:0]  ddr_dm,
-   output        ddr_odt,
- `endif
+  `ifdef ZED
+    // RAM ACCESS THROUGH PS7's HP0 -> MEMCNT
+    output [31:0] mem_nasti_dram_araddr,
+    output  [1:0] mem_nasti_dram_arburst,
+    output  [3:0] mem_nasti_dram_arcache,
+    output  [5:0] mem_nasti_dram_arid,
+    output  [7:0] mem_nasti_dram_arlen,
+    output        mem_nasti_dram_arlock,
+    output  [2:0] mem_nasti_dram_arprot,
+    output  [3:0] mem_nasti_dram_arqos,
+    input         mem_nasti_dram_arready,
+    output  [2:0] mem_nasti_dram_arsize,
+    output        mem_nasti_dram_arvalid,
+    output  [3:0] mem_nasti_dram_arregion,
+    output [31:0] mem_nasti_dram_awaddr,
+    output  [1:0] mem_nasti_dram_awburst,
+    output  [3:0] mem_nasti_dram_awcache,
+    output  [5:0] mem_nasti_dram_awid,
+    output  [7:0] mem_nasti_dram_awlen,
+    output        mem_nasti_dram_awlock,
+    output  [2:0] mem_nasti_dram_awprot,
+    output  [3:0] mem_nasti_dram_awqos,
+    input         mem_nasti_dram_awready,
+    output  [2:0] mem_nasti_dram_awsize,
+    output        mem_nasti_dram_awvalid,
+    output  [3:0] mem_nasti_dram_awregion,
+    input   [5:0] mem_nasti_dram_bid,
+    output        mem_nasti_dram_bready,
+    input   [1:0] mem_nasti_dram_bresp,
+    input         mem_nasti_dram_bvalid,
+    input  [63:0] mem_nasti_dram_rdata,
+    input   [5:0] mem_nasti_dram_rid,
+    input         mem_nasti_dram_rlast,
+    output        mem_nasti_dram_rready,
+    input   [1:0] mem_nasti_dram_rresp,
+    input         mem_nasti_dram_rvalid,
+    output [63:0] mem_nasti_dram_wdata,
+    output        mem_nasti_dram_wlast,
+    input         mem_nasti_dram_wready,
+    output  [7:0] mem_nasti_dram_wstrb,
+    output        mem_nasti_dram_wvalid,
+  `elsif KC705
+    // DDR3 RAM
+    inout  [63:0] ddr_dq,
+    inout   [7:0] ddr_dqs_n,
+    inout   [7:0] ddr_dqs_p,
+    output [13:0] ddr_addr,
+    output  [2:0] ddr_ba,
+    output        ddr_ras_n,
+    output        ddr_cas_n,
+    output        ddr_we_n,
+    output        ddr_reset_n,
+    output        ddr_ck_n,
+    output        ddr_ck_p,
+    output        ddr_cke,
+    output        ddr_cs_n,
+    output  [7:0] ddr_dm,
+    output        ddr_odt,
+  `elsif NEXYS4_VIDEO
+    // DDR3 RAM
+    inout  [15:0] ddr_dq,
+    inout   [1:0] ddr_dqs_n,
+    inout   [1:0] ddr_dqs_p,
+    output [14:0] ddr_addr,
+    output  [2:0] ddr_ba,
+    output        ddr_ras_n,
+    output        ddr_cas_n,
+    output        ddr_we_n,
+    output        ddr_reset_n,
+    output        ddr_ck_n,
+    output        ddr_ck_p,
+    output        ddr_cke,
+    output  [1:0] ddr_dm,
+    output        ddr_odt,
+  `elsif NEXYS4
+    // DDR2 RAM
+    inout  [15:0] ddr_dq,
+    inout   [1:0] ddr_dqs_n,
+    inout   [1:0] ddr_dqs_p,
+    output [12:0] ddr_addr,
+    output  [2:0] ddr_ba,
+    output        ddr_ras_n,
+    output        ddr_cas_n,
+    output        ddr_we_n,
+    output        ddr_ck_n,
+    output        ddr_ck_p,
+    output        ddr_cke,
+    output        ddr_cs_n,
+    output  [1:0] ddr_dm,
+    output        ddr_odt,
+  `endif
 `endif //  `ifdef ADD_DDR_IO
 
 `ifdef ADD_UART_IO
-   input         rxd,
-   output        txd,
-   output        rts,
-   input         cts,
+    input         rxd,
+    output        txd,
+    output        rts,
+    input         cts,
 `endif
 
 `ifdef ADD_SPI
-   inout         spi_cs,
-   inout         spi_sclk,
-   inout         spi_mosi,
-   inout         spi_miso,
-   output        sd_reset,
+    inout         spi_cs,
+    inout         spi_sclk,
+    inout         spi_mosi,
+    inout         spi_miso,
+    output        sd_reset,
 `endif
 
 `ifdef ADD_FLASH
-   inout         flash_ss,
-   inout [3:0]   flash_io,
+   inout          flash_ss,
+   inout    [3:0] flash_io,
 `endif
 
-   // clock and reset
-   input         clk_p,
-   input         clk_n,
-   input         rst_top
-   );
+`ifdef ADD_MINION_SD
+   output [7:0] o_led,
+   input  [3:0] i_dip,
+   output wire 	     sd_sclk,
+   input wire        sd_detect,
+   inout wire [3:0]  sd_dat,
+   inout wire        sd_cmd,
+   output reg        sd_reset,
 
-   genvar        i;
+// push button array
+input GPIO_SW_C,
+input GPIO_SW_W,
+input GPIO_SW_E,
+input GPIO_SW_N,
+input GPIO_SW_S,
+//keyboard
+inout PS2_CLK,
+inout PS2_DATA,
 
-   // internal clock and reset signals
-   logic  clk, rst, rstn;
-   assign rst = !rstn;
+  // display
+output           VGA_HS_O,
+output           VGA_VS_O,
+output  [3:0]    VGA_RED_O,
+output  [3:0]    VGA_BLUE_O,
+output  [3:0]    VGA_GREEN_O,
+output [6:0]SEG,
+output [7:0]AN,
+output DP,
+`endif
+    // clock and reset
+    input         clk_p,
+    input         clk_n,
+    input         rst_top
+);
 
-   // Debug controlled reset of the Rocket system
-   logic  sys_rst, cpu_rst;
+    genvar        i;
 
-   // interrupt line
-   logic [63:0]                interrupt;
+    // internal clock and reset signals
+    logic  clk, rst, rstn;
+    assign rst = !rstn;
 
-   /////////////////////////////////////////////////////////////
-   // NASTI/Lite on-chip interconnects
+    // Debug controlled reset of the Rocket system
+    logic  sys_rst, cpu_rst;
 
-   // Rocket memory nasti bus
-   nasti_channel
+    // interrupt line
+    logic [63:0]                interrupt;
+
+`ifdef ADD_MINION_SD
+   // shared memory interface to minion soc
+   logic [3:0]                 m_enb;
+   logic 		       m_web;
+    
+   logic [31:0] 	       core_lsu_addr;
+   logic [31:0] 	       core_lsu_addr_dly;
+   logic [31:0] 	       core_lsu_wdata;
+   logic [3:0] 		       core_lsu_be;
+   logic 		       ce_d;
+   logic 		       we_d;
+   logic 		       shared_sel;
+   logic [31:0] 	       shared_rdata;
+
+   assign m_enb = (we_d ? core_lsu_be : 4'hF);
+   assign m_web = ce_d & shared_sel & we_d;
+`endif
+
+    /////////////////////////////////////////////////////////////
+    // NASTI/Lite on-chip interconnects
+
+    // Rocket memory nasti bus
+    nasti_channel
      #(
-       .ID_WIDTH    ( `ROCKET_MEM_TAG_WIDTH ),
-       .ADDR_WIDTH  ( `ROCKET_PADDR_WIDTH   ),
-       .DATA_WIDTH  ( `ROCKET_MEM_DAT_WIDTH ))
-   mem_nasti();
+        .ID_WIDTH    ( `ROCKET_MEM_TAG_WIDTH ),
+        .ADDR_WIDTH  ( `ROCKET_PADDR_WIDTH   ),
+        .DATA_WIDTH  ( `ROCKET_MEM_DAT_WIDTH ))
+    mem_nasti();
 
 `ifdef ADD_PHY_DDR
 
-   // the NASTI bus for off-FPGA DRAM, converted to High frequency
-   nasti_channel   
-     #(
-       .ID_WIDTH    ( `ROCKET_MEM_TAG_WIDTH ),
-       .ADDR_WIDTH  ( `ROCKET_PADDR_WIDTH   ),
-       .DATA_WIDTH  ( `ROCKET_MEM_DAT_WIDTH ))
-   mem_mig_nasti();
+    // the NASTI bus for off-FPGA DRAM, converted to High frequency
+    nasti_channel
+      #(
+        .ID_WIDTH    ( `ROCKET_MEM_TAG_WIDTH ),
+        .ADDR_WIDTH  ( `ROCKET_PADDR_WIDTH   ),
+        .DATA_WIDTH  ( `ROCKET_MEM_DAT_WIDTH ))
+    mem_mig_nasti();
 
-   // MIG clock
-   logic mig_ui_clk, mig_ui_rst, mig_ui_rstn;
-   assign mig_ui_rstn = !mig_ui_rst;
+  `ifdef ZED
+    // Clock is generated by PS7, and reset as well.
+    // So there is no need to clock generator,
+    // just use the inputs to the module
+    assign clk = clk_p;
+    assign rstn = !rst_top;
 
-   // clock converter
-   axi_clock_converter_0 clk_conv
-     (
+    assign mem_nasti_dram_araddr       = mem_nasti.ar_addr      ;
+    assign mem_nasti_dram_arburst      = mem_nasti.ar_burst     ;
+    assign mem_nasti_dram_arcache      = mem_nasti.ar_cache     ;
+    assign mem_nasti_dram_arid         = mem_nasti.ar_id        ;
+    assign mem_nasti_dram_arlen        = mem_nasti.ar_len       ;
+    assign mem_nasti_dram_arlock       = mem_nasti.ar_lock      ;
+    assign mem_nasti_dram_arprot       = mem_nasti.ar_prot      ;
+    assign mem_nasti_dram_arqos        = mem_nasti.ar_qos       ;
+    assign mem_nasti_dram_arready      = mem_nasti.ar_ready     ;
+    assign mem_nasti_dram_arsize       = mem_nasti.ar_size      ;
+    assign mem_nasti_dram_arvalid      = mem_nasti.ar_valid     ;
+    assign mem_nasti_dram_arregion     = mem_nasti.ar_region    ;
+    assign mem_nasti_dram_awaddr       = mem_nasti.aw_addr      ;
+    assign mem_nasti_dram_awburst      = mem_nasti.aw_burst     ;
+    assign mem_nasti_dram_awcache      = mem_nasti.aw_cache     ;
+    assign mem_nasti_dram_awid         = mem_nasti.aw_id        ;
+    assign mem_nasti_dram_awlen        = mem_nasti.aw_len       ;
+    assign mem_nasti_dram_awlock       = mem_nasti.aw_lock      ;
+    assign mem_nasti_dram_awprot       = mem_nasti.aw_prot      ;
+    assign mem_nasti_dram_awqos        = mem_nasti.aw_qos       ;
+    assign mem_nasti_dram_awready      = mem_nasti.aw_ready     ;
+    assign mem_nasti_dram_awsize       = mem_nasti.aw_size      ;
+    assign mem_nasti_dram_awvalid      = mem_nasti.aw_valid     ;
+    assign mem_nasti_dram_awregion     = mem_nasti.aw_region    ;
+    assign mem_nasti_dram_bid          = mem_nasti.b_id         ;
+    assign mem_nasti_dram_bready       = mem_nasti.b_ready      ;
+    assign mem_nasti_dram_bresp        = mem_nasti.b_resp       ;
+    assign mem_nasti_dram_bvalid       = mem_nasti.b_valid      ;
+    assign mem_nasti_dram_rdata        = mem_nasti.r_data       ;
+    assign mem_nasti_dram_rid          = mem_nasti.r_id         ;
+    assign mem_nasti_dram_rlast        = mem_nasti.r_last       ;
+    assign mem_nasti_dram_rready       = mem_nasti.r_ready      ;
+    assign mem_nasti_dram_rresp        = mem_nasti.r_resp       ;
+    assign mem_nasti_dram_rvalid       = mem_nasti.r_valid      ;
+    assign mem_nasti_dram_wdata        = mem_nasti.w_data       ;
+    assign mem_nasti_dram_wlast        = mem_nasti.w_last       ;
+    assign mem_nasti_dram_wready       = mem_nasti.w_ready      ;
+    assign mem_nasti_dram_wstrb        = mem_nasti.w_strb       ;
+    assign mem_nasti_dram_wvalid       = mem_nasti.w_valid      ;
+
+  `else // !`ifdef ZED
+
+    // MIG clock
+    logic mig_ui_clk, mig_ui_rst, mig_ui_rstn;
+    assign mig_ui_rstn = !mig_ui_rst;
+
+    // clock converter
+    axi_clock_converter_0 clk_conv
+      (
       .s_axi_aclk           ( clk                      ),
       .s_axi_aresetn        ( rstn                     ),
       .s_axi_awid           ( mem_nasti.aw_id          ),
@@ -211,149 +348,155 @@ module chip_top
       .m_axi_rready         ( mem_mig_nasti.r_ready    )
       );
 
- `ifdef NEXYS4_COMMON
-   //clock generator
-   logic mig_sys_clk, clk_locked;
-   logic clk_io_uart; // UART IO clock for debug
+      `ifdef NEXYS4_COMMON
+        //clock generator
+   logic mig_sys_clk, clk_locked, clk_pixel;
+        logic clk_io_uart; // UART IO clock for debug
 
-   clk_wiz_0 clk_gen
-     (
-      .clk_in1     ( clk_p         ), // 100 MHz onboard
-      .clk_out1    ( mig_sys_clk   ), // 200 MHz
-      .clk_io_uart ( clk_io_uart   ), // 60 MHz
-      .resetn      ( rst_top       ),
-      .locked      ( clk_locked    )
+        clk_wiz_0 clk_gen
+        (
+          .clk_in1     ( clk_p         ), // 100 MHz onboard
+          .clk_out1    ( mig_sys_clk   ), // 200 MHz
+          .clk_io_uart ( clk_io_uart   ), // 60 MHz
+          .clk_msoc    ( clk_msoc      ), // 40 MHz
+          .clk_pixel   ( clk_pixel     ), // 120 MHz
+          .resetn      ( rst_top       ),
+          .locked      ( clk_locked    )
+        );
+      `endif //  `ifdef NEXYS4_COMMON
+
+      // DRAM controller
+      mig_7series_0 dram_ctl
+      (
+        `ifdef KC705
+          .sys_clk_p            ( clk_p                  ),
+          .sys_clk_n            ( clk_n                  ),
+          .sys_rst              ( rst_top                ),
+          .ui_addn_clk_0        ( clk                    ),
+          .ddr3_dq              ( ddr_dq                 ),
+          .ddr3_dqs_n           ( ddr_dqs_n              ),
+          .ddr3_dqs_p           ( ddr_dqs_p              ),
+          .ddr3_addr            ( ddr_addr               ),
+          .ddr3_ba              ( ddr_ba                 ),
+          .ddr3_ras_n           ( ddr_ras_n              ),
+          .ddr3_cas_n           ( ddr_cas_n              ),
+          .ddr3_we_n            ( ddr_we_n               ),
+          .ddr3_reset_n         ( ddr_reset_n            ),
+          .ddr3_ck_p            ( ddr_ck_p               ),
+          .ddr3_ck_n            ( ddr_ck_n               ),
+          .ddr3_cke             ( ddr_cke                ),
+          .ddr3_cs_n            ( ddr_cs_n               ),
+          .ddr3_dm              ( ddr_dm                 ),
+          .ddr3_odt             ( ddr_odt                ),
+        `elsif NEXYS4_VIDEO
+          .sys_clk_i            ( mig_sys_clk            ),
+          .sys_rst              ( clk_locked             ),
+          .ui_addn_clk_0        ( clk                    ),
+          .ddr3_addr            ( ddr_addr               ),
+          .ddr3_ba              ( ddr_ba                 ),
+          .ddr3_cas_n           ( ddr_cas_n              ),
+          .ddr3_ck_n            ( ddr_ck_n               ),
+          .ddr3_ck_p            ( ddr_ck_p               ),
+          .ddr3_cke             ( ddr_cke                ),
+          .ddr3_ras_n           ( ddr_ras_n              ),
+          .ddr3_reset_n         ( ddr_reset_n            ),
+          .ddr3_we_n            ( ddr_we_n               ),
+          .ddr3_dq              ( ddr_dq                 ),
+          .ddr3_dqs_n           ( ddr_dqs_n              ),
+          .ddr3_dqs_p           ( ddr_dqs_p              ),
+          .ddr3_dm              ( ddr_dm                 ),
+          .ddr3_odt             ( ddr_odt                ),
+        `elsif NEXYS4
+          .sys_clk_i            ( mig_sys_clk            ),
+          .sys_rst              ( clk_locked             ),
+          .ui_addn_clk_0        ( clk                    ),
+          .device_temp_i        ( 0                      ),
+          .ddr2_dq              ( ddr_dq                 ),
+          .ddr2_dqs_n           ( ddr_dqs_n              ),
+          .ddr2_dqs_p           ( ddr_dqs_p              ),
+          .ddr2_addr            ( ddr_addr               ),
+          .ddr2_ba              ( ddr_ba                 ),
+          .ddr2_ras_n           ( ddr_ras_n              ),
+          .ddr2_cas_n           ( ddr_cas_n              ),
+          .ddr2_we_n            ( ddr_we_n               ),
+          .ddr2_ck_p            ( ddr_ck_p               ),
+          .ddr2_ck_n            ( ddr_ck_n               ),
+          .ddr2_cke             ( ddr_cke                ),
+          .ddr2_cs_n            ( ddr_cs_n               ),
+          .ddr2_dm              ( ddr_dm                 ),
+          .ddr2_odt             ( ddr_odt                ),
+        `endif // !`elsif NEXYS4
+          .ui_clk               ( mig_ui_clk             ),
+          .ui_clk_sync_rst      ( mig_ui_rst             ),
+          .mmcm_locked          ( rstn                   ),
+          .aresetn              ( rstn                   ), // AXI reset
+          .app_sr_req           ( 1'b0                   ),
+          .app_ref_req          ( 1'b0                   ),
+          .app_zq_req           ( 1'b0                   ),
+          .s_axi_awid           ( mem_mig_nasti.aw_id    ),
+          .s_axi_awaddr         ( mem_mig_nasti.aw_addr  ),
+          .s_axi_awlen          ( mem_mig_nasti.aw_len   ),
+          .s_axi_awsize         ( mem_mig_nasti.aw_size  ),
+          .s_axi_awburst        ( mem_mig_nasti.aw_burst ),
+          .s_axi_awlock         ( 1'b0                   ), // not supported in AXI4
+          .s_axi_awcache        ( mem_mig_nasti.aw_cache ),
+          .s_axi_awprot         ( mem_mig_nasti.aw_prot  ),
+          .s_axi_awqos          ( mem_mig_nasti.aw_qos   ),
+          .s_axi_awvalid        ( mem_mig_nasti.aw_valid ),
+          .s_axi_awready        ( mem_mig_nasti.aw_ready ),
+          .s_axi_wdata          ( mem_mig_nasti.w_data   ),
+          .s_axi_wstrb          ( mem_mig_nasti.w_strb   ),
+          .s_axi_wlast          ( mem_mig_nasti.w_last   ),
+          .s_axi_wvalid         ( mem_mig_nasti.w_valid  ),
+          .s_axi_wready         ( mem_mig_nasti.w_ready  ),
+          .s_axi_bid            ( mem_mig_nasti.b_id     ),
+          .s_axi_bresp          ( mem_mig_nasti.b_resp   ),
+          .s_axi_bvalid         ( mem_mig_nasti.b_valid  ),
+          .s_axi_bready         ( mem_mig_nasti.b_ready  ),
+          .s_axi_arid           ( mem_mig_nasti.ar_id    ),
+          .s_axi_araddr         ( mem_mig_nasti.ar_addr  ),
+          .s_axi_arlen          ( mem_mig_nasti.ar_len   ),
+          .s_axi_arsize         ( mem_mig_nasti.ar_size  ),
+          .s_axi_arburst        ( mem_mig_nasti.ar_burst ),
+          .s_axi_arlock         ( 1'b0                   ), // not supported in AXI4
+          .s_axi_arcache        ( mem_mig_nasti.ar_cache ),
+          .s_axi_arprot         ( mem_mig_nasti.ar_prot  ),
+          .s_axi_arqos          ( mem_mig_nasti.ar_qos   ),
+          .s_axi_arvalid        ( mem_mig_nasti.ar_valid ),
+          .s_axi_arready        ( mem_mig_nasti.ar_ready ),
+          .s_axi_rid            ( mem_mig_nasti.r_id     ),
+          .s_axi_rdata          ( mem_mig_nasti.r_data   ),
+          .s_axi_rresp          ( mem_mig_nasti.r_resp   ),
+          .s_axi_rlast          ( mem_mig_nasti.r_last   ),
+          .s_axi_rvalid         ( mem_mig_nasti.r_valid  ),
+          .s_axi_rready         ( mem_mig_nasti.r_ready  )
       );
- `endif //  `ifdef NEXYS4_COMMON
 
-   // DRAM controller
-   mig_7series_0 dram_ctl
-     (
- `ifdef KC705
-      .sys_clk_p            ( clk_p                  ),
-      .sys_clk_n            ( clk_n                  ),
-      .sys_rst              ( rst_top                ),
-      .ui_addn_clk_0        ( clk                    ),
-      .ddr3_dq              ( ddr_dq                 ),
-      .ddr3_dqs_n           ( ddr_dqs_n              ),
-      .ddr3_dqs_p           ( ddr_dqs_p              ),
-      .ddr3_addr            ( ddr_addr               ),
-      .ddr3_ba              ( ddr_ba                 ),
-      .ddr3_ras_n           ( ddr_ras_n              ),
-      .ddr3_cas_n           ( ddr_cas_n              ),
-      .ddr3_we_n            ( ddr_we_n               ),
-      .ddr3_reset_n         ( ddr_reset_n            ),
-      .ddr3_ck_p            ( ddr_ck_p               ),
-      .ddr3_ck_n            ( ddr_ck_n               ),
-      .ddr3_cke             ( ddr_cke                ),
-      .ddr3_cs_n            ( ddr_cs_n               ),
-      .ddr3_dm              ( ddr_dm                 ),
-      .ddr3_odt             ( ddr_odt                ),
- `elsif NEXYS4_VIDEO
-      .sys_clk_i            ( mig_sys_clk            ),
-      .sys_rst              ( clk_locked             ),
-      .ui_addn_clk_0        ( clk                    ),
-      .ddr3_addr            ( ddr_addr               ),
-      .ddr3_ba              ( ddr_ba                 ),
-      .ddr3_cas_n           ( ddr_cas_n              ),
-      .ddr3_ck_n            ( ddr_ck_n               ),
-      .ddr3_ck_p            ( ddr_ck_p               ),
-      .ddr3_cke             ( ddr_cke                ),
-      .ddr3_ras_n           ( ddr_ras_n              ),
-      .ddr3_reset_n         ( ddr_reset_n            ),
-      .ddr3_we_n            ( ddr_we_n               ),
-      .ddr3_dq              ( ddr_dq                 ),
-      .ddr3_dqs_n           ( ddr_dqs_n              ),
-      .ddr3_dqs_p           ( ddr_dqs_p              ),
-      .ddr3_dm              ( ddr_dm                 ),
-      .ddr3_odt             ( ddr_odt                ),
- `elsif NEXYS4
-      .sys_clk_i            ( mig_sys_clk            ),
-      .sys_rst              ( clk_locked             ),
-      .ui_addn_clk_0        ( clk                    ),
-      .device_temp_i        ( 0                      ),
-      .ddr2_dq              ( ddr_dq                 ),
-      .ddr2_dqs_n           ( ddr_dqs_n              ),
-      .ddr2_dqs_p           ( ddr_dqs_p              ),
-      .ddr2_addr            ( ddr_addr               ),
-      .ddr2_ba              ( ddr_ba                 ),
-      .ddr2_ras_n           ( ddr_ras_n              ),
-      .ddr2_cas_n           ( ddr_cas_n              ),
-      .ddr2_we_n            ( ddr_we_n               ),
-      .ddr2_ck_p            ( ddr_ck_p               ),
-      .ddr2_ck_n            ( ddr_ck_n               ),
-      .ddr2_cke             ( ddr_cke                ),
-      .ddr2_cs_n            ( ddr_cs_n               ),
-      .ddr2_dm              ( ddr_dm                 ),
-      .ddr2_odt             ( ddr_odt                ),
- `endif // !`elsif NEXYS4
-      .ui_clk               ( mig_ui_clk             ),
-      .ui_clk_sync_rst      ( mig_ui_rst             ),
-      .mmcm_locked          ( rstn                   ),
-      .aresetn              ( rstn                   ), // AXI reset
-      .app_sr_req           ( 1'b0                   ),
-      .app_ref_req          ( 1'b0                   ),
-      .app_zq_req           ( 1'b0                   ),
-      .s_axi_awid           ( mem_mig_nasti.aw_id    ),
-      .s_axi_awaddr         ( mem_mig_nasti.aw_addr  ),
-      .s_axi_awlen          ( mem_mig_nasti.aw_len   ),
-      .s_axi_awsize         ( mem_mig_nasti.aw_size  ),
-      .s_axi_awburst        ( mem_mig_nasti.aw_burst ),
-      .s_axi_awlock         ( 1'b0                   ), // not supported in AXI4
-      .s_axi_awcache        ( mem_mig_nasti.aw_cache ),
-      .s_axi_awprot         ( mem_mig_nasti.aw_prot  ),
-      .s_axi_awqos          ( mem_mig_nasti.aw_qos   ),
-      .s_axi_awvalid        ( mem_mig_nasti.aw_valid ),
-      .s_axi_awready        ( mem_mig_nasti.aw_ready ),
-      .s_axi_wdata          ( mem_mig_nasti.w_data   ),
-      .s_axi_wstrb          ( mem_mig_nasti.w_strb   ),
-      .s_axi_wlast          ( mem_mig_nasti.w_last   ),
-      .s_axi_wvalid         ( mem_mig_nasti.w_valid  ),
-      .s_axi_wready         ( mem_mig_nasti.w_ready  ),
-      .s_axi_bid            ( mem_mig_nasti.b_id     ),
-      .s_axi_bresp          ( mem_mig_nasti.b_resp   ),
-      .s_axi_bvalid         ( mem_mig_nasti.b_valid  ),
-      .s_axi_bready         ( mem_mig_nasti.b_ready  ),
-      .s_axi_arid           ( mem_mig_nasti.ar_id    ),
-      .s_axi_araddr         ( mem_mig_nasti.ar_addr  ),
-      .s_axi_arlen          ( mem_mig_nasti.ar_len   ),
-      .s_axi_arsize         ( mem_mig_nasti.ar_size  ),
-      .s_axi_arburst        ( mem_mig_nasti.ar_burst ),
-      .s_axi_arlock         ( 1'b0                   ), // not supported in AXI4
-      .s_axi_arcache        ( mem_mig_nasti.ar_cache ),
-      .s_axi_arprot         ( mem_mig_nasti.ar_prot  ),
-      .s_axi_arqos          ( mem_mig_nasti.ar_qos   ),
-      .s_axi_arvalid        ( mem_mig_nasti.ar_valid ),
-      .s_axi_arready        ( mem_mig_nasti.ar_ready ),
-      .s_axi_rid            ( mem_mig_nasti.r_id     ),
-      .s_axi_rdata          ( mem_mig_nasti.r_data   ),
-      .s_axi_rresp          ( mem_mig_nasti.r_resp   ),
-      .s_axi_rlast          ( mem_mig_nasti.r_last   ),
-      .s_axi_rvalid         ( mem_mig_nasti.r_valid  ),
-      .s_axi_rready         ( mem_mig_nasti.r_ready  )
-      );
+    `endif // !`ifdef ZED
 
-`else
+  `else // `ifdef ADD_PHY_DDR
 
-   assign clk = clk_p;
-   assign rstn = !rst_top;
+    assign clk = clk_p;
+    assign rstn = !rst_top;
+    assign clk_msoc = clk_p;
+    assign clk_locked = !rst_top;
 
-   nasti_ram_behav
-     #(
-       .ID_WIDTH     ( `ROCKET_MEM_TAG_WIDTH   ),
-       .ADDR_WIDTH   ( `ROCKET_PADDR_WIDTH     ),
-       .DATA_WIDTH   ( `ROCKET_MEM_DAT_WIDTH   ),
-       .USER_WIDTH   ( 1                )
-       )
-   ram_behav
-     (
+    nasti_ram_behav
+    #(
+      .ID_WIDTH     ( `ROCKET_MEM_TAG_WIDTH   ),
+      .ADDR_WIDTH   ( `ROCKET_PADDR_WIDTH     ),
+      .DATA_WIDTH   ( `ROCKET_MEM_DAT_WIDTH   ),
+      .USER_WIDTH   ( 1                )
+      )
+    ram_behav
+    (
       .clk           ( clk         ),
       .rstn          ( rstn        ),
       .nasti         ( mem_nasti   )
-      );
-`endif // !`ifdef ADD_PHY_DDR
+    );
+  `endif // !`ifdef ADD_PHY_DDR
 
-   /////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////
    // IO space buses
 
    nasti_channel
@@ -431,6 +574,8 @@ module chip_top
    logic [`LOWRISC_IO_DAT_WIDTH/8-1:0] ram_we;
    logic [BRAM_SIZE-1:0]               ram_addr;
    logic [`LOWRISC_IO_DAT_WIDTH-1:0]   ram_wrdata, ram_rddata;
+   wire [31:0] ram_rddata_b;
+   wire ram_sel_b;
 
    axi_bram_ctrl_0 BramCtl
      (
@@ -475,12 +620,13 @@ module chip_top
       .bram_clk_a      ( ram_clk                   ),
       .bram_en_a       ( ram_en                    ),
       .bram_we_a       ( ram_we                    ),
-      .bram_addr_a     ( ram_addr                  ),
+      .bram_addr_a     ( {ram_sel_b,ram_addr}      ),
       .bram_wrdata_a   ( ram_wrdata                ),
       .bram_rddata_a   ( ram_rddata                )
       );
 
    // the inferred BRAMs
+   reg                            ram_sel_b_dly;
    reg   [BRAM_WIDTH-1:0]         ram [0 : BRAM_LINE-1];
    logic [BRAM_ADDR_BLK_BITS-1:0] ram_block_addr, ram_block_addr_delay;
    logic [BRAM_ADDR_LSB_BITS-1:0] ram_lsb_addr, ram_lsb_addr_delay;
@@ -494,19 +640,47 @@ module chip_top
    assign ram_we_full = ram_we << ram_we_shift;
    assign ram_wrdata_full = {(BRAM_WIDTH / `LOWRISC_IO_DAT_WIDTH){ram_wrdata}};
 
-   always_ff @(posedge ram_clk)
-     if(ram_en) begin
+   always @(posedge ram_clk)
+    begin
+     ram_sel_b_dly <= ram_sel_b;     
+     if(ram_en & !ram_sel_b) begin
         ram_block_addr_delay <= ram_block_addr;
         ram_lsb_addr_delay <= ram_lsb_addr;
         foreach (ram_we_full[i])
           if(ram_we_full[i]) ram[ram_block_addr][i*8 +:8] <= ram_wrdata_full[i*8 +: 8];
      end
+     end
 
    assign ram_rddata_full = ram[ram_block_addr_delay];
    assign ram_rddata_shift = ram_lsb_addr_delay << (BRAM_OFFSET_BITS + 3); // avoid ISim error
-   assign ram_rddata = ram_rddata_full >> ram_rddata_shift;
+   assign ram_rddata = ram_sel_b_dly ? ram_rddata_b : ram_rddata_full >> ram_rddata_shift;
 
    initial $readmemh("boot.mem", ram);
+
+`ifdef ADD_MINION_SD
+    genvar r;
+    generate for (r = 0; r < 4; r=r+1)
+    
+   RAMB16_S9_S9 #(
+   ) RAMB16_S1_S1_inst (
+      .CLKA(ram_clk),      // Port A Clock
+      .DOA(ram_rddata_b[r*8 +: 8]),  // Port A 1-bit Data Output
+      .ADDRA(ram_addr[12:2]),    // Port A 14-bit Address Input
+      .DIA(ram_wrdata[r*8 +:8]),   // Port A 1-bit Data Input
+      .ENA(ram_en & ram_sel_b),    // Port A RAM Enable Input
+      .SSRA(1'b0),     // Port A Synchronous Set/Reset Input
+      .WEA(ram_we[r]),         // Port A Write Enable Input
+      .CLKB(clk_msoc),      // Port B Clock
+      .DOB(shared_rdata[r*8 +: 8]),  // Port B 1-bit Data Output
+      .ADDRB(core_lsu_addr[12:2]),    // Port B 14-bit Address Input
+      .DIB(core_lsu_wdata[r*8 +: 8]),   // Port B 1-bit Data Input
+      .ENB(m_enb[r]),    // Port B RAM Enable Input
+      .SSRB(1'b0),     // Port B Synchronous Set/Reset Input
+      .WEB(m_web)         // Port B Write Enable Input
+   ); // 
+
+    endgenerate
+`endif
 `endif
 
    /////////////////////////////////////////////////////////////
@@ -549,10 +723,10 @@ module chip_top
       .s_axi_aresetn    ( rstn                          ),
       .s_axi4_aclk      ( clk                           ),
       .s_axi4_aresetn   ( rstn                          ),
-      .s_axi_araddr     ( 0                             ),
+      .s_axi_araddr     ( 7'b0                          ),
       .s_axi_arready    (                               ),
       .s_axi_arvalid    ( 1'b0                          ),
-      .s_axi_awaddr     ( 0                             ),
+      .s_axi_awaddr     ( 7'b0                          ),
       .s_axi_awready    (                               ),
       .s_axi_awvalid    ( 1'b0                          ),
       .s_axi_bready     ( 1'b0                          ),
@@ -564,7 +738,7 @@ module chip_top
       .s_axi_rvalid     (                               ),
       .s_axi_wdata      ( 0                             ),
       .s_axi_wready     (                               ),
-      .s_axi_wstrb      ( 0                             ),
+      .s_axi_wstrb      ( 4'b0                          ),
       .s_axi_wvalid     ( 1'b0                          ),
       .s_axi4_awid      ( local_flash_nasti.aw_id       ),
       .s_axi4_awaddr    ( local_flash_nasti.aw_addr     ),
@@ -1084,6 +1258,25 @@ module chip_top
  `ifdef ADD_FLASH
    defparam io_mem_crossbar.BASE2 = `DEV_MAP__io_ext_flash__BASE;
    defparam io_mem_crossbar.MASK2 = `DEV_MAP__io_ext_flash__MASK;
+ `endif
+
+`ifdef ADD_MINION_SD
+   minion_soc
+     msoc (
+         .uart_tx(),
+         .uart_rx(1'b1),
+         .msoc_clk(clk_msoc),
+         .sd_sclk(sd_sclk),
+         .sd_detect(sd_detect),
+         .sd_dat(sd_dat),
+         .sd_cmd(sd_cmd),
+         .from_dip({12'b0,i_dip}),
+         .to_led(o_led),
+         .rstn(clk_locked),
+         .clk_200MHz(mig_sys_clk),
+         .pxl_clk(clk_pixel),
+	     .*
+        );
  `endif
 
 endmodule // chip_top
