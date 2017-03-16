@@ -53,11 +53,11 @@ class TopIO(implicit val p: Parameters) extends ParameterizedBundle()(p) with Ha
 object TopUtils {
   // Connect two Nasti interfaces with queues in-between
   def connectNasti(outer: NastiIO, inner: NastiIO)(implicit p: Parameters) {
-    outer.ar <> Queue(inner.ar)
-    outer.aw <> Queue(inner.aw)
-    outer.w  <> Queue(inner.w)
-    inner.r  <> Queue(outer.r)
-    inner.b  <> Queue(outer.b)
+    outer.ar <> Queue(inner.ar,1)
+    outer.aw <> Queue(inner.aw,1)
+    outer.w  <> Queue(inner.w,1)
+    inner.r  <> Queue(outer.r,1)
+    inner.b  <> Queue(outer.b,1)
   }
 
   // connect uncached tilelike -> nasti
@@ -135,7 +135,7 @@ class Top(topParams: Parameters) extends Module with HasTopLevelParameters {
     val isMemory = addrHashMap.isInRegion("mem", addr << log2Up(p(CacheBlockBytes)))
     Mux(isMemory, (addr >> lsb) % UInt(nBanks), UInt(nBanks))
   }
-  val preBuffering = TileLinkDepths(2,2,2,2,2)
+  val preBuffering = TileLinkDepths(0,0,1,0,1)
   val coherent_net = Module(new PortedTileLinkCrossbar(addrToBank, sharerToClientId, preBuffering)(coherentNetParams))
 
   coherent_net.io.clients_cached <> tileList.map(_.io.cached).flatten

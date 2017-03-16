@@ -160,8 +160,8 @@ class BaseConfig extends Config (
       }:PF
 
       //L1 D$
-      case StoreDataQueueDepth => 17
-      case ReplayQueueDepth => 16
+      case StoreDataQueueDepth => 5
+      case ReplayQueueDepth => 4
       case NMSHRs => Knob("L1D_MSHRS")
       case LRSCCycles => 32 
       case "L1D" => {
@@ -353,21 +353,21 @@ class BaseConfig extends Config (
     case "NBANKS" => 1
 
     case "L1D_MSHRS" => 2
-    case "L1D_SETS" => 64
+    case "L1D_SETS" => 32
     case "L1D_WAYS" => 4
 
-    case "L1I_SETS" => 64
+    case "L1I_SETS" => 32
     case "L1I_WAYS" => 4
     case "L1I_BUFFER_WAYS" => false
 
     case "L2_XACTORS" => 2
-    case "L2_SETS" => 256
+    case "L2_SETS" => 128
     case "L2_WAYS" => 8
 
-    case "TC_MEM_XACTORS" => 3
-    case "TC_TAG_XACTORS" => 2
-    case "TC_SETS" => 64
-    case "TC_WAYS" => 8
+    case "TC_MEM_XACTORS" => 1
+    case "TC_TAG_XACTORS" => 1
+    case "TC_SETS" => 32
+    case "TC_WAYS" => 4
   }
 )
 
