@@ -361,7 +361,7 @@ class BaseConfig extends Config (
     case "L1I_BUFFER_WAYS" => false
 
     case "L2_XACTORS" => 2
-    case "L2_SETS" => 256 // 1024
+    case "L2_SETS" => 256
     case "L2_WAYS" => 8
 
     case "TC_MEM_XACTORS" => 3
@@ -463,7 +463,7 @@ class With512MRamConfig extends Config (
 )
 
 class BasicFPGAConfig extends
-    Config(new WithSPIConfig ++ new WithBootRAMConfig ++ new WithFlashConfig ++ new BaseL2Config)
+    Config(new WithTagConfig ++ new WithSPIConfig ++ new WithBootRAMConfig ++ new WithFlashConfig ++ new WithL2 ++ new BaseConfig)
 
 class FPGAConfig extends
     Config(new WithUARTConfig ++ new BasicFPGAConfig)
