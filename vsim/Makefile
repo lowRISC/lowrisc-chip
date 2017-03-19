@@ -126,12 +126,6 @@ verilog_srcs = \
 	$(base_dir)/minion_subsystem/pulpino/ips/riscv/prefetch_buffer.sv \
 	$(base_dir)/minion_subsystem/software/bootstrap/code.v \
 	$(base_dir)/minion_subsystem/software/bootstrap/data.v \
-	$(base_dir)/vsim/RAMB16_S2_S2.v \
-	$(base_dir)/vsim/RAMB16_S1_S1.v \
-	$(base_dir)/vsim/RAMB16_S9.v \
-	$(base_dir)/vsim/FIFO18E1.v \
-	$(base_dir)/vsim/IOBUF.v \
-	$(base_dir)/vsim/BUFR.v \
 
 verilog_headers = \
 	$(base_dir)/src/main/verilog/config.vh \
