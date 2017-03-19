@@ -16,6 +16,7 @@ case object UseUART extends Field[Boolean]
 case object UseSPI extends Field[Boolean]
 case object UseBootRAM extends Field[Boolean]
 case object UseFlash extends Field[Boolean]
+case object UseMinion extends Field[Boolean]
 case object RAMSize extends Field[BigInt]
 case object IOTagBits extends Field[Int]
 
@@ -36,7 +37,7 @@ class BaseConfig extends Config (
     lazy val externalIOAddrMap: AddrMap = {
       val entries = collection.mutable.ArrayBuffer[AddrMapEntry]()
       if (site(UseBootRAM)) {
-        entries += AddrMapEntry("bram", MemSize(1<<16, 1<<30, MemAttr(AddrMapProt.RWX)))
+        entries += AddrMapEntry("bram", MemSize(1<<17, 1<<30, MemAttr(AddrMapProt.RWX)))
         Dump("ADD_BRAM", true)
       }
       if (site(UseFlash)) {
@@ -54,6 +55,9 @@ class BaseConfig extends Config (
       if (site(UseSPI)) {
         entries += AddrMapEntry("spi", MemSize(1<<13, 1<<13, MemAttr(AddrMapProt.RW)))
         Dump("ADD_SPI", true)
+      }
+      if (site(UseMinion)) {
+        Dump("ADD_MINION_SD", true)
       }
       new AddrMap(entries)
     }
@@ -329,6 +333,7 @@ class BaseConfig extends Config (
       case UseSPI => false
       case UseBootRAM => false
       case UseFlash => false
+      case UseMinion => false
 
       // NASTI BUS parameters
       case NastiKey("mem") =>
@@ -444,8 +449,14 @@ class With512MRamConfig extends Config (
   }
 )
 
+class WithMinionConfig extends Config (
+  (pname,site,here) => pname match {
+    case UseMinion => true
+  }
+)
+
 class BasicFPGAConfig extends
-    Config(new WithSPIConfig ++ new WithBootRAMConfig ++ new WithFlashConfig ++ new BaseConfig)
+    Config(new WithMinionConfig ++ new WithBootRAMConfig ++ new WithFlashConfig ++ new BaseConfig)
 
 class FPGAConfig extends
     Config(new WithUARTConfig ++ new BasicFPGAConfig)
