@@ -423,6 +423,7 @@ class TagConfig extends Config(new WithTagConfig ++ new DefaultConfig)
 class TagL2Config extends Config(new WithTagConfig ++ new DefaultL2Config)
 
 class DebugConfig extends Config(new WithDebugConfig ++ new BaseConfig)
+class DebugTagConfig extends Config(new WithTagConfig ++ new DebugConfig)
 class DebugL2Config extends Config(new WithDebugConfig ++ new BaseL2Config)
 class DebugTagL2Config extends Config(new WithTagConfig ++ new DebugL2Config)
 
@@ -463,7 +464,8 @@ class With512MRamConfig extends Config (
 )
 
 class BasicFPGAConfig extends
-    Config(new WithTagConfig ++ new WithSPIConfig ++ new WithBootRAMConfig ++ new WithFlashConfig ++ new WithL2 ++ new BaseConfig)
+    Config(new WithTagConfig ++ new WithSPIConfig ++ new WithBootRAMConfig ++ new BaseConfig)
+    //Config(new WithTagConfig ++ new WithSPIConfig ++ new WithBootRAMConfig ++ new WithFlashConfig ++ new WithL2 ++ new BaseConfig)
 
 class FPGAConfig extends
     Config(new WithUARTConfig ++ new BasicFPGAConfig)

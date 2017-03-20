@@ -34,7 +34,7 @@ include $(base_dir)/Makefrag
 #--------------------------------------------------------------------
 
 lowrisc_srcs = \
-	$(generated_dir)/$(MODEL).$(CONFIG).v \
+	$(generated_dir)/$(MODEL).$(CONFIG).sv \
 
 lowrisc_headers = \
 	$(generated_dir)/consts.vh \
