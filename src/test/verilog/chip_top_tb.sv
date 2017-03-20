@@ -12,6 +12,8 @@ module tb;
 `ifdef FPGA
          .rxd(1'b1),
          .txd(),
+         .rts(),
+         .cts(1'b1),
 `endif
          .clk_p(clk),
          .clk_n(!clk),
