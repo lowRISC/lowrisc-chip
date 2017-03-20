@@ -187,7 +187,7 @@ rv32um = mul mulh mulhsu mulhu div divu rem remu \
 
 rv32ua = amoadd_w amoand_w amoor_w amoxor_w amoswap_w amomax_w amomaxu_w amomin_w amominu_w \
 
-rv32si = csr ma_fetch scall sbreak wfi \
+rv32si = csr ma_fetch scall sbreak wfi hpm \
 
 rv32mi = csr mcsr dirty illegal ma_addr ma_fetch sbreak scall \
 
