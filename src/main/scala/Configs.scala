@@ -422,6 +422,8 @@ class DefaultL2Config extends Config(new WithL2 ++ new With4Banks ++ new Default
 class TagConfig extends Config(new WithTagConfig ++ new DefaultConfig)
 class TagL2Config extends Config(new WithTagConfig ++ new DefaultL2Config)
 
+class SmallTagConfig extends Config(new With128MRamConfig ++ new TagConfig)
+
 class DebugConfig extends Config(new WithDebugConfig ++ new BaseConfig)
 class DebugTagConfig extends Config(new WithTagConfig ++ new DebugConfig)
 class DebugL2Config extends Config(new WithDebugConfig ++ new BaseL2Config)
