@@ -58,7 +58,7 @@ class BaseConfig extends Config (
     }
 
     lazy val (globalAddrMap, globalAddrHashMap) = {
-      val memSize:BigInt = site(RAMSize)
+      val memSize:BigInt = if(site(UseTagMem)) site(RAMSize) / 64 * (64 - site(TagBits)) else site(RAMSize)
       val memAlign = BigInt(1L << 30)
       val io = AddrMap(
         AddrMapEntry("int", MemSubmap(internalIOAddrMap.computeSize, internalIOAddrMap)),
@@ -69,7 +69,7 @@ class BaseConfig extends Config (
 
       val addrHashMap = new AddrHashMap(addrMap)
       Dump("ROCKET_MEM_BASE", addrHashMap("mem").start)
-      Dump("ROCKET_MEM_SIZE", memSize)
+      Dump("ROCKET_MEM_SIZE", site(RAMSize))
       Dump("ROCKET_IO_BASE", addrHashMap("io:ext").start)
       Dump("ROCKET_IO_SIZE", addrHashMap("io:ext").region.size)
       (addrMap, addrHashMap)
