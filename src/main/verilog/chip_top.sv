@@ -80,6 +80,7 @@ module chip_top
    inout         spi_miso,
    output        sd_reset,
 `else
+`ifndef VERILATOR
 `define ADD_MINION_SD
    output [7:0] o_led,
    input  [3:0] i_dip,
@@ -109,7 +110,7 @@ output [6:0]SEG,
 output [7:0]AN,
 output DP,
 `endif
-
+`endif
    // clock and reset
    input         clk_p,
    input         clk_n,
@@ -1171,7 +1172,7 @@ output DP,
      msoc (
          .uart_tx(),
          .uart_rx(1'b1),
-         .msoc_clk(clk),
+         .msoc_clk(clk_msoc),
          .sd_sclk(sd_sclk),
          .sd_detect(sd_detect),
          .sd_dat(sd_dat),
