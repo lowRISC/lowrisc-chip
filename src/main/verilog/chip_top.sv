@@ -569,7 +569,7 @@ output DP,
     generate for (r = 0; r < 4; r=r+1)
     
    RAMB16_S9_S9 #(
-   ) RAMB16_S1_S1_inst (
+   ) RAMB16_S9_S9_inst (
       .CLKA(ram_clk),      // Port A Clock
       .DOA(ram_rddata_b[r*8 +: 8]),  // Port A 1-bit Data Output
       .ADDRA(ram_addr[12:2]),    // Port A 14-bit Address Input
@@ -577,7 +577,7 @@ output DP,
       .ENA(ram_en & ram_sel_b),    // Port A RAM Enable Input
       .SSRA(1'b0),     // Port A Synchronous Set/Reset Input
       .WEA(ram_we[r]),         // Port A Write Enable Input
-      .CLKB(clk),      // Port B Clock
+      .CLKB(clk_msoc),      // Port B Clock
       .DOB(shared_rdata[r*8 +: 8]),  // Port B 1-bit Data Output
       .ADDRB(core_lsu_addr[12:2]),    // Port B 14-bit Address Input
       .DIB(core_lsu_wdata[r*8 +: 8]),   // Port B 1-bit Data Input
