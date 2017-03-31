@@ -35,7 +35,7 @@ class BaseConfig extends Config (
     lazy val externalIOAddrMap: AddrMap = {
       val entries = collection.mutable.ArrayBuffer[AddrMapEntry]()
       if (site(UseBootRAM)) {
-        entries += AddrMapEntry("bram", MemSize(1<<16, 1<<30, MemAttr(AddrMapProt.RWX)))
+        entries += AddrMapEntry("bram", MemSize(1<<17, 1<<30, MemAttr(AddrMapProt.RWX)))
         Dump("ADD_BRAM", true)
       }
       if (site(UseFlash)) {
@@ -466,7 +466,7 @@ class With512MRamConfig extends Config (
 )
 
 class BasicFPGAConfig extends
-    Config(new WithTagConfig ++ new WithSPIConfig ++ new WithBootRAMConfig ++ new BaseConfig)
+    Config(new WithTagConfig ++ new WithBootRAMConfig ++ new BaseConfig)
     //Config(new WithTagConfig ++ new WithSPIConfig ++ new WithBootRAMConfig ++ new WithFlashConfig ++ new WithL2 ++ new BaseConfig)
 
 class FPGAConfig extends

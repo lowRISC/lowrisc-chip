@@ -14,6 +14,7 @@ module tb;
          .txd(),
          .rts(),
          .cts(1'b1),
+         .o_led(),
 `endif
          .clk_p(clk),
          .clk_n(!clk),
@@ -171,15 +172,18 @@ module tb;
   `endif
  `endif //  `ifdef FPGA_FULL
 
-   // spi
-   wire spi_cs, spi_sclk, spi_mosi, spi_miso;
+   // sd
+   wire 	   sd_sclk;
+   wire1        sd_detect;
+   wire [3:0]  sd_dat;
+   wire        sd_cmd;
    wire sd_reset;
-   assign spi_cs = 1'bz;
-   assign spi_sclk = 1'bz;
-   assign spi_mosi = 1'bz;
-   assign spi_miso = !spi_cs ? spi_mosi : 1'bz;
 
-   assign spi_sclk = 1'bz;
+sd_card sdflash1 (
+             .sdClk(sd_sclk),
+             .cmd(sd_cmd),
+             .dat(sd_dat)
+);
 
    // flash
    wire flash_ss;
