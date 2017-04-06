@@ -90,7 +90,6 @@ verilog_srcs = \
 	$(base_dir)/minion_subsystem/verilog/ps2_keyboard.v \
 	$(base_dir)/minion_subsystem/verilog/ps2_translation_table.v \
 	$(base_dir)/minion_subsystem/verilog/ps2.v \
-	$(base_dir)/minion_subsystem/verilog/rachelset.v \
 	$(base_dir)/minion_subsystem/verilog/rambyte.v \
 	$(base_dir)/minion_subsystem/verilog/rx_delay.v \
 	$(base_dir)/minion_subsystem/verilog/sd_clock_divider.v \
