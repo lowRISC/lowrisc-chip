@@ -98,7 +98,6 @@ verilog_srcs = \
 	$(base_dir)/minion_subsystem/verilog/sd_crc_7.v \
 	$(base_dir)/minion_subsystem/verilog/sd_data_serial_host.sv \
 	$(base_dir)/minion_subsystem/verilog/sd_top.sv \
-	$(base_dir)/minion_subsystem/verilog/Seg_7_Display.v \
 	$(base_dir)/minion_subsystem/verilog/uart.v \
 	$(base_dir)/minion_subsystem/verilog/vga_ctrl.v \
 	$(base_dir)/minion_subsystem/pulpino/ips/riscv/include/riscv_defines.sv \
