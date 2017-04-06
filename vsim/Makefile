@@ -85,7 +85,6 @@ verilog_srcs = \
 	$(base_dir)/minion_subsystem/verilog/dpram.v \
 	$(base_dir)/minion_subsystem/verilog/dualmem.v \
 	$(base_dir)/minion_subsystem/verilog/fstore2.v \
-	$(base_dir)/minion_subsystem/verilog/generic_dpram.v \
 	$(base_dir)/minion_subsystem/verilog/minion_soc.sv \
 	$(base_dir)/minion_subsystem/verilog/my_fifo.v \
 	$(base_dir)/minion_subsystem/verilog/ps2_keyboard.v \
