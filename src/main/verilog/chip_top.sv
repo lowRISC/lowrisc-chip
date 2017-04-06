@@ -264,13 +264,13 @@ output DP,
 
    clk_wiz_0 clk_gen
      (
-      .clk_in1     ( clk_p         ), // 100 MHz onboard
-      .clk_out1    ( mig_sys_clk   ), // 200 MHz
-      .clk_io_uart ( clk_io_uart   ), // 60 MHz
-      .clk_msoc    ( clk_msoc      ), // 40 MHz
-      .clk_pixel   ( clk_pixel     ), // 120 MHz
-      .resetn      ( rst_top       ),
-      .locked      ( clk_locked    )
+      .clk_in1       ( clk_p         ), // 100 MHz onboard
+      .clk_out1      ( mig_sys_clk   ), // 200 MHz
+      .clk_io_uart   ( clk_io_uart   ), // 60 MHz
+      .clk_sd_prediv ( clk_sd_prediv ), // 40 MHz
+      .clk_pixel     ( clk_pixel     ), // 120 MHz
+      .resetn        ( rst_top       ),
+      .locked        ( clk_locked    )
       );
  `endif //  `ifdef NEXYS4_COMMON
 
@@ -385,7 +385,7 @@ output DP,
 
    assign clk = clk_p;
    assign rstn = !rst_top;
-   assign clk_msoc = clk_p;
+   assign clk_sd_prediv = clk_p;
    assign clk_locked = !rst_top;
 
    nasti_ram_behav
@@ -577,7 +577,7 @@ output DP,
       .ENA(ram_en & ram_sel_b),    // Port A RAM Enable Input
       .SSRA(1'b0),     // Port A Synchronous Set/Reset Input
       .WEA(ram_we[r]),         // Port A Write Enable Input
-      .CLKB(clk_msoc),      // Port B Clock
+      .CLKB(clk),      // Port B Clock
       .DOB(shared_rdata[r*8 +: 8]),  // Port B 1-bit Data Output
       .ADDRB(core_lsu_addr[12:2]),    // Port B 14-bit Address Input
       .DIB(core_lsu_wdata[r*8 +: 8]),   // Port B 1-bit Data Input
@@ -1172,7 +1172,8 @@ output DP,
      msoc (
          .uart_tx(),
          .uart_rx(1'b1),
-         .msoc_clk(clk_msoc),
+         .msoc_clk(clk),
+         .sd_prediv_clk(clk_sd_prediv),
          .sd_sclk(sd_sclk),
          .sd_detect(sd_detect),
          .sd_dat(sd_dat),
