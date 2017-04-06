@@ -466,7 +466,7 @@ class With512MRamConfig extends Config (
 )
 
 class BasicFPGAConfig extends
-    Config(new WithTagConfig ++ new WithBootRAMConfig ++ new BaseConfig)
+    Config(new WithTagConfig ++ new WithBootRAMConfig ++ new WithL2 ++ new BaseConfig)
     //Config(new WithTagConfig ++ new WithSPIConfig ++ new WithBootRAMConfig ++ new WithFlashConfig ++ new WithL2 ++ new BaseConfig)
 
 class FPGAConfig extends
