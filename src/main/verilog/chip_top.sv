@@ -267,7 +267,6 @@ output DP,
       .clk_in1       ( clk_p         ), // 100 MHz onboard
       .clk_out1      ( mig_sys_clk   ), // 200 MHz
       .clk_io_uart   ( clk_io_uart   ), // 60 MHz
-      .clk_sd_prediv ( clk_sd_prediv ), // 40 MHz
       .clk_pixel     ( clk_pixel     ), // 120 MHz
       .resetn        ( rst_top       ),
       .locked        ( clk_locked    )
@@ -385,7 +384,6 @@ output DP,
 
    assign clk = clk_p;
    assign rstn = !rst_top;
-   assign clk_sd_prediv = clk_p;
    assign clk_locked = !rst_top;
 
    nasti_ram_behav
@@ -1173,7 +1171,6 @@ output DP,
          .uart_tx(),
          .uart_rx(1'b1),
          .msoc_clk(clk),
-         .sd_prediv_clk(clk_sd_prediv),
          .sd_sclk(sd_sclk),
          .sd_detect(sd_detect),
          .sd_dat(sd_dat),
