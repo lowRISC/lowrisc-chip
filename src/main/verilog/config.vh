@@ -41,14 +41,6 @@
 
  `ifdef FPGA
 
-  `ifdef ADD_UART
-   `define ADD_UART_IO
-  `endif
-
-  `ifdef ADD_SPI
-   `define ADD_SPI_IO
-  `endif
-
   `ifdef FPGA_FULL
    `define ADD_PHY_DDR
   `endif
@@ -61,6 +53,9 @@
    `define NEXYS4_COMMON
   `endif
 
-`endif
+  `define ADD_MINION_SD
 
-`endif
+ `endif //  `ifdef FPGA
+
+`endif //  `ifndef CHIP_CONFIG_VH
+

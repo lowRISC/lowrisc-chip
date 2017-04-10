@@ -61,7 +61,7 @@ module chip_top
  `endif
 `endif //  `ifdef ADD_DDR_IO
 
-`ifdef ADD_UART_IO
+`ifdef ADD_UART
    input         rxd,
    output        txd,
    output        rts,
@@ -79,38 +79,39 @@ module chip_top
    inout         spi_mosi,
    inout         spi_miso,
    output        sd_reset,
-`else
-`ifndef VERILATOR
-`define ADD_MINION_SD
-   output [7:0] o_led,
-   input  [3:0] i_dip,
-   output wire 	     sd_sclk,
-   input wire        sd_detect,
-   inout wire [3:0]  sd_dat,
-   inout wire        sd_cmd,
-   output reg        sd_reset,
+`endif
 
-// push button array
-input GPIO_SW_C,
-input GPIO_SW_W,
-input GPIO_SW_E,
-input GPIO_SW_N,
-input GPIO_SW_S,
-//keyboard
-inout PS2_CLK,
-inout PS2_DATA,
+`ifdef ADD_MINION_SD
+   // 4-bit full SD interface
+   output        sd_sclk,
+   input         sd_detect,
+   inout [3:0]   sd_dat,
+   inout         sd_cmd,
+   output        sd_reset,
+
+   // LED and DIP switch
+   output [7:0]  o_led,
+   input  [3:0]  i_dip,
+
+   // push button array
+   input         GPIO_SW_C,
+   input         GPIO_SW_W,
+   input         GPIO_SW_E,
+   input         GPIO_SW_N,
+   input         GPIO_SW_S,
+
+   //keyboard
+   inout         PS2_CLK,
+   inout         PS2_DATA,
 
   // display
-output           VGA_HS_O,
-output           VGA_VS_O,
-output  [3:0]    VGA_RED_O,
-output  [3:0]    VGA_BLUE_O,
-output  [3:0]    VGA_GREEN_O,
-output [6:0]SEG,
-output [7:0]AN,
-output DP,
+   output        VGA_HS_O,
+   output        VGA_VS_O,
+   output [3:0]  VGA_RED_O,
+   output [3:0]  VGA_BLUE_O,
+   output [3:0]  VGA_GREEN_O,
 `endif
-`endif
+
    // clock and reset
    input         clk_p,
    input         clk_n,
@@ -129,22 +130,6 @@ output DP,
    // interrupt line
    logic [63:0]                interrupt;
 
-   // shared memory interface to minion soc
-   logic [3:0]                 m_enb;
-   logic 		       m_web;
-    
-   logic [31:0] 	       core_lsu_addr;
-   logic [31:0] 	       core_lsu_addr_dly;
-   logic [31:0] 	       core_lsu_wdata;
-   logic [3:0] 		       core_lsu_be;
-   logic 		       ce_d;
-   logic 		       we_d;
-   logic 		       shared_sel;
-   logic [31:0] 	       shared_rdata;
-
-   assign m_enb = (we_d ? core_lsu_be : 4'hF);
-   assign m_web = ce_d & shared_sel & we_d;
-  
    /////////////////////////////////////////////////////////////
    // NASTI/Lite on-chip interconnects
 
@@ -380,7 +365,7 @@ output DP,
       .s_axi_rready         ( mem_mig_nasti.r_ready  )
       );
 
-`else
+`else // !`ifdef ADD_PHY_DDR
 
    assign clk = clk_p;
    assign rstn = !rst_top;
@@ -561,32 +546,49 @@ output DP,
    assign ram_rddata = ram_sel_b_dly ? ram_rddata_b : ram_rddata_full >> ram_rddata_shift;
 
    initial $readmemh("boot.mem", ram);
-`ifdef ADD_MINION_SD
 
-    genvar r;
-    generate for (r = 0; r < 4; r=r+1)
+ `ifdef ADD_MINION_SD
+
+   logic [3:0]                  m_enb;
+   logic                        m_web;
     
-   RAMB16_S9_S9 #(
-   ) RAMB16_S9_S9_inst (
-      .CLKA(ram_clk),      // Port A Clock
-      .DOA(ram_rddata_b[r*8 +: 8]),  // Port A 1-bit Data Output
-      .ADDRA(ram_addr[12:2]),    // Port A 14-bit Address Input
-      .DIA(ram_wrdata[r*8 +:8]),   // Port A 1-bit Data Input
-      .ENA(ram_en & ram_sel_b),    // Port A RAM Enable Input
-      .SSRA(1'b0),     // Port A Synchronous Set/Reset Input
-      .WEA(ram_we[r]),         // Port A Write Enable Input
-      .CLKB(clk),      // Port B Clock
-      .DOB(shared_rdata[r*8 +: 8]),  // Port B 1-bit Data Output
-      .ADDRB(core_lsu_addr[12:2]),    // Port B 14-bit Address Input
-      .DIB(core_lsu_wdata[r*8 +: 8]),   // Port B 1-bit Data Input
-      .ENB(m_enb[r]),    // Port B RAM Enable Input
-      .SSRB(1'b0),     // Port B Synchronous Set/Reset Input
-      .WEB(m_web)         // Port B Write Enable Input
-   ); // 
+   logic [31:0]                 core_lsu_addr;
+   logic [31:0]                 core_lsu_addr_dly;
+   logic [31:0]                 core_lsu_wdata;
+   logic [3:0]                  core_lsu_be;
+   logic                        ce_d;
+   logic                        we_d;
+   logic                        shared_sel;
+   logic [31:0]                 shared_rdata;
 
-    endgenerate
-`endif
-`endif
+   genvar                       r;
+
+   assign m_enb = (we_d ? core_lsu_be : 4'hF);
+   assign m_web = ce_d & shared_sel & we_d;
+
+   generate for (r = 0; r < 4; r=r+1)
+     RAMB16_S9_S9
+     RAMB16_S9_S9_inst
+       (
+        .CLKA   ( ram_clk                  ),     // Port A Clock
+        .DOA    ( ram_rddata_b[r*8 +: 8]   ),     // Port A 1-bit Data Output
+        .ADDRA  ( ram_addr[12:2]           ),     // Port A 14-bit Address Input
+        .DIA    ( ram_wrdata[r*8 +:8]      ),     // Port A 1-bit Data Input
+        .ENA    ( ram_en & ram_sel_b       ),     // Port A RAM Enable Input
+        .SSRA   ( 1'b0                     ),     // Port A Synchronous Set/Reset Input
+        .WEA    ( ram_we[r]                ),     // Port A Write Enable Input
+        .CLKB   ( clk                      ),     // Port B Clock
+        .DOB    ( shared_rdata[r*8 +: 8]   ),     // Port B 1-bit Data Output
+        .ADDRB  ( core_lsu_addr[12:2]      ),     // Port B 14-bit Address Input
+        .DIB    ( core_lsu_wdata[r*8 +: 8] ),     // Port B 1-bit Data Input
+        .ENB    ( m_enb[r]                 ),     // Port B RAM Enable Input
+        .SSRB   ( 1'b0                     ),     // Port B Synchronous Set/Reset Input
+        .WEB    ( m_web                    )      // Port B Write Enable Input
+        );
+   endgenerate
+
+ `endif //  `ifdef ADD_MINION_SD
+`endif //  `ifdef ADD_BRAM
 
    /////////////////////////////////////////////////////////////
    // XIP SPI Flash
@@ -707,7 +709,7 @@ output DP,
    assign flash_ss = !flash_ss_t ? flash_ss_o : 1'bz;
    assign flash_ss_i = flash_ss;
 
-`endif
+`endif //  `ifdef ADD_FLASH
 
    /////////////////////////////////////////////////////////////
    // SPI
@@ -777,7 +779,7 @@ output DP,
    io_uart_lite();
    logic                       uart_irq;
 
- `ifdef ENABLE_DEBUG
+`ifdef ENABLE_DEBUG
    // Debug MAM signals
    logic                               mam_req_valid;
    logic                               mam_req_ready;
@@ -852,11 +854,11 @@ output DP,
       .read_data       ( mam_read_data          ),
       .read_ready      ( mam_read_ready         )
       );
- `else // !`ifdef ENABLE_DEBUG
+`else // !`ifdef ENABLE_DEBUG
    assign sys_rst = rst;
    assign cpu_rst = 1'b0;
 
-  `ifdef ADD_UART
+ `ifdef ADD_UART
    axi_uart16550_0 uart_i
      (
       .s_axi_aclk      ( clk                    ),
@@ -889,13 +891,13 @@ output DP,
       .rtsn            ( rts                    )
       );
 
-  `else // !`ifdef ADD_UART
+ `else // !`ifdef ADD_UART
 
    assign uart_irq = 1'b0;
 
-  `endif // !`ifdef ADD_UART
+ `endif // !`ifdef ADD_UART
 
- `endif // !`ifdef ENABLE_DEBUG
+`endif // !`ifdef ENABLE_DEBUG
 
    /////////////////////////////////////////////////////////////
    // Host for ISA regression
@@ -906,14 +908,14 @@ output DP,
        .DATA_WIDTH  ( `LOWRISC_IO_DAT_WIDTH     ))
    io_host_lite();
 
- `ifdef ADD_HOST
+`ifdef ADD_HOST
    host_behav host
      (
       .clk          ( clk          ),
       .rstn         ( rstn         ),
       .nasti        ( io_host_lite )
       );
- `endif
+`endif
 
    /////////////////////////////////////////////////////////////
    // IO crossbar
@@ -963,20 +965,20 @@ output DP,
       .slave  ( io_cbo_lite )
       );
 
- `ifdef ADD_HOST
+`ifdef ADD_HOST
    defparam io_crossbar.BASE0 = `DEV_MAP__io_ext_host__BASE ;
    defparam io_crossbar.MASK0 = `DEV_MAP__io_ext_host__MASK ;
- `endif
+`endif
 
- `ifdef ADD_UART
+`ifdef ADD_UART
    defparam io_crossbar.BASE1 = `DEV_MAP__io_ext_uart__BASE;
    defparam io_crossbar.MASK1 = `DEV_MAP__io_ext_uart__MASK;
- `endif
+`endif
 
- `ifdef ADD_SPI
+`ifdef ADD_SPI
    defparam io_crossbar.BASE2 = `DEV_MAP__io_ext_spi__BASE;
    defparam io_crossbar.MASK2 = `DEV_MAP__io_ext_spi__MASK;
- `endif
+`endif
 
    /////////////////////////////////////////////////////////////
    // the Rocket chip
@@ -1074,7 +1076,7 @@ output DP,
       .io_nasti_io_r_bits_last       ( io_nasti.r_last                        ),
       .io_nasti_io_r_bits_user       ( io_nasti.r_user                        ),
       .io_interrupt                  ( interrupt                              ),
- `ifdef ENABLE_DEBUG
+`ifdef ENABLE_DEBUG
       .io_debug_net_0_dii_in         ( debug_ring_start[0]                    ),
       .io_debug_net_0_dii_in_ready   ( debug_ring_start_ready[0]              ),
       .io_debug_net_1_dii_in         ( debug_ring_start[1]                    ),
@@ -1096,7 +1098,7 @@ output DP,
       .io_debug_mam_rdata_ready      ( mam_read_ready                         ),
       .io_debug_mam_rdata_valid      ( mam_read_valid                         ),
       .io_debug_mam_rdata_bits_data  ( mam_read_data                          ),
- `endif
+`endif
       .io_debug_rst                  ( rst                                    ),
       .io_cpu_rst                    ( cpu_rst                                )
       );
@@ -1155,33 +1157,35 @@ output DP,
       .slave  ( io_mem_cbo_nasti )
       );
 
- `ifdef ADD_BRAM
+`ifdef ADD_BRAM
    defparam io_mem_crossbar.BASE1 = `DEV_MAP__io_ext_bram__BASE;
    defparam io_mem_crossbar.MASK1 = `DEV_MAP__io_ext_bram__MASK;
- `endif
+`endif
 
- `ifdef ADD_FLASH
+`ifdef ADD_FLASH
    defparam io_mem_crossbar.BASE2 = `DEV_MAP__io_ext_flash__BASE;
    defparam io_mem_crossbar.MASK2 = `DEV_MAP__io_ext_flash__MASK;
- `endif
+`endif
 
 `ifdef ADD_MINION_SD
+
    minion_soc
-     msoc (
-         .uart_tx(),
-         .uart_rx(1'b1),
-         .msoc_clk(clk),
-         .sd_sclk(sd_sclk),
-         .sd_detect(sd_detect),
-         .sd_dat(sd_dat),
-         .sd_cmd(sd_cmd),
-         .from_dip({12'b0,i_dip}),
-         .to_led(o_led),
-         .rstn(clk_locked),
-         .clk_200MHz(mig_sys_clk),
-         .pxl_clk(clk_pixel),
-	     .*
-        );
+   msoc
+     (
+      .uart_tx    (                 ),
+      .uart_rx    ( 1'b1            ),
+      .msoc_clk   ( clk             ),
+      .sd_sclk    ( sd_sclk         ),
+      .sd_detect  ( sd_detect       ),
+      .sd_dat     ( sd_dat          ),
+      .sd_cmd     ( sd_cmd          ),
+      .from_dip   ( {12'b0,i_dip}   ),
+      .to_led     ( o_led           ),
+      .rstn       ( clk_locked      ),
+      .clk_200MHz ( mig_sys_clk     ),
+      .pxl_clk    ( clk_pixel       ),
+      .*
+      );
 `endif
    
 endmodule // chip_top
