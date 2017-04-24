@@ -10,11 +10,13 @@ def toolJobName = "${projectName}/${branchName}/${projectName}-${branchName}-too
 
 matrixJob(testJobName) {
 
-  // define the variables for matrix tests
-  axes {
-    text('CONFIG', 'DefaultConfig')
-    text('TEST_CASE', 'run-asm-tests')
-  }
+//  // define the variables for matrix tests
+//  axes {
+//    text('CONFIG', 'DefaultConfig',
+//                   'TagConfig')
+//    text('TEST_CASE', 'run-asm-tests',
+//                      'run-tag-tests')
+//  }
 
   // git repo
   scm {
@@ -84,7 +86,12 @@ export PATH=$PATH:$VERILATOR_ROOT/bin
 
 # run the regression test
 cd $TOP/vsim
-make CONFIG=$CONFIG $TEST_CASE
+make CONFIG=DefaultConfig run-asm-tests
+make clean
+make CONFIG=TagConfig run-asm-tests
+make CONFIG=TagConfig run-tag-tests
+make CONFIG=SmallTagConfig run-tagcache-tests
+make CONFIG=TagL2Config run-tagcache-tests
 
     ''')
 
