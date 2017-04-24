@@ -16,6 +16,7 @@ case object NSCR extends Field[Int]
 case object BankIdLSB extends Field[Int]
 case object IODataBits extends Field[Int]
 case object ConfigString extends Field[Array[Byte]]
+case object UseL2Cache extends Field[Boolean]
 
 trait HasTopLevelParameters {
   implicit val p: Parameters
@@ -27,6 +28,7 @@ trait HasTopLevelParameters {
   lazy val scrAddrBits = log2Up(nSCR)
   val csrAddrBits = 12
   val l1tol2TLId = "L1toL2"
+  val l2tomemTLId = "L2toMem"
   val l2totcTLId = "L2toTC"
   val tctomemTLId = "TCtoMem"
   val l2toioTLId = "L2toIO"
@@ -51,11 +53,11 @@ class TopIO(implicit val p: Parameters) extends ParameterizedBundle()(p) with Ha
 object TopUtils {
   // Connect two Nasti interfaces with queues in-between
   def connectNasti(outer: NastiIO, inner: NastiIO)(implicit p: Parameters) {
-    outer.ar <> Queue(inner.ar)
-    outer.aw <> Queue(inner.aw)
-    outer.w  <> Queue(inner.w)
-    inner.r  <> Queue(outer.r)
-    inner.b  <> Queue(outer.b)
+    outer.ar <> Queue(inner.ar,1)
+    outer.aw <> Queue(inner.aw,1)
+    outer.w  <> Queue(inner.w,1)
+    inner.r  <> Queue(outer.r,1)
+    inner.b  <> Queue(outer.b,1)
   }
 
   // connect uncached tilelike -> nasti
@@ -100,11 +102,12 @@ class Top(topParams: Parameters) extends Module with HasTopLevelParameters {
 
   val rocketParams = p.alterPartial({ case TLId => l1tol2TLId })
   val coherentNetParams = p.alterPartial({ case TLId => l1tol2TLId })
-  val tagCacheParams = p.alterPartial({ case TLId => l2totcTLId; case CacheName => tagCacheId })
-  val tagNetParams = p.alterPartial({ case TLId => l2totcTLId })
+  val memNetParams = if(p(UseTagMem)) p.alterPartial({ case TLId => l2totcTLId })
+                     else p.alterPartial({ case TLId => l2tomemTLId })
   val ioManagerParams = p.alterPartial({ case TLId => l2toioTLId })
   val ioNetParams = p.alterPartial({ case TLId => ioTLId; case BusId => ioBusId })
-  val memConvParams = p.alterPartial({ case TLId => tctomemTLId; case BusId => memBusId })
+  val memConvParams = if(p(UseTagMem)) p.alterPartial({ case TLId => tctomemTLId; case BusId => memBusId })
+                      else p.alterPartial({ case TLId => l2tomemTLId; case BusId => memBusId })
   val smiConvParams = p.alterPartial({ case BusId => ioBusId })
   val ioConvParams = p.alterPartial({ case TLId => extIoTLId; case BusId => ioBusId })
 
@@ -132,27 +135,40 @@ class Top(topParams: Parameters) extends Module with HasTopLevelParameters {
     val isMemory = addrHashMap.isInRegion("mem", addr << log2Up(p(CacheBlockBytes)))
     Mux(isMemory, (addr >> lsb) % UInt(nBanks), UInt(nBanks))
   }
-  val preBuffering = TileLinkDepths(2,2,2,2,2)
-  val mem_net = Module(new PortedTileLinkCrossbar(addrToBank, sharerToClientId, preBuffering)(coherentNetParams))
+  val preBuffering = TileLinkDepths(0,0,1,0,1)
+  val coherent_net = Module(new PortedTileLinkCrossbar(addrToBank, sharerToClientId, preBuffering)(coherentNetParams))
 
-  mem_net.io.clients_cached <> tileList.map(_.io.cached).flatten
+  coherent_net.io.clients_cached <> tileList.map(_.io.cached).flatten
   if(p(UseDebug)) {
     val debug_mam = Module(new TileLinkIOMamIOConverter()(coherentNetParams))
     debug_mam.io.mam <> io.debug_mam
-    mem_net.io.clients_uncached <> tileList.map(_.io.uncached).flatten :+ debug_mam.io.tl
+    coherent_net.io.clients_uncached <> tileList.map(_.io.uncached).flatten :+ debug_mam.io.tl
   } else
-    mem_net.io.clients_uncached <> tileList.map(_.io.uncached).flatten
+    coherent_net.io.clients_uncached <> tileList.map(_.io.uncached).flatten
 
   ////////////////////////////////////////////
   // L2 cache coherence managers
   val managerEndpoints = List.tabulate(nBanks){ id =>
-    //Module(new L2BroadcastHub()(p.alterPartial({
-    Module(new L2HellaCacheBank()(p.alterPartial({
-      case CacheId => id
-      case TLId => coherentNetParams(TLId)
-      case CacheName => l2CacheId
-      case InnerTLId => coherentNetParams(TLId)
-      case OuterTLId => tagNetParams(TLId)})))}
+    {
+      if(p(UseL2Cache)) {
+        Module(new L2HellaCacheBank()(p.alterPartial({
+          case CacheId => id
+          case TLId => coherentNetParams(TLId)
+          case CacheName => l2CacheId
+          case InnerTLId => coherentNetParams(TLId)
+          case OuterTLId => memNetParams(TLId)
+        })))
+      } else { // broadcasting coherent hub
+        Module(new L2BroadcastHub()(p.alterPartial({
+          case CacheId => id
+          case TLId => coherentNetParams(TLId)
+          case CacheName => l2CacheId
+          case InnerTLId => coherentNetParams(TLId)
+          case OuterTLId => memNetParams(TLId)
+        })))
+      }
+    }
+  }
 
   val mmioManager = Module(new MMIOTileLinkManager()(p.alterPartial({
     case TLId => coherentNetParams(TLId)
@@ -160,21 +176,30 @@ class Top(topParams: Parameters) extends Module with HasTopLevelParameters {
     case OuterTLId => ioManagerParams(TLId)
   })))
 
-  mem_net.io.managers <> managerEndpoints.map(_.innerTL) :+ mmioManager.io.inner
+  coherent_net.io.managers <> managerEndpoints.map(_.innerTL) :+ mmioManager.io.inner
   managerEndpoints.foreach { _.incoherent := io.cpu_rst } // revise when tiles are reset separately
 
   ////////////////////////////////////////////
-  // the network between L2 and tag cache
-  def routeL2ToTC(addr: UInt) = UInt(1) // this route function is one-hot
-  def routeTCToL2(id: UInt) = id
-  val tc_net = Module(new ClientUncachedTileLinkIOCrossbar(nBanks, 1, routeL2ToTC)(tagNetParams))
-  tc_net.io.in <> managerEndpoints.map(_.outerTL).map(ClientTileLinkIOUnwrapper(_)(tagNetParams))
+  // the network between L2 and memory/tag cache
+  def routeL2ToMem(addr: UInt) = UInt(1) // this route function is one-hot
+  def routeMemToL2(id: UInt) = id
+  val mem_net = Module(new ClientUncachedTileLinkIOCrossbar(nBanks, 1, routeL2ToMem)(memNetParams))
+  mem_net.io.in <> managerEndpoints.map(_.outerTL).map(ClientTileLinkIOUnwrapper(_)(memNetParams))
 
   ////////////////////////////////////////////
   // tag cache
-  //val tc = Module(new TagCache, {case TLId => "L2ToTC"; case CacheName => "TagCache"})
-  // currently a TileLink to NASTI converter
-  TopUtils.connectTilelinkNasti(io.nasti_mem, tc_net.io.out(0))(memConvParams)
+  if(p(UseTagMem)) {
+    val tc = Module(new TagCache()(p.alterPartial({
+      case CacheName => tagCacheId
+      case TLId => memConvParams(TLId)
+      case InnerTLId => memNetParams(TLId)
+      case OuterTLId => memConvParams(TLId)
+    })))
+    tc.io.inner <> mem_net.io.out(0)
+    TopUtils.connectTilelinkNasti(io.nasti_mem, tc.io.outer)(memConvParams)
+  } else {
+    TopUtils.connectTilelinkNasti(io.nasti_mem, mem_net.io.out(0))(memConvParams)
+  }
 
   ////////////////////////////////////////////
   // MMIO interconnect

@@ -1,32 +1,28 @@
 // See LICENSE for license details.
 
 `include "consts.vh"
+`include "config.vh"
 
 module tb;
 
    logic clk, rst;
 
    chip_top
-     DUT(
-         .*,
-`ifdef FPGA
-         .rxd(1'b1),
-         .txd(),
-         .rts(),
-         .cts(1'b1),
-`endif
-         .clk_p(clk),
-         .clk_n(!clk),
+   DUT
+     (
+      .*,
+      .clk_p        ( clk       ),
+      .clk_n        ( !clk      ),
 `ifdef FPGA_FULL
  `ifdef NEXYS4_COMMON
-         .rst_top(!rst)         // NEXYS4's cpu_reset is active low
+      .rst_top      ( !rst      )         // NEXYS4's cpu_reset is active low
  `else
-         .rst_top(rst)
+      .rst_top      ( rst       )
  `endif
 `else
-         .rst_top(rst)
+      .rst_top      ( rst       )
 `endif
-         );
+      );
 
    initial begin
       rst = 0;
@@ -45,9 +41,9 @@ module tb;
   `endif
    end // initial begin
 
-`ifdef FPGA
- `ifdef FPGA_FULL
-  `ifdef KC705
+`ifdef ADD_PHY_DDR
+ `ifdef KC705
+
    // DDRAM3
    wire [63:0]  ddr_dq;
    wire [7:0]   ddr_dqs_n;
@@ -90,7 +86,9 @@ module tb;
                 );
       end
    endgenerate
-  `elsif NEXYS4_VIDEO
+
+ `elsif NEXYS4_VIDEO
+
    // DDRAM3
    wire [15:0]  ddr_dq;
    wire [1:0]   ddr_dqs_n;
@@ -133,7 +131,9 @@ module tb;
                 );
       end
    endgenerate   
-  `elsif NEXYS4
+
+ `elsif NEXYS4
+
    wire [15:0]  ddr_dq;
    wire [1:0]   ddr_dqs_n;
    wire [1:0]   ddr_dqs_p;
@@ -168,25 +168,90 @@ module tb;
       .rdqs_n  (                 ),
       .odt     ( ddr_odt         )
       );
-  `endif
- `endif //  `ifdef FPGA_FULL
+ `endif // !`elsif NEXYS4
+`endif //  `ifdef ADD_PHY_DDR
 
-   // spi
-   wire spi_cs, spi_sclk, spi_mosi, spi_miso;
-   wire sd_reset;
-   assign spi_cs = 1'bz;
-   assign spi_sclk = 1'bz;
-   assign spi_mosi = 1'bz;
-   assign spi_miso = !spi_cs ? spi_mosi : 1'bz;
+`ifdef ADD_UART
+   wire         rxd;
+   wire         txd;
+   wire         rts;
+   wire         cts;
 
-   assign spi_sclk = 1'bz;
+   assign rxd = 'b1;
+   assign cts = 'b1;
 
-   // flash
-   wire flash_ss;
-   wire [3:0] flash_io;
+`endif
 
-   assign flash_ss = 1'bz;
-   assign flash_io = 4'bzzzz;
+`ifdef ADD_FLASH
+   wire         flash_ss;
+   wire [3:0]   flash_io;
+
+   assign flash_ss = 'bz;
+   assign flash_io = 'bzzzz;
+`endif
+
+`ifdef ADD_SPI
+   wire         spi_cs;
+   wire         spi_sclk;
+   wire         spi_mosi;
+   wire         spi_miso;
+   wire         sd_reset;
+
+   assign spi_cs = 'bz;
+   assign spi_sclk = 'bz;
+   assign spi_mosi = 'bz;
+   assign spi_miso = 'bz;
+`endif //  `ifdef ADD_SPI
+
+`ifdef ADD_MINION_SD
+
+   // 4-bit full SD interface
+   wire         sd_sclk;
+   wire         sd_detect;
+   wire [3:0]   sd_dat;
+   wire         sd_cmd;
+   wire         sd_reset;
+
+   sd_card
+   sdflash1
+     (
+      .sdClk ( sd_sclk ),
+      .cmd   ( sd_cmd  ),
+      .dat   ( sd_dat  )
+      );
+
+   // LED and DIP switch
+   wire [7:0]   o_led;
+   wire [3:0]   i_dip;
+
+   assign i_dip = 'bzzzz;
+
+   // push button array
+   wire         GPIO_SW_C;
+   wire         GPIO_SW_W;
+   wire         GPIO_SW_E;
+   wire         GPIO_SW_N;
+   wire         GPIO_SW_S;
+
+   assign GPIO_SW_C = 'b1;
+   assign GPIO_SW_W = 'b1;
+   assign GPIO_SW_E = 'b1;
+   assign GPIO_SW_N = 'b1;
+   assign GPIO_SW_S = 'b1;
+
+   //keyboard
+   wire         PS2_CLK;
+   wire         PS2_DATA;
+
+   assign PS2_CLK = 'bz;
+   assign PS2_DATA = 'bz;
+
+  // display
+   wire        VGA_HS_O;
+   wire        VGA_VS_O;
+   wire [3:0]  VGA_RED_O;
+   wire [3:0]  VGA_BLUE_O;
+   wire [3:0]  VGA_GREEN_O;
 
 `endif
 

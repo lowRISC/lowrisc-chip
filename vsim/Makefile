@@ -21,8 +21,9 @@ glip_dir = $(base_dir)/opensocdebug/glip/src
 osd_dir = $(base_dir)/opensocdebug/hardware
 
 BACKEND ?= lowrisc_chip.LowRISCBackend
-#CONFIG ?= DebugConfig
-CONFIG ?= DefaultConfig
+#CONFIG ?= DebugL2Config
+CONFIG ?= DefaultL2Config
+#CONFIG ?= TagL2Config
 
 include $(base_dir)/Makefrag
 
@@ -79,10 +80,58 @@ verilog_srcs = \
 	$(osd_dir)/modules/stm/common/osd_stm.sv \
 	$(osd_dir)/modules/ctm/common/osd_ctm.sv \
 	$(glip_dir)/common/logic/interface/glip_channel.sv \
+	$(base_dir)/minion_subsystem/verilog/coremem.sv \
+	$(base_dir)/minion_subsystem/verilog/debouncer.v \
+	$(base_dir)/minion_subsystem/verilog/dpram.v \
+	$(base_dir)/minion_subsystem/verilog/dualmem.v \
+	$(base_dir)/minion_subsystem/verilog/fstore2.v \
+	$(base_dir)/minion_subsystem/verilog/minion_soc.sv \
+	$(base_dir)/minion_subsystem/verilog/my_fifo.v \
+	$(base_dir)/minion_subsystem/verilog/ps2_keyboard.v \
+	$(base_dir)/minion_subsystem/verilog/ps2_translation_table.v \
+	$(base_dir)/minion_subsystem/verilog/ps2.v \
+	$(base_dir)/minion_subsystem/verilog/rambyte.v \
+	$(base_dir)/minion_subsystem/verilog/rx_delay.v \
+	$(base_dir)/minion_subsystem/verilog/sd_clock_divider.v \
+	$(base_dir)/minion_subsystem/verilog/sd_cmd_serial_host.v \
+	$(base_dir)/minion_subsystem/verilog/sd_crc_16.v \
+	$(base_dir)/minion_subsystem/verilog/sd_crc_7.v \
+	$(base_dir)/minion_subsystem/verilog/sd_data_serial_host.sv \
+	$(base_dir)/minion_subsystem/verilog/sd_top.sv \
+	$(base_dir)/minion_subsystem/verilog/uart.v \
+	$(base_dir)/minion_subsystem/verilog/vga_ctrl.v \
+	$(base_dir)/minion_subsystem/pulpino/ips/riscv/include/riscv_defines.sv \
+	$(base_dir)/minion_subsystem/pulpino/ips/riscv/controller.sv \
+	$(base_dir)/minion_subsystem/pulpino/ips/riscv/cs_registers.sv \
+	$(base_dir)/minion_subsystem/pulpino/ips/riscv/debug_unit.sv \
+	$(base_dir)/minion_subsystem/pulpino/ips/riscv/decoder.sv \
+	$(base_dir)/minion_subsystem/pulpino/ips/riscv/exc_controller.sv \
+	$(base_dir)/minion_subsystem/pulpino/ips/riscv/ex_stage.sv \
+	$(base_dir)/minion_subsystem/pulpino/ips/riscv/hwloop_controller.sv \
+	$(base_dir)/minion_subsystem/pulpino/ips/riscv/hwloop_regs.sv \
+	$(base_dir)/minion_subsystem/pulpino/ips/riscv/id_stage.sv \
+	$(base_dir)/minion_subsystem/pulpino/ips/riscv/if_stage.sv \
+	$(base_dir)/minion_subsystem/pulpino/ips/riscv/include/riscv_config.sv \
+	$(base_dir)/minion_subsystem/pulpino/ips/riscv/load_store_unit.sv \
+	$(base_dir)/minion_subsystem/pulpino/ips/riscv/mult.sv \
+	$(base_dir)/minion_subsystem/pulpino/ips/riscv/prefetch_L0_buffer.sv \
+	$(base_dir)/minion_subsystem/pulpino/ips/riscv/register_file_ff.sv \
+	$(base_dir)/minion_subsystem/pulpino/ips/riscv/riscv_core.sv \
+	$(base_dir)/minion_subsystem/pulpino/rtl/components/cluster_clock_gating.sv \
+	$(base_dir)/minion_subsystem/pulpino/ips/riscv/alu.sv \
+	$(base_dir)/minion_subsystem/pulpino/ips/riscv/alu_div.sv \
+	$(base_dir)/minion_subsystem/pulpino/ips/riscv/compressed_decoder.sv \
+	$(base_dir)/minion_subsystem/pulpino/ips/riscv/prefetch_buffer.sv \
+	$(base_dir)/minion_subsystem/software/bootstrap/code.v \
+	$(base_dir)/minion_subsystem/software/bootstrap/data.v \
 
 verilog_headers = \
 	$(base_dir)/src/main/verilog/config.vh \
 	$(base_dir)/socip/nasti/nasti_request.vh \
+	$(base_dir)/minion_subsystem/verilog/ps2_defines.v \
+	$(base_dir)/minion_subsystem/verilog/sd_defines.h \
+	$(base_dir)/minion_subsystem/verilog/ascii_code.v \
+	$(base_dir)/minion_subsystem/pulpino/rtl/includes/config.sv \
 
 test_verilog_srcs = \
 	$(base_dir)/src/test/verilog/host_behav.sv \
@@ -126,8 +175,12 @@ veri_flags = \
 	+incdir+$(generated_dir) \
 	+incdir+$(base_dir)/src/main/verilog \
 	+incdir+$(base_dir)/socip/nasti \
+	+incdir+$(base_dir)/minion_subsystem/verilog \
+        +incdir+$(base_dir)/minion_subsystem/pulpino/rtl/includes \
+        +incdir+$(base_dir)/minion_subsystem/pulpino/ips/riscv/include \
 	--top-module $(tb_top) \
 	--unroll-count 256 \
+	--error-limit 500 \
     --output-split 80000 \
 	--output-split-cfuncs 10000 \
 	-Wno-lint -Wno-style -Wno-STMTDLY -Wno-ASSIGNIN\
@@ -137,9 +190,10 @@ veri_flags = \
 	--exe \
 
 # remove optimization if compilation takes too long or run out of memory
-veri_opt_flags = --Mdir $(sim_dir)/verilator.opt -O3 -CFLAGS "-O1"
-veri_norm_flags = --Mdir $(sim_dir)/verilator.norm -O1 -CFLAGS "-O0"
-veri_dbg_flags = --Mdir $(sim_dir)/verilator.debug --trace -O1 -CFLAGS "-g -DDELAY_EXIT -DVERBOSE_MEMORY -DTRACE_VCD"
+veri_opt_flags = --Mdir $(sim_dir)/verilator.opt -O3 -CFLAGS "-O3"
+veri_norm_flags = --Mdir $(sim_dir)/verilator.norm -O1 -CFLAGS "-O3"
+#veri_dbg_flags = --Mdir $(sim_dir)/verilator.debug --trace -O1 -CFLAGS "-g -DDELAY_EXIT -DVERBOSE_MEMORY -DTRACE_VCD"
+veri_dbg_flags = --Mdir $(sim_dir)/verilator.debug --trace -O1 -CFLAGS "-O3 -DDELAY_EXIT -DTRACE_VCD"
 
 #--------------------------------------------------------------------
 # Build the simulator (verilator)
@@ -185,7 +239,7 @@ rv32um = mul mulh mulhsu mulhu div divu rem remu \
 
 rv32ua = amoadd_w amoand_w amoor_w amoxor_w amoswap_w amomax_w amomaxu_w amomin_w amominu_w \
 
-rv32si = csr ma_fetch scall sbreak wfi \
+rv32si = csr ma_fetch scall sbreak wfi hpm \
 
 rv32mi = csr mcsr dirty illegal ma_addr ma_fetch sbreak scall \
 
@@ -203,6 +257,14 @@ rv64mi = $(rv32mi)
 
 bmarks = median multiply qsort towers vvadd mm dhrystone spmv mt-vvadd mt-matmul
 
+rv64tag_ui = tagrw alu load store storekeep jmp
+
+rv64tag_mi = alucheck loadcheck storecheck pctag jmpcheck fetchcheck
+
+rv64tag_si = alucheck-s loadcheck-s storecheck-s pctag-s jmpcheck-s fetchcheck-s
+
+tagcaches = loadstore
+
 #--------------------------------------------------------------------
 asm_p_tests  += $(addprefix rv64ui-p-, $(rv64ui))
 asm_p_tests  += $(addprefix rv64ui-p-, $(rv64um))
@@ -218,25 +280,45 @@ asm_v_tests  += $(addprefix rv64uf-v-, $(rv64uf))
 
 bmarks_tests += $(bmarks)
 
+tag_tests    += $(addprefix rv64tag-p-, $(rv64tag_ui) $(rv64tag_mi) $(rv64tag_si))
+tag_tests    += $(addprefix rv64tag-v-, $(rv64tag_ui))
+
+tagcache_tests += $(tagcaches)
+
 #--------------------------------------------------------------------
-riscv_test_asm_dir = $(base_dir)/riscv-tools/riscv-tests/isa
-riscv_test_bmarks_dir = $(base_dir)/riscv-tools/riscv-tests/benchmarks
+riscv_test_asm_dir      = $(sim_dir)/riscv-tests/isa
+riscv_test_bmarks_dir   = $(sim_dir)/riscv-tests/benchmarks
+riscv_test_tag_dir      = $(sim_dir)/riscv-tests/tag
+riscv_test_tagcache_dir = $(sim_dir)/riscv-tests/tagcache
 
 $(addprefix $(output_dir)/, $(addsuffix .riscv, $(asm_p_tests) $(asm_v_tests))):
 	mkdir -p $(output_dir)
 	$(MAKE) -C $(riscv_test_asm_dir) $(basename $(notdir $@))
-	ln -fs $(riscv_test_asm_dir)/$(basename $(notdir $@)) $@
+	ln -fs ../$(riscv_test_asm_dir)/$(basename $(notdir $@)) $@
 
 $(addprefix $(output_dir)/, $(addsuffix .riscv, $(bmarks_tests))):
 	mkdir -p $(output_dir)
 	$(MAKE) -C $(riscv_test_bmarks_dir) $(basename $(notdir $@))
-	ln -fs $(riscv_test_asm_dir)/$(basename $(notdir $@)) $@
+	ln -fs ../$(riscv_test_bmarks_dir)/$(basename $(notdir $@)) $@
+
+$(addprefix $(output_dir)/, $(addsuffix .riscv, $(tag_tests))):
+	mkdir -p $(output_dir)
+	$(MAKE) -C $(riscv_test_tag_dir) $(basename $(notdir $@))
+	ln -fs ../$(riscv_test_tag_dir)/$(basename $(notdir $@)) $@
+
+$(addprefix $(output_dir)/, $(addsuffix .riscv, $(tagcache_tests))):
+	mkdir -p $(output_dir)
+	$(MAKE) -C $(riscv_test_tagcache_dir) $(notdir $@)
+	ln -fs ../$(riscv_test_tagcache_dir)/$(notdir $@) $@
+
 
 #--------------------------------------------------------------------
 # Run (verilator)
 #--------------------------------------------------------------------
-asm_tests_out = $(foreach test, $(asm_p_tests) $(asm_pt_tests) $(asm_v_tests), $(output_dir)/$(test).verilator.out)
-bmarks_out = $(foreach test, $(bmarks_tests), $(output_dir)/$(test).verilator.out)
+asm_tests_out    = $(foreach test, $(asm_p_tests) $(asm_v_tests), $(output_dir)/$(test).verilator.out)
+bmarks_out       = $(foreach test, $(bmarks_tests),               $(output_dir)/$(test).verilator.out)
+asm_tag_out      = $(foreach test, $(tag_tests),                  $(output_dir)/$(test).verilator.out)
+asm_tagcache_out = $(foreach test, $(tagcache_tests),             $(output_dir)/$(test).verilator.out)
 exec_simv = ./$(CONFIG)-sim
 exec_simv_vcd = ./$(CONFIG)-sim-debug +vcd
 
@@ -260,8 +342,10 @@ $(output_dir)/%.verilator.vpd: $(output_dir)/%.riscv $(CONFIG)-sim-debug
 
 .PRECIOUS: $(output_dir)/%.verilator.vpd
 
-run-asm-tests: $(asm_tests_out)
-run-bmarks-test: $(bmarks_out)
+run-asm-tests:      $(asm_tests_out)
+run-bmark-tests:    $(bmarks_out)
+run-tag-tests:      $(asm_tag_out)
+run-tagcache-tests: $(asm_tagcache_out)
 
 run: run-asm-tests run-bmarks-test
 

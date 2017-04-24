@@ -16,7 +16,6 @@ case object UseUART extends Field[Boolean]
 case object UseSPI extends Field[Boolean]
 case object UseBootRAM extends Field[Boolean]
 case object UseFlash extends Field[Boolean]
-case object RAMSize extends Field[BigInt]
 case object IOTagBits extends Field[Int]
 
 class BaseConfig extends Config (
@@ -36,7 +35,7 @@ class BaseConfig extends Config (
     lazy val externalIOAddrMap: AddrMap = {
       val entries = collection.mutable.ArrayBuffer[AddrMapEntry]()
       if (site(UseBootRAM)) {
-        entries += AddrMapEntry("bram", MemSize(1<<16, 1<<30, MemAttr(AddrMapProt.RWX)))
+        entries += AddrMapEntry("bram", MemSize(1<<17, 1<<30, MemAttr(AddrMapProt.RWX)))
         Dump("ADD_BRAM", true)
       }
       if (site(UseFlash)) {
@@ -59,7 +58,7 @@ class BaseConfig extends Config (
     }
 
     lazy val (globalAddrMap, globalAddrHashMap) = {
-      val memSize:BigInt = site(RAMSize)
+      val memSize:BigInt = if(site(UseTagMem)) site(RAMSize) / 64 * (64 - site(TagBits)) else site(RAMSize)
       val memAlign = BigInt(1L << 30)
       val io = AddrMap(
         AddrMapEntry("int", MemSubmap(internalIOAddrMap.computeSize, internalIOAddrMap)),
@@ -70,7 +69,7 @@ class BaseConfig extends Config (
 
       val addrHashMap = new AddrHashMap(addrMap)
       Dump("ROCKET_MEM_BASE", addrHashMap("mem").start)
-      Dump("ROCKET_MEM_SIZE", memSize)
+      Dump("ROCKET_MEM_SIZE", site(RAMSize))
       Dump("ROCKET_IO_BASE", addrHashMap("io:ext").start)
       Dump("ROCKET_IO_SIZE", addrHashMap("io:ext").region.size)
       (addrMap, addrHashMap)
@@ -161,8 +160,8 @@ class BaseConfig extends Config (
       }:PF
 
       //L1 D$
-      case StoreDataQueueDepth => 17
-      case ReplayQueueDepth => 16
+      case StoreDataQueueDepth => 5
+      case ReplayQueueDepth => 4
       case NMSHRs => Knob("L1D_MSHRS")
       case LRSCCycles => 32 
       case "L1D" => {
@@ -179,6 +178,7 @@ class BaseConfig extends Config (
       case WordBits => site(XLen)
 
       //L2 $
+      case UseL2Cache => false
       case NAcquireTransactors => Knob("L2_XACTORS")
       case L2StoreDataQueueDepth => 1
       case NSecondaryMisses => 4
@@ -193,18 +193,20 @@ class BaseConfig extends Config (
       }: PF
 
       // Tag Cache
+      case UseTagMem => false
       case TagBits => 4
-      case TCBlockBits => site(MIFDataBits)
-      case TCTransactors => Knob("TC_XACTORS")
-      case TCBlockTags => 1 << log2Down(site(TCBlockBits) / site(TagBits))
-      case TCBaseAddr => Knob("TC_BASE_ADDR")
+      case TagMapRatio => site(CacheBlockBytes) * 8
+      case TCMemTransactors  => Knob("TC_MEM_XACTORS")
+      case TCTagTransactors  => Knob("TC_TAG_XACTORS")
+      case TCEarlyAck => true
       case "TagCache" => {
         case NSets => Knob("TC_SETS")
         case NWays => Knob("TC_WAYS")
-        case RowBits => site(TCBlockTags) * site(TagBits)
+        case RowBits => site(TLKey(site(TLId))).dataBitsPerBeat
         case CacheIdBits => 0
+	    case SplitMetadata => false
       }: PF
-      
+
       //Tile Constants
       case NTiles => Knob("NTILES")
       case BuildRoCC => Nil
@@ -276,41 +278,38 @@ class BaseConfig extends Config (
         )
       case TLKey("IONet") =>
         site(TLKey("L2toIO")).copy(
+          dataBits = site(CacheBlockBytes)*8,
           dataBeats = site(CacheBlockBytes)*8 / site(XLen)
         )
       case TLKey("ExtIONet") =>
-        site(TLKey("L2toIO")).copy(
+        site(TLKey("IONet")).copy(
           dataBeats = site(CacheBlockBytes)*8 / site(IODataBits)
         )
-      case TLKey("L2toTC") =>
+      case TLKey("L2toMem") =>
         TileLinkParameters(
-          coherencePolicy = new MEICoherence(new NullRepresentation(site(NBanks))),
+          coherencePolicy = new MICoherence(new NullRepresentation(site(NBanks))),
           nManagers = 1,
-          nCachingClients = 0,
-          nCachelessClients = site(NBanks),
+          nCachingClients = site(NBanks),
+          nCachelessClients = 0,
           maxClientXacts = site(NAcquireTransactors) + 2,
           maxClientsPerPort = site(NAcquireTransactors) + 2,
-          maxManagerXacts = 1, //site(TCTransactors),
+          maxManagerXacts = 1,
           dataBits = site(CacheBlockBytes)*8,
           dataBeats = 8
         )
+      case TLKey("L2toTC") =>
+        site(TLKey("L2toMem")).copy(
+          coherencePolicy = new MICoherence(new NullRepresentation(site(NBanks))),
+          maxManagerXacts = site(TCMemTransactors) + 1
+        )
       case TLKey("TCtoMem") =>
         site(TLKey("L2toTC")).copy(
-          dataBeats = 8
+          nCachingClients = 0,
+          nCachelessClients = 1,
+          maxClientXacts = 1,
+          maxClientsPerPort = site(TCMemTransactors) + 1 + site(TCTagTransactors) + 1,
+          maxManagerXacts = 1
         )
-
-//      case TLKey("TCtoMem") =>
-//        TileLinkParameters(
-//          coherencePolicy = new MEICoherence(new NullRepresentation(site(NBanks))),
-//          nManagers = 1,
-//          nCachingClients = 0,
-//          nCachelessClients = 1,
-//          maxClientXacts = site(TCTransactors),
-//          maxClientsPerPort = 1,
-//          maxManagerXacts = 1,
-//          dataBits = site(CacheBlockBytes)*8,
-//          dataBeats = 8
-//        )
 
 
       // debug
@@ -354,25 +353,30 @@ class BaseConfig extends Config (
     case "NBANKS" => 1
 
     case "L1D_MSHRS" => 2
-    case "L1D_SETS" => 64
+    case "L1D_SETS" => 32
     case "L1D_WAYS" => 4
 
-    case "L1I_SETS" => 64
+    case "L1I_SETS" => 32
     case "L1I_WAYS" => 4
     case "L1I_BUFFER_WAYS" => false
 
     case "L2_XACTORS" => 2
-    case "L2_SETS" => 256 // 1024
+    case "L2_SETS" => 128
     case "L2_WAYS" => 8
 
-    case "TC_XACTORS" => 1
-    case "TC_SETS" => 64
-    case "TC_WAYS" => 8
-    case "TC_BASE_ADDR" => 15 << 28 // 0xf000_0000
+    case "TC_MEM_XACTORS" => 1
+    case "TC_TAG_XACTORS" => 1
+    case "TC_SETS" => 32
+    case "TC_WAYS" => 4
   }
 )
 
-
+class WithTagConfig extends Config (
+  (pname,site,here) => pname match {
+    case UseTagMem => true
+    case TagBits => 4
+  }
+)
 
 class WithDebugConfig extends Config (
   (pname,site,here) => pname match {
@@ -392,11 +396,15 @@ class WithDebugConfig extends Config (
   }
 )
 
-class DebugConfig extends Config(new WithDebugConfig ++ new BaseConfig)
-
 class WithHostConfig extends Config (
   (pname,site,here) => pname match {
     case UseHost => true
+  }
+)
+
+class WithL2 extends Config (
+  (pname,site,here) => pname match {
+    case UseL2Cache => true
   }
 )
 
@@ -406,7 +414,20 @@ class With4Banks extends Config (
   }
 )
 
-class DefaultConfig extends Config(new With4Banks ++ new WithHostConfig ++ new BaseConfig)
+class BaseL2Config extends Config(new WithL2 ++ new With4Banks ++ new BaseConfig)
+
+class DefaultConfig extends Config(new WithHostConfig ++ new BaseConfig)
+class DefaultL2Config extends Config(new WithL2 ++ new With4Banks ++ new DefaultConfig)
+
+class TagConfig extends Config(new WithTagConfig ++ new DefaultConfig)
+class TagL2Config extends Config(new WithTagConfig ++ new DefaultL2Config)
+
+class SmallTagConfig extends Config(new With128MRamConfig ++ new TagConfig)
+
+class DebugConfig extends Config(new WithDebugConfig ++ new BaseConfig)
+class DebugTagConfig extends Config(new WithTagConfig ++ new DebugConfig)
+class DebugL2Config extends Config(new WithDebugConfig ++ new BaseL2Config)
+class DebugTagL2Config extends Config(new WithTagConfig ++ new DebugL2Config)
 
 class WithSPIConfig extends Config (
   (pname,site,here) => pname match {
@@ -452,7 +473,8 @@ class With6BitTags extends Config(
 )
 
 class BasicFPGAConfig extends
-    Config(new WithSPIConfig ++ new WithBootRAMConfig ++ new WithFlashConfig ++ new BaseConfig)
+    Config(new WithTagConfig ++ new WithBootRAMConfig ++ new WithL2 ++ new BaseConfig)
+    //Config(new WithTagConfig ++ new WithSPIConfig ++ new WithBootRAMConfig ++ new WithFlashConfig ++ new WithL2 ++ new BaseConfig)
 
 class FPGAConfig extends
     Config(new WithUARTConfig ++ new BasicFPGAConfig)

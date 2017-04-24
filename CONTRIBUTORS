@@ -1,0 +1,36 @@
+Ordered by last name.
+
+Name                            Email                                   Note
+===================================================================================================================================
+Krste Asanović                  <krste@berkeley.edu>                    Team member of UC Berkeley/SiFive
+Scott Beamer                    <sbeamer@eecs.berkeley.edu>             Team member of UC Berkeley
+Alex Bradbury                   <asb@lowrisc.org>                       Team member of Cambridge/lowRISC
+Christopher Celio               <celio@eecs.berkeley.edu>               Team member of UC Berkeley
+Henry Cook                      <hcook@eecs.berkeley.edu>               Team member of UC Berkeley/SiFive
+Palmer Dabbelt                  <palmer.dabbelt@eecs.berkeley.edu>      Team member of UC Berkeley
+Schuyler Eldridge               <schuyler.eldridge@gmail.com>           Contributor to Rocket chip
+Gary Guo                        <nbdd0121@hotmail.com>                  Contributor to lowRISC, on-chip interconnects
+Adam Izraelevitz                <azidar@gmail.com>                      Team member of UC Berkeley
+Philipp Jantscher               <philipp.jantscher@gmx.at>              Contributor to lowRISC, adding tagged memory to debug-v0.3
+Sagar Karandikar                <sagark@eecs.berkeley.edu>              Team member of UC Berkeley
+Ben Keller                      <bkeller@eecs.berkeley.edu>             Team member of UC Berkeley
+Donggyu Kim                     <dgkim@eecs.berkeley.edu>               Team member of UC Berkeley
+Jonathan Kimmitt                <jrrk2@cam.ac.uk>                       Team member of Cambridge/lowRISC
+Jack Koenig                                                             Team member of UC Berkeley
+Jim Lawson                      <ucbjrl@berkeley.edu>                   Team member of UC Berkeley
+Yunsup Lee                      <yunsup@eecs.berkeley.edu>              Team member of UC Berkeley/SiFive
+Richard Lin                     <rlin@eecs.berkeley.edu>                Team member of UC Berkeley
+Albert Magyar                   <albert.magyar@berkeley.edu>            Team member of UC Berkeley
+Howard Mao                      <zhemao@eecs.berkeley.edu>              Team member of UC Berkeley
+Miquel Moreto                   <mmoreto@ac.upc.edu>                    Contributor to Rocket chip
+Robert Mullins                  <Robert.Mullins@cl.cam.ac.uk>           Team member of Cambridge/lowRISC
+Albert Ou                       <aou@eecs.berkeley.edu>                 Team member of UC Berkeley/Sifive
+Colin Schmidt                   <colins@eecs.berkeley.edu>              Team member of UC Berkeley
+Wei Song                        <wsong83@gmail.com>                     Team member of Cambridge/lowRISC
+Furkan Turan                    <furkan.turan@kuleuven.be>              Contributor to lowRISC, port debug-v0.3 to Zedboard
+Stephen Twigg                   <sdtwigg@eecs.berkeley.edu>             Team member of UC Berkeley
+Huy Vo                          <huytbvo@eecs.berkeley.edu>             Team member of UC Berkeley
+Philipp Wagner                  <imphil@philipp-wagner.com>             Team member of OpenSocDebug
+Stefan Wallentowitz             <stefan@wallentowitz.de>                Team member of lowRISC/OpenSocDebug
+Andrew Waterman                 <andrew@sifive.com>                     Team member of UC Berkeley/Sifive
+John Wright                     <johnwright@eecs.berkeley.edu>          Team member of UC Berkeley
