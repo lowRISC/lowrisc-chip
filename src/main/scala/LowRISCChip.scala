@@ -177,7 +177,7 @@ class Top(topParams: Parameters) extends Module with HasTopLevelParameters {
   })))
 
   coherent_net.io.managers <> managerEndpoints.map(_.innerTL) :+ mmioManager.io.inner
-  managerEndpoints.foreach { _.incoherent := io.cpu_rst } // revise when tiles are reset separately
+  managerEndpoints.foreach { _.incoherent.foreach { _ := io.cpu_rst } } // revise when tiles are reset separately
 
   ////////////////////////////////////////////
   // the network between L2 and memory/tag cache
