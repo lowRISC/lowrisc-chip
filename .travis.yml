@@ -1,5 +1,7 @@
 # Run in container-based environment
 sudo: required
+dist: trusty
+group: edge  # Add this
 
 # Using the precompiled toolchain from docker
 services:
