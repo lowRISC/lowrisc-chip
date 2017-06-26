@@ -255,6 +255,7 @@ module tb;
 
 `endif //  `ifdef FPGA
 
+`ifndef VERILATOR
    // handle all run-time arguments
    string     memfile = "";
    string     vcd_name = "";
@@ -289,6 +290,7 @@ module tb;
       if(max_cycle != 0 && max_cycle == cycle_cnt)
         $fatal(0, "maximal cycle of %d is reached...", cycle_cnt);
    end
+`endif
 
 `ifdef ADD_HOST
    int rv;

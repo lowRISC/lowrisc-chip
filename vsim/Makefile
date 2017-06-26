@@ -171,7 +171,6 @@ veri = verilator
 tb_top = chip_top
 
 veri_flags = \
-	-DVERILATOR_GCC \
 	+incdir+$(generated_dir) \
 	+incdir+$(base_dir)/src/main/verilog \
 	+incdir+$(base_dir)/socip/nasti \

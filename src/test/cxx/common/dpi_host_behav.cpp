@@ -1,6 +1,6 @@
 // See LICENSE for license details.
 
-#ifdef VERILATOR_GCC
+#ifdef VERILATOR
 #include <verilated.h>
 #endif
 
