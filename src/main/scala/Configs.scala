@@ -421,8 +421,6 @@ class DefaultL2Config extends Config(new WithL2 ++ new With4Banks ++ new Default
 class TagConfig extends Config(new WithTagConfig ++ new DefaultConfig)
 class TagL2Config extends Config(new WithTagConfig ++ new DefaultL2Config)
 
-class SmallTagConfig extends Config(new With128MRamConfig ++ new TagConfig)
-
 class DebugConfig extends Config(new WithDebugConfig ++ new BaseConfig)
 class DebugTagConfig extends Config(new WithTagConfig ++ new DebugConfig)
 class DebugL2Config extends Config(new WithDebugConfig ++ new BaseL2Config)
@@ -495,3 +493,37 @@ class Nexys4VideoDebugConfig extends
 
 class ZedConfig extends 
     Config(new With6BitTags ++ new With128MRamConfig ++ new WithUARTConfig ++ new WithSPIConfig ++ new WithBootRAMConfig ++ new BaseConfig)
+
+
+// TagCache unit tests configurations
+
+class WithParallelTCConfig extends Config (
+  knobValues = {
+    case "L2_XACTORS" => Dump("N_L2_TRACKERS", 4)
+    case "TC_MEM_XACTORS" => 6
+    case "TC_TAG_XACTORS" => 4
+  }
+)
+
+class WithSmallTCConfig extends Config (
+  knobValues = {
+    case "TC_SETS" => 16
+    case "TC_WAYS" => 2
+  }
+)
+
+class WithTCTLId extends Config (
+  (pname,site,here) => pname match {
+    case CacheName => "TagCache"
+    case TLId => "TCtoMem"
+    case InnerTLId => "L2toTC"
+    case OuterTLId => "TCtoMem"
+  }
+)
+
+class BaseTagConfig extends Config(new WithTCTLId ++ new TagConfig)
+
+class BigTCConfig extends Config(new BaseTagConfig)
+class BiglParallelTCConfig extends Config(new WithParallelTCConfig ++ new BigTCConfig)
+class SmallTCConfig extends Config(new WithSmallTCConfig ++ new BaseTagConfig)
+class SmallParallelTCConfig extends Config(new WithParallelTCConfig ++ new SmallTCConfig)

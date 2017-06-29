@@ -291,12 +291,13 @@ class Top(topParams: Parameters) extends Module with HasTopLevelParameters {
 }
 
 object Run extends App with FileSystemUtilities {
-  val projectName = "lowrisc_chip"
-  val topModuleName = args(0)
-  val configClassName = args(1)
+  val projectName = args(0)
+  val topModuleName = args(1)
+  val configProjectName = args(2)
+  val configClassName = args(3)
 
   val config = try {
-    Class.forName(s"$projectName.$configClassName").newInstance.asInstanceOf[Config]
+    Class.forName(s"$configProjectName.$configClassName").newInstance.asInstanceOf[Config]
   } catch {
     case e: java.lang.ClassNotFoundException =>
       throwException(s"Could not find the cde.Config subclass you asked for " +
@@ -312,7 +313,7 @@ object Run extends App with FileSystemUtilities {
     .newInstance(paramsFromConfig)
     .asInstanceOf[Module]
 
-  chiselMain.run(args.drop(2), gen)
+  chiselMain.run(args.drop(4), gen)
 
   val pdFile = createOutputFile(s"$topModuleName.$configClassName.prm")
   pdFile.write(ParameterDump.getDump)
