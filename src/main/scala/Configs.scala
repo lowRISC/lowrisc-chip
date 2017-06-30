@@ -36,23 +36,23 @@ class BaseConfig extends Config (
       val entries = collection.mutable.ArrayBuffer[AddrMapEntry]()
       if (site(UseBootRAM)) {
         entries += AddrMapEntry("bram", MemSize(1<<17, 1<<30, MemAttr(AddrMapProt.RWX)))
-        Dump("ADD_BRAM", true)
+        Dump("ADD_BRAM", 1)
       }
       if (site(UseFlash)) {
         entries += AddrMapEntry("flash", MemSize(1<<24, 1<<24, MemAttr(AddrMapProt.RX)))
-          Dump("ADD_FLASH", true)
+          Dump("ADD_FLASH", 1)
       }
       if (site(UseHost)) {
         entries += AddrMapEntry("host", MemSize(1<<6, 1<<13, MemAttr(AddrMapProt.W)))
-        Dump("ADD_HOST", true)
+        Dump("ADD_HOST", 1)
       }
       if (site(UseUART)) {
         entries += AddrMapEntry("uart", MemSize(1<<13, 1<<13, MemAttr(AddrMapProt.RW)))
-        Dump("ADD_UART", true)
+        Dump("ADD_UART", 1)
       }
       if (site(UseSPI)) {
         entries += AddrMapEntry("spi", MemSize(1<<13, 1<<13, MemAttr(AddrMapProt.RW)))
-        Dump("ADD_SPI", true)
+        Dump("ADD_SPI", 1)
       }
       new AddrMap(entries)
     }
@@ -379,7 +379,7 @@ class WithTagConfig extends Config (
 
 class WithDebugConfig extends Config (
   (pname,site,here) => pname match {
-    case UseDebug => Dump("ENABLE_DEBUG", true)
+    case UseDebug => Dump("ENABLE_DEBUG", 1)
     case UseUART => true
     //case EmitLogMessages => false
     case MamIODataWidth => Dump("ROCKET_MAM_IO_DWIDTH", 16)
@@ -524,6 +524,6 @@ class WithTCTLId extends Config (
 class BaseTagConfig extends Config(new WithTCTLId ++ new TagConfig)
 
 class BigTCConfig extends Config(new BaseTagConfig)
-class BiglParallelTCConfig extends Config(new WithParallelTCConfig ++ new BigTCConfig)
+class BigParallelTCConfig extends Config(new WithParallelTCConfig ++ new BigTCConfig)
 class SmallTCConfig extends Config(new WithSmallTCConfig ++ new BaseTagConfig)
 class SmallParallelTCConfig extends Config(new WithParallelTCConfig ++ new SmallTCConfig)

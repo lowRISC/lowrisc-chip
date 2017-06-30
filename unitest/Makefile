@@ -33,32 +33,18 @@ chisel_srcs := $(addprefix $(base_dir)/,$(addsuffix /$(chisel_src_path)/*.scala,
 
 verilog_srcs = \
 	$(base_dir)/socip/nasti/channel.sv \
-	$(base_dir)/socip/nasti/lite_nasti_reader.sv \
-	$(base_dir)/socip/nasti/lite_nasti_writer.sv \
-	$(base_dir)/socip/nasti/nasti_buf.sv \
-	$(base_dir)/socip/nasti/nasti_combiner.sv \
-	$(base_dir)/socip/nasti/nasti_crossbar.sv \
-	$(base_dir)/socip/nasti/nasti_demux.sv \
-	$(base_dir)/socip/nasti/nasti_lite_bridge.sv \
-	$(base_dir)/socip/nasti/nasti_lite_reader.sv \
-	$(base_dir)/socip/nasti/nasti_lite_writer.sv \
-	$(base_dir)/socip/nasti/nasti_mux.sv \
-	$(base_dir)/socip/nasti/nasti_slicer.sv \
-	$(base_dir)/socip/util/arbiter.sv \
 
 verilog_headers = \
-	$(base_dir)/socip/nasti/nasti_request.vh \
 
 test_verilog_srcs = \
+	$(base_dir)/uncore/src/test/verilog/tagcache/tagcache_tb.sv \
 	$(base_dir)/src/test/verilog/nasti_ram_behav.sv \
 
 test_cxx_srcs = \
-	$(base_dir)/src/test/cxx/common/globals.cpp \
 	$(base_dir)/src/test/cxx/common/loadelf.cpp \
 	$(base_dir)/src/test/cxx/common/dpi_ram_behav.cpp \
 
 test_cxx_headers = \
-	$(base_dir)/src/test/cxx/common/globals.h \
 	$(base_dir)/src/test/cxx/common/loadelf.hpp \
 	$(base_dir)/src/test/cxx/common/dpi_ram_behav.h \
 
@@ -91,7 +77,7 @@ $(generated_dir)/TagCacheTop.BigTCConfig.sv: $(chisel_srcs)
 	$(mem_gen) $(generated_dir)/TagCacheTop.BigTCConfig.conf >> $(generated_dir)/TagCacheTop.BigTCConfig.sv
 	echo "\`ifndef CONST_VH" > $(generated_dir)/TagCacheTop.BigTCConfig.consts.vh
 	echo "\`define CONST_VH" >> $(generated_dir)/TagCacheTop.BigTCConfig.consts.vh
-	sed -r 's/\(([A-Za-z0-9_]+),([A-Za-z0-9_]+)\)/  `define \1 \2/' $(generated_dir)/TagCacheTop.BigTCConfig.prm >> $(generated_dir)/TagCacheTop.BigTCConfig.consts.vh
+	sed -r 's/\(([A-Za-z0-9_]+),([0-9]+)\)/  `define \1 '\''d\2/' $(generated_dir)/TagCacheTop.BigTCConfig.prm >> $(generated_dir)/TagCacheTop.BigTCConfig.consts.vh
 	echo "\`endif // CONST_VH" >> $(generated_dir)/TagCacheTop.BigTCConfig.consts.vh
 
 $(generated_dir)/TagCacheTop.BigParallelTCConfig.sv: $(chisel_srcs)
@@ -100,7 +86,7 @@ $(generated_dir)/TagCacheTop.BigParallelTCConfig.sv: $(chisel_srcs)
 	$(mem_gen) $(generated_dir)/TagCacheTop.BigParallelTCConfig.conf >> $(generated_dir)/TagCacheTop.BigParallelTCConfig.sv
 	echo "\`ifndef CONST_VH" > $(generated_dir)/TagCacheTop.BigParallelTCConfig.consts.vh
 	echo "\`define CONST_VH" >> $(generated_dir)/TagCacheTop.BigParallelTCConfig.consts.vh
-	sed -r 's/\(([A-Za-z0-9_]+),([A-Za-z0-9_]+)\)/  `define \1 \2/' $(generated_dir)/TagCacheTop.BigParallelTCConfig.prm >> $(generated_dir)/TagCacheTop.BigParallelTCConfig.consts.vh
+	sed -r 's/\(([A-Za-z0-9_]+),([0-9]+)\)/  `define \1 '\''d\2/' $(generated_dir)/TagCacheTop.BigParallelTCConfig.prm >> $(generated_dir)/TagCacheTop.BigParallelTCConfig.consts.vh
 	echo "\`endif // CONST_VH" >> $(generated_dir)/TagCacheTop.BigParallelTCConfig.consts.vh
 
 $(generated_dir)/TagCacheTop.SmallTCConfig.sv: $(chisel_srcs)
@@ -109,7 +95,7 @@ $(generated_dir)/TagCacheTop.SmallTCConfig.sv: $(chisel_srcs)
 	$(mem_gen) $(generated_dir)/TagCacheTop.SmallTCConfig.conf >> $(generated_dir)/TagCacheTop.SmallTCConfig.sv
 	echo "\`ifndef CONST_VH" > $(generated_dir)/TagCacheTop.SmallTCConfig.consts.vh
 	echo "\`define CONST_VH" >> $(generated_dir)/TagCacheTop.SmallTCConfig.consts.vh
-	sed -r 's/\(([A-Za-z0-9_]+),([A-Za-z0-9_]+)\)/  `define \1 \2/' $(generated_dir)/TagCacheTop.SmallTCConfig.prm >> $(generated_dir)/TagCacheTop.SmallTCConfig.consts.vh
+	sed -r 's/\(([A-Za-z0-9_]+),([0-9]+)\)/  `define \1 '\''d\2/' $(generated_dir)/TagCacheTop.SmallTCConfig.prm >> $(generated_dir)/TagCacheTop.SmallTCConfig.consts.vh
 	echo "\`endif // CONST_VH" >> $(generated_dir)/TagCacheTop.SmallTCConfig.consts.vh
 
 $(generated_dir)/TagCacheTop.SmallParallelTCConfig.sv: $(chisel_srcs)
@@ -118,7 +104,7 @@ $(generated_dir)/TagCacheTop.SmallParallelTCConfig.sv: $(chisel_srcs)
 	$(mem_gen) $(generated_dir)/TagCacheTop.SmallParallelTCConfig.conf >> $(generated_dir)/TagCacheTop.SmallParallelTCConfig.sv
 	echo "\`ifndef CONST_VH" > $(generated_dir)/TagCacheTop.SmallParallelTCConfig.consts.vh
 	echo "\`define CONST_VH" >> $(generated_dir)/TagCacheTop.SmallParallelTCConfig.consts.vh
-	sed -r 's/\(([A-Za-z0-9_]+),([A-Za-z0-9_]+)\)/  `define \1 \2/' $(generated_dir)/TagCacheTop.SmallParallelTCConfig.prm >> $(generated_dir)/TagCacheTop.SmallParallelTCConfig.consts.vh
+	sed -r 's/\(([A-Za-z0-9_]+),([0-9]+)\)/  `define \1 '\''d\2/' $(generated_dir)/TagCacheTop.SmallParallelTCConfig.prm >> $(generated_dir)/TagCacheTop.SmallParallelTCConfig.consts.vh
 	echo "\`endif // CONST_VH" >> $(generated_dir)/TagCacheTop.SmallParallelTCConfig.consts.vh
 
 
@@ -135,20 +121,33 @@ VCS_FLAG = \
 	+incdir+$(generated_dir) \
 	+incdir+$(base_dir)/src/main/verilog \
 	+incdir+$(base_dir)/socip/nasti \
-	+incdir+$(base_dir)/minion_subsystem/verilog \
-        +incdir+$(base_dir)/minion_subsystem/pulpino/rtl/includes \
-        +incdir+$(base_dir)/minion_subsystem/pulpino/ips/riscv/include \
 
 #--------------------------------------------------------------------
 # Build the simulator (VCS)
 #--------------------------------------------------------------------
-sim: $(CONFIG)-sim
-$(CONFIG)-sim: $(lowrisc_srcs) $(lowrisc_headers) $(verilog_srcs) $(verilog_headers) $(test_verilog_srcs) $(dpi_libs)
-	$(VCS) $(VCS_FLAG) $(lowrisc_srcs) $(verilog_srcs) $(test_verilog_srcs) \
+BigTagCache-sim: $(generated_dir)/TagCacheTop.BigTCConfig.sv $(verilog_srcs) $(verilog_headers) $(test_verilog_srcs) $(dpi_libs)
+	cp $(generated_dir)/TagCacheTop.BigTCConfig.consts.vh $(generated_dir)/tagcache.consts.vh
+	$(VCS) $(VCS_FLAG) $(generated_dir)/TagCacheTop.BigTCConfig.sv $(verilog_srcs) $(test_verilog_srcs) \
 	-top tb \
 	-o $@ $(dpi_libs)
 
-.PHONY: sim
+BigParallelTagCache-sim: $(generated_dir)/TagCacheTop.BigParallelTCConfig.sv $(verilog_srcs) $(verilog_headers) $(test_verilog_srcs) $(dpi_libs)
+	cp $(generated_dir)/TagCacheTop.BigParallelTCConfig.consts.vh $(generated_dir)/tagcache.consts.vh
+	$(VCS) $(VCS_FLAG) $(generated_dir)/TagCacheTop.BigParallelTCConfig.sv $(verilog_srcs) $(test_verilog_srcs) \
+	-top tb \
+	-o $@ $(dpi_libs)
+
+SmallTagCache-sim: $(generated_dir)/TagCacheTop.SmallTCConfig.sv $(verilog_srcs) $(verilog_headers) $(test_verilog_srcs) $(dpi_libs)
+	cp $(generated_dir)/TagCacheTop.SmallTCConfig.consts.vh $(generated_dir)/tagcache.consts.vh
+	$(VCS) $(VCS_FLAG) $(generated_dir)/TagCacheTop.SmallTCConfig.sv $(verilog_srcs) $(test_verilog_srcs) \
+	-top tb \
+	-o $@ $(dpi_libs)
+
+SmallParallelTagCache-sim: $(generated_dir)/TagCacheTop.SmallParallelTCConfig.sv $(verilog_srcs) $(verilog_headers) $(test_verilog_srcs) $(dpi_libs)
+	cp $(generated_dir)/TagCacheTop.SmallParallelTCConfig.consts.vh $(generated_dir)/tagcache.consts.vh
+	$(VCS) $(VCS_FLAG) $(generated_dir)/TagCacheTop.SmallParallelTCConfig.sv $(verilog_srcs) $(test_verilog_srcs) \
+	-top tb \
+	-o $@ $(dpi_libs)
 
 junk += *-sim* csrc DVEfiles simv.daidir
 
