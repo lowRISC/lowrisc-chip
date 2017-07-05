@@ -58,9 +58,9 @@ module nasti_ram_behav
 
 `ifndef VERILATOR
 
-   initial memory_model_init();
-
    initial begin
+      #1;
+      memory_model_init();
       @(negedge rstn);
       $fatal(1, "the behaviour dram model cannot be reset after the simultion is started.");
    end
