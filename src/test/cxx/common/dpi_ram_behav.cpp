@@ -169,6 +169,11 @@ svBit memory_model_step()
   memory_controller->step();
 }
 
+svBit memory_load_mem(const char* filename)
+{
+  memory_controller->load_mem(filename);
+}
+
 // Memory module
 
 bool Memory32::write(const uint32_t addr, const uint32_t& data, const uint32_t& mask) {

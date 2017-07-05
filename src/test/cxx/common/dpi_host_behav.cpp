@@ -1,6 +1,6 @@
 // See LICENSE for license details.
 
-#ifdef VERILATOR_GCC
+#ifdef VERILATOR
 #include <verilated.h>
 #endif
 
@@ -21,4 +21,14 @@ void host_req (unsigned int id, unsigned long long data) {
     exit_code = 1;
     exit_delay = 1;
   }
+}
+
+int check_exit() {
+  if(exit_delay > 1) {
+    exit_delay--;
+    return -1;
+  } else if(exit_delay == 1 || exit_code) {
+    return exit_code;
+  } else
+    return -1;
 }

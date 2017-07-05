@@ -1,0 +1,12 @@
+csrc
+DVEfiles
+generated-src
+libdpi.so
+opendatabase.log
+output
+stdout.log
+*-sim
+*-sim.daidir
+ucli.key
+vc_hdrs.h
+.nodeIdDynamicRanges

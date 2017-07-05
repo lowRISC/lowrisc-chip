@@ -54,6 +54,7 @@ module nasti_ram_behav
                                                  );
    import "DPI-C" function bit memory_model_init ();
    import "DPI-C" function bit memory_model_step ();
+   import "DPI-C" function bit memory_load_mem (input string filename);
 
 `ifndef VERILATOR
    initial memory_model_init();

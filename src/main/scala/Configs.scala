@@ -36,23 +36,23 @@ class BaseConfig extends Config (
       val entries = collection.mutable.ArrayBuffer[AddrMapEntry]()
       if (site(UseBootRAM)) {
         entries += AddrMapEntry("bram", MemSize(1<<17, 1<<30, MemAttr(AddrMapProt.RWX)))
-        Dump("ADD_BRAM", true)
+        Dump("ADD_BRAM", 1)
       }
       if (site(UseFlash)) {
         entries += AddrMapEntry("flash", MemSize(1<<24, 1<<24, MemAttr(AddrMapProt.RX)))
-          Dump("ADD_FLASH", true)
+          Dump("ADD_FLASH", 1)
       }
       if (site(UseHost)) {
         entries += AddrMapEntry("host", MemSize(1<<6, 1<<13, MemAttr(AddrMapProt.W)))
-        Dump("ADD_HOST", true)
+        Dump("ADD_HOST", 1)
       }
       if (site(UseUART)) {
         entries += AddrMapEntry("uart", MemSize(1<<13, 1<<13, MemAttr(AddrMapProt.RW)))
-        Dump("ADD_UART", true)
+        Dump("ADD_UART", 1)
       }
       if (site(UseSPI)) {
         entries += AddrMapEntry("spi", MemSize(1<<13, 1<<13, MemAttr(AddrMapProt.RW)))
-        Dump("ADD_SPI", true)
+        Dump("ADD_SPI", 1)
       }
       new AddrMap(entries)
     }
@@ -198,7 +198,6 @@ class BaseConfig extends Config (
       case TagMapRatio => site(CacheBlockBytes) * 8
       case TCMemTransactors  => Knob("TC_MEM_XACTORS")
       case TCTagTransactors  => Knob("TC_TAG_XACTORS")
-      case TCEarlyAck => true
       case "TagCache" => {
         case NSets => Knob("TC_SETS")
         case NWays => Knob("TC_WAYS")
@@ -380,7 +379,7 @@ class WithTagConfig extends Config (
 
 class WithDebugConfig extends Config (
   (pname,site,here) => pname match {
-    case UseDebug => Dump("ENABLE_DEBUG", true)
+    case UseDebug => Dump("ENABLE_DEBUG", 1)
     case UseUART => true
     //case EmitLogMessages => false
     case MamIODataWidth => Dump("ROCKET_MAM_IO_DWIDTH", 16)
@@ -421,8 +420,6 @@ class DefaultL2Config extends Config(new WithL2 ++ new With4Banks ++ new Default
 
 class TagConfig extends Config(new WithTagConfig ++ new DefaultConfig)
 class TagL2Config extends Config(new WithTagConfig ++ new DefaultL2Config)
-
-class SmallTagConfig extends Config(new With128MRamConfig ++ new TagConfig)
 
 class DebugConfig extends Config(new WithDebugConfig ++ new BaseConfig)
 class DebugTagConfig extends Config(new WithTagConfig ++ new DebugConfig)
@@ -496,3 +493,37 @@ class Nexys4VideoDebugConfig extends
 
 class ZedConfig extends 
     Config(new With6BitTags ++ new With128MRamConfig ++ new WithUARTConfig ++ new WithSPIConfig ++ new WithBootRAMConfig ++ new BaseConfig)
+
+
+// TagCache unit tests configurations
+
+class WithParallelTCConfig extends Config (
+  knobValues = {
+    case "L2_XACTORS" => Dump("N_L2_TRACKERS", 4)
+    case "TC_MEM_XACTORS" => 6
+    case "TC_TAG_XACTORS" => 4
+  }
+)
+
+class WithSmallTCConfig extends Config (
+  knobValues = {
+    case "TC_SETS" => 16
+    case "TC_WAYS" => 2
+  }
+)
+
+class WithTCTLId extends Config (
+  (pname,site,here) => pname match {
+    case CacheName => "TagCache"
+    case TLId => "TCtoMem"
+    case InnerTLId => "L2toTC"
+    case OuterTLId => "TCtoMem"
+  }
+)
+
+class BaseTagConfig extends Config(new WithTCTLId ++ new TagConfig)
+
+class BigTCConfig extends Config(new BaseTagConfig)
+class BigParallelTCConfig extends Config(new WithParallelTCConfig ++ new BigTCConfig)
+class SmallTCConfig extends Config(new WithSmallTCConfig ++ new BaseTagConfig)
+class SmallParallelTCConfig extends Config(new WithParallelTCConfig ++ new SmallTCConfig)

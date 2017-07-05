@@ -44,6 +44,7 @@ extern "C" {
   extern svBit memory_model_init ();
   extern svBit memory_model_close ();
   extern svBit memory_model_step ();
+  extern svBit memory_load_mem (const char* filename);
 
 #ifdef __cplusplus
 }

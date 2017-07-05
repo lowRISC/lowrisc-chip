@@ -1,5 +1,7 @@
 # Run in container-based environment
 sudo: required
+dist: trusty
+group: edge  # Add this
 
 # Using the precompiled toolchain from docker
 services:
@@ -14,8 +16,6 @@ env:
     - CONFIG=DefaultConfig     TEST_CASE=run-asm-tests
     - CONFIG=TagConfig         TEST_CASE=run-asm-tests
     - CONFIG=TagConfig         TEST_CASE=run-tag-tests
-    - CONFIG=SmallTagConfig    TEST_CASE=run-tagcache-tests
-    - CONFIG=TagL2Config       TEST_CASE=run-tagcache-tests
 
 # actual test build
 

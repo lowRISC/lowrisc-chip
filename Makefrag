@@ -13,7 +13,7 @@ CXXFLAGS := -O1
 SBT := java -Xmx2048M -Xss8M -XX:MaxPermSize=256M -jar sbt-launch.jar
 SHELL := /bin/bash
 
-CHISEL_ARGS := $(MODEL) $(CONFIG) --W0W --minimumCompatibility 3.0.0 --backend $(BACKEND) --configName $(CONFIG) --compileInitializationUnoptimized --targetDir $(generated_dir)
+CHISEL_ARGS := $(PROJECT) $(MODEL) $(PROJECT) $(CONFIG) --W0W --minimumCompatibility 3.0.0 --backend $(BACKEND) --configName $(CONFIG) --compileInitializationUnoptimized --targetDir $(generated_dir)
 
 # specify source files
 src_path = src/main/scala
