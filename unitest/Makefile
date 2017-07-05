@@ -57,10 +57,11 @@ dpi_libs = \
 
 $(sim_dir)/libdpi.so : $(test_verilog_srcs) $(test_cxx_srcs) $(test_cxx_headers)
 	g++ -Wa,-W -fPIC -m64 -O1 -std=c++11 -shared \
-	-DVERBOSE_MEMORY \
 	-I$(base_dir)/csrc/common \
 	-I$(VCS_HOME)/include \
 	$(test_cxx_srcs) -o $@
+
+#	-DVERBOSE_MEMORY \
 
 junk += $(sim_dir)/libdpi.so
 
