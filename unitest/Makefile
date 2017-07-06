@@ -108,6 +108,15 @@ $(generated_dir)/TagCacheTop.SmallParallelTCConfig.sv: $(chisel_srcs)
 	sed -r 's/\(([A-Za-z0-9_]+),([0-9]+)\)/  `define \1 '\''d\2/' $(generated_dir)/TagCacheTop.SmallParallelTCConfig.prm >> $(generated_dir)/TagCacheTop.SmallParallelTCConfig.consts.vh
 	echo "\`endif // CONST_VH" >> $(generated_dir)/TagCacheTop.SmallParallelTCConfig.consts.vh
 
+$(generated_dir)/TagCacheTop.SmallSmallTCConfig.sv: $(chisel_srcs)
+	cd $(base_dir) && mkdir -p $(generated_dir) && \
+	$(SBT) "run uncore TagCacheTop lowrisc_chip SmallSmallTCConfig --W0W --minimumCompatibility 3.0.0 --backend $(BACKEND) --configName SmallSmallTCConfig --compileInitializationUnoptimized  --targetDir $(generated_dir) --configDump --noInlineMem"
+	$(mem_gen) $(generated_dir)/TagCacheTop.SmallSmallTCConfig.conf >> $(generated_dir)/TagCacheTop.SmallSmallTCConfig.sv
+	echo "\`ifndef CONST_VH" > $(generated_dir)/TagCacheTop.SmallSmallTCConfig.consts.vh
+	echo "\`define CONST_VH" >> $(generated_dir)/TagCacheTop.SmallSmallTCConfig.consts.vh
+	sed -r 's/\(([A-Za-z0-9_]+),([0-9]+)\)/  `define \1 '\''d\2/' $(generated_dir)/TagCacheTop.SmallSmallTCConfig.prm >> $(generated_dir)/TagCacheTop.SmallSmallTCConfig.consts.vh
+	echo "\`endif // CONST_VH" >> $(generated_dir)/TagCacheTop.SmallSmallTCConfig.consts.vh
+
 
 junk += $(generated_dir)
 
@@ -150,11 +159,27 @@ SmallParallelTagCache-sim: $(generated_dir)/TagCacheTop.SmallParallelTCConfig.sv
 	-top tb \
 	-o $@ $(dpi_libs)
 
+SmallSmallTagCache-sim: $(generated_dir)/TagCacheTop.SmallSmallTCConfig.sv $(verilog_srcs) $(verilog_headers) $(test_verilog_srcs) $(dpi_libs)
+	cp $(generated_dir)/TagCacheTop.SmallSmallTCConfig.consts.vh $(generated_dir)/tagcache.consts.vh
+	$(VCS) $(VCS_FLAG) $(generated_dir)/TagCacheTop.SmallSmallTCConfig.sv $(verilog_srcs) $(test_verilog_srcs) \
+	-top tb \
+	-o $@ $(dpi_libs)
+
 junk += *-sim* csrc DVEfiles simv.daidir
 
 #--------------------------------------------------------------------
 # Run (VCS)
 #--------------------------------------------------------------------
+
+unitest: $(output_dir)/BigTagCache.sim.log $(output_dir)/BigParallelTagCache.sim.log $(output_dir)/SmallTagCache.sim.log $(output_dir)/SmallParallelTagCache.sim.log $(output_dir)/SmallSmallTagCache.sim.log
+
+$(output_dir)/%.sim.log: %-sim
+	mkdir -p $(output_dir)
+	$< +max-xact=1000000 -l $@ > /dev/null
+	grep "finish" $@ && ! grep "Fatal" $@
+
+junk += $(output_dir)
+.PHONY: unitest
 
 #--------------------------------------------------------------------
 # clean up
