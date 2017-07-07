@@ -25,8 +25,6 @@ module tb;
       );
 
    initial begin
-      rst = 0;
-      #3;
       rst = 1;
       #130;
       rst = 0;

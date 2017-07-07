@@ -379,7 +379,7 @@ class WithTagConfig extends Config (
 
 class WithDebugConfig extends Config (
   (pname,site,here) => pname match {
-    case UseDebug => Dump("ENABLE_DEBUG", 1)
+    case UseDebug => Dump("ENABLE_DEBUG", 1) != 0
     case UseUART => true
     //case EmitLogMessages => false
     case MamIODataWidth => Dump("ROCKET_MAM_IO_DWIDTH", 16)
