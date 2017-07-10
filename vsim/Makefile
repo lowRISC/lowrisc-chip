@@ -74,6 +74,7 @@ veri_flags = \
 	-CFLAGS "-std=c++11" \
 	-CFLAGS "-I$(base_dir)/src/test/cxx/common -I$(base_dir)/src/test/cxx/veri" \
 	--exe \
+	--assert \
 	--Mdir $(sim_dir)/verilator
 
 # remove optimization if compilation takes too long or run out of memory
