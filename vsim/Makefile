@@ -181,13 +181,14 @@ veri_flags = \
 	--top-module $(tb_top) \
 	--unroll-count 256 \
 	--error-limit 500 \
-    --output-split 80000 \
+        --output-split 80000 \
 	--output-split-cfuncs 10000 \
 	-Wno-lint -Wno-style -Wno-STMTDLY -Wno-ASSIGNIN\
 	-CFLAGS "-std=c++11" \
 	-CFLAGS "-I$(base_dir)/src/test/cxx/common -I$(base_dir)/src/test/cxx/veri -I$(glip_dir)/backend_tcp/logic/dpi" \
 	-LDFLAGS "-pthread" \
 	--exe \
+	--assert \
 
 # remove optimization if compilation takes too long or run out of memory
 veri_opt_flags = --Mdir $(sim_dir)/verilator.opt -O3 -CFLAGS "-O3"
