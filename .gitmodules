@@ -40,3 +40,6 @@
 [submodule "minion_subsystem"]
 	path = minion_subsystem
 	url = https://github.com/lowrisc/minion_subsystem.git
+[submodule "vcs/riscv-tests"]
+	path = vcs/riscv-tests
+	url = https://github.com/lowrisc/riscv-tests.git

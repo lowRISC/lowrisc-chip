@@ -8,7 +8,7 @@
  `define CHIP_CONFIG_VH
 
  // For some known cases
- `ifdef VERILATOR
+ `ifdef VERILATOR_SIM
   // when verilator is used for behavioural simulation
   `define SIMULATION
  `endif

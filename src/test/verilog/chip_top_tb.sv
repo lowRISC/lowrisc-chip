@@ -25,8 +25,6 @@ module tb;
       );
 
    initial begin
-      rst = 0;
-      #3;
       rst = 1;
       #130;
       rst = 0;
@@ -253,6 +251,54 @@ module tb;
    wire [3:0]  VGA_BLUE_O;
    wire [3:0]  VGA_GREEN_O;
 
+`endif //  `ifdef FPGA
+
+`ifndef VERILATOR
+   // handle all run-time arguments
+   string     memfile = "";
+   string     vcd_name = "";
+   longint    unsigned max_cycle = 0;
+   longint    unsigned cycle_cnt = 0;
+
+   initial begin
+`ifndef ADD_PHY_DDR
+      if($value$plusargs("load=%s", memfile))
+        DUT.ram_behav.memory_load_mem(memfile);
+`endif
+
+      $value$plusargs("max-cycles=%d", max_cycle);
+   end // initial begin
+
+   // vcd
+   initial begin
+      if($test$plusargs("vcd"))
+        vcd_name = "test.vcd";
+
+      $value$plusargs("vcd_name=%s", vcd_name);
+
+      if(vcd_name != "") begin
+         $dumpfile(vcd_name);
+         $dumpvars(0, DUT);
+         $dumpon;
+      end
+   end // initial begin
+
+   always @(posedge clk) begin
+      cycle_cnt = cycle_cnt + 1;
+      if(max_cycle != 0 && max_cycle == cycle_cnt)
+        $fatal(0, "maximal cycle of %d is reached...", cycle_cnt);
+   end
+`endif
+
+`ifdef ADD_HOST
+   int rv;
+   always @(posedge clk) begin
+      rv = DUT.host.check_exit();
+      if(rv > 0)
+        $fatal(rv);
+      else if(rv == 0)
+        $finish();
+   end
 `endif
 
 endmodule // tb

@@ -11,6 +11,7 @@ extern "C" {
 
   // purely legacy code for ISA regression test
   extern void host_req (unsigned int id, unsigned long long data);
+  extern int check_exit ();
 
 #ifdef __cplusplus
 }

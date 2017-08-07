@@ -1,8 +1,8 @@
 # See LICENSE for license details.
 
-# check Verilator environment variable
-ifndef VERILATOR_ROOT
-$(error Please set environment for the Verilator simulator)
+# check RISCV environment variable
+ifndef VCS_HOME
+    $(error VCS is not ready yet)
 endif
 
 #--------------------------------------------------------------------
@@ -134,6 +134,7 @@ verilog_headers = \
 	$(base_dir)/minion_subsystem/pulpino/rtl/includes/config.sv \
 
 test_verilog_srcs = \
+	$(base_dir)/src/test/verilog/chip_top_tb.sv \
 	$(base_dir)/src/test/verilog/host_behav.sv \
 	$(base_dir)/src/test/verilog/nasti_ram_behav.sv \
 	$(glip_dir)/backend_tcp/logic/dpi/glip_tcp_toplevel.sv \
@@ -145,13 +146,28 @@ test_cxx_srcs = \
 	$(base_dir)/src/test/cxx/common/dpi_host_behav.cpp \
 	$(base_dir)/opensocdebug/glip/src/backend_tcp/logic/dpi/glip_tcp_dpi.cpp \
 	$(base_dir)/opensocdebug/glip/src/backend_tcp/logic/dpi/GlipTcp.cpp \
-	$(base_dir)/src/test/cxx/veri/veri_top.cc \
 
 test_cxx_headers = \
 	$(base_dir)/src/test/cxx/common/globals.h \
 	$(base_dir)/src/test/cxx/common/loadelf.hpp \
 	$(base_dir)/src/test/cxx/common/dpi_ram_behav.h \
 	$(base_dir)/src/test/cxx/common/dpi_host_behav.h \
+
+dpi_libs = \
+	$(sim_dir)/libdpi.so \
+
+#--------------------------------------------------------------------
+# Build DPI
+#--------------------------------------------------------------------
+
+$(sim_dir)/libdpi.so : $(test_verilog_srcs) $(test_cxx_srcs) $(test_cxx_headers)
+	g++ -Wa,-W -fPIC -m64 -O1 -std=c++11 -shared \
+	-DVERBOSE_MEMORY \
+	-I$(base_dir)/csrc/common \
+	-I$(VCS_HOME)/include \
+	$(test_cxx_srcs) -o $@
+
+junk += $(sim_dir)/libdpi.so
 
 #--------------------------------------------------------------------
 # Build Verilog
@@ -165,68 +181,32 @@ include $(base_dir)/Makefrag-build
 junk += $(generated_dir)
 
 #--------------------------------------------------------------------
-# Build rules (verilator)
+# Build rules (VCS)
 #--------------------------------------------------------------------
-veri = verilator
-tb_top = chip_top
-
-veri_flags = \
+VCS = vcs
+VCS_FLAG = \
+	-sverilog -ntb_opts -full64 \
+	-timescale=1ns/10ps \
+	-debug \
 	+incdir+$(generated_dir) \
 	+incdir+$(base_dir)/src/main/verilog \
 	+incdir+$(base_dir)/socip/nasti \
 	+incdir+$(base_dir)/minion_subsystem/verilog \
         +incdir+$(base_dir)/minion_subsystem/pulpino/rtl/includes \
         +incdir+$(base_dir)/minion_subsystem/pulpino/ips/riscv/include \
-	--top-module $(tb_top) \
-	--unroll-count 256 \
-	--error-limit 500 \
-        --output-split 80000 \
-	--output-split-cfuncs 10000 \
-	-Wno-lint -Wno-style -Wno-STMTDLY -Wno-ASSIGNIN\
-	-CFLAGS "-std=c++11" \
-	-CFLAGS "-I$(base_dir)/src/test/cxx/common -I$(base_dir)/src/test/cxx/veri -I$(glip_dir)/backend_tcp/logic/dpi" \
-	-LDFLAGS "-pthread" \
-	--exe \
-	--assert \
-
-# remove optimization if compilation takes too long or run out of memory
-veri_opt_flags = --Mdir $(sim_dir)/verilator.opt -O3 -CFLAGS "-O3"
-veri_norm_flags = --Mdir $(sim_dir)/verilator.norm -O1 -CFLAGS "-O3"
-#veri_dbg_flags = --Mdir $(sim_dir)/verilator.debug --trace -O1 -CFLAGS "-g -DDELAY_EXIT -DVERBOSE_MEMORY -DTRACE_VCD"
-veri_dbg_flags = --Mdir $(sim_dir)/verilator.debug --trace -O1 -CFLAGS "-O3 -DDELAY_EXIT -DTRACE_VCD"
 
 #--------------------------------------------------------------------
-# Build the simulator (verilator)
+# Build the simulator (VCS)
 #--------------------------------------------------------------------
-verilator: verilator.norm.log
-verilator.norm.log: $(lowrisc_srcs) $(lowrisc_headers) $(verilog_srcs) $(verilog_headers) $(test_verilog_srcs) $(test_cxx_srcs) $(test_cxx_headers)
-	rm -fr $(sim_dir)/verilator.norm
-	$(veri) --cc $(lowrisc_srcs) $(verilog_srcs) $(test_verilog_srcs) $(test_cxx_srcs) $(veri_flags) $(veri_norm_flags) -o ../$(CONFIG)-sim 2>&1 | tee $@
-
 sim: $(CONFIG)-sim
-$(CONFIG)-sim: verilator.norm.log
-	VM_PARALLEL_BUILDS=1 $(MAKE) -C verilator.norm -f V$(tb_top).mk
+$(CONFIG)-sim: $(lowrisc_srcs) $(lowrisc_headers) $(verilog_srcs) $(verilog_headers) $(test_verilog_srcs) $(dpi_libs)
+	$(VCS) $(VCS_FLAG) $(lowrisc_srcs) $(verilog_srcs) $(test_verilog_srcs) \
+	-top tb \
+	-o $@ $(dpi_libs)
 
-verilator.debug.log: $(lowrisc_srcs) $(lowrisc_headers) $(verilog_srcs) $(verilog_headers) $(test_verilog_srcs) $(test_cxx_srcs) $(test_cxx_headers)
-	rm -fr $(sim_dir)/verilator.debug
-	$(veri) --cc $(lowrisc_srcs) $(verilog_srcs) $(test_verilog_srcs) $(test_cxx_srcs) $(veri_flags) $(veri_dbg_flags) -o ../$(CONFIG)-sim-debug | tee $@
+.PHONY: sim
 
-sim-debug: $(CONFIG)-sim-debug
-$(CONFIG)-sim-debug: verilator.debug.log
-	VM_PARALLEL_BUILDS=1 $(MAKE) -C verilator.debug -f V$(tb_top).mk
-
-verilator.opt.log: verilator.opt.log
-verilator.opt.log: $(lowrisc_srcs) $(lowrisc_headers) $(verilog_srcs) $(verilog_headers) $(test_verilog_srcs) $(test_cxx_srcs) $(test_cxx_headers)
-	rm -fr $(sim_dir)/verilator.opt
-	$(veri) --cc $(lowrisc_srcs) $(verilog_srcs) $(test_verilog_srcs) $(test_cxx_srcs) $(veri_flags) $(veri_norm_flags) -o ../$(CONFIG)-sim 2>&1 | tee $@
-
-sim-opt: $(CONFIG)-sim-opt
-$(CONFIG)-sim-opt: verilator.opt.log
-	VM_PARALLEL_BUILDS=1 $(MAKE) -C verilator.opt -f V$(tb_top).mk
-
-.PHONY: verilator sim sim-debug sim-opt
-
-junk += $(generated_dir) $(CONFIG)-sim verilator.norm verilator.norm.log $(CONFIG)-sim-debug verilator.debug verilator.debug.log $(CONFIG)-sim-opt verilator.opt verilator.opt.log
+junk += $(CONFIG)-sim* csrc DVEfiles simv.daidir
 
 #--------------------------------------------------------------------
 # Test cases
@@ -313,34 +293,31 @@ $(addprefix $(output_dir)/, $(addsuffix .riscv, $(tagcache_tests))):
 
 
 #--------------------------------------------------------------------
-# Run (verilator)
+# Run (VCS)
 #--------------------------------------------------------------------
-asm_tests_out    = $(foreach test, $(asm_p_tests) $(asm_v_tests), $(output_dir)/$(test).verilator.out)
-bmarks_out       = $(foreach test, $(bmarks_tests),               $(output_dir)/$(test).verilator.out)
-asm_tag_out      = $(foreach test, $(tag_tests),                  $(output_dir)/$(test).verilator.out)
-asm_tagcache_out = $(foreach test, $(tagcache_tests),             $(output_dir)/$(test).verilator.out)
+asm_tests_out    = $(foreach test, $(asm_p_tests) $(asm_v_tests), $(output_dir)/$(test).vcs.out)
+bmarks_out       = $(foreach test, $(bmarks_tests),               $(output_dir)/$(test).vcs.out)
+asm_tag_out      = $(foreach test, $(tag_tests),                  $(output_dir)/$(test).vcs.out)
+asm_tagcache_out = $(foreach test, $(tagcache_tests),             $(output_dir)/$(test).vcs.out)
 exec_simv = ./$(CONFIG)-sim
-exec_simv_vcd = ./$(CONFIG)-sim-debug +vcd
+exec_simv_vcd = ./$(CONFIG)-sim +vcd
 
-$(output_dir)/%.verilator.dump: $(output_dir)/%.riscv
-	riscv64-unknown-elf-objdump -DSl $< > $@
+$(output_dir)/%.vcs.out: $(output_dir)/%.riscv $(CONFIG)-sim
+	$(exec_simv) +max-cycles=$(timeout_cycles) +load=$< $(disasm) $@ && grep "finish" $@ && ! grep "Fatal" $@
 
-$(output_dir)/%.verilator.out: $(output_dir)/%.riscv $(CONFIG)-sim
-	$(exec_simv) +max-cycles=$(timeout_cycles) +load=$< $(disasm) $@ && [ $$PIPESTATUS -eq 0 ]
+.PRECIOUS: $(output_dir)/%.vcs.out
 
-.PRECIOUS: $(output_dir)/%.verilator.out
+$(output_dir)/%.vcs.vcd: $(output_dir)/%.riscv $(CONFIG)-sim
+	$(exec_simv_vcd) +vcd_name=$@ +max-cycles=$(timeout_cycles) +load=$< $(disasm) $(patsubst %.vcd,%.out,$@) && grep "finish" $(patsubst %.vcd,%.out,$@) && ! grep "Fatal" $(patsubst %.vcd,%.out,$@)
 
-$(output_dir)/%.verilator.vcd: $(output_dir)/%.riscv $(CONFIG)-sim-debug
-	$(exec_simv_vcd) +vcd_name=$@ +max-cycles=$(timeout_cycles) +load=$< $(disasm) $(patsubst %.vcd,%.out,$@) && [ $$PIPESTATUS -eq 0 ]
+.PRECIOUS: $(output_dir)/%.vcs.vcd
 
-.PRECIOUS: $(output_dir)/%.verilator.vcd
-
-$(output_dir)/%.verilator.vpd: $(output_dir)/%.riscv $(CONFIG)-sim-debug
+$(output_dir)/%.vcs.vpd: $(output_dir)/%.riscv $(CONFIG)-sim
 	rm -rf $(patsubst %.vpd,%.vcd,$@) && mkfifo $(patsubst %.vpd,%.vcd,$@)
 	vcd2vpd $(patsubst %.vpd,%.vcd,$@) $@ > /dev/null &
-	$(exec_simv_vcd) +vcd_name=$@ +max-cycles=$(timeout_cycles) +load=$< $(disasm) $(patsubst %.vpd,%.out,$@) && [ $$PIPESTATUS -eq 0 ]
+	$(exec_simv_vcd) +vcd_name=$@ +max-cycles=$(timeout_cycles) +load=$< $(disasm) $(patsubst %.vpd,%.out,$@) && grep "finish" $(patsubst %.vpd,%.out,$@) && ! grep "Fatal" $(patsubst %.vpd,%.out,$@)
 
-.PRECIOUS: $(output_dir)/%.verilator.vpd
+.PRECIOUS: $(output_dir)/%.vcs.vpd
 
 run-asm-tests:      $(asm_tests_out)
 run-bmark-tests:    $(bmarks_out)
@@ -357,6 +334,7 @@ junk += $(output_dir)
 #--------------------------------------------------------------------
 
 clean:
-	rm -rf $(junk)
+	rm -rf $(junk) .nodeIdDynamicRanges opendatabase.log ucli.key \
+	vc_hdrs.h vcs.man
 
 .PHONY: clean

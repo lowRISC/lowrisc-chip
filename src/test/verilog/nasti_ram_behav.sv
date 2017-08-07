@@ -54,9 +54,17 @@ module nasti_ram_behav
                                                  );
    import "DPI-C" function bit memory_model_init ();
    import "DPI-C" function bit memory_model_step ();
+   import "DPI-C" function bit memory_load_mem (input string filename);
 
 `ifndef VERILATOR
-   initial memory_model_init();
+
+   initial begin
+      #1;
+      memory_model_init();
+      @(negedge rstn);
+      $fatal(1, "the behaviour dram model cannot be reset after the simultion is started.");
+   end
+
 `endif
 
    always @(posedge clk)

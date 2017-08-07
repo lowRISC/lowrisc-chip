@@ -15,7 +15,7 @@ $(generated_dir)/$(MODEL).$(CONFIG).sv: $(chisel_srcs)
 $(generated_dir)/consts.vh: $(generated_dir)/$(MODEL).$(CONFIG).sv
 	echo "\`ifndef CONST_VH" > $@
 	echo "\`define CONST_VH" >> $@
-	sed -r 's/\(([A-Za-z0-9_]+),([A-Za-z0-9_]+)\)/  `define \1 \2/' \
+	sed -r 's/\(([A-Za-z0-9_]+),([A-Za-z0-9_]+)\)/  `define \1 '\''d\2/' \
 	$(generated_dir)/$(MODEL).$(CONFIG).prm >> $@
 	echo "\`endif // CONST_VH" >> $@
 
