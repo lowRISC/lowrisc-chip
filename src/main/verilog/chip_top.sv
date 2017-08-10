@@ -23,6 +23,23 @@ module chip_top
    output        ddr_cke,
    output        ddr_cs_n,
    output [7:0]  ddr_dm,
+   output        ddr_odt,   
+   `elsif VC707
+   // DDR3 RAM
+   inout [63:0]  ddr_dq,
+   inout [7:0]   ddr_dqs_n,
+   inout [7:0]   ddr_dqs_p,
+   output [13:0] ddr_addr,
+   output [2:0]  ddr_ba,
+   output        ddr_ras_n,
+   output        ddr_cas_n,
+   output        ddr_we_n,
+   output        ddr_reset_n,
+   output        ddr_ck_n,
+   output        ddr_ck_p,
+   output        ddr_cke,
+   output        ddr_cs_n,
+   output [7:0]  ddr_dm,
    output        ddr_odt,
    `elsif NEXYS4
    // DDR2 RAM
@@ -624,6 +641,26 @@ module chip_top
    mig_7series_0 dram_ctl
      (
    `ifdef KC705
+      .sys_clk_p            ( clk_p                  ),
+      .sys_clk_n            ( clk_n                  ),
+      .sys_rst              ( rst_top                ),
+      .ui_addn_clk_0        ( clk                    ),
+      .ddr3_dq              ( ddr_dq                 ),
+      .ddr3_dqs_n           ( ddr_dqs_n              ),
+      .ddr3_dqs_p           ( ddr_dqs_p              ),
+      .ddr3_addr            ( ddr_addr               ),
+      .ddr3_ba              ( ddr_ba                 ),
+      .ddr3_ras_n           ( ddr_ras_n              ),
+      .ddr3_cas_n           ( ddr_cas_n              ),
+      .ddr3_we_n            ( ddr_we_n               ),
+      .ddr3_reset_n         ( ddr_reset_n            ),
+      .ddr3_ck_p            ( ddr_ck_p               ),
+      .ddr3_ck_n            ( ddr_ck_n               ),
+      .ddr3_cke             ( ddr_cke                ),
+      .ddr3_cs_n            ( ddr_cs_n               ),
+      .ddr3_dm              ( ddr_dm                 ),
+      .ddr3_odt             ( ddr_odt                ),
+   `elsif VC707
       .sys_clk_p            ( clk_p                  ),
       .sys_clk_n            ( clk_n                  ),
       .sys_rst              ( rst_top                ),
