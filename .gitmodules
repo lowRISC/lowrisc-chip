@@ -1,30 +1,15 @@
 [submodule "riscv-tools"]
 	path = riscv-tools
 	url = https://github.com/lowrisc/riscv-tools.git
-[submodule "chisel"]
-	path = chisel
-	url = https://github.com/lowrisc/chisel.git
 [submodule "hardfloat"]
 	path = hardfloat
 	url = https://github.com/ucb-bar/berkeley-hardfloat.git
 [submodule "fpga"]
         path = fpga
         url = https://github.com/lowrisc/lowrisc-fpga.git
-[submodule "rocket"]
-	path = rocket
-	url = https://github.com/lowrisc/rocket.git
-[submodule "uncore"]
-	path = uncore
-	url = https://github.com/lowrisc/uncore.git
 [submodule "socip"]
 	path = socip
 	url = https://github.com/lowrisc/socip.git
-[submodule "junctions"]
-	path = junctions
-	url = https://github.com/lowrisc/junctions.git
-[submodule "context-dependent-environments"]
-	path = context-dependent-environments
-	url = https://github.com/lowrisc/context-dependent-environments.git
 [submodule "opensocdebug/hardware"]
 	path = opensocdebug/hardware
 	url = https://github.com/opensocdebug/hardware
