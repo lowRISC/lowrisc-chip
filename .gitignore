@@ -5,3 +5,4 @@ project/target
 .addons-dont-touch
 riscv/
 tools/
+lib/

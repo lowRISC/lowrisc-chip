@@ -4,6 +4,7 @@ import sbt._
 import Keys._
 import complete._
 import complete.DefaultParsers._
+import xerial.sbt.Pack._
 
 object BuildSettings extends Build {
 
@@ -12,18 +13,15 @@ object BuildSettings extends Build {
     version      := "1.2",
     scalaVersion := "2.11.7",
     parallelExecution in Global := false,
-    traceLevel   := 50,
+    traceLevel   := 30,
     scalacOptions ++= Seq("-deprecation","-unchecked"),
     scalacOptions ++= Seq("-Xmax-classfile-name", "72"),
-    libraryDependencies ++= Seq("org.scala-lang" % "scala-reflect" % scalaVersion.value)
-  )
+    libraryDependencies ++= Seq("org.scala-lang" % "scala-reflect" % scalaVersion.value),
+     addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full)
+ )
 
-  lazy val chisel       = Project("chisel", file("chisel"))
-  lazy val cde          = Project("cde", file("context-dependent-environments")).dependsOn(chisel)
-  lazy val hardfloat    = Project("hardfloat", file("hardfloat")).dependsOn(chisel, cde)
-  lazy val open_soc_debug = Project("open_soc_debug", file("opensocdebug/hardware")).dependsOn(chisel, junctions, cde)
-  lazy val junctions    = Project("bridge", file("junctions")).dependsOn(chisel, cde)
-  lazy val uncore       = Project("uncore", file("uncore")).dependsOn(junctions, cde, open_soc_debug)
-  lazy val rocket       = Project("rocket", file("rocket")).dependsOn(hardfloat, uncore, junctions, cde, open_soc_debug)
-  lazy val lowrisc_chip = Project("lowrisc_chip", file(".")).dependsOn(chisel, cde, hardfloat, uncore, rocket, junctions, open_soc_debug)
+  lazy val chisel = project in file("chisel3")
+  lazy val hardfloat  = project.dependsOn(chisel)
+  lazy val rocketchip = (project in file(".")).dependsOn(chisel, hardfloat)
+
 }

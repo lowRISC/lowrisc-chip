@@ -5,20 +5,32 @@ ifndef RISCV
 $(error Please set environment variable RISCV. Please take a look at README)
 endif
 
-MODEL := Top
-PROJECT := lowrisc_chip
+MODEL := CoreplexTop
+PROJECT := freechips.rocketchip.lowrisc
 CXX := g++
 CXXFLAGS := -O1
+JVM_MEMORY ?= 2G
 
-SBT := java -Xmx2048M -Xss8M -XX:MaxPermSize=256M -jar sbt-launch.jar
+SBT ?= java -Xmx$(JVM_MEMORY) -Xss8M -XX:MaxPermSize=256M -jar $(base_dir)/sbt-launch.jar
 SHELL := /bin/bash
 
-CHISEL_ARGS := $(PROJECT) $(MODEL) $(PROJECT) $(CONFIG) --W0W --minimumCompatibility 3.0.0 --backend $(BACKEND) --configName $(CONFIG) --compileInitializationUnoptimized --targetDir $(generated_dir)
+FIRRTL_JAR ?= $(base_dir)/firrtl/utils/bin/firrtl.jar
+FIRRTL ?= java -Xmx$(JVM_MEMORY) -Xss8M -XX:MaxPermSize=256M -cp $(FIRRTL_JAR) firrtl.Driver
+
+# Build firrtl.jar and put it where chisel3 can find it.
+$(FIRRTL_JAR): $(shell find $(base_dir)/firrtl/src/main/scala -iname "*.scala")
+	$(MAKE) -C $(base_dir)/firrtl SBT="$(SBT)" root_dir=$(base_dir)/firrtl build-scala
+	touch $(FIRRTL_JAR)
+	mkdir -p $(base_dir)/lib
+	cp -p $(FIRRTL_JAR) $(base_dir)/lib
+# When chisel3 pr 448 is merged, the following extraneous copy may be removed.
+	mkdir -p $(base_dir)/chisel3/lib
+	cp -p $(FIRRTL_JAR) $(base_dir)/chisel3/lib
 
 # specify source files
-src_path = src/main/scala
-default_submodules = . junctions uncore hardfloat rocket
-chisel_srcs := $(addprefix $(base_dir)/,$(addsuffix /$(src_path)/*.scala,$(default_submodules)))
+src_path := src/main/scala
+default_submodules := . hardfloat chisel3
+chisel_srcs := $(foreach submodule, $(default_submodules), $(shell find $(base_dir)/$(submodule)/$(src_path) -name "*.scala"))
 
 osd_base = $(base_dir)/opensocdebug/hardware
 include $(osd_base)/Makefrag
