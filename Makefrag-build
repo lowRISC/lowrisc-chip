@@ -16,7 +16,7 @@ $(generated_dir)/%.fir $(generated_dir)/%.d: $(FIRRTL_JAR) $(chisel_srcs)
 
 $(generated_dir)/%.sv $(generated_dir)/%.conf: $(generated_dir)/%.fir $(FIRRTL_JAR)
 	mkdir -p $(dir $@)
-	$(FIRRTL) -i $< -o $(generated_dir)/$*.sv -X verilog --infer-rw $(MODEL) --repl-seq-mem -c:$(MODEL):-o:$(generated_dir)/$*.conf
+	$(FIRRTL) -i $< -o $(generated_dir)/$*.sv -X sverilog --infer-rw $(MODEL) --repl-seq-mem -c:$(MODEL):-o:$(generated_dir)/$*.conf
 
 $(generated_dir)/$(long_name).behav_srams.sv : $(generated_dir)/$(long_name).conf $(mem_gen)
 	cd $(generated_dir) && \
