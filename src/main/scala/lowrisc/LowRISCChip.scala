@@ -9,6 +9,7 @@ import freechips.rocketchip.config.Parameters
 import freechips.rocketchip.coreplex._
 import freechips.rocketchip.devices.tilelink._
 import freechips.rocketchip.diplomacy.LazyModule
+import freechips.rocketchip.util.ElaborationArtefacts
 
 // the Application core complex for lowRISC SoC
 class LoRCCoreplex(implicit p: Parameters) extends RocketCoreplex
@@ -44,4 +45,12 @@ class CoreplexTop()(implicit p: Parameters) extends RawModule {
     mmio_master <> rocket.mmio_axi4
     rocket.l2_frontend_bus_axi4 <> mmio_slave
   }
+
+
+  // the Verilog and C++ header files
+  if(!DumpMacro.empty) {
+    ElaborationArtefacts.add("vh", DumpMacro.genVH("LoRCCoreplex_HD"))
+    ElaborationArtefacts.add("hpp", DumpMacro.genHPP("LoRCCoreplex_HD"))
+  }
+
 }
