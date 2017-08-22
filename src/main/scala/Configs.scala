@@ -472,5 +472,11 @@ class Nexys4VideoConfig extends
 class Nexys4VideoDebugConfig extends
     Config(new With512MRamConfig ++ new FPGADebugConfig)
 
+class KC705Config extends
+    Config(new With128MRamConfig ++ new WithUARTConfig ++ new WithSPIConfig ++ new WithBootRAMConfig ++ new BaseConfig)
+
+class KC705DebugConfig extends
+    Config(new With128MRamConfig ++ new WithDebugConfig ++ new WithSPIConfig ++ new WithBootRAMConfig ++ new BaseConfig)
+
 class ZedConfig extends 
     Config(new With6BitTags ++ new With128MRamConfig ++ new WithUARTConfig ++ new WithSPIConfig ++ new WithBootRAMConfig ++ new BaseConfig)
