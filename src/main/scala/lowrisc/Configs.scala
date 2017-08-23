@@ -22,11 +22,10 @@ class LoRCBaseConfig extends Config(new BaseCoreplexConfig().alter((site,here,up
                       size = 0x10000000L,
                       beatBytes = site(MemoryBusParams).beatBytes,
                       idBits = 4)
-  case ExtBus => MasterPortParams(
-                      base = 0x60000000L,
-                      size = 0x20000000L,
-                      beatBytes = site(MemoryBusParams).beatBytes,
-                      idBits = 4)
+  case ExPeriperals => Seq(ExSlaveParams(
+                             name = "mmio",
+                             compat = Seq("simple-bus"),
+                             range = AddressSet(0x60000000L, 0x20000000L - 1)))
   case ExtIn  => SlavePortParams(beatBytes = 8, idBits = 8, sourceBits = 4)
   // Additional device Parameters
   case ErrorParams => ErrorParams(Seq(AddressSet(0x3000, 0xfff)))

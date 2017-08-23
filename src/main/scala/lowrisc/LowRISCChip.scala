@@ -15,7 +15,7 @@ import freechips.rocketchip.util.ElaborationArtefacts
 class LoRCCoreplex(implicit p: Parameters) extends RocketCoreplex
     with HasAsyncExtInterrupts
     with HasMasterAXI4MemPort
-    with HasMasterAXI4MMIOPort
+    with HasAXI4VirtualBus
     with HasSlaveAXI4Port
     with HasSystemErrorSlave {
   override lazy val module = new LoRCCoreplexModule(this)
@@ -25,7 +25,7 @@ class LoRCCoreplexModule[+L <: LoRCCoreplex](_outer: L) extends RocketCoreplexMo
     with HasRTCModuleImp
     with HasExtInterruptsModuleImp
     with HasMasterAXI4MemPortModuleImp
-    with HasMasterAXI4MMIOPortModuleImp
+    with HasAXI4VirtualBusModuleImp
     with HasSlaveAXI4PortModuleImp
 
 class CoreplexTop()(implicit p: Parameters) extends RawModule {

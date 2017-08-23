@@ -116,35 +116,41 @@ abstract class VirtualNode[D, U, EO, EI, B <: Data](
   protected[diplomacy] def inputs  = iPorts.map(_._2) zip edgesIn .map(e => imp.labelI(e))
 }
 
-abstract class VirtualNexusNode[D, U, EO, EI, B <: Data](
+class VirtualBusNode[D, U, EO, EI, B <: Data](
   imp: NodeImp[D, U, EO, EI, B])(
   dFn: Seq[D] => D,
-  uFn: Seq[U] => U,
-  num: Range.Inclusive = 1 to 999)
-  extends VirtualNode(imp)(num, num)
+  uFn: Seq[U] => U)
+  extends VirtualNode(imp)(1 to 999, 1 to 1)
 {
   override val externalIn: Boolean = true
   override val externalOut: Boolean = true
+  override val flip = true
+  override lazy val bundleOut = bundleIn
 
   protected[diplomacy] def resolveStar(iKnown: Int, oKnown: Int, iStars: Int, oStars: Int): (Int, Int) = {
-    require (iStars == 0, s"${name} (a nexus) appears left of :*= (perhaps you should flip the '*' to :=*?)${lazyModule.line}")
-    require (oStars == 0, s"${name} (a nexus) appears right of a :=* (perhaps you should flip the '*' to :*=?)${lazyModule.line}")
+    require (iStars == 0, s"${name} (a virtual bus) cannot appear left of a :*= ${lazyModule.line}")
+    require (oStars == 0, s"${name} (a virtual bus) cannot appear right of a :=* ${lazyModule.line}")
+    require (iKnown <= 1, s"${name} (a virtual bus) can appear left of a := once ${lazyModule.line}")
     (0, 0)
   }
   protected[diplomacy] def mapParamsD(n: Int, p: Seq[D]): Seq[D] = { val a = dFn(p); Seq.fill(n)(a) }
   protected[diplomacy] def mapParamsU(n: Int, p: Seq[U]): Seq[U] = { val a = uFn(p); Seq.fill(n)(a) }
 }
 
-
-class BlindOutputNexusNode[D, U, EO, EI, B <: Data](
-  imp: NodeImp[D, U, EO, EI, B])(
-  dFn: Seq[D] => D,
-  uFn: Seq[U] => U)
-  extends VirtualNexusNode(imp)(dFn, uFn)
+class VirtualSlaveNode[D, U, EO, EI, B <: Data](imp: NodeImp[D, U, EO, EI, B])(pi: Seq[U])
+  extends VirtualNode(imp)(0 to 0, pi.size to pi.size)
 {
   override val externalIn: Boolean = true
-  override val externalOut: Boolean = true
-  override val flip = true
+  override val externalOut: Boolean = false
   override lazy val bundleOut = bundleIn
+
+  protected[diplomacy] def resolveStar(iKnown: Int, oKnown: Int, iStars: Int, oStars: Int): (Int, Int) = {
+    require (iStars <= 1, s"${name} (a virtual slave) appears left of a :*= ${iStars} times; at most once is allowed${lazyModule.line}")
+    require (oStars == 0, s"${name} (a virtual slave) cannot appear right of a :=*${lazyModule.line}")
+    require (oKnown == 0, s"${name} (a virtual slave) cannot appear right of a :=${lazyModule.line}")
+    require (pi.size >= iKnown, s"${name} (a virtual slave) has ${iKnown} inputs out of ${pi.size}; cannot assign ${pi.size - iKnown} edges to resolve :*=${lazyModule.line}")
+    (pi.size - iKnown, 0)
+  }
+  protected[diplomacy] def mapParamsD(n: Int, p: Seq[D]): Seq[D] = Seq()
+  protected[diplomacy] def mapParamsU(n: Int, p: Seq[U]): Seq[U] = pi
 }
-  
