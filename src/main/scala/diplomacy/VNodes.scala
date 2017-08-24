@@ -13,16 +13,25 @@ import chisel3.internal.sourceinfo.SourceInfo
 import freechips.rocketchip.config.Parameters
 import freechips.rocketchip.util.HeterogeneousBag
 
+/** A virtual node which allow attaching virtual devices but produce no physical bundle connection.
+  * @param imp          The actual bus implementation of Node, Edge and Bundle
+  * @param numPO        The range of allowed outer bindings (attach points)
+  * @param numPI        The range of allowed inner bindings (attache points)
+  */
 abstract class VirtualNode[D, U, EO, EI, B <: Data](
   imp: NodeImp[D, U, EO, EI, B])(
   protected[diplomacy] val numPO: Range.Inclusive,
   protected[diplomacy] val numPI: Range.Inclusive)
   extends BaseNode with InwardNode[D, U, B] with OutwardNode[D, U, B]
 {
+  // resolve the star type (compile time resolved multi-binding) bindings
   protected[diplomacy] def resolveStar(iKnown: Int, oKnown: Int, iStar: Int, oStar: Int): (Int, Int)
+  // resolve downwards node parameters using inner node parameters
   protected[diplomacy] def mapParamsD(n: Int, p: Seq[D]): Seq[D]
+  // resolve upwards node parameters using outer node parameters
   protected[diplomacy] def mapParamsU(n: Int, p: Seq[U]): Seq[U]
 
+  // postponed calculation of the number of bindings
   protected[diplomacy] lazy val (oPortMapping, iPortMapping, oStar, iStar) = {
     val oStars = oBindings.filter { case (_,_,b) => b == BIND_STAR }.size
     val iStars = iBindings.filter { case (_,_,b) => b == BIND_STAR }.size
@@ -50,20 +59,24 @@ abstract class VirtualNode[D, U, EO, EI, B <: Data](
     (oSum.init zip oSum.tail, iSum.init zip iSum.tail, oStar, iStar)
   }
 
+  // outer bindings collected in node elaboration time
   lazy val oPorts = oBindings.flatMap { case (i, n, _) =>
     val (start, end) = n.iPortMapping(i)
     (start until end) map { j => (j, n) }
   }
+  // inner bindings collected in node elaboration time
   lazy val iPorts = iBindings.flatMap { case (i, n, _) =>
     val (start, end) = n.oPortMapping(i)
     (start until end) map { j => (j, n) }
   }
 
+  // postponed calculation of the outer node parameters
   protected[diplomacy] lazy val oParams: Seq[D] = {
     val o = mapParamsD(oPorts.size, iPorts.map { case (i, n) => n.oParams(i) })
     require (o.size == oPorts.size, s"Bug in diplomacy; ${name} has ${o.size} != ${oPorts.size} down/up outer parameters${lazyModule.line}")
     o.map(imp.mixO(_, this))
   }
+  // postponed calculation of the inner node parameters
   protected[diplomacy] lazy val iParams: Seq[U] = {
     val i = mapParamsU(iPorts.size, oPorts.map { case (o, n) => n.iParams(o) })
     require (i.size == iPorts.size, s"Bug in diplomacy; ${name} has ${i.size} != ${iPorts.size} up/down inner parameters${lazyModule.line}")
@@ -73,9 +86,13 @@ abstract class VirtualNode[D, U, EO, EI, B <: Data](
   protected[diplomacy] def gco = if (iParams.size != 1) None else imp.getO(iParams(0))
   protected[diplomacy] def gci = if (oParams.size != 1) None else imp.getI(oParams(0))
 
+  // postponed calculation of the outer edges
   lazy val edgesOut = (oPorts zip oParams).map { case ((i, n), o) => imp.edgeO(o, n.iParams(i)) }
+  // postponed calculation of the inner edges
   lazy val edgesIn  = (iPorts zip iParams).map { case ((o, n), i) => imp.edgeI(n.oParams(o), i) }
+  // trigger the outer edge postponed calculation, otherwise outer edges are set by parameters
   lazy val externalEdgesOut = if (externalOut) {edgesOut} else { Seq() }
+  // trigger the inner edge postponed calculation, otherwise inner edges are set by parameters
   lazy val externalEdgesIn = if (externalIn) {edgesIn} else { Seq() }
 
   val flip = false // needed for blind nodes
@@ -85,7 +102,9 @@ abstract class VirtualNode[D, U, EO, EI, B <: Data](
   private def wireO(b: HeterogeneousBag[B]) = if (wire) Wire(b) else b
   private def wireI(b: HeterogeneousBag[B]) = if (wire) Wire(b) else b
 
+  // postponed calculation of the outer bundle
   lazy val bundleOut = wireO(flipO(HeterogeneousBag(edgesOut.map(imp.bundleO(_)))))
+  // postponed calculation of the inner bundle
   lazy val bundleIn  = wireI(flipI(HeterogeneousBag(edgesIn .map(imp.bundleI(_)))))
 
   // connects the outward part of a node with the inward part of this node
@@ -105,8 +124,11 @@ abstract class VirtualNode[D, U, EO, EI, B <: Data](
     None
   }
 
+  // attach the outer port of a slave to the inner port of this node
   override def :=  (h: OutwardNodeHandle[D, U, B])(implicit p: Parameters, sourceInfo: SourceInfo): Option[MonitorBase] = bind(h, BIND_ONCE)
+  // attach the outer ports of a slave to multiple inner ports of this node (not used for virtual bus)
   override def :*= (h: OutwardNodeHandle[D, U, B])(implicit p: Parameters, sourceInfo: SourceInfo): Option[MonitorBase] = bind(h, BIND_STAR)
+  // attach multiple outer ports of a slave to the inner ports of this node
   override def :=* (h: OutwardNodeHandle[D, U, B])(implicit p: Parameters, sourceInfo: SourceInfo): Option[MonitorBase] = bind(h, BIND_QUERY)
 
   // meta-data for printing the node graph
@@ -116,6 +138,12 @@ abstract class VirtualNode[D, U, EO, EI, B <: Data](
   protected[diplomacy] def inputs  = iPorts.map(_._2) zip edgesIn .map(e => imp.labelI(e))
 }
 
+/** A virtual bus which allow attaching virtual devices and
+  * produce a physical outer port using the inner port
+  * @param imp          The actual bus implementation of Node, Edge and Bundle
+  * @param dFn          The implementation specific downwards node propagation function
+  * @param uFn          The implementation specific upwards node propagation function
+  */
 class VirtualBusNode[D, U, EO, EI, B <: Data](
   imp: NodeImp[D, U, EO, EI, B])(
   dFn: Seq[D] => D,
@@ -137,10 +165,15 @@ class VirtualBusNode[D, U, EO, EI, B <: Data](
   protected[diplomacy] def mapParamsU(n: Int, p: Seq[U]): Seq[U] = { val a = uFn(p); Seq.fill(n)(a) }
 }
 
+/** A virtual slave that can be attached to a virtual bus.
+  * No physical port is produced.
+  * @param imp          The actual bus implementation of Node, Edge and Bundle
+  * @param pi           A list of device parameters
+  */
 class VirtualSlaveNode[D, U, EO, EI, B <: Data](imp: NodeImp[D, U, EO, EI, B])(pi: Seq[U])
   extends VirtualNode(imp)(0 to 0, pi.size to pi.size)
 {
-  override val externalIn: Boolean = true
+  override val externalIn: Boolean = false
   override val externalOut: Boolean = false
   override lazy val bundleOut = bundleIn
 
