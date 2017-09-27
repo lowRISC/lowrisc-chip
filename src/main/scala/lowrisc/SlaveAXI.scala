@@ -7,7 +7,7 @@ import freechips.rocketchip.config.{Field, Parameters}
 import freechips.rocketchip.diplomacy._
 import freechips.rocketchip.tilelink._
 import freechips.rocketchip.amba.axi4._
-import freechips.rocketchip.coreplex.{HasSystemBus, HasMasterAXI4MMIOPortBundle}
+import freechips.rocketchip.coreplex.{HasPeripheryBus, HasMasterAXI4MMIOPortBundle}
 import freechips.rocketchip.util.HeterogeneousBag
 import scala.collection.mutable.{HashMap, MutableList}
 import scala.collection.Map
@@ -75,7 +75,7 @@ trait HasAXI4VirtualBus extends HasPeripheryBus {
 
   // generate and attach virtual slaves
   var int_size = 0
-  var interrupts = MutableList[(Int, Int, UInt)]
+  var int_nodes = MutableList[IntInternalInputNode]()
   p(ExPeriperals).slaves.foreach( d => {
     // set up a device for device tree descriptor
     val device = new SimpleDevice(d.name, d.compat)
@@ -102,10 +102,10 @@ trait HasAXI4VirtualBus extends HasPeripheryBus {
 
     // interrupts
     if(d.interrupts > 0) {
-      val slave_int = Wire(UInt(width = d.interrupts))
       val intnode = IntInternalInputNode(IntSourcePortSimple(num = d.interrupts, resources = device.int))
-      intnode.bundleIn.flatten := slave_int
-      interrupts += (int_size, int_size + d.interrupts - 1, salve_int)
+      ibus.fromSync := intnode
+
+      int_nodes += intnode
       DumpMacro("INT_" ++ slave_macro_name ++ "_BASE", int_size)
       DumpMacro("INT_" ++ slave_macro_name ++ "_SIZE", d.interrupts)
       int_size += d.interrupts
@@ -113,7 +113,14 @@ trait HasAXI4VirtualBus extends HasPeripheryBus {
   })
 
   // connect the mmio port to peripheral bus
-  mmio_axi4 := pbus.toVariableWidthSlaves
+  mmio_axi4 :=
+    AXI4Buffer()(
+    AXI4UserYanker()(
+    AXI4Deinterleaver(pbus.blockBytes)(
+    AXI4IdIndexer(p(ExPeriperals).idBits)(
+    TLToAXI4(p(ExPeriperals).beatBytes)(
+    pbus.toVariableWidthSlaves)))))
+
 }
 
 trait HasAXI4VirtualBusBundle {
@@ -126,6 +133,6 @@ trait HasAXI4VirtualBusModuleImp extends LazyMultiIOModuleImp with HasAXI4Virtua
   val outer: HasAXI4VirtualBus
   val mmio_axi4 = IO(outer.mmio_axi4.bundleOut)
   val mmio_interrupts = IO(UInt(width = outer.int_size))
-  outer.interrupts.foreach{case(b,e,i) => i := mmio_interrupts(e,b)}
+  outer.int_nodes.map(_.bundleIn).flatten.zipWithIndex.foreach {case(o,i) => o := mmio_interrupts(i)}
 }
 
