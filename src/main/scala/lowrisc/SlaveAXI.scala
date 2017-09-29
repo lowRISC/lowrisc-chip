@@ -110,6 +110,7 @@ trait HasAXI4VirtualBus extends HasPeripheryBus {
       DumpMacro("INT_" ++ slave_macro_name ++ "_SIZE", d.interrupts)
       int_size += d.interrupts
     }
+    if(int_size > 0) DumpMacro("USE_ROCKET_INT")
   })
 
   // connect the mmio port to peripheral bus

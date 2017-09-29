@@ -20,10 +20,8 @@ generated_dir = $(abspath ./generated-src)
 glip_dir = $(base_dir)/opensocdebug/glip/src
 osd_dir = $(base_dir)/opensocdebug/hardware
 
-BACKEND ?= lowrisc_chip.LowRISCBackend
-#CONFIG ?= DebugL2Config
-CONFIG ?= DefaultL2Config
-#CONFIG ?= TagL2Config
+BACKEND ?= v
+CONFIG ?= LoRCDefaultConfig
 
 include $(base_dir)/Makefrag
 
