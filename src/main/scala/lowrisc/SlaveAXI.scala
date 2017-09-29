@@ -132,7 +132,7 @@ trait HasAXI4VirtualBusBundle {
 trait HasAXI4VirtualBusModuleImp extends LazyMultiIOModuleImp with HasAXI4VirtualBusBundle {
   val outer: HasAXI4VirtualBus
   val mmio_axi4 = IO(outer.mmio_axi4.bundleOut)
-  val mmio_interrupts = IO(UInt(width = outer.int_size))
-  outer.int_nodes.map(_.bundleIn).flatten.zipWithIndex.foreach {case(o,i) => o := mmio_interrupts(i)}
+  val mmio_interrupts = IO(UInt(INPUT, width = outer.int_size))
+  outer.int_nodes.map(_.bundleIn).flatten.flatten.zipWithIndex.foreach {case(o,i) => o := mmio_interrupts(i)}
 }
 
