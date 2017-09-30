@@ -14,8 +14,10 @@ import cde.{Parameters, Config, Dump, Knob, CDEMatchError}
 case object UseHost extends Field[Boolean]
 case object UseUART extends Field[Boolean]
 case object UseSPI extends Field[Boolean]
+case object UseEth extends Field[Boolean]
 case object UseBootRAM extends Field[Boolean]
 case object UseFlash extends Field[Boolean]
+case object UseMinion extends Field[Boolean]
 case object IOTagBits extends Field[Int]
 
 class BaseConfig extends Config (
@@ -35,7 +37,7 @@ class BaseConfig extends Config (
     lazy val externalIOAddrMap: AddrMap = {
       val entries = collection.mutable.ArrayBuffer[AddrMapEntry]()
       if (site(UseBootRAM)) {
-        entries += AddrMapEntry("bram", MemSize(1<<17, 1<<30, MemAttr(AddrMapProt.RWX)))
+        entries += AddrMapEntry("bram", MemSize(if (site(UseMinion)) 1<<17 else 1<<16, 1<<30, MemAttr(AddrMapProt.RWX)))
         Dump("ADD_BRAM", 1)
       }
       if (site(UseFlash)) {
@@ -53,6 +55,10 @@ class BaseConfig extends Config (
       if (site(UseSPI)) {
         entries += AddrMapEntry("spi", MemSize(1<<13, 1<<13, MemAttr(AddrMapProt.RW)))
         Dump("ADD_SPI", 1)
+      }
+      if (site(UseEth)) {
+        entries += AddrMapEntry("eth", MemSize(1<<13, 1<<13, MemAttr(AddrMapProt.RW)))
+        Dump("ADD_ETH", true)
       }
       new AddrMap(entries)
     }
@@ -95,6 +101,11 @@ class BaseConfig extends Config (
       if(site(UseSPI)) {
         res append  "spi {\n"
         res append s"  addr 0x${addrMap("io:ext:spi").start.toString(16)};\n"
+        res append  "};\n"
+      }
+      if(site(UseEth)) {
+        res append  "eth {\n"
+        res append s"  addr 0x${addrMap("io:ext:eth").start.toString(16)};\n"
         res append  "};\n"
       }
       res append  "ram {\n"
@@ -325,8 +336,10 @@ class BaseConfig extends Config (
       case UseHost => false
       case UseUART => false
       case UseSPI => false
+      case UseEth => false
       case UseBootRAM => false
       case UseFlash => false
+      case UseMinion => false
 
       // NASTI BUS parameters
       case NastiKey("mem") =>
@@ -432,6 +445,18 @@ class WithSPIConfig extends Config (
   }
 )
 
+class WithEthConfig extends Config (
+  (pname,site,here) => pname match {
+    case UseEth => true
+  }
+)
+
+class WithMinionConfig extends Config (
+  (pname,site,here) => pname match {
+    case UseMinion => true
+  }
+)
+
 class WithUARTConfig extends Config (
   (pname,site,here) => pname match {
     case UseUART => true
@@ -470,7 +495,7 @@ class With6BitTags extends Config(
 )
 
 class BasicFPGAConfig extends
-    Config(new WithTagConfig ++ new WithBootRAMConfig ++ new WithL2 ++ new BaseConfig)
+    Config(new WithMinionConfig ++ new WithTagConfig ++ new WithBootRAMConfig ++ new WithL2 ++ new BaseConfig)
     //Config(new WithTagConfig ++ new WithSPIConfig ++ new WithBootRAMConfig ++ new WithFlashConfig ++ new WithL2 ++ new BaseConfig)
 
 class FPGAConfig extends
@@ -479,11 +504,17 @@ class FPGAConfig extends
 class FPGADebugConfig extends
     Config(new WithDebugConfig ++ new BasicFPGAConfig)
 
+class FPGAEthConfig extends
+    Config(new WithEthConfig ++ new FPGAConfig)
+
 class Nexys4Config extends
-    Config(new With128MRamConfig ++ new FPGAConfig)
+    Config(new WithEthConfig ++ new With128MRamConfig ++ new FPGAConfig)
 
 class Nexys4DebugConfig extends
     Config(new With128MRamConfig ++ new FPGADebugConfig)
+
+class Nexys4EthConfig extends
+    Config(new With128MRamConfig ++ new FPGAEthConfig)
 
 class Nexys4VideoConfig extends
     Config(new With512MRamConfig ++ new FPGAConfig)

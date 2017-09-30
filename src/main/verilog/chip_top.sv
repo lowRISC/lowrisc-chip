@@ -153,6 +153,21 @@ module chip_top
    output [3:0]  VGA_GREEN_O,
 `endif
 
+`ifdef ADD_ETH 
+ //! Ethernet MAC PHY interface signals
+ input wire [1:0]   i_erxd, // RMII receive data
+ input wire         i_erx_dv, // PHY data valid
+ input wire         i_erx_er, // PHY coding error
+ input wire         i_emdint, // PHY interrupt in active low
+ output reg         o_erefclk, // RMII clock out
+ output reg [1:0]   o_etxd, // RMII transmit data
+ output reg         o_etx_en, // RMII transmit enable
+ output wire        o_emdc, // MDIO clock
+ inout wire         io_emdio, // MDIO inout
+ output wire        o_erstn, // PHY reset active low
+`endif //  `ifdef ADD_ETH
+ 
+
    // clock and reset
    input         clk_p,
    input         clk_n,
@@ -181,6 +196,8 @@ module chip_top
        .ADDR_WIDTH  ( `ROCKET_PADDR_WIDTH   ),
        .DATA_WIDTH  ( `ROCKET_MEM_DAT_WIDTH ))
    mem_nasti();
+wire io_emdio_i, phy_emdio_o, phy_emdio_t, clk_rmii, clk_rmii_quad, clk_locked, clk_locked_wiz;
+reg phy_emdio_i, io_emdio_o, io_emdio_t;
 
 `ifdef ADD_PHY_DDR
 
@@ -334,7 +351,7 @@ module chip_top
 
  `ifdef NEXYS4_COMMON
    //clock generator
-   logic mig_sys_clk, clk_locked, clk_pixel;
+   logic mig_sys_clk, clk_locked, clk_locked_wiz, clk_pixel;
    logic clk_io_uart; // UART IO clock for debug
 
    clk_wiz_0 clk_gen
@@ -342,10 +359,13 @@ module chip_top
       .clk_in1       ( clk_p         ), // 100 MHz onboard
       .clk_out1      ( mig_sys_clk   ), // 200 MHz
       .clk_io_uart   ( clk_io_uart   ), // 60 MHz
+      .clk_rmii      ( clk_rmii      ), // 50 MHz rmii
+      .clk_rmii_quad ( clk_rmii_quad ), // 50 MHz rmii quad
       .clk_pixel     ( clk_pixel     ), // 120 MHz
       .resetn        ( rst_top       ),
-      .locked        ( clk_locked    )
+      .locked        ( clk_locked_wiz )
       );
+   assign clk_locked = clk_locked_wiz & rst_top;
  `endif //  `ifdef NEXYS4_COMMON
 
    // DRAM controller
@@ -459,6 +479,8 @@ module chip_top
 `else // !`ifdef ADD_PHY_DDR
 
    assign clk = clk_p;
+    assign clk_rmii = clk_p;
+    assign clk_rmii_quad = clk_p;
    assign rstn = !rst_top;
    assign clk_locked = !rst_top;
 
@@ -491,6 +513,7 @@ module chip_top
    // non-memory IO nasti-lite for peripherals
    nasti_channel
      #(
+       .ID_WIDTH    ( `ROCKET_IO_TAG_WIDTH  ),
        .ADDR_WIDTH  ( `ROCKET_PADDR_WIDTH   ),
        .DATA_WIDTH  ( `LOWRISC_IO_DAT_WIDTH ))
    io_lite();
@@ -504,7 +527,8 @@ module chip_top
        )
    io_bridge
      (
-      .*,
+      .clk    ( clk                ),
+      .rstn   ( rstn               ),
       .nasti_master  ( io_io_nasti  ),
       .lite_slave    ( io_lite      )
       );
@@ -536,7 +560,8 @@ module chip_top
        .SLAVE_DATA_WIDTH  ( `LOWRISC_IO_DAT_WIDTH ))
    bram_narrower
      (
-      .*,
+      .clk    ( clk               ),
+      .rstn   ( rstn              ),
       .master ( io_bram_nasti     ),
       .slave  ( local_bram_nasti  )
       );
@@ -706,7 +731,8 @@ module chip_top
        .SLAVE_DATA_WIDTH  ( `LOWRISC_IO_DAT_WIDTH ))
    flash_narrower
      (
-      .*,
+      .clk    ( clk                ),
+      .rstn   ( rstn               ),
       .master ( io_flash_nasti     ),
       .slave  ( local_flash_nasti  )
       );
@@ -824,7 +850,8 @@ module chip_top
        )
    spi_i
      (
-      .*,
+      .clk             ( clk                   ),
+      .rstn            ( rstn                  ),
       .nasti           ( io_spi_lite           ),
       .io0_i           ( spi_mosi_i            ),
       .io0_o           ( spi_mosi_o            ),
@@ -838,7 +865,8 @@ module chip_top
       .ss_i            ( spi_cs_i              ),
       .ss_o            ( spi_cs_o              ),
       .ss_t            ( spi_cs_t              ),
-      .ip2intc_irpt    ( spi_irq               ) // polling for now
+      .ip2intc_irpt    ( spi_irq               ), // polling for now
+      .sd_reset	       ( sd_reset              )
       );
 
 
@@ -902,7 +930,8 @@ module chip_top
        )
    u_debug_system
      (
-      .*,
+      .clk             ( clk                    ),
+      .rstn            ( rstn                   ),
       .clk_io          ( clk_io_uart            ),
       .uart_irq        ( uart_irq               ),
       .uart_ar_addr    ( io_uart_lite.ar_addr   ),
@@ -979,7 +1008,14 @@ module chip_top
       .sin             ( rxd                    ),
       .sout            ( txd                    ),
       .ctsn            ( cts                    ),
-      .rtsn            ( rts                    )
+      .rtsn            ( rts                   ),
+      .baudoutn (),
+      .ddis(),
+      .dtrn(),
+      .out1n(),
+      .out2n(),
+      .rxrdyn(),
+      .txrdyn()
       );
 
  `else // !`ifdef ADD_UART
@@ -1006,6 +1042,143 @@ module chip_top
       .rstn         ( rstn         ),
       .nasti        ( io_host_lite )
       );
+ `endif
+
+   /////////////////////////////////////////////////////////////
+   // ETH
+   nasti_channel
+     #(
+       .ID_WIDTH    ( `ROCKET_IO_TAG_WIDTH      ),
+       .ADDR_WIDTH  ( `ROCKET_PADDR_WIDTH       ),
+       .DATA_WIDTH  ( `ROCKET_IO_DAT_WIDTH     ))
+   io_eth_nasti();
+   logic                       eth_irq;
+
+`ifdef ADD_ETH
+   nasti_channel
+     #(
+       .ID_WIDTH    ( `ROCKET_IO_TAG_WIDTH      ),
+       .ADDR_WIDTH  ( `ROCKET_PADDR_WIDTH       ),
+       .DATA_WIDTH  ( `LOWRISC_IO_DAT_WIDTH     ))
+   local_eth_nasti();
+
+   nasti_narrower
+     #(
+       .ID_WIDTH          ( `ROCKET_IO_TAG_WIDTH  ),
+       .ADDR_WIDTH        ( `ROCKET_PADDR_WIDTH   ),
+       .MASTER_DATA_WIDTH ( `ROCKET_IO_DAT_WIDTH  ),
+       .SLAVE_DATA_WIDTH  ( `LOWRISC_IO_DAT_WIDTH ))
+   eth_narrower
+     (
+      .clk    ( clk                ),
+      .rstn   ( rstn               ),
+      .master ( io_eth_nasti       ),
+      .slave  ( local_eth_nasti    )
+      );
+
+    logic [1:0] eth_txd;
+    logic eth_rstn, eth_refclk, eth_txen;
+    assign o_erstn = eth_rstn & clk_locked_wiz;
+    
+   always @(posedge clk_rmii)
+     begin
+        phy_emdio_i <= io_emdio_i;
+        io_emdio_o <= phy_emdio_o;
+        io_emdio_t <= phy_emdio_t;
+     end
+
+   IOBUF #(
+      .DRIVE(12), // Specify the output drive strength
+      .IBUF_LOW_PWR("TRUE"),  // Low Power - "TRUE", High Performance = "FALSE" 
+      .IOSTANDARD("DEFAULT"), // Specify the I/O standard
+      .SLEW("SLOW") // Specify the output slew rate
+   ) IOBUF_inst (
+      .O(io_emdio_i),     // Buffer output
+      .IO(io_emdio),   // Buffer inout port (connect directly to top-level port)
+      .I(io_emdio_o),     // Buffer input
+      .T(io_emdio_t)      // 3-state enable input, high=input, low=output
+   );
+
+  ODDR #(
+    .DDR_CLK_EDGE("OPPOSITE_EDGE"),
+    .INIT(1'b0),
+    .IS_C_INVERTED(1'b0),
+    .IS_D1_INVERTED(1'b0),
+    .IS_D2_INVERTED(1'b0),
+    .SRTYPE("SYNC")) 
+    refclk_inst
+       (.C(eth_refclk),
+        .CE(1'b1),
+        .D1(1'b1),
+        .D2(1'b0),
+        .Q(o_erefclk),
+        .R(1'b0),
+        .S( ));
+    
+    always @(posedge clk_rmii_quad)
+        begin
+        o_etxd = eth_txd;
+        o_etx_en = eth_txen;
+        end
+
+    mii_to_rmii_0_open eth_i
+     (
+      .clk_rmii(clk_rmii),
+      .locked(clk_locked),
+    // SMSC ethernet PHY connections
+      .eth_rstn    ( eth_rstn ),
+      .eth_crsdv   ( i_erx_dv ),
+      .eth_refclk  ( eth_refclk ),
+      .eth_txd     ( eth_txd ),
+      .eth_txen    ( eth_txen ),
+      .eth_rxd     ( i_erxd ),
+      .eth_rxerr   ( i_erx_er ),
+      .eth_mdc     ( o_emdc ),
+      .phy_mdio_i  ( phy_emdio_i ),
+      .phy_mdio_o  ( phy_emdio_o ),
+      .phy_mdio_t  ( phy_emdio_t ),
+      .eth_irq     ( eth_irq ),
+      .s_axi_aclk      ( clk                  ),
+      .s_axi_aresetn   ( rstn                 ),
+      .s_axi_arid      ( local_eth_nasti.ar_id    ),
+      .s_axi_araddr    ( local_eth_nasti.ar_addr  ),
+      .s_axi_arlen     ( local_eth_nasti.ar_len   ),
+      .s_axi_arsize    ( local_eth_nasti.ar_size  ),
+      .s_axi_arburst   ( local_eth_nasti.ar_burst ),
+      .s_axi_arlock    ( local_eth_nasti.ar_lock  ),
+      .s_axi_arcache   ( local_eth_nasti.ar_cache ),
+      .s_axi_arprot    ( local_eth_nasti.ar_prot  ),
+      .s_axi_arready   ( local_eth_nasti.ar_ready ),
+      .s_axi_arvalid   ( local_eth_nasti.ar_valid ),
+      .s_axi_rid       ( local_eth_nasti.r_id     ),
+      .s_axi_rdata     ( local_eth_nasti.r_data   ),
+      .s_axi_rresp     ( local_eth_nasti.r_resp   ),
+      .s_axi_rlast     ( local_eth_nasti.r_last   ),
+      .s_axi_rready    ( local_eth_nasti.r_ready  ),
+      .s_axi_rvalid    ( local_eth_nasti.r_valid  ),
+      .s_axi_awid      ( local_eth_nasti.aw_id    ),
+      .s_axi_awaddr    ( local_eth_nasti.aw_addr  ),
+      .s_axi_awlen     ( local_eth_nasti.aw_len   ),
+      .s_axi_awsize    ( local_eth_nasti.aw_size  ),
+      .s_axi_awburst   ( local_eth_nasti.aw_burst ),
+      .s_axi_awlock    ( local_eth_nasti.aw_lock  ),
+      .s_axi_awcache   ( local_eth_nasti.aw_cache ),
+      .s_axi_awprot    ( local_eth_nasti.aw_prot  ),
+      .s_axi_awready   ( local_eth_nasti.aw_ready ),
+      .s_axi_awvalid   ( local_eth_nasti.aw_valid ),
+      .s_axi_wdata     ( local_eth_nasti.w_data   ),
+      .s_axi_wstrb     ( local_eth_nasti.w_strb   ),
+      .s_axi_wlast     ( local_eth_nasti.w_last   ),
+      .s_axi_wready    ( local_eth_nasti.w_ready  ),
+      .s_axi_wvalid    ( local_eth_nasti.w_valid  ),
+      .s_axi_bid       ( local_eth_nasti.b_id     ),
+      .s_axi_bresp     ( local_eth_nasti.b_resp   ),
+      .s_axi_bready    ( local_eth_nasti.b_ready  ),
+      .s_axi_bvalid    ( local_eth_nasti.b_valid  ));
+
+`else // !`ifdef ADD_ETH
+
+   assign eth_irq = 1'b0;
 `endif
 
    /////////////////////////////////////////////////////////////
@@ -1051,7 +1224,8 @@ module chip_top
        )
    io_crossbar
      (
-      .*,
+      .clk    ( clk                ),
+      .rstn   ( rstn               ),
       .master ( io_lite     ),
       .slave  ( io_cbo_lite )
       );
@@ -1195,12 +1369,12 @@ module chip_top
       );
 
    // interrupt
-   assign interrupt = {62'b0, spi_irq, uart_irq};
+   assign interrupt = {61'b0, eth_irq, spi_irq, uart_irq};
 
    /////////////////////////////////////////////////////////////
    // IO memory crossbar
 
-   localparam NUM_IO_MEM = 2;
+   localparam NUM_IO_MEM = 3;
 
    // output of the IO crossbar
    nasti_channel
@@ -1211,7 +1385,7 @@ module chip_top
        .DATA_WIDTH  ( `ROCKET_IO_DAT_WIDTH      ))
    io_mem_cbo_nasti();
 
-   nasti_channel io_mem_dmm3(), io_mem_dmm4(), io_mem_dmm5(), io_mem_dmm6(), io_mem_dmm7(); // dummy channels
+   nasti_channel io_mem_dmm4(), io_mem_dmm5(), io_mem_dmm6(), io_mem_dmm7(); // dummy channels
 
    nasti_channel_slicer #(NUM_IO_MEM + 1)
    io_mem_slicer (
@@ -1219,7 +1393,7 @@ module chip_top
                   .slave_0  ( io_io_nasti      ),
                   .slave_1  ( io_bram_nasti    ),
                   .slave_2  ( io_flash_nasti   ),
-                  .slave_3  ( io_mem_dmm3      ),
+                  .slave_3  ( io_eth_nasti     ),
                   .slave_4  ( io_mem_dmm4      ),
                   .slave_5  ( io_mem_dmm5      ),
                   .slave_6  ( io_mem_dmm6      ),
@@ -1243,7 +1417,8 @@ module chip_top
        )
    io_mem_crossbar
      (
-      .*,
+      .clk    ( clk                ),
+      .rstn   ( rstn               ),
       .master ( io_nasti         ),
       .slave  ( io_mem_cbo_nasti )
       );
@@ -1257,6 +1432,11 @@ module chip_top
    defparam io_mem_crossbar.BASE2 = `DEV_MAP__io_ext_flash__BASE;
    defparam io_mem_crossbar.MASK2 = `DEV_MAP__io_ext_flash__MASK;
 `endif
+
+  `ifdef ADD_ETH
+   defparam io_mem_crossbar.BASE3 = `DEV_MAP__io_ext_eth__BASE;
+   defparam io_mem_crossbar.MASK3 = `DEV_MAP__io_ext_eth__MASK;
+ `endif
 
 `ifdef ADD_MINION_SD
 
