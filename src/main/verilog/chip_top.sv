@@ -1208,7 +1208,7 @@ axi_bram_ctrl_2 hid_i
    /////////////////////////////////////////////////////////////
    // IO crossbar
 
-   localparam NUM_DEVICE = 3;
+   localparam NUM_DEVICE = 4;
 
    // output of the IO crossbar
    nasti_channel
