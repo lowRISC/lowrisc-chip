@@ -17,7 +17,7 @@ case object UseSPI extends Field[Boolean]
 case object UseEth extends Field[Boolean]
 case object UseBootRAM extends Field[Boolean]
 case object UseFlash extends Field[Boolean]
-case object UseMinion extends Field[Boolean]
+case object UseHID extends Field[Boolean]
 case object IOTagBits extends Field[Int]
 
 class BaseConfig extends Config (
@@ -37,7 +37,7 @@ class BaseConfig extends Config (
     lazy val externalIOAddrMap: AddrMap = {
       val entries = collection.mutable.ArrayBuffer[AddrMapEntry]()
       if (site(UseBootRAM)) {
-        entries += AddrMapEntry("bram", MemSize(if (site(UseMinion)) 1<<17 else 1<<16, 1<<30, MemAttr(AddrMapProt.RWX)))
+        entries += AddrMapEntry("bram", MemSize(1<<16, 1<<30, MemAttr(AddrMapProt.RWX)))
         Dump("ADD_BRAM", 1)
       }
       if (site(UseFlash)) {
@@ -59,6 +59,10 @@ class BaseConfig extends Config (
       if (site(UseEth)) {
         entries += AddrMapEntry("eth", MemSize(1<<13, 1<<13, MemAttr(AddrMapProt.RW)))
         Dump("ADD_ETH", true)
+      }
+      if (site(UseHID)) {
+        entries += AddrMapEntry("hid", MemSize(1<<17, 1<<17, MemAttr(AddrMapProt.RW)))
+        Dump("ADD_HID", true)
       }
       new AddrMap(entries)
     }
@@ -106,6 +110,11 @@ class BaseConfig extends Config (
       if(site(UseEth)) {
         res append  "eth {\n"
         res append s"  addr 0x${addrMap("io:ext:eth").start.toString(16)};\n"
+        res append  "};\n"
+      }
+      if(site(UseHID)) {
+        res append  "hid {\n"
+        res append s"  addr 0x${addrMap("io:ext:hid").start.toString(16)};\n"
         res append  "};\n"
       }
       res append  "ram {\n"
@@ -339,7 +348,7 @@ class BaseConfig extends Config (
       case UseEth => false
       case UseBootRAM => false
       case UseFlash => false
-      case UseMinion => false
+      case UseHID => false
 
       // NASTI BUS parameters
       case NastiKey("mem") =>
@@ -451,9 +460,9 @@ class WithEthConfig extends Config (
   }
 )
 
-class WithMinionConfig extends Config (
+class WithHIDConfig extends Config (
   (pname,site,here) => pname match {
-    case UseMinion => true
+    case UseHID => true
   }
 )
 
@@ -495,7 +504,7 @@ class With6BitTags extends Config(
 )
 
 class BasicFPGAConfig extends
-    Config(new WithMinionConfig ++ new WithTagConfig ++ new WithBootRAMConfig ++ new WithL2 ++ new BaseConfig)
+    Config(new WithHIDConfig ++ new WithTagConfig ++ new WithBootRAMConfig ++ new WithL2 ++ new BaseConfig)
     //Config(new WithTagConfig ++ new WithSPIConfig ++ new WithBootRAMConfig ++ new WithFlashConfig ++ new WithL2 ++ new BaseConfig)
 
 class FPGAConfig extends

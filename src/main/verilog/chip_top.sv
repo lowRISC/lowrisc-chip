@@ -626,13 +626,12 @@ reg phy_emdio_i, io_emdio_o, io_emdio_t;
       .bram_clk_a      ( ram_clk                   ),
       .bram_en_a       ( ram_en                    ),
       .bram_we_a       ( ram_we                    ),
-      .bram_addr_a     ( {ram_sel_b,ram_addr}      ),
+      .bram_addr_a     ( ram_addr                  ),
       .bram_wrdata_a   ( ram_wrdata                ),
       .bram_rddata_a   ( ram_rddata                )
       );
 
    // the inferred BRAMs
-   reg                            ram_sel_b_dly;
    reg   [BRAM_WIDTH-1:0]         ram [0 : BRAM_LINE-1];
    logic [BRAM_ADDR_BLK_BITS-1:0] ram_block_addr, ram_block_addr_delay;
    logic [BRAM_ADDR_LSB_BITS-1:0] ram_lsb_addr, ram_lsb_addr_delay;
@@ -648,8 +647,7 @@ reg phy_emdio_i, io_emdio_o, io_emdio_t;
 
    always @(posedge ram_clk)
     begin
-     ram_sel_b_dly <= ram_sel_b;     
-     if(ram_en & !ram_sel_b) begin
+     if(ram_en) begin
         ram_block_addr_delay <= ram_block_addr;
         ram_lsb_addr_delay <= ram_lsb_addr;
         foreach (ram_we_full[i])
@@ -659,51 +657,10 @@ reg phy_emdio_i, io_emdio_o, io_emdio_t;
 
    assign ram_rddata_full = ram[ram_block_addr_delay];
    assign ram_rddata_shift = ram_lsb_addr_delay << (BRAM_OFFSET_BITS + 3); // avoid ISim error
-   assign ram_rddata = ram_sel_b_dly ? ram_rddata_b : ram_rddata_full >> ram_rddata_shift;
+   assign ram_rddata = ram_rddata_full >> ram_rddata_shift;
 
    initial $readmemh("boot.mem", ram);
 
- `ifdef ADD_MINION_SD
-
-   logic [3:0]                  m_enb;
-   logic                        m_web;
-    
-   logic [31:0]                 core_lsu_addr;
-   logic [31:0]                 core_lsu_addr_dly;
-   logic [31:0]                 core_lsu_wdata;
-   logic [3:0]                  core_lsu_be;
-   logic                        ce_d;
-   logic                        we_d;
-   logic                        shared_sel;
-   logic [31:0]                 shared_rdata;
-
-   genvar                       r;
-
-   assign m_enb = (we_d ? core_lsu_be : 4'hF);
-   assign m_web = ce_d & shared_sel & we_d;
-
-   generate for (r = 0; r < 4; r=r+1)
-     RAMB16_S9_S9
-     RAMB16_S9_S9_inst
-       (
-        .CLKA   ( ram_clk                  ),     // Port A Clock
-        .DOA    ( ram_rddata_b[r*8 +: 8]   ),     // Port A 1-bit Data Output
-        .ADDRA  ( ram_addr[12:2]           ),     // Port A 14-bit Address Input
-        .DIA    ( ram_wrdata[r*8 +:8]      ),     // Port A 1-bit Data Input
-        .ENA    ( ram_en & ram_sel_b       ),     // Port A RAM Enable Input
-        .SSRA   ( 1'b0                     ),     // Port A Synchronous Set/Reset Input
-        .WEA    ( ram_we[r]                ),     // Port A Write Enable Input
-        .CLKB   ( clk                      ),     // Port B Clock
-        .DOB    ( shared_rdata[r*8 +: 8]   ),     // Port B 1-bit Data Output
-        .ADDRB  ( core_lsu_addr[12:2]      ),     // Port B 14-bit Address Input
-        .DIB    ( core_lsu_wdata[r*8 +: 8] ),     // Port B 1-bit Data Input
-        .ENB    ( m_enb[r]                 ),     // Port B RAM Enable Input
-        .SSRB   ( 1'b0                     ),     // Port B Synchronous Set/Reset Input
-        .WEB    ( m_web                    )      // Port B Write Enable Input
-        );
-   endgenerate
-
- `endif //  `ifdef ADD_MINION_SD
 `endif //  `ifdef ADD_BRAM
 
    /////////////////////////////////////////////////////////////
@@ -888,6 +845,73 @@ reg phy_emdio_i, io_emdio_o, io_emdio_t;
    assign spi_irq = 1'b0;
 
 `endif // !`ifdef ADD_SPI
+
+   /////////////////////////////////////////////////////////////
+   // HID
+   nasti_channel
+     #(
+       .ADDR_WIDTH  ( `ROCKET_PADDR_WIDTH       ),
+       .DATA_WIDTH  ( `LOWRISC_IO_DAT_WIDTH     ))
+   io_hid_lite();
+   logic                       hid_irq;
+
+`ifdef ADD_HID
+   
+   wire                        hid_rst, hid_clk, hid_en;
+   wire [3:0]                  hid_we;
+   wire [16:0]                 hid_addr;
+   wire [31:0]                 hid_wrdata,  hid_rddata;
+
+axi_bram_ctrl_2 hid_i
+     (
+      .s_axi_aclk      ( clk                  ),
+      .s_axi_aresetn   ( rstn                 ),
+      .s_axi_araddr    ( io_hid_lite.ar_addr  ),
+      .s_axi_arready   ( io_hid_lite.ar_ready ),
+      .s_axi_arvalid   ( io_hid_lite.ar_valid ),
+      .s_axi_awaddr    ( io_hid_lite.aw_addr  ),
+      .s_axi_awready   ( io_hid_lite.aw_ready ),
+      .s_axi_awvalid   ( io_hid_lite.aw_valid ),
+      .s_axi_bready    ( io_hid_lite.b_ready  ),
+      .s_axi_bresp     ( io_hid_lite.b_resp   ),
+      .s_axi_bvalid    ( io_hid_lite.b_valid  ),
+      .s_axi_rdata     ( io_hid_lite.r_data   ),
+      .s_axi_rready    ( io_hid_lite.r_ready  ),
+      .s_axi_rresp     ( io_hid_lite.r_resp   ),
+      .s_axi_rvalid    ( io_hid_lite.r_valid  ),
+      .s_axi_wdata     ( io_hid_lite.w_data   ),
+      .s_axi_wready    ( io_hid_lite.w_ready  ),
+      .s_axi_wstrb     ( io_hid_lite.w_strb   ),
+      .s_axi_wvalid    ( io_hid_lite.w_valid  ),
+      .bram_rst_a(hid_rst),        // output wire hid_rst_a
+      .bram_clk_a(hid_clk),        // output wire hid_clk_a
+      .bram_en_a(hid_en),          // output wire hid_en_a
+      .bram_we_a(hid_we),          // output wire [3 : 0] hid_we_a
+      .bram_addr_a(hid_addr),      // output wire [15 : 0] hid_addr_a
+      .bram_wrdata_a(hid_wrdata),  // output wire [31 : 0] hid_wrdata_a
+      .bram_rddata_a(hid_rddata)   // input wire [31 : 0] hid_rddata_a
+      );
+
+   periph_soc psoc
+     (
+      .msoc_clk   ( clk             ),
+      .sd_sclk    ( sd_sclk         ),
+      .sd_detect  ( sd_detect       ),
+      .sd_dat     ( sd_dat          ),
+      .sd_cmd     ( sd_cmd          ),
+      .from_dip   ( {12'b0,i_dip}   ),
+      .to_led     ( o_led           ),
+      .rstn       ( clk_locked      ),
+      .clk_200MHz ( mig_sys_clk     ),
+      .pxl_clk    ( clk_pixel       ),
+      .*
+      );
+                       
+`else // !`ifdef ADD_HID
+
+   assign hid_irq = 1'b0;
+
+`endif // !`ifdef ADD_HID
 
    /////////////////////////////////////////////////////////////
    // UART or trace debugger
@@ -1194,7 +1218,7 @@ reg phy_emdio_i, io_emdio_o, io_emdio_t;
        .DATA_WIDTH  ( `LOWRISC_IO_DAT_WIDTH     ))
    io_cbo_lite();
 
-   nasti_channel ios_dmm3(), ios_dmm4(), ios_dmm5(), ios_dmm6(), ios_dmm7(); // dummy channels
+   nasti_channel ios_dmm4(), ios_dmm5(), ios_dmm6(), ios_dmm7(); // dummy channels
 
    nasti_channel_slicer #(NUM_DEVICE)
    io_slicer (
@@ -1202,7 +1226,7 @@ reg phy_emdio_i, io_emdio_o, io_emdio_t;
               .slave_0  ( io_host_lite  ),
               .slave_1  ( io_uart_lite  ),
               .slave_2  ( io_spi_lite   ),
-              .slave_3  ( ios_dmm3      ),
+              .slave_3  ( io_hid_lite   ),
               .slave_4  ( ios_dmm4      ),
               .slave_5  ( ios_dmm5      ),
               .slave_6  ( ios_dmm6      ),
@@ -1437,26 +1461,5 @@ reg phy_emdio_i, io_emdio_o, io_emdio_t;
    defparam io_mem_crossbar.BASE3 = `DEV_MAP__io_ext_eth__BASE;
    defparam io_mem_crossbar.MASK3 = `DEV_MAP__io_ext_eth__MASK;
  `endif
-
-`ifdef ADD_MINION_SD
-
-   minion_soc
-   msoc
-     (
-      .uart_tx    (                 ),
-      .uart_rx    ( 1'b1            ),
-      .msoc_clk   ( clk             ),
-      .sd_sclk    ( sd_sclk         ),
-      .sd_detect  ( sd_detect       ),
-      .sd_dat     ( sd_dat          ),
-      .sd_cmd     ( sd_cmd          ),
-      .from_dip   ( {12'b0,i_dip}   ),
-      .to_led     ( o_led           ),
-      .rstn       ( clk_locked      ),
-      .clk_200MHz ( mig_sys_clk     ),
-      .pxl_clk    ( clk_pixel       ),
-      .*
-      );
-`endif
    
 endmodule // chip_top
