@@ -415,7 +415,7 @@ if (((tx_state == TX_CLIENT_DATA_WAIT_SOURCE_ADDRESS | tx_state == TX_SOURCE_ADD
  ( rx_frame_size < MIN_FRAME_DATA_BYTES + CRC32_BYTES) |
  ( rx_frame_size > MAX_FRAME_DATA_BYTES + CRC32_BYTES ) ) )
                         begin
-                            rx_error_o <= 1'b1;
+                          rx_error_o <= 1'b1;
                         end
                     end
                     else
@@ -425,9 +425,9 @@ if (((tx_state == TX_CLIENT_DATA_WAIT_SOURCE_ADDRESS | tx_state == TX_SOURCE_ADD
                             rx_frame_check_sequence <= update_crc32(rx_frame_check_sequence,mii_rx_data_i);
                             if ( rx_frame_size < 1500 + 2 + 6 + 6 + 4 + 1 ) 
                             begin
-                rx_frame_size <= rx_frame_size + 1;
+                              rx_frame_size <= rx_frame_size + 1;
                             end
-if (rx_mac_address_byte < MAC_ADDRESS_BYTES)
+                          if (rx_mac_address_byte < MAC_ADDRESS_BYTES)
                             begin
                                 if ( rx_mac_address_byte == 3'b000 ) 
                                 begin
@@ -436,7 +436,7 @@ if (rx_mac_address_byte < MAC_ADDRESS_BYTES)
                                         rx_is_group_address <= 1'b0;
                                         if ( mii_rx_data_i != extract_byte(mac_address_i,rx_mac_address_byte) ) 
                                         begin
-                            rx_state <= RX_ERROR;
+                                          rx_state <= RX_ERROR;
                                         end
                                     end
                                 end
@@ -446,7 +446,7 @@ if (rx_mac_address_byte < MAC_ADDRESS_BYTES)
                                     begin
                                         if ( mii_rx_data_i != extract_byte(mac_address_i,rx_mac_address_byte) ) 
                                         begin
-                        rx_state <= RX_ERROR;
+                                          rx_state <= RX_ERROR;
                                         end
                                     end
                                 end
@@ -463,7 +463,7 @@ if (rx_mac_address_byte < MAC_ADDRESS_BYTES)
                 begin
                     if ( mii_rx_frame_i == 1'b0 ) 
                     begin
-      rx_state <= RX_WAIT_START_FRAME_DELIMITER;
+                      rx_state <= RX_WAIT_START_FRAME_DELIMITER;
                     end
                 end
                 RX_ERROR:
@@ -472,20 +472,20 @@ if (rx_mac_address_byte < MAC_ADDRESS_BYTES)
                     rx_error_o <= 1'b1;
                     if ( mii_rx_frame_i == 1'b0 ) 
                     begin
-        rx_state <= RX_WAIT_START_FRAME_DELIMITER;
+                      rx_state <= RX_WAIT_START_FRAME_DELIMITER;
                     end
                 end
                 RX_WAIT:
                 begin
                     rx_frame_o <= 1'b1;
                     rx_byte_received_o <= mii_rx_byte_received_i;
-                    if ( rx_padding == 1'b0 ) 
+                    if (rx_padding == 3'b000)
                       begin
-                        rx_state <= 'b0;
+                        rx_state <= RX_WAIT_START_FRAME_DELIMITER;
                       end
 		    else if ( mii_rx_byte_received_i == 1'b1 ) 
                       begin
-                        rx_padding <= rx_padding - 1;
+                        rx_padding <= rx_padding - 3'b001;
                         rx_frame_size <= rx_frame_size + 1;
                       end
                 end
