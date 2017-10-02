@@ -122,7 +122,7 @@ module chip_top
    output        sd_reset,
 `endif
 
-`ifdef ADD_MINION_SD
+`ifdef ADD_HID
    // 4-bit full SD interface
    output        sd_sclk,
    input         sd_detect,
@@ -1267,6 +1267,11 @@ axi_bram_ctrl_2 hid_i
 `ifdef ADD_SPI
    defparam io_crossbar.BASE2 = `DEV_MAP__io_ext_spi__BASE;
    defparam io_crossbar.MASK2 = `DEV_MAP__io_ext_spi__MASK;
+`endif
+
+`ifdef ADD_HID
+   defparam io_crossbar.BASE3 = `DEV_MAP__io_ext_hid__BASE;
+   defparam io_crossbar.MASK3 = `DEV_MAP__io_ext_hid__MASK;
 `endif
 
    /////////////////////////////////////////////////////////////
