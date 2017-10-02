@@ -18,6 +18,9 @@ $(generated_dir)/%.sv $(generated_dir)/%.conf: $(generated_dir)/%.fir $(FIRRTL_J
 $(generated_dir)/consts.vh: $(generated_dir)/$(MODEL).$(CONFIG).fir
 	cp $(generated_dir)/$(CONFIG).vh $(generated_dir)/consts.vh
 
+$(generated_dir)/consts.hpp: $(generated_dir)/$(MODEL).$(CONFIG).fir
+	cp $(generated_dir)/$(CONFIG).hpp $(generated_dir)/consts.hpp
+
 
 # emacs local variable
 
