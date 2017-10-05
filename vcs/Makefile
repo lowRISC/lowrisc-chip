@@ -33,6 +33,7 @@ include $(base_dir)/Makefrag
 
 lowrisc_srcs = \
 	$(generated_dir)/$(MODEL).$(CONFIG).sv \
+	$(generated_dir)/$(MODEL).$(CONFIG).behav_srams.sv \
 
 lowrisc_headers = \
 	$(generated_dir)/consts.vh \
@@ -54,6 +55,8 @@ verilog_srcs = \
 	$(base_dir)/socip/nasti/nasti_mux.sv \
 	$(base_dir)/socip/nasti/nasti_slicer.sv \
 	$(base_dir)/socip/util/arbiter.sv \
+	$(base_dir)/vsrc/AsyncResetReg.v \
+	$(base_dir)/vsrc/plusarg_reader.v \
 
 verilog_headers = \
 	$(base_dir)/src/main/verilog/config.vh \

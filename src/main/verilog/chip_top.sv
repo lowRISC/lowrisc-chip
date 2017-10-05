@@ -461,11 +461,11 @@ module chip_top
    io_slave_nasti();      // IO nasti interface to Rocket
 
    // currently the slave port is not used
-   assign io_slave_nasti.aw.valid = 'b0;
-   assign io_slave_nasti.w.valid  = 'b0;
-   assign io_slave_nasti.b.ready  = 'b0;
-   assign io_slave_nasti.ar.valid = 'b0;
-   assign io_slave_nasti.r.ready  = 'b0;
+   assign io_slave_nasti.aw_valid = 'b0;
+   assign io_slave_nasti.w_valid  = 'b0;
+   assign io_slave_nasti.b_ready  = 'b0;
+   assign io_slave_nasti.ar_valid = 'b0;
+   assign io_slave_nasti.r_ready  = 'b0;
 
    // non-memory IO nasti-lite for peripherals
    nasti_channel
