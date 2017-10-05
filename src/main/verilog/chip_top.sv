@@ -351,7 +351,7 @@ reg phy_emdio_i, io_emdio_o, io_emdio_t;
 
  `ifdef NEXYS4_COMMON
    //clock generator
-   logic mig_sys_clk, clk_locked, clk_locked_wiz, clk_pixel;
+   logic mig_sys_clk, clk_pixel;
    logic clk_io_uart; // UART IO clock for debug
 
    clk_wiz_0 clk_gen
@@ -365,6 +365,7 @@ reg phy_emdio_i, io_emdio_o, io_emdio_t;
       .resetn        ( rst_top       ),
       .locked        ( clk_locked_wiz )
       );
+   
    assign clk_locked = clk_locked_wiz & rst_top;
  `endif //  `ifdef NEXYS4_COMMON
 
@@ -483,6 +484,7 @@ reg phy_emdio_i, io_emdio_o, io_emdio_t;
     assign clk_rmii_quad = clk_p;
    assign rstn = !rst_top;
    assign clk_locked = !rst_top;
+   assign clk_locked_wiz = !rst_top;
 
    nasti_ram_behav
      #(
@@ -659,7 +661,11 @@ reg phy_emdio_i, io_emdio_o, io_emdio_t;
    assign ram_rddata_shift = ram_lsb_addr_delay << (BRAM_OFFSET_BITS + 3); // avoid ISim error
    assign ram_rddata = ram_rddata_full >> ram_rddata_shift;
 
+`ifdef BOOT_MEM
+   initial $readmemh(`BOOT_MEM, ram);
+`else
    initial $readmemh("boot.mem", ram);
+`endif
 
 `endif //  `ifdef ADD_BRAM
 

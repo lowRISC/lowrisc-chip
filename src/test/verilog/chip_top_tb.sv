@@ -178,6 +178,33 @@ module tb;
    assign rxd = 'b1;
    assign cts = 'b1;
 
+reg u_trans;
+reg [15:0] u_baud;
+wire received, recv_err, is_recv, is_trans, u_tx, u_rx;
+wire [7:0] u_rx_byte;
+reg  [7:0] u_tx_byte;
+
+   assign u_trans = received;
+   assign u_tx_byte = u_rx_byte;
+   assign u_baud = 16'd52;
+   assign u_rx = txd;
+   
+uart i_uart(
+    .clk(clk), // The master clock for this module
+    .rst(rst), // Synchronous reset.
+    .rx(u_rx), // Incoming serial line
+    .tx(u_tx), // Outgoing serial line
+    .transmit(u_trans), // Signal to transmit
+    .tx_byte(u_tx_byte), // Byte to transmit
+    .received(received), // Indicated that a byte has been received.
+    .rx_byte(u_rx_byte), // Byte received
+    .is_receiving(is_recv), // Low when receive line is idle.
+    .is_transmitting(is_trans), // Low when transmit line is idle.
+    .recv_error(recv_err), // Indicates error in receiving packet.
+    .baud(u_baud),
+    .recv_ack(received)
+    );
+
 `endif
 
 `ifdef ADD_FLASH
@@ -205,20 +232,18 @@ module tb;
 
    // 4-bit full SD interface
    wire         sd_sclk;
-   wire         sd_detect;
-   tri1 [3:0]   sd_dat_to_host;
-   tri1         sd_cmd_to_host;
+   wire         sd_detect = 1'b0; // Simulate SD-card always there
+   wand [3:0]   sd_dat = oeDat ? sd_dat_to_host : 4'b1111;
+   wand         sd_cmd = oeCmd ? sd_cmd_to_host : 4'b1;
+   wire [3:0]   sd_dat_to_host;
+   wire         sd_cmd_to_host;
    wire         sd_reset, oeCmd, oeDat;
-   tri1 [3:0]   sd_dat = oeDat ? sd_dat_to_host : 4'bz;
-   tri1         sd_cmd = oeCmd ? sd_cmd_to_host : 4'bz;
-   tri1 [3:0]   sd_dat_to_mem = oeDat ? 4'b1111 : sd_dat;
-   tri1         sd_cmd_to_mem = oeCmd ? 4'b1111 : sd_cmd;
 
 sd_verilator_model sdflash1 (
              .sdClk(sd_sclk),
-             .cmd(sd_cmd_to_mem),
+             .cmd(sd_cmd),
              .cmdOut(sd_cmd_to_host),
-             .dat(sd_dat_to_mem),
+             .dat(sd_dat),
              .datOut(sd_dat_to_host),
              .oeCmd(oeCmd),
              .oeDat(oeDat)
@@ -228,7 +253,7 @@ sd_verilator_model sdflash1 (
    wire [7:0]   o_led;
    wire [3:0]   i_dip;
 
-   assign i_dip = 'bzzzz;
+   assign i_dip = 8'h88;
 
    // push button array
    wire         GPIO_SW_C;
@@ -237,15 +262,15 @@ sd_verilator_model sdflash1 (
    wire         GPIO_SW_N;
    wire         GPIO_SW_S;
 
-   assign GPIO_SW_C = 'b1;
-   assign GPIO_SW_W = 'b1;
-   assign GPIO_SW_E = 'b1;
-   assign GPIO_SW_N = 'b1;
-   assign GPIO_SW_S = 'b1;
+   assign GPIO_SW_C = 'b0;
+   assign GPIO_SW_W = 'b0;
+   assign GPIO_SW_E = 'b0;
+   assign GPIO_SW_N = 'b0;
+   assign GPIO_SW_S = 'b0;
 
    //keyboard
-   wire         PS2_CLK;
-   wire         PS2_DATA;
+   tri1         PS2_CLK;
+   tri1         PS2_DATA;
 
    assign PS2_CLK = 'bz;
    assign PS2_DATA = 'bz;
@@ -267,10 +292,12 @@ sd_verilator_model sdflash1 (
    longint    unsigned cycle_cnt = 0;
 
    initial begin
-`ifndef ADD_PHY_DDR
+ `ifndef ADD_PHY_DDR
+ `ifndef NASTI_RAM_DUMMY
       if($value$plusargs("load=%s", memfile))
         DUT.ram_behav.memory_load_mem(memfile);
-`endif
+ `endif
+ `endif
 
       $value$plusargs("max-cycles=%d", max_cycle);
    end // initial begin
@@ -319,7 +346,6 @@ sd_verilator_model sdflash1 (
   wire         io_emdio ;
   wire         o_erstn ;
 
-   assign i_dip = 8'h88;
    assign i_emdint = 1'b1;
    assign i_erx_dv = o_etx_en;
    assign i_erxd = o_etxd;
