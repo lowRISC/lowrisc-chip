@@ -17,6 +17,7 @@ class LoRCCoreplex(implicit p: Parameters) extends RocketCoreplex
     with HasMasterAXI4MemPort
     with HasAXI4VirtualBus
     with HasSlaveAXI4Port
+    with HasPeripheryBootROM
     with HasSystemErrorSlave {
   override lazy val module = new LoRCCoreplexModule(this)
 }
@@ -27,6 +28,7 @@ class LoRCCoreplexModule[+L <: LoRCCoreplex](_outer: L) extends RocketCoreplexMo
     with HasMasterAXI4MemPortModuleImp
     with HasAXI4VirtualBusModuleImp
     with HasSlaveAXI4PortModuleImp
+    with HasPeripheryBootROMModuleImp
 
 class CoreplexTop()(implicit p: Parameters) extends RawModule {
 
