@@ -54,101 +54,24 @@ verilog_srcs = \
 	$(base_dir)/socip/nasti/nasti_mux.sv \
 	$(base_dir)/socip/nasti/nasti_slicer.sv \
 	$(base_dir)/socip/util/arbiter.sv \
-	$(base_dir)/src/main/verilog/debug_system.sv \
-	$(osd_dir)/interconnect/common/debug_ring_expand.sv \
-	$(osd_dir)/interconnect/common/ring_router.sv \
-	$(osd_dir)/interconnect/common/ring_router_mux.sv \
-	$(osd_dir)/interconnect/common/ring_router_mux_rr.sv \
-	$(osd_dir)/interconnect/common/ring_router_demux.sv \
-	$(osd_dir)/blocks/buffer/common/dii_buffer.sv \
-	$(osd_dir)/blocks/buffer/common/osd_fifo.sv \
-	$(osd_dir)/blocks/timestamp/common/osd_timestamp.sv \
-	$(osd_dir)/blocks/tracepacket/common/osd_trace_packetization.sv \
-	$(osd_dir)/blocks/tracesample/common/osd_tracesample.sv \
-	$(osd_dir)/blocks/regaccess/common/osd_regaccess.sv \
-	$(osd_dir)/blocks/regaccess/common/osd_regaccess_demux.sv \
-	$(osd_dir)/blocks/regaccess/common/osd_regaccess_layer.sv \
-	$(osd_dir)/modules/dem_uart/common/osd_dem_uart.sv \
-	$(osd_dir)/modules/dem_uart/common/osd_dem_uart_16550.sv \
-	$(osd_dir)/modules/dem_uart/common/osd_dem_uart_nasti.sv \
-	$(osd_dir)/modules/him/common/osd_him.sv \
-	$(osd_dir)/modules/scm/common/osd_scm.sv \
-	$(osd_dir)/modules/mam/common/osd_mam.sv \
-	$(osd_dir)/modules/stm/common/osd_stm.sv \
-	$(osd_dir)/modules/ctm/common/osd_ctm.sv \
-	$(glip_dir)/common/logic/interface/glip_channel.sv \
-	$(base_dir)/minion_subsystem/verilog/coremem.sv \
-	$(base_dir)/minion_subsystem/verilog/debouncer.v \
-	$(base_dir)/minion_subsystem/verilog/dpram.v \
-	$(base_dir)/minion_subsystem/verilog/dualmem.v \
-	$(base_dir)/minion_subsystem/verilog/fstore2.v \
-	$(base_dir)/minion_subsystem/verilog/minion_soc.sv \
-	$(base_dir)/minion_subsystem/verilog/my_fifo.v \
-	$(base_dir)/minion_subsystem/verilog/ps2_keyboard.v \
-	$(base_dir)/minion_subsystem/verilog/ps2_translation_table.v \
-	$(base_dir)/minion_subsystem/verilog/ps2.v \
-	$(base_dir)/minion_subsystem/verilog/rambyte.v \
-	$(base_dir)/minion_subsystem/verilog/rx_delay.v \
-	$(base_dir)/minion_subsystem/verilog/sd_clock_divider.v \
-	$(base_dir)/minion_subsystem/verilog/sd_cmd_serial_host.v \
-	$(base_dir)/minion_subsystem/verilog/sd_crc_16.v \
-	$(base_dir)/minion_subsystem/verilog/sd_crc_7.v \
-	$(base_dir)/minion_subsystem/verilog/sd_data_serial_host.sv \
-	$(base_dir)/minion_subsystem/verilog/sd_top.sv \
-	$(base_dir)/minion_subsystem/verilog/uart.v \
-	$(base_dir)/minion_subsystem/verilog/vga_ctrl.v \
-	$(base_dir)/minion_subsystem/pulpino/ips/riscv/include/riscv_defines.sv \
-	$(base_dir)/minion_subsystem/pulpino/ips/riscv/controller.sv \
-	$(base_dir)/minion_subsystem/pulpino/ips/riscv/cs_registers.sv \
-	$(base_dir)/minion_subsystem/pulpino/ips/riscv/debug_unit.sv \
-	$(base_dir)/minion_subsystem/pulpino/ips/riscv/decoder.sv \
-	$(base_dir)/minion_subsystem/pulpino/ips/riscv/exc_controller.sv \
-	$(base_dir)/minion_subsystem/pulpino/ips/riscv/ex_stage.sv \
-	$(base_dir)/minion_subsystem/pulpino/ips/riscv/hwloop_controller.sv \
-	$(base_dir)/minion_subsystem/pulpino/ips/riscv/hwloop_regs.sv \
-	$(base_dir)/minion_subsystem/pulpino/ips/riscv/id_stage.sv \
-	$(base_dir)/minion_subsystem/pulpino/ips/riscv/if_stage.sv \
-	$(base_dir)/minion_subsystem/pulpino/ips/riscv/include/riscv_config.sv \
-	$(base_dir)/minion_subsystem/pulpino/ips/riscv/load_store_unit.sv \
-	$(base_dir)/minion_subsystem/pulpino/ips/riscv/mult.sv \
-	$(base_dir)/minion_subsystem/pulpino/ips/riscv/prefetch_L0_buffer.sv \
-	$(base_dir)/minion_subsystem/pulpino/ips/riscv/register_file_ff.sv \
-	$(base_dir)/minion_subsystem/pulpino/ips/riscv/riscv_core.sv \
-	$(base_dir)/minion_subsystem/pulpino/rtl/components/cluster_clock_gating.sv \
-	$(base_dir)/minion_subsystem/pulpino/ips/riscv/alu.sv \
-	$(base_dir)/minion_subsystem/pulpino/ips/riscv/alu_div.sv \
-	$(base_dir)/minion_subsystem/pulpino/ips/riscv/compressed_decoder.sv \
-	$(base_dir)/minion_subsystem/pulpino/ips/riscv/prefetch_buffer.sv \
-	$(base_dir)/minion_subsystem/software/bootstrap/code.v \
-	$(base_dir)/minion_subsystem/software/bootstrap/data.v \
 
 verilog_headers = \
 	$(base_dir)/src/main/verilog/config.vh \
 	$(base_dir)/socip/nasti/nasti_request.vh \
-	$(base_dir)/minion_subsystem/verilog/ps2_defines.v \
-	$(base_dir)/minion_subsystem/verilog/sd_defines.h \
-	$(base_dir)/minion_subsystem/verilog/ascii_code.v \
-	$(base_dir)/minion_subsystem/pulpino/rtl/includes/config.sv \
 
 test_verilog_srcs = \
 	$(base_dir)/src/test/verilog/chip_top_tb.sv \
-	$(base_dir)/src/test/verilog/host_behav.sv \
 	$(base_dir)/src/test/verilog/nasti_ram_behav.sv \
-	$(glip_dir)/backend_tcp/logic/dpi/glip_tcp_toplevel.sv \
 
 test_cxx_srcs = \
 	$(base_dir)/src/test/cxx/common/globals.cpp \
 	$(base_dir)/src/test/cxx/common/loadelf.cpp \
 	$(base_dir)/src/test/cxx/common/dpi_ram_behav.cpp \
-	$(base_dir)/src/test/cxx/common/dpi_host_behav.cpp \
-	$(base_dir)/opensocdebug/glip/src/backend_tcp/logic/dpi/glip_tcp_dpi.cpp \
-	$(base_dir)/opensocdebug/glip/src/backend_tcp/logic/dpi/GlipTcp.cpp \
 
 test_cxx_headers = \
 	$(base_dir)/src/test/cxx/common/globals.h \
 	$(base_dir)/src/test/cxx/common/loadelf.hpp \
 	$(base_dir)/src/test/cxx/common/dpi_ram_behav.h \
-	$(base_dir)/src/test/cxx/common/dpi_host_behav.h \
 
 dpi_libs = \
 	$(sim_dir)/libdpi.so \

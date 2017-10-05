@@ -1,9 +1,8 @@
 // See LICENSE for license details.
 
-import dii_package::dii_flit;
+// import dii_package::dii_flit;
 
 `include "consts.vh"
-`include "dev_map.vh"
 `include "config.vh"
 
 module chip_top
@@ -122,37 +121,6 @@ module chip_top
    output        sd_reset,
 `endif
 
-`ifdef ADD_MINION_SD
-   // 4-bit full SD interface
-   output        sd_sclk,
-   input         sd_detect,
-   inout [3:0]   sd_dat,
-   inout         sd_cmd,
-   output        sd_reset,
-
-   // LED and DIP switch
-   output [7:0]  o_led,
-   input  [3:0]  i_dip,
-
-   // push button array
-   input         GPIO_SW_C,
-   input         GPIO_SW_W,
-   input         GPIO_SW_E,
-   input         GPIO_SW_N,
-   input         GPIO_SW_S,
-
-   //keyboard
-   inout         PS2_CLK,
-   inout         PS2_DATA,
-
-  // display
-   output        VGA_HS_O,
-   output        VGA_VS_O,
-   output [3:0]  VGA_RED_O,
-   output [3:0]  VGA_BLUE_O,
-   output [3:0]  VGA_GREEN_O,
-`endif
-
    // clock and reset
    input         clk_p,
    input         clk_n,
@@ -168,18 +136,15 @@ module chip_top
    // Debug controlled reset of the Rocket system
    logic  sys_rst, cpu_rst;
 
-   // interrupt line
-   logic [63:0]                interrupt;
-
    /////////////////////////////////////////////////////////////
    // NASTI/Lite on-chip interconnects
 
    // Rocket memory nasti bus
    nasti_channel
      #(
-       .ID_WIDTH    ( `ROCKET_MEM_TAG_WIDTH ),
-       .ADDR_WIDTH  ( `ROCKET_PADDR_WIDTH   ),
-       .DATA_WIDTH  ( `ROCKET_MEM_DAT_WIDTH ))
+       .ID_WIDTH    ( `MEM_ID_WIDTH   ),
+       .ADDR_WIDTH  ( `MEM_ADDR_WIDTH ),
+       .DATA_WIDTH  ( `MEM_DATA_WIDTH ))
    mem_nasti();
 
 `ifdef ADD_PHY_DDR
@@ -187,9 +152,9 @@ module chip_top
    // the NASTI bus for off-FPGA DRAM, converted to High frequency
    nasti_channel   
      #(
-       .ID_WIDTH    ( `ROCKET_MEM_TAG_WIDTH ),
-       .ADDR_WIDTH  ( `ROCKET_PADDR_WIDTH   ),
-       .DATA_WIDTH  ( `ROCKET_MEM_DAT_WIDTH ))
+       .ID_WIDTH    ( `MEM_ID_WIDTH   ),
+       .ADDR_WIDTH  ( `MEM_ADDR_WIDTH ),
+       .DATA_WIDTH  ( `MEM_DATA_WIDTH ))
    mem_mig_nasti();
 
  `ifdef ZED
@@ -464,9 +429,9 @@ module chip_top
 
    nasti_ram_behav
      #(
-       .ID_WIDTH     ( `ROCKET_MEM_TAG_WIDTH   ),
-       .ADDR_WIDTH   ( `ROCKET_PADDR_WIDTH     ),
-       .DATA_WIDTH   ( `ROCKET_MEM_DAT_WIDTH   ),
+       .ID_WIDTH     ( `MEM_ID_WIDTH    ),
+       .ADDR_WIDTH   ( `MEM_ADDR_WIDTH  ),
+       .DATA_WIDTH   ( `MEM_DATA_WIDTH  ),
        .USER_WIDTH   ( 1                )
        )
    ram_behav
@@ -482,25 +447,39 @@ module chip_top
 
    nasti_channel
      #(
-       .ID_WIDTH    ( `ROCKET_IO_TAG_WIDTH  ),
-       .ADDR_WIDTH  ( `ROCKET_PADDR_WIDTH   ),
-       .DATA_WIDTH  ( `ROCKET_IO_DAT_WIDTH  ))
-   io_nasti(),      // IO nasti interface From Rocket
+       .ID_WIDTH    ( `MMIO_MASTER_ID_WIDTH   ),
+       .ADDR_WIDTH  ( `MMIO_MASTER_ADDR_WIDTH ),
+       .DATA_WIDTH  ( `MMIO_MASTER_DATA_WIDTH ))
+   io_master_nasti(),      // IO nasti interface From Rocket
    io_io_nasti();   // non-memory IO nasti
+
+   nasti_channel
+     #(
+       .ID_WIDTH    ( `MMIO_SLAVE_ID_WIDTH   ),
+       .ADDR_WIDTH  ( `MMIO_SLAVE_ADDR_WIDTH ),
+       .DATA_WIDTH  ( `MMIO_SLAVE_DATA_WIDTH ))
+   io_slave_nasti();      // IO nasti interface to Rocket
+
+   // currently the slave port is not used
+   assign io_slave_nasti.aw.valid = 'b0;
+   assign io_slave_nasti.w.valid  = 'b0;
+   assign io_slave_nasti.b.ready  = 'b0;
+   assign io_slave_nasti.ar.valid = 'b0;
+   assign io_slave_nasti.r.ready  = 'b0;
 
    // non-memory IO nasti-lite for peripherals
    nasti_channel
      #(
-       .ADDR_WIDTH  ( `ROCKET_PADDR_WIDTH   ),
-       .DATA_WIDTH  ( `LOWRISC_IO_DAT_WIDTH ))
+       .ADDR_WIDTH  ( `MMIO_MASTER_ADDR_WIDTH ),
+       .DATA_WIDTH  ( `LOWRISC_IO_DAT_WIDTH   ))
    io_lite();
 
    nasti_lite_bridge
      #(
-       .ID_WIDTH          ( `ROCKET_IO_TAG_WIDTH  ),
-       .ADDR_WIDTH        ( `ROCKET_PADDR_WIDTH   ),
-       .NASTI_DATA_WIDTH  ( `ROCKET_IO_DAT_WIDTH  ),
-       .LITE_DATA_WIDTH   ( `LOWRISC_IO_DAT_WIDTH )
+       .ID_WIDTH          ( `MMIO_MASTER_ID_WIDTH   ),
+       .ADDR_WIDTH        ( `MMIO_MASTER_ADDR_WIDTH ),
+       .NASTI_DATA_WIDTH  ( `MMIO_MASTER_DATA_WIDTH ),
+       .LITE_DATA_WIDTH   ( `LOWRISC_IO_DAT_WIDTH   )
        )
    io_bridge
      (
@@ -514,26 +493,26 @@ module chip_top
 
    nasti_channel
      #(
-       .ID_WIDTH    ( `ROCKET_IO_TAG_WIDTH      ),
-       .ADDR_WIDTH  ( `ROCKET_PADDR_WIDTH       ),
-       .DATA_WIDTH  ( `ROCKET_IO_DAT_WIDTH      ))
+       .ID_WIDTH    ( `MMIO_MASTER_ID_WIDTH   ),
+       .ADDR_WIDTH  ( `MMIO_MASTER_ADDR_WIDTH ),
+       .DATA_WIDTH  ( `MMIO_MASTER_DATA_WIDTH ))
    io_bram_nasti();
 
 `ifdef ADD_BRAM
 
    nasti_channel
      #(
-       .ID_WIDTH    ( `ROCKET_IO_TAG_WIDTH      ),
-       .ADDR_WIDTH  ( `ROCKET_PADDR_WIDTH       ),
-       .DATA_WIDTH  ( `LOWRISC_IO_DAT_WIDTH     ))
+       .ID_WIDTH    ( `MMIO_MASTER_ID_WIDTH   ),
+       .ADDR_WIDTH  ( `MMIO_MASTER_ADDR_WIDTH ),
+       .DATA_WIDTH  ( `LOWRISC_IO_DAT_WIDTH   ))
    local_bram_nasti();
 
    nasti_narrower
      #(
-       .ID_WIDTH          ( `ROCKET_IO_TAG_WIDTH  ),
-       .ADDR_WIDTH        ( `ROCKET_PADDR_WIDTH   ),
-       .MASTER_DATA_WIDTH ( `ROCKET_IO_DAT_WIDTH  ),
-       .SLAVE_DATA_WIDTH  ( `LOWRISC_IO_DAT_WIDTH ))
+       .ID_WIDTH          ( `MMIO_MASTER_ID_WIDTH   ),
+       .ADDR_WIDTH        ( `MMIO_MASTER_ADDR_WIDTH ),
+       .MASTER_DATA_WIDTH ( `MMIO_MASTER_DATA_WIDTH ),
+       .SLAVE_DATA_WIDTH  ( `LOWRISC_IO_DAT_WIDTH   ))
    bram_narrower
      (
       .*,
@@ -638,72 +617,31 @@ module chip_top
 
    initial $readmemh("boot.mem", ram);
 
- `ifdef ADD_MINION_SD
-
-   logic [3:0]                  m_enb;
-   logic                        m_web;
-    
-   logic [31:0]                 core_lsu_addr;
-   logic [31:0]                 core_lsu_addr_dly;
-   logic [31:0]                 core_lsu_wdata;
-   logic [3:0]                  core_lsu_be;
-   logic                        ce_d;
-   logic                        we_d;
-   logic                        shared_sel;
-   logic [31:0]                 shared_rdata;
-
-   genvar                       r;
-
-   assign m_enb = (we_d ? core_lsu_be : 4'hF);
-   assign m_web = ce_d & shared_sel & we_d;
-
-   generate for (r = 0; r < 4; r=r+1)
-     RAMB16_S9_S9
-     RAMB16_S9_S9_inst
-       (
-        .CLKA   ( ram_clk                  ),     // Port A Clock
-        .DOA    ( ram_rddata_b[r*8 +: 8]   ),     // Port A 1-bit Data Output
-        .ADDRA  ( ram_addr[12:2]           ),     // Port A 14-bit Address Input
-        .DIA    ( ram_wrdata[r*8 +:8]      ),     // Port A 1-bit Data Input
-        .ENA    ( ram_en & ram_sel_b       ),     // Port A RAM Enable Input
-        .SSRA   ( 1'b0                     ),     // Port A Synchronous Set/Reset Input
-        .WEA    ( ram_we[r]                ),     // Port A Write Enable Input
-        .CLKB   ( clk                      ),     // Port B Clock
-        .DOB    ( shared_rdata[r*8 +: 8]   ),     // Port B 1-bit Data Output
-        .ADDRB  ( core_lsu_addr[12:2]      ),     // Port B 14-bit Address Input
-        .DIB    ( core_lsu_wdata[r*8 +: 8] ),     // Port B 1-bit Data Input
-        .ENB    ( m_enb[r]                 ),     // Port B RAM Enable Input
-        .SSRB   ( 1'b0                     ),     // Port B Synchronous Set/Reset Input
-        .WEB    ( m_web                    )      // Port B Write Enable Input
-        );
-   endgenerate
-
- `endif //  `ifdef ADD_MINION_SD
 `endif //  `ifdef ADD_BRAM
 
    /////////////////////////////////////////////////////////////
    // XIP SPI Flash
    nasti_channel
      #(
-       .ID_WIDTH    ( `ROCKET_IO_TAG_WIDTH      ),
-       .ADDR_WIDTH  ( `ROCKET_PADDR_WIDTH       ),
-       .DATA_WIDTH  ( `ROCKET_IO_DAT_WIDTH      ))
+       .ID_WIDTH    ( `MMIO_MASTER_ID_WIDTH   ),
+       .ADDR_WIDTH  ( `MMIO_MASTER_ADDR_WIDTH ),
+       .DATA_WIDTH  ( `MMIO_MASTER_DATA_WIDTH ))
    io_flash_nasti();
 
 `ifdef ADD_FLASH
    nasti_channel
      #(
-       .ID_WIDTH    ( `ROCKET_IO_TAG_WIDTH      ),
-       .ADDR_WIDTH  ( `ROCKET_PADDR_WIDTH       ),
+       .ID_WIDTH    ( `MMIO_MASTER_ID_WIDTH     ),
+       .ADDR_WIDTH  ( `MMIO_MASTER_ADDR_WIDTH   ),
        .DATA_WIDTH  ( `LOWRISC_IO_DAT_WIDTH     ))
    local_flash_nasti();
 
    nasti_narrower
      #(
-       .ID_WIDTH          ( `ROCKET_IO_TAG_WIDTH  ),
-       .ADDR_WIDTH        ( `ROCKET_PADDR_WIDTH   ),
-       .MASTER_DATA_WIDTH ( `ROCKET_IO_DAT_WIDTH  ),
-       .SLAVE_DATA_WIDTH  ( `LOWRISC_IO_DAT_WIDTH ))
+       .ID_WIDTH          ( `MMIO_MASTER_ID_WIDTH   ),
+       .ADDR_WIDTH        ( `MMIO_MASTER_ADDR_WIDTH ),
+       .MASTER_DATA_WIDTH ( `MMIO_MASTER_DATA_WIDTH ),
+       .SLAVE_DATA_WIDTH  ( `LOWRISC_IO_DAT_WIDTH   ))
    flash_narrower
      (
       .*,
@@ -806,7 +744,7 @@ module chip_top
    // SPI
    nasti_channel
      #(
-       .ADDR_WIDTH  ( `ROCKET_PADDR_WIDTH       ),
+       .ADDR_WIDTH  ( `MMIO_MASTER_ADDR_WIDTH   ),
        .DATA_WIDTH  ( `LOWRISC_IO_DAT_WIDTH     ))
    io_spi_lite();
    logic                       spi_irq;
@@ -865,91 +803,12 @@ module chip_top
    // UART or trace debugger
    nasti_channel
      #(
-       .ADDR_WIDTH  ( `ROCKET_PADDR_WIDTH       ),
+       .ADDR_WIDTH  ( `MMIO_MASTER_ADDR_WIDTH   ),
        .DATA_WIDTH  ( `LOWRISC_IO_DAT_WIDTH     ))
    io_uart_lite();
    logic                       uart_irq;
 
-`ifdef ENABLE_DEBUG
-   // Debug MAM signals
-   logic                               mam_req_valid;
-   logic                               mam_req_ready;
-   logic                               mam_req_rw;
-   logic [`ROCKET_PADDR_WIDTH-1:0]     mam_req_addr;
-   logic                               mam_req_burst;
-   logic [13:0]                        mam_req_beats;
-   logic                               mam_write_valid;
-   logic [`ROCKET_MAM_IO_DWIDTH-1:0]   mam_write_data;
-   logic [`ROCKET_MAM_IO_DWIDTH/8-1:0] mam_write_strb;
-   logic                               mam_write_ready;
-   logic                               mam_read_valid;
-   logic [`ROCKET_MAM_IO_DWIDTH-1:0]   mam_read_data;
-   logic                               mam_read_ready;
-
-   // Debug ring connections
-   dii_flit [1:0]                     debug_ring_start; // starting connector
-   logic [1:0]                        debug_ring_start_ready;
-   dii_flit [1:0]                     debug_ring_end; // ending connector
-   logic [1:0]                        debug_ring_end_ready;
-
-   debug_system
-     #(
-       .N_CORES          ( `ROCKET_NTILES          ),
-       .MAM_DATA_WIDTH   ( `ROCKET_MAM_IO_DWIDTH   ),
-       .MAM_ADDR_WIDTH   ( `ROCKET_PADDR_WIDTH     ),
-       .FREQ_CLK_IO      ( 60000000                ),
-       .UART_BAUD        ( 12000000                )
-       )
-   u_debug_system
-     (
-      .*,
-      .clk_io          ( clk_io_uart            ),
-      .uart_irq        ( uart_irq               ),
-      .uart_ar_addr    ( io_uart_lite.ar_addr   ),
-      .uart_ar_ready   ( io_uart_lite.ar_ready  ),
-      .uart_ar_valid   ( io_uart_lite.ar_valid  ),
-      .uart_aw_addr    ( io_uart_lite.aw_addr   ),
-      .uart_aw_ready   ( io_uart_lite.aw_ready  ),
-      .uart_aw_valid   ( io_uart_lite.aw_valid  ),
-      .uart_b_ready    ( io_uart_lite.b_ready   ),
-      .uart_b_resp     ( io_uart_lite.b_resp    ),
-      .uart_b_valid    ( io_uart_lite.b_valid   ),
-      .uart_r_data     ( io_uart_lite.r_data    ),
-      .uart_r_ready    ( io_uart_lite.r_ready   ),
-      .uart_r_resp     ( io_uart_lite.r_resp    ),
-      .uart_r_valid    ( io_uart_lite.r_valid   ),
-      .uart_w_data     ( io_uart_lite.w_data    ),
-      .uart_w_ready    ( io_uart_lite.w_ready   ),
-      .uart_w_valid    ( io_uart_lite.w_valid   ),
-      .rx              ( rxd                    ),
-      .tx              ( txd                    ),
-      .rts             ( rts                    ),
-      .cts             ( cts                    ),
-      .sys_rst         ( sys_rst                ),
-      .cpu_rst         ( cpu_rst                ),
-      .ring_out        ( debug_ring_start       ),
-      .ring_out_ready  ( debug_ring_start_ready ),
-      .ring_in         ( debug_ring_end         ),
-      .ring_in_ready   ( debug_ring_end_ready   ),
-      .req_valid       ( mam_req_valid          ),
-      .req_ready       ( mam_req_ready          ),
-      .req_rw          ( mam_req_rw             ),
-      .req_addr        ( mam_req_addr           ),
-      .req_burst       ( mam_req_burst          ),
-      .req_beats       ( mam_req_beats          ),
-      .write_valid     ( mam_write_valid        ),
-      .write_ready     ( mam_write_ready        ),
-      .write_data      ( mam_write_data         ),
-      .write_strb      ( mam_write_strb         ),
-      .read_valid      ( mam_read_valid         ),
-      .read_data       ( mam_read_data          ),
-      .read_ready      ( mam_read_ready         )
-      );
-`else // !`ifdef ENABLE_DEBUG
-   assign sys_rst = rst;
-   assign cpu_rst = 1'b0;
-
- `ifdef ADD_UART
+`ifdef ADD_UART
    axi_uart16550_0 uart_i
      (
       .s_axi_aclk      ( clk                    ),
@@ -982,31 +841,20 @@ module chip_top
       .rtsn            ( rts                    )
       );
 
- `else // !`ifdef ADD_UART
+`else // !`ifdef ADD_UART
 
    assign uart_irq = 1'b0;
 
- `endif // !`ifdef ADD_UART
-
-`endif // !`ifdef ENABLE_DEBUG
+`endif // !`ifdef ADD_UART
 
    /////////////////////////////////////////////////////////////
    // Host for ISA regression
 
    nasti_channel
      #(
-       .ADDR_WIDTH  ( `ROCKET_PADDR_WIDTH       ),
+       .ADDR_WIDTH  ( `MMIO_MASTER_ADDR_WIDTH   ),
        .DATA_WIDTH  ( `LOWRISC_IO_DAT_WIDTH     ))
    io_host_lite();
-
-`ifdef ADD_HOST
-   host_behav host
-     (
-      .clk          ( clk          ),
-      .rstn         ( rstn         ),
-      .nasti        ( io_host_lite )
-      );
-`endif
 
    /////////////////////////////////////////////////////////////
    // IO crossbar
@@ -1017,7 +865,7 @@ module chip_top
    nasti_channel
      #(
        .N_PORT      ( NUM_DEVICE                ),
-       .ADDR_WIDTH  ( `ROCKET_PADDR_WIDTH       ),
+       .ADDR_WIDTH  ( `MMIO_MASTER_ADDR_WIDTH   ),
        .DATA_WIDTH  ( `LOWRISC_IO_DAT_WIDTH     ))
    io_cbo_lite();
 
@@ -1039,15 +887,15 @@ module chip_top
    // the io crossbar
    nasti_crossbar
      #(
-       .N_INPUT    ( 1                     ),
-       .N_OUTPUT   ( NUM_DEVICE            ),
-       .IB_DEPTH   ( 0                     ),
-       .OB_DEPTH   ( 1                     ), // some IPs response only with data, which will cause deadlock in nasti_demux (no lock)
-       .W_MAX      ( 1                     ),
-       .R_MAX      ( 1                     ),
-       .ADDR_WIDTH ( `ROCKET_PADDR_WIDTH   ),
-       .DATA_WIDTH ( `LOWRISC_IO_DAT_WIDTH ),
-       .LITE_MODE  ( 1                     )
+       .N_INPUT    ( 1                       ),
+       .N_OUTPUT   ( NUM_DEVICE              ),
+       .IB_DEPTH   ( 0                       ),
+       .OB_DEPTH   ( 1                       ), // some IPs response only with data, which will cause deadlock in nasti_demux (no lock)
+       .W_MAX      ( 1                       ),
+       .R_MAX      ( 1                       ),
+       .ADDR_WIDTH ( `MMIO_MASTER_ADDR_WIDTH ),
+       .DATA_WIDTH ( `LOWRISC_IO_DAT_WIDTH   ),
+       .LITE_MODE  ( 1                       )
        )
    io_crossbar
      (
@@ -1056,146 +904,160 @@ module chip_top
       .slave  ( io_cbo_lite )
       );
 
-`ifdef ADD_HOST
-   defparam io_crossbar.BASE0 = `DEV_MAP__io_ext_host__BASE ;
-   defparam io_crossbar.MASK0 = `DEV_MAP__io_ext_host__MASK ;
+`ifdef USE_UART
+   defparam io_crossbar.BASE1 = `UART_BASE;
+   defparam io_crossbar.MASK1 = `UART_SIZE - 1;
 `endif
 
-`ifdef ADD_UART
-   defparam io_crossbar.BASE1 = `DEV_MAP__io_ext_uart__BASE;
-   defparam io_crossbar.MASK1 = `DEV_MAP__io_ext_uart__MASK;
-`endif
-
-`ifdef ADD_SPI
-   defparam io_crossbar.BASE2 = `DEV_MAP__io_ext_spi__BASE;
-   defparam io_crossbar.MASK2 = `DEV_MAP__io_ext_spi__MASK;
+`ifdef USE_SPI
+   defparam io_crossbar.BASE2 = `SPI_BASE;
+   defparam io_crossbar.MASK2 = `SPI_MASK;
 `endif
 
    /////////////////////////////////////////////////////////////
    // the Rocket chip
 
-   Top Rocket
+   CoreplexTop Rocket
      (
       .clk                           ( clk                                    ),
-      .reset                         ( sys_rst                                ),
-      .io_nasti_mem_aw_valid         ( mem_nasti.aw_valid                     ),
-      .io_nasti_mem_aw_ready         ( mem_nasti.aw_ready                     ),
-      .io_nasti_mem_aw_bits_id       ( mem_nasti.aw_id                        ),
-      .io_nasti_mem_aw_bits_addr     ( mem_nasti.aw_addr                      ),
-      .io_nasti_mem_aw_bits_len      ( mem_nasti.aw_len                       ),
-      .io_nasti_mem_aw_bits_size     ( mem_nasti.aw_size                      ),
-      .io_nasti_mem_aw_bits_burst    ( mem_nasti.aw_burst                     ),
-      .io_nasti_mem_aw_bits_lock     ( mem_nasti.aw_lock                      ),
-      .io_nasti_mem_aw_bits_cache    ( mem_nasti.aw_cache                     ),
-      .io_nasti_mem_aw_bits_prot     ( mem_nasti.aw_prot                      ),
-      .io_nasti_mem_aw_bits_qos      ( mem_nasti.aw_qos                       ),
-      .io_nasti_mem_aw_bits_region   ( mem_nasti.aw_region                    ),
-      .io_nasti_mem_aw_bits_user     ( mem_nasti.aw_user                      ),
-      .io_nasti_mem_w_valid          ( mem_nasti.w_valid                      ),
-      .io_nasti_mem_w_ready          ( mem_nasti.w_ready                      ),
-      .io_nasti_mem_w_bits_data      ( mem_nasti.w_data                       ),
-      .io_nasti_mem_w_bits_strb      ( mem_nasti.w_strb                       ),
-      .io_nasti_mem_w_bits_last      ( mem_nasti.w_last                       ),
-      .io_nasti_mem_w_bits_user      ( mem_nasti.w_user                       ),
-      .io_nasti_mem_b_valid          ( mem_nasti.b_valid                      ),
-      .io_nasti_mem_b_ready          ( mem_nasti.b_ready                      ),
-      .io_nasti_mem_b_bits_id        ( mem_nasti.b_id                         ),
-      .io_nasti_mem_b_bits_resp      ( mem_nasti.b_resp                       ),
-      .io_nasti_mem_b_bits_user      ( mem_nasti.b_user                       ),
-      .io_nasti_mem_ar_valid         ( mem_nasti.ar_valid                     ),
-      .io_nasti_mem_ar_ready         ( mem_nasti.ar_ready                     ),
-      .io_nasti_mem_ar_bits_id       ( mem_nasti.ar_id                        ),
-      .io_nasti_mem_ar_bits_addr     ( mem_nasti.ar_addr                      ),
-      .io_nasti_mem_ar_bits_len      ( mem_nasti.ar_len                       ),
-      .io_nasti_mem_ar_bits_size     ( mem_nasti.ar_size                      ),
-      .io_nasti_mem_ar_bits_burst    ( mem_nasti.ar_burst                     ),
-      .io_nasti_mem_ar_bits_lock     ( mem_nasti.ar_lock                      ),
-      .io_nasti_mem_ar_bits_cache    ( mem_nasti.ar_cache                     ),
-      .io_nasti_mem_ar_bits_prot     ( mem_nasti.ar_prot                      ),
-      .io_nasti_mem_ar_bits_qos      ( mem_nasti.ar_qos                       ),
-      .io_nasti_mem_ar_bits_region   ( mem_nasti.ar_region                    ),
-      .io_nasti_mem_ar_bits_user     ( mem_nasti.ar_user                      ),
-      .io_nasti_mem_r_valid          ( mem_nasti.r_valid                      ),
-      .io_nasti_mem_r_ready          ( mem_nasti.r_ready                      ),
-      .io_nasti_mem_r_bits_id        ( mem_nasti.r_id                         ),
-      .io_nasti_mem_r_bits_data      ( mem_nasti.r_data                       ),
-      .io_nasti_mem_r_bits_resp      ( mem_nasti.r_resp                       ),
-      .io_nasti_mem_r_bits_last      ( mem_nasti.r_last                       ),
-      .io_nasti_mem_r_bits_user      ( mem_nasti.r_user                       ),
-      .io_nasti_io_aw_valid          ( io_nasti.aw_valid                      ),
-      .io_nasti_io_aw_ready          ( io_nasti.aw_ready                      ),
-      .io_nasti_io_aw_bits_id        ( io_nasti.aw_id                         ),
-      .io_nasti_io_aw_bits_addr      ( io_nasti.aw_addr                       ),
-      .io_nasti_io_aw_bits_len       ( io_nasti.aw_len                        ),
-      .io_nasti_io_aw_bits_size      ( io_nasti.aw_size                       ),
-      .io_nasti_io_aw_bits_burst     ( io_nasti.aw_burst                      ),
-      .io_nasti_io_aw_bits_lock      ( io_nasti.aw_lock                       ),
-      .io_nasti_io_aw_bits_cache     ( io_nasti.aw_cache                      ),
-      .io_nasti_io_aw_bits_prot      ( io_nasti.aw_prot                       ),
-      .io_nasti_io_aw_bits_qos       ( io_nasti.aw_qos                        ),
-      .io_nasti_io_aw_bits_region    ( io_nasti.aw_region                     ),
-      .io_nasti_io_aw_bits_user      ( io_nasti.aw_user                       ),
-      .io_nasti_io_w_valid           ( io_nasti.w_valid                       ),
-      .io_nasti_io_w_ready           ( io_nasti.w_ready                       ),
-      .io_nasti_io_w_bits_data       ( io_nasti.w_data                        ),
-      .io_nasti_io_w_bits_strb       ( io_nasti.w_strb                        ),
-      .io_nasti_io_w_bits_last       ( io_nasti.w_last                        ),
-      .io_nasti_io_w_bits_user       ( io_nasti.w_user                        ),
-      .io_nasti_io_b_valid           ( io_nasti.b_valid                       ),
-      .io_nasti_io_b_ready           ( io_nasti.b_ready                       ),
-      .io_nasti_io_b_bits_id         ( io_nasti.b_id                          ),
-      .io_nasti_io_b_bits_resp       ( io_nasti.b_resp                        ),
-      .io_nasti_io_b_bits_user       ( io_nasti.b_user                        ),
-      .io_nasti_io_ar_valid          ( io_nasti.ar_valid                      ),
-      .io_nasti_io_ar_ready          ( io_nasti.ar_ready                      ),
-      .io_nasti_io_ar_bits_id        ( io_nasti.ar_id                         ),
-      .io_nasti_io_ar_bits_addr      ( io_nasti.ar_addr                       ),
-      .io_nasti_io_ar_bits_len       ( io_nasti.ar_len                        ),
-      .io_nasti_io_ar_bits_size      ( io_nasti.ar_size                       ),
-      .io_nasti_io_ar_bits_burst     ( io_nasti.ar_burst                      ),
-      .io_nasti_io_ar_bits_lock      ( io_nasti.ar_lock                       ),
-      .io_nasti_io_ar_bits_cache     ( io_nasti.ar_cache                      ),
-      .io_nasti_io_ar_bits_prot      ( io_nasti.ar_prot                       ),
-      .io_nasti_io_ar_bits_qos       ( io_nasti.ar_qos                        ),
-      .io_nasti_io_ar_bits_region    ( io_nasti.ar_region                     ),
-      .io_nasti_io_ar_bits_user      ( io_nasti.ar_user                       ),
-      .io_nasti_io_r_valid           ( io_nasti.r_valid                       ),
-      .io_nasti_io_r_ready           ( io_nasti.r_ready                       ),
-      .io_nasti_io_r_bits_id         ( io_nasti.r_id                          ),
-      .io_nasti_io_r_bits_data       ( io_nasti.r_data                        ),
-      .io_nasti_io_r_bits_resp       ( io_nasti.r_resp                        ),
-      .io_nasti_io_r_bits_last       ( io_nasti.r_last                        ),
-      .io_nasti_io_r_bits_user       ( io_nasti.r_user                        ),
-      .io_interrupt                  ( interrupt                              ),
-`ifdef ENABLE_DEBUG
-      .io_debug_net_0_dii_in         ( debug_ring_start[0]                    ),
-      .io_debug_net_0_dii_in_ready   ( debug_ring_start_ready[0]              ),
-      .io_debug_net_1_dii_in         ( debug_ring_start[1]                    ),
-      .io_debug_net_1_dii_in_ready   ( debug_ring_start_ready[1]              ),
-      .io_debug_net_0_dii_out        ( debug_ring_end[0]                      ),
-      .io_debug_net_0_dii_out_ready  ( debug_ring_end_ready[0]                ),
-      .io_debug_net_1_dii_out        ( debug_ring_end[1]                      ),
-      .io_debug_net_1_dii_out_ready  ( debug_ring_end_ready[1]                ),
-      .io_debug_mam_req_ready        ( mam_req_ready                          ),
-      .io_debug_mam_req_valid        ( mam_req_valid                          ),
-      .io_debug_mam_req_bits_rw      ( mam_req_rw                             ),
-      .io_debug_mam_req_bits_addr    ( mam_req_addr                           ),
-      .io_debug_mam_req_bits_burst   ( mam_req_burst                          ),
-      .io_debug_mam_req_bits_beats   ( mam_req_beats                          ),
-      .io_debug_mam_wdata_ready      ( mam_write_ready                        ),
-      .io_debug_mam_wdata_valid      ( mam_write_valid                        ),
-      .io_debug_mam_wdata_bits_data  ( mam_write_data                         ),
-      .io_debug_mam_wdata_bits_strb  ( mam_write_strb                         ),
-      .io_debug_mam_rdata_ready      ( mam_read_ready                         ),
-      .io_debug_mam_rdata_valid      ( mam_read_valid                         ),
-      .io_debug_mam_rdata_bits_data  ( mam_read_data                          ),
+      .rst                           ( sys_rst                                ),
+      .mem_0_aw_valid                ( mem_nasti.aw_valid                     ),
+      .mem_0_aw_ready                ( mem_nasti.aw_ready                     ),
+      .mem_0_aw_bits_id              ( mem_nasti.aw_id                        ),
+      .mem_0_aw_bits_addr            ( mem_nasti.aw_addr                      ),
+      .mem_0_aw_bits_len             ( mem_nasti.aw_len                       ),
+      .mem_0_aw_bits_size            ( mem_nasti.aw_size                      ),
+      .mem_0_aw_bits_burst           ( mem_nasti.aw_burst                     ),
+      .mem_0_aw_bits_lock            ( mem_nasti.aw_lock                      ),
+      .mem_0_aw_bits_cache           ( mem_nasti.aw_cache                     ),
+      .mem_0_aw_bits_prot            ( mem_nasti.aw_prot                      ),
+      .mem_0_aw_bits_qos             ( mem_nasti.aw_qos                       ),
+      .mem_0_w_valid                 ( mem_nasti.w_valid                      ),
+      .mem_0_w_ready                 ( mem_nasti.w_ready                      ),
+      .mem_0_w_bits_data             ( mem_nasti.w_data                       ),
+      .mem_0_w_bits_strb             ( mem_nasti.w_strb                       ),
+      .mem_0_w_bits_last             ( mem_nasti.w_last                       ),
+      .mem_0_b_valid                 ( mem_nasti.b_valid                      ),
+      .mem_0_b_ready                 ( mem_nasti.b_ready                      ),
+      .mem_0_b_bits_id               ( mem_nasti.b_id                         ),
+      .mem_0_b_bits_resp             ( mem_nasti.b_resp                       ),
+      .mem_0_ar_valid                ( mem_nasti.ar_valid                     ),
+      .mem_0_ar_ready                ( mem_nasti.ar_ready                     ),
+      .mem_0_ar_bits_id              ( mem_nasti.ar_id                        ),
+      .mem_0_ar_bits_addr            ( mem_nasti.ar_addr                      ),
+      .mem_0_ar_bits_len             ( mem_nasti.ar_len                       ),
+      .mem_0_ar_bits_size            ( mem_nasti.ar_size                      ),
+      .mem_0_ar_bits_burst           ( mem_nasti.ar_burst                     ),
+      .mem_0_ar_bits_lock            ( mem_nasti.ar_lock                      ),
+      .mem_0_ar_bits_cache           ( mem_nasti.ar_cache                     ),
+      .mem_0_ar_bits_prot            ( mem_nasti.ar_prot                      ),
+      .mem_0_ar_bits_qos             ( mem_nasti.ar_qos                       ),
+      .mem_0_r_valid                 ( mem_nasti.r_valid                      ),
+      .mem_0_r_ready                 ( mem_nasti.r_ready                      ),
+      .mem_0_r_bits_id               ( mem_nasti.r_id                         ),
+      .mem_0_r_bits_data             ( mem_nasti.r_data                       ),
+      .mem_0_r_bits_resp             ( mem_nasti.r_resp                       ),
+      .mem_0_r_bits_last             ( mem_nasti.r_last                       ),
+`ifdef MEM_USER_WIDTH
+      .mem_0_aw_bits_user            ( mem_nasti.aw_user                      ),
+      .mem_0_w_bits_user             ( mem_nasti.w_user                       ),
+      .mem_0_b_bits_user             ( mem_nasti.b_user                       ),
+      .mem_0_ar_bits_user            ( mem_nasti.ar_user                      ),
+      .mem_0_r_bits_user             ( mem_nasti.r_user                       ),
 `endif
-      .io_debug_rst                  ( rst                                    ),
-      .io_cpu_rst                    ( cpu_rst                                )
+      .mmio_master_0_aw_valid        ( io_master_nasti.aw_valid               ),
+      .mmio_master_0_aw_ready        ( io_master_nasti.aw_ready               ),
+      .mmio_master_0_aw_bits_id      ( io_master_nasti.aw_id                  ),
+      .mmio_master_0_aw_bits_addr    ( io_master_nasti.aw_addr                ),
+      .mmio_master_0_aw_bits_len     ( io_master_nasti.aw_len                 ),
+      .mmio_master_0_aw_bits_size    ( io_master_nasti.aw_size                ),
+      .mmio_master_0_aw_bits_burst   ( io_master_nasti.aw_burst               ),
+      .mmio_master_0_aw_bits_lock    ( io_master_nasti.aw_lock                ),
+      .mmio_master_0_aw_bits_cache   ( io_master_nasti.aw_cache               ),
+      .mmio_master_0_aw_bits_prot    ( io_master_nasti.aw_prot                ),
+      .mmio_master_0_aw_bits_qos     ( io_master_nasti.aw_qos                 ),
+      .mmio_master_0_w_valid         ( io_master_nasti.w_valid                ),
+      .mmio_master_0_w_ready         ( io_master_nasti.w_ready                ),
+      .mmio_master_0_w_bits_data     ( io_master_nasti.w_data                 ),
+      .mmio_master_0_w_bits_strb     ( io_master_nasti.w_strb                 ),
+      .mmio_master_0_w_bits_last     ( io_master_nasti.w_last                 ),
+      .mmio_master_0_b_valid         ( io_master_nasti.b_valid                ),
+      .mmio_master_0_b_ready         ( io_master_nasti.b_ready                ),
+      .mmio_master_0_b_bits_id       ( io_master_nasti.b_id                   ),
+      .mmio_master_0_b_bits_resp     ( io_master_nasti.b_resp                 ),
+      .mmio_master_0_ar_valid        ( io_master_nasti.ar_valid               ),
+      .mmio_master_0_ar_ready        ( io_master_nasti.ar_ready               ),
+      .mmio_master_0_ar_bits_id      ( io_master_nasti.ar_id                  ),
+      .mmio_master_0_ar_bits_addr    ( io_master_nasti.ar_addr                ),
+      .mmio_master_0_ar_bits_len     ( io_master_nasti.ar_len                 ),
+      .mmio_master_0_ar_bits_size    ( io_master_nasti.ar_size                ),
+      .mmio_master_0_ar_bits_burst   ( io_master_nasti.ar_burst               ),
+      .mmio_master_0_ar_bits_lock    ( io_master_nasti.ar_lock                ),
+      .mmio_master_0_ar_bits_cache   ( io_master_nasti.ar_cache               ),
+      .mmio_master_0_ar_bits_prot    ( io_master_nasti.ar_prot                ),
+      .mmio_master_0_ar_bits_qos     ( io_master_nasti.ar_qos                 ),
+      .mmio_master_0_r_valid         ( io_master_nasti.r_valid                ),
+      .mmio_master_0_r_ready         ( io_master_nasti.r_ready                ),
+      .mmio_master_0_r_bits_id       ( io_master_nasti.r_id                   ),
+      .mmio_master_0_r_bits_data     ( io_master_nasti.r_data                 ),
+      .mmio_master_0_r_bits_resp     ( io_master_nasti.r_resp                 ),
+      .mmio_master_0_r_bits_last     ( io_master_nasti.r_last                 ),
+`ifdef MMIO_MASTER_USER_WIDTH
+      .mmio_master_0_aw_bits_user    ( io_master_nasti.aw_user                ),
+      .mmio_master_0_w_bits_user     ( io_master_nasti.w_user                 ),
+      .mmio_master_0_b_bits_user     ( io_master_nasti.b_user                 ),
+      .mmio_master_0_ar_bits_user    ( io_master_nasti.ar_user                ),
+      .mmio_master_0_r_bits_user     ( io_master_nasti.r_user                 ),
+`endif
+      .mmio_slave_0_aw_valid         ( io_slave_nasti.aw_valid                ),
+      .mmio_slave_0_aw_ready         ( io_slave_nasti.aw_ready                ),
+      .mmio_slave_0_aw_bits_id       ( io_slave_nasti.aw_id                   ),
+      .mmio_slave_0_aw_bits_addr     ( io_slave_nasti.aw_addr                 ),
+      .mmio_slave_0_aw_bits_len      ( io_slave_nasti.aw_len                  ),
+      .mmio_slave_0_aw_bits_size     ( io_slave_nasti.aw_size                 ),
+      .mmio_slave_0_aw_bits_burst    ( io_slave_nasti.aw_burst                ),
+      .mmio_slave_0_aw_bits_lock     ( io_slave_nasti.aw_lock                 ),
+      .mmio_slave_0_aw_bits_cache    ( io_slave_nasti.aw_cache                ),
+      .mmio_slave_0_aw_bits_prot     ( io_slave_nasti.aw_prot                 ),
+      .mmio_slave_0_aw_bits_qos      ( io_slave_nasti.aw_qos                  ),
+      .mmio_slave_0_w_valid          ( io_slave_nasti.w_valid                 ),
+      .mmio_slave_0_w_ready          ( io_slave_nasti.w_ready                 ),
+      .mmio_slave_0_w_bits_data      ( io_slave_nasti.w_data                  ),
+      .mmio_slave_0_w_bits_strb      ( io_slave_nasti.w_strb                  ),
+      .mmio_slave_0_w_bits_last      ( io_slave_nasti.w_last                  ),
+      .mmio_slave_0_b_valid          ( io_slave_nasti.b_valid                 ),
+      .mmio_slave_0_b_ready          ( io_slave_nasti.b_ready                 ),
+      .mmio_slave_0_b_bits_id        ( io_slave_nasti.b_id                    ),
+      .mmio_slave_0_b_bits_resp      ( io_slave_nasti.b_resp                  ),
+      .mmio_slave_0_ar_valid         ( io_slave_nasti.ar_valid                ),
+      .mmio_slave_0_ar_ready         ( io_slave_nasti.ar_ready                ),
+      .mmio_slave_0_ar_bits_id       ( io_slave_nasti.ar_id                   ),
+      .mmio_slave_0_ar_bits_addr     ( io_slave_nasti.ar_addr                 ),
+      .mmio_slave_0_ar_bits_len      ( io_slave_nasti.ar_len                  ),
+      .mmio_slave_0_ar_bits_size     ( io_slave_nasti.ar_size                 ),
+      .mmio_slave_0_ar_bits_burst    ( io_slave_nasti.ar_burst                ),
+      .mmio_slave_0_ar_bits_lock     ( io_slave_nasti.ar_lock                 ),
+      .mmio_slave_0_ar_bits_cache    ( io_slave_nasti.ar_cache                ),
+      .mmio_slave_0_ar_bits_prot     ( io_slave_nasti.ar_prot                 ),
+      .mmio_slave_0_ar_bits_qos      ( io_slave_nasti.ar_qos                  ),
+      .mmio_slave_0_r_valid          ( io_slave_nasti.r_valid                 ),
+      .mmio_slave_0_r_ready          ( io_slave_nasti.r_ready                 ),
+      .mmio_slave_0_r_bits_id        ( io_slave_nasti.r_id                    ),
+      .mmio_slave_0_r_bits_data      ( io_slave_nasti.r_data                  ),
+      .mmio_slave_0_r_bits_resp      ( io_slave_nasti.r_resp                  ),
+      .mmio_slave_0_r_bits_last      ( io_slave_nasti.r_last                  ),
+`ifdef MMIO_SLAVE_USER_WIDTH
+      .mmio_slave_0_aw_bits_user     ( io_salve_nasti.aw_user                 ),
+      .mmio_slave_0_w_bits_user      ( io_salve_nasti.w_user                  ),
+      .mmio_slave_0_b_bits_user      ( io_salve_nasti.b_user                  ),
+      .mmio_slave_0_ar_bits_user     ( io_salve_nasti.ar_user                 ),
+      .mmio_slave_0_r_bits_user      ( io_salve_nasti.r_user                  ),
+`endif
+      .interrupts                    ( interrupts                             )
       );
 
    // interrupt
-   assign interrupt = {62'b0, spi_irq, uart_irq};
+   assign interrupts = {62'b0, spi_irq, uart_irq};
 
    /////////////////////////////////////////////////////////////
    // IO memory crossbar
@@ -1205,10 +1067,10 @@ module chip_top
    // output of the IO crossbar
    nasti_channel
      #(
-       .N_PORT      ( NUM_IO_MEM + 1            ),
-       .ID_WIDTH    ( `ROCKET_IO_TAG_WIDTH      ),
-       .ADDR_WIDTH  ( `ROCKET_PADDR_WIDTH       ),
-       .DATA_WIDTH  ( `ROCKET_IO_DAT_WIDTH      ))
+       .N_PORT      ( NUM_IO_MEM + 1          ),
+       .ID_WIDTH    ( `MMIO_MASTER_ID_WIDTH   ),
+       .ADDR_WIDTH  ( `MMIO_MASTER_ADDR_WIDTH ),
+       .DATA_WIDTH  ( `MMIO_MASTER_DATA_WIDTH ))
    io_mem_cbo_nasti();
 
    nasti_channel io_mem_dmm3(), io_mem_dmm4(), io_mem_dmm5(), io_mem_dmm6(), io_mem_dmm7(); // dummy channels
@@ -1229,54 +1091,33 @@ module chip_top
    // the io crossbar
    nasti_crossbar
      #(
-       .N_INPUT       ( 1                     ),
-       .N_OUTPUT      ( NUM_IO_MEM + 1        ),
-       .IB_DEPTH      ( 0                     ),
-       .OB_DEPTH      ( 1                     ), // some IPs response only with data, which will cause deadlock in nasti_demux (no lock)
-       .W_MAX         ( 1                     ),
-       .R_MAX         ( 1                     ),
-       .ID_WIDTH      ( `ROCKET_IO_TAG_WIDTH  ),
-       .ADDR_WIDTH    ( `ROCKET_PADDR_WIDTH   ),
-       .DATA_WIDTH    ( `ROCKET_IO_DAT_WIDTH  ),
-       .LITE_MODE     ( 0                     ),
-       .ESCAPE_ENABLE ( 1                     )
+       .N_INPUT       ( 1                       ),
+       .N_OUTPUT      ( NUM_IO_MEM + 1          ),
+       .IB_DEPTH      ( 0                       ),
+       .OB_DEPTH      ( 1                       ), // some IPs response only with data, which will cause deadlock in nasti_demux (no lock)
+       .W_MAX         ( 1                       ),
+       .R_MAX         ( 1                       ),
+       .ID_WIDTH      ( `MMIO_MASTER_ID_WIDTH   ),
+       .ADDR_WIDTH    ( `MMIO_MASTER_ADDR_WIDTH ),
+       .DATA_WIDTH    ( `MMIO_MASTER_DATA_WIDTH ),
+       .LITE_MODE     ( 0                       ),
+       .ESCAPE_ENABLE ( 1                       )
        )
    io_mem_crossbar
      (
       .*,
-      .master ( io_nasti         ),
+      .master ( io_master_nasti  ),
       .slave  ( io_mem_cbo_nasti )
       );
 
-`ifdef ADD_BRAM
-   defparam io_mem_crossbar.BASE1 = `DEV_MAP__io_ext_bram__BASE;
-   defparam io_mem_crossbar.MASK1 = `DEV_MAP__io_ext_bram__MASK;
+`ifdef USE_BRAM
+   defparam io_mem_crossbar.BASE1 = `BRAM_BASE;
+   defparam io_mem_crossbar.MASK1 = `BRAM_SIZE - 1;
 `endif
 
-`ifdef ADD_FLASH
-   defparam io_mem_crossbar.BASE2 = `DEV_MAP__io_ext_flash__BASE;
-   defparam io_mem_crossbar.MASK2 = `DEV_MAP__io_ext_flash__MASK;
-`endif
-
-`ifdef ADD_MINION_SD
-
-   minion_soc
-   msoc
-     (
-      .uart_tx    (                 ),
-      .uart_rx    ( 1'b1            ),
-      .msoc_clk   ( clk             ),
-      .sd_sclk    ( sd_sclk         ),
-      .sd_detect  ( sd_detect       ),
-      .sd_dat     ( sd_dat          ),
-      .sd_cmd     ( sd_cmd          ),
-      .from_dip   ( {12'b0,i_dip}   ),
-      .to_led     ( o_led           ),
-      .rstn       ( clk_locked      ),
-      .clk_200MHz ( mig_sys_clk     ),
-      .pxl_clk    ( clk_pixel       ),
-      .*
-      );
+`ifdef USE_FLASH
+   defparam io_mem_crossbar.BASE2 = `FLASH_BASE;
+   defparam io_mem_crossbar.MASK2 = `FLASH_SIZE - 1;
 `endif
    
 endmodule // chip_top

@@ -47,10 +47,25 @@ class CoreplexTop()(implicit p: Parameters) extends RawModule {
   }
 
 
-  // the Verilog and C++ header files
-  if(!DumpMacro.empty) {
-    ElaborationArtefacts.add("vh", DumpMacro.genVH("LoRCCoreplex_HD"))
-    ElaborationArtefacts.add("hpp", DumpMacro.genHPP("LoRCCoreplex_HD"))
-  }
+  DumpMacro("MEM_ID_WIDTH",   mem(0).ar.bits.id.getWidth)
+  DumpMacro("MEM_ADDR_WIDTH", mem(0).ar.bits.addr.getWidth)
+  DumpMacro("MEM_DATA_WIDTH", mem(0).w.bits.data.getWidth)
+  if(!mem(0).ar.bits.user.isEmpty)
+    DumpMacro("MEM_USER_WIDTH", mem(0).ar.bits.user.get.getWidth)
+
+  DumpMacro("MMIO_MASTER_ID_WIDTH",   mmio_master(0).ar.bits.id.getWidth)
+  DumpMacro("MMIO_MASTER_ADDR_WIDTH", mmio_master(0).ar.bits.addr.getWidth)
+  DumpMacro("MMIO_MASTER_DATA_WIDTH", mmio_master(0).w.bits.data.getWidth)
+  if(!mmio_master(0).ar.bits.user.isEmpty)
+    DumpMacro("MMIO_MASTER_USER_WIDTH", mmio_master(0).ar.bits.user.get.getWidth)
+
+  DumpMacro("MMIO_SLAVE_ID_WIDTH",   mmio_slave(0).ar.bits.id.getWidth)
+  DumpMacro("MMIO_SLAVE_ADDR_WIDTH", mmio_slave(0).ar.bits.addr.getWidth)
+  DumpMacro("MMIO_SLAVE_DATA_WIDTH", mmio_slave(0).w.bits.data.getWidth)
+  if(!mmio_slave(0).ar.bits.user.isEmpty)
+    DumpMacro("MMIO_SLAVE_USER_WIDTH", mmio_slave(0).ar.bits.user.get.getWidth)
+
+  ElaborationArtefacts.add("vh", DumpMacro.genVH("LoRCCoreplex_HD"))
+  ElaborationArtefacts.add("hpp", DumpMacro.genHPP("LoRCCoreplex_HD"))
 
 }

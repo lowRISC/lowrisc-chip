@@ -21,7 +21,7 @@ object DumpMacro {
       case x: StringMacro  => f"""`define ${m._1}%s "${x.s}%s""""
       case x: IntMacro     => f"`define ${m._1}%s (32'h${x.n}%08x)"
       case x: LongIntMacro => f"`define ${m._1}%s (64'h${x.n}%016x)"
-      case x: BigIntMacro  => f"`define ${m._1}%s (${x.n.bitCount}%d'h${x.n.toString(16)}%s)"
+      case x: BigIntMacro  => f"`define ${m._1}%s (${x.n.bitLength}%d'h${x.n.toString(16)}%s)"
       case _               => f"`define ${m._1}%s"
     }
   }
@@ -39,13 +39,13 @@ object DumpMacro {
   // generate a verilog header file
   def genVH(guard:String):String = f"`ifndef $guard%s\n" ++
     indent(2) ++ f"`define $guard%s\n" ++
-    macros.map{ m => indent(2) ++ vhHelper(m) ++ "\n"}.reduce(_++_) ++
+    macros.toSeq.sortBy(_._1).map{ m => indent(2) ++ vhHelper(m) ++ "\n"}.reduce(_++_) ++
     "`endif\n"
 
   // generate a C++ header file
   def genHPP(guard:String):String = f"#ifndef $guard%s\n" ++
     indent(2) ++ f"#define $guard%s\n" ++
-    macros.map{ m => indent(2) ++ hppHelper(m) ++ "\n"}.reduce(_++_) ++
+    macros.toSeq.sortBy(_._1).map{ m => indent(2) ++ hppHelper(m) ++ "\n"}.reduce(_++_) ++
     "#endif\n"
 }
 

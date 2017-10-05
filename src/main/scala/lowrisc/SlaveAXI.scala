@@ -112,7 +112,10 @@ trait HasAXI4VirtualBus extends HasPeripheryBus {
       DumpMacro("INT_" ++ slave_macro_name ++ "_SIZE", d.interrupts)
       int_size += d.interrupts
     }
-    if(int_size > 0) DumpMacro("USE_ROCKET_INT")
+    if(int_size > 0) {
+      DumpMacro("USE_ROCKET_INT")
+      DumpMacro("ROCKET_INT_SIZE", int_size)
+    }
   })
 
   // connect the mmio port to peripheral bus
@@ -138,4 +141,3 @@ trait HasAXI4VirtualBusModuleImp extends LazyMultiIOModuleImp with HasAXI4Virtua
   val mmio_interrupts = IO(UInt(INPUT, width = outer.int_size))
   outer.int_nodes.map(_.bundleIn).flatten.flatten.zipWithIndex.foreach {case(o,i) => o := mmio_interrupts(i)}
 }
-
