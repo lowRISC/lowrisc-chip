@@ -201,22 +201,28 @@ module tb;
    assign spi_miso = 'bz;
 `endif //  `ifdef ADD_SPI
 
-`ifdef ADD_MINION_SD
+`ifdef ADD_HID
 
    // 4-bit full SD interface
    wire         sd_sclk;
    wire         sd_detect;
-   wire [3:0]   sd_dat;
-   wire         sd_cmd;
-   wire         sd_reset;
+   tri1 [3:0]   sd_dat_to_host;
+   tri1         sd_cmd_to_host;
+   wire         sd_reset, oeCmd, oeDat;
+   tri1 [3:0]   sd_dat = oeDat ? sd_dat_to_host : 4'bz;
+   tri1         sd_cmd = oeCmd ? sd_cmd_to_host : 4'bz;
+   tri1 [3:0]   sd_dat_to_mem = oeDat ? 4'b1111 : sd_dat;
+   tri1         sd_cmd_to_mem = oeCmd ? 4'b1111 : sd_cmd;
 
-   sd_card
-   sdflash1
-     (
-      .sdClk ( sd_sclk ),
-      .cmd   ( sd_cmd  ),
-      .dat   ( sd_dat  )
-      );
+sd_verilator_model sdflash1 (
+             .sdClk(sd_sclk),
+             .cmd(sd_cmd_to_mem),
+             .cmdOut(sd_cmd_to_host),
+             .dat(sd_dat_to_mem),
+             .datOut(sd_dat_to_host),
+             .oeCmd(oeCmd),
+             .oeDat(oeDat)
+);
 
    // LED and DIP switch
    wire [7:0]   o_led;
@@ -299,6 +305,25 @@ module tb;
       else if(rv == 0)
         $finish();
    end
+`endif
+
+`ifdef ADD_ETH
+  wire         o_erefclk; // RMII clock out
+  wire [1:0]   i_erxd ;
+  wire         i_erx_dv ;
+  wire         i_erx_er ;
+  wire         i_emdint ;
+  wire [1:0]   o_etxd ;
+  wire         o_etx_en ;
+  wire         o_emdc ;
+  wire         io_emdio ;
+  wire         o_erstn ;
+
+   assign i_dip = 8'h88;
+   assign i_emdint = 1'b1;
+   assign i_erx_dv = o_etx_en;
+   assign i_erxd = o_etxd;
+   assign i_erx_er = 1'b0;
 `endif
 
 endmodule // tb
