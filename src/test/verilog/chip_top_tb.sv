@@ -260,12 +260,15 @@ module tb;
    longint    unsigned max_cycle = 0;
    longint    unsigned cycle_cnt = 0;
 
-   initial begin
 `ifndef ADD_PHY_DDR
+   initial begin
+      #1.1;
       if($value$plusargs("load=%s", memfile))
         DUT.ram_behav.memory_load_mem(memfile);
+   end // initial begin
 `endif
 
+   initial begin
       $value$plusargs("max-cycles=%d", max_cycle);
    end // initial begin
 
