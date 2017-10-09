@@ -34,8 +34,10 @@ std::map<std::string, uint64_t> elfLoader::operator() (const std::string& fn) {
         assert(size >= ph[i].p_offset + ph[i].p_filesz);
         write(ph[i].p_paddr, ph[i].p_filesz, (uint8_t*)buf + ph[i].p_offset);
       }
-      zeros.resize(ph[i].p_memsz - ph[i].p_filesz);
-      write(ph[i].p_paddr + ph[i].p_filesz, ph[i].p_memsz - ph[i].p_filesz, &zeros[0]);
+      if(ph[i].p_memsz - ph[i].p_filesz > 0) {
+        zeros.resize(ph[i].p_memsz - ph[i].p_filesz);
+        write(ph[i].p_paddr + ph[i].p_filesz, ph[i].p_memsz - ph[i].p_filesz, &zeros[0]);
+      }
     }
   }
   Elf64_Shdr* sh = (Elf64_Shdr*)(buf + eh->e_shoff);
