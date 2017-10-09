@@ -859,7 +859,7 @@ reg phy_emdio_i, io_emdio_o, io_emdio_t;
        .ADDR_WIDTH  ( `ROCKET_PADDR_WIDTH       ),
        .DATA_WIDTH  ( `LOWRISC_IO_DAT_WIDTH     ))
    io_hid_lite();
-   logic                       hid_irq;
+   logic                       hid_irq, sd_irq;
 
 `ifdef ADD_HID
    
@@ -907,6 +907,7 @@ axi_bram_ctrl_2 hid_i
       .sd_detect  ( sd_detect       ),
       .sd_dat     ( sd_dat          ),
       .sd_cmd     ( sd_cmd          ),
+      .sd_irq     ( sd_irq          ),
       .from_dip   ( {12'b0,i_dip}   ),
       .to_led     ( o_led           ),
       .rstn       ( clk_locked      ),
@@ -918,6 +919,7 @@ axi_bram_ctrl_2 hid_i
 `else // !`ifdef ADD_HID
 
    assign hid_irq = 1'b0;
+   assign sd_irq = 1'b0;
 
 `endif // !`ifdef ADD_HID
 
@@ -1406,7 +1408,7 @@ axi_bram_ctrl_2 hid_i
       );
 
    // interrupt
-   assign interrupt = {61'b0, eth_irq, spi_irq, uart_irq};
+   assign interrupt = {60'b0, sd_irq, eth_irq, spi_irq, uart_irq};
 
    /////////////////////////////////////////////////////////////
    // IO memory crossbar
