@@ -9,7 +9,23 @@ import dii_package::dii_flit;
 module chip_top
   (
 `ifdef ADD_PHY_DDR
- `ifdef KC705
+ `ifdef VCU108
+ output [16:0] ddr4_adr,
+ output [1:0] ddr4_ba,
+ output [0:0] ddr4_cke,
+ output [0:0] ddr4_cs_n,
+ output [0:0] ddr4_odt,
+ output [0:0] ddr4_bg,
+ output ddr4_reset_n,
+ output ddr4_act_n,
+ output [0:0] ddr4_ck_c,
+ output [0:0] ddr4_ck_t,
+ inout  [7:0] ddr4_dm_dbi_n,
+ inout  [63:0] ddr4_dq,
+ inout  [7:0] ddr4_dqs_c,
+ inout  [7:0] ddr4_dqs_t,
+
+ `elsif KC705
    // DDR3 RAM
    inout [63:0]  ddr_dq,
    inout [7:0]   ddr_dqs_n,
@@ -351,6 +367,69 @@ module chip_top
    // DRAM controller
    mig_7series_0 dram_ctl
      (
+ `ifdef VCU108
+ .c0_init_calib_complete(c0_init_calib_complete),    // output wire c0_init_calib_complete
+ .dbg_clk(dbg_clk),                                  // output wire dbg_clk
+ .c0_sys_clk_p(clk_p),                               // input wire c0_sys_clk_p
+ .c0_sys_clk_n(clk_n),                               // input wire c0_sys_clk_n
+ .dbg_bus(dbg_bus),                                  // output wire [511 : 0] dbg_bus
+ .c0_ddr4_adr(ddr4_adr),                          // output wire [16 : 0] c0_ddr4_adr
+ .c0_ddr4_ba(ddr4_ba),                            // output wire [1 : 0] c0_ddr4_ba
+ .c0_ddr4_cke(ddr4_cke),                          // output wire [0 : 0] c0_ddr4_cke
+ .c0_ddr4_cs_n(ddr4_cs_n),                        // output wire [0 : 0] c0_ddr4_cs_n
+ .c0_ddr4_dm_dbi_n(ddr4_dm_dbi_n),                // inout wire [7 : 0] c0_ddr4_dm_dbi_n
+ .c0_ddr4_dq(ddr4_dq),                            // inout wire [63 : 0] c0_ddr4_dq
+ .c0_ddr4_dqs_c(ddr4_dqs_c),                      // inout wire [7 : 0] c0_ddr4_dqs_c
+ .c0_ddr4_dqs_t(ddr4_dqs_t),                      // inout wire [7 : 0] c0_ddr4_dqs_t
+ .c0_ddr4_odt(ddr4_odt),                          // output wire [0 : 0] c0_ddr4_odt
+ .c0_ddr4_bg(ddr4_bg),                            // output wire [0 : 0] c0_ddr4_bg
+ .c0_ddr4_reset_n(ddr4_reset_n),                  // output wire c0_ddr4_reset_n
+ .c0_ddr4_act_n(ddr4_act_n),                      // output wire c0_ddr4_act_n
+ .c0_ddr4_ck_c(ddr4_ck_c),                        // output wire [0 : 0] c0_ddr4_ck_c
+ .c0_ddr4_ck_t(ddr4_ck_t),                        // output wire [0 : 0] c0_ddr4_ck_t
+ .c0_ddr4_ui_clk(ddr4_ui_clk),                    // output wire c0_ddr4_ui_clk
+ .c0_ddr4_ui_clk_sync_rst(ddr4_ui_clk_sync_rst),  // output wire c0_ddr4_ui_clk_sync_rst
+ .c0_ddr4_aresetn              (rstn),               // input wire c0_ddr4_aresetn
+ .c0_ddr4_s_axi_awid           ( mem_mig_nasti.aw_id    ),
+ .c0_ddr4_s_axi_awaddr         ( mem_mig_nasti.aw_addr  ),
+ .c0_ddr4_s_axi_awlen          ( mem_mig_nasti.aw_len   ),
+ .c0_ddr4_s_axi_awsize         ( mem_mig_nasti.aw_size  ),
+ .c0_ddr4_s_axi_awburst        ( mem_mig_nasti.aw_burst ),
+ .c0_ddr4_s_axi_awlock         ( 1'b0                   ), // not supported in AXI4
+ .c0_ddr4_s_axi_awcache        ( mem_mig_nasti.aw_cache ),
+ .c0_ddr4_s_axi_awprot         ( mem_mig_nasti.aw_prot  ),
+ .c0_ddr4_s_axi_awqos          ( mem_mig_nasti.aw_qos   ),
+ .c0_ddr4_s_axi_awvalid        ( mem_mig_nasti.aw_valid ),
+ .c0_ddr4_s_axi_awready        ( mem_mig_nasti.aw_ready ),
+ .c0_ddr4_s_axi_wdata          ( mem_mig_nasti.w_data   ),
+ .c0_ddr4_s_axi_wstrb          ( mem_mig_nasti.w_strb   ),
+ .c0_ddr4_s_axi_wlast          ( mem_mig_nasti.w_last   ),
+ .c0_ddr4_s_axi_wvalid         ( mem_mig_nasti.w_valid  ),
+ .c0_ddr4_s_axi_wready         ( mem_mig_nasti.w_ready  ),
+ .c0_ddr4_s_axi_bid            ( mem_mig_nasti.b_id     ),
+ .c0_ddr4_s_axi_bresp          ( mem_mig_nasti.b_resp   ),
+ .c0_ddr4_s_axi_bvalid         ( mem_mig_nasti.b_valid  ),
+ .c0_ddr4_s_axi_bready         ( mem_mig_nasti.b_ready  ),
+ .c0_ddr4_s_axi_arid           ( mem_mig_nasti.ar_id    ),
+ .c0_ddr4_s_axi_araddr         ( mem_mig_nasti.ar_addr  ),
+ .c0_ddr4_s_axi_arlen          ( mem_mig_nasti.ar_len   ),
+ .c0_ddr4_s_axi_arsize         ( mem_mig_nasti.ar_size  ),
+ .c0_ddr4_s_axi_arburst        ( mem_mig_nasti.ar_burst ),
+ .c0_ddr4_s_axi_arlock         ( 1'b0                   ), // not supported in AXI4
+ .c0_ddr4_s_axi_arcache        ( mem_mig_nasti.ar_cache ),
+ .c0_ddr4_s_axi_arprot         ( mem_mig_nasti.ar_prot  ),
+ .c0_ddr4_s_axi_arqos          ( mem_mig_nasti.ar_qos   ),
+ .c0_ddr4_s_axi_arvalid        ( mem_mig_nasti.ar_valid ),
+ .c0_ddr4_s_axi_arready        ( mem_mig_nasti.ar_ready ),
+ .c0_ddr4_s_axi_rid            ( mem_mig_nasti.r_id     ),
+ .c0_ddr4_s_axi_rdata          ( mem_mig_nasti.r_data   ),
+ .c0_ddr4_s_axi_rresp          ( mem_mig_nasti.r_resp   ),
+ .c0_ddr4_s_axi_rlast          ( mem_mig_nasti.r_last   ),
+ .c0_ddr4_s_axi_rvalid         ( mem_mig_nasti.r_valid  ),
+ .c0_ddr4_s_axi_rready         ( mem_mig_nasti.r_ready  ),
+ .addn_ui_clkout1(addn_ui_clkout1),                  // output wire addn_ui_clkout1
+ .sys_rst(sys_rst)                                  // input wire sys_rst
+ `else
  `ifdef KC705
       .sys_clk_p            ( clk_p                  ),
       .sys_clk_n            ( clk_n                  ),
@@ -453,6 +532,7 @@ module chip_top
       .s_axi_rlast          ( mem_mig_nasti.r_last   ),
       .s_axi_rvalid         ( mem_mig_nasti.r_valid  ),
       .s_axi_rready         ( mem_mig_nasti.r_ready  )
+ `endif
       );
 
   `endif // !`ifdef ZED
