@@ -44,7 +44,7 @@ class LoRCBaseConfig extends Config(new BaseCoreplexConfig().alter((site,here,up
   case ExtIn  => SlavePortParams(beatBytes = 8, idBits = 8, sourceBits = 4)
   // Additional device Parameters
   case ErrorParams => ErrorParams(Seq(AddressSet(0x3000, 0xfff)))
-  case BootROMParams => BootROMParams(contentFileName = "./bootrom/bootrom.img")
+  case BootROMParams => BootROMParams(hang = 0x10000, contentFileName = "./bootrom/bootrom.img")
 }))
 
 
