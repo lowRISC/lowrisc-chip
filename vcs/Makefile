@@ -57,6 +57,7 @@ verilog_srcs = \
 	$(base_dir)/socip/util/arbiter.sv \
 	$(base_dir)/vsrc/AsyncResetReg.v \
 	$(base_dir)/vsrc/plusarg_reader.v \
+	$(base_dir)/vsrc/SimDTM_dummy.v \
 
 verilog_headers = \
 	$(base_dir)/src/main/verilog/config.vh \
@@ -86,7 +87,6 @@ dpi_libs = \
 $(sim_dir)/libdpi.so : $(test_verilog_srcs) $(test_cxx_srcs) $(test_cxx_headers)
 	g++ -Wa,-W -fPIC -m64 -O1 -std=c++11 -shared \
 	-DVERBOSE_MEMORY \
-	-I$(base_dir)/csrc/common \
 	-I$(VCS_HOME)/include \
 	$(test_cxx_srcs) -o $@
 

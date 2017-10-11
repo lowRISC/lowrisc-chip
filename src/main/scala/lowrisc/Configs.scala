@@ -16,7 +16,6 @@ class LoRCBaseConfig extends Config(new BaseCoreplexConfig().alter((site,here,up
   // External port parameters
   case IncludeJtagDTM => false
   case JtagDTMKey => new JtagDTMKeyDefault()
-  case NExtTopInterrupts => 2
   case ExtMem => MasterPortParams(
                       base = 0x80000000L,
                       size = 0x10000000L,

@@ -808,6 +808,9 @@ module chip_top
    io_uart_lite();
    logic                       uart_irq;
 
+   assign sys_rst = rst;
+   assign cpu_rst = 1'b0;
+
 `ifdef ADD_UART
    axi_uart16550_0 uart_i
      (
