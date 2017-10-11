@@ -11,16 +11,23 @@ module tb;
    DUT
      (
       .*,
+`ifdef VCU108
+`define RST_TOP sys_rst
+      .c0_sys_clk_p ( clk       ),
+      .c0_sys_clk_n ( !clk      ),
+`else
+`define RST_TOP rst_top
       .clk_p        ( clk       ),
       .clk_n        ( !clk      ),
+`endif
 `ifdef FPGA_FULL
  `ifdef NEXYS4_COMMON
       .rst_top      ( !rst      )         // NEXYS4's cpu_reset is active low
  `else
-      .rst_top      ( rst       )
+      .`RST_TOP     ( rst       )
  `endif
 `else
-      .rst_top      ( rst       )
+      .`RST_TOP     ( rst       )
 `endif
       );
 
@@ -40,7 +47,23 @@ module tb;
    end // initial begin
 
 `ifdef ADD_PHY_DDR
- `ifdef KC705
+ `ifdef VCU108
+ logic [16:0] c0_ddr4_adr;
+ logic [1:0] c0_ddr4_ba;
+ logic       c0_ddr4_cke;
+ logic       c0_ddr4_cs_n;
+ logic       c0_ddr4_odt;
+ logic       c0_ddr4_bg;
+ logic       c0_ddr4_reset_n;
+ logic       c0_ddr4_act_n;
+ logic       c0_ddr4_ck_c;
+ logic       c0_ddr4_ck_t;
+ wire  [7:0] c0_ddr4_dm_dbi_n;
+ wire [63:0] c0_ddr4_dq;
+ wire  [7:0] c0_ddr4_dqs_c;
+ wire  [7:0] c0_ddr4_dqs_t;
+
+ `elsif KC705
 
    // DDRAM3
    wire [63:0]  ddr_dq;
