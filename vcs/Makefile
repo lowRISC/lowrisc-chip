@@ -111,6 +111,10 @@ VCS_FLAG = \
 	-sverilog -ntb_opts -full64 \
 	-timescale=1ns/10ps \
 	-debug \
+	+define+RANDOMIZE_GARBAGE_ASSIGN \
+	+define+RANDOMIZE_INVALID_ASSIGN \
+	+define+RANDOMIZE_REG_INIT \
+	+define+RANDOMIZE_MEM_INIT \
 	+incdir+$(generated_dir) \
 	+incdir+$(base_dir)/src/main/verilog \
 	+incdir+$(base_dir)/socip/nasti \
