@@ -120,10 +120,10 @@ module nasti_ram_behav
      else if(!b_valid || nasti.b_ready)
        b_valid <= memory_write_resp(b_id, b_resp, b_user);
 
-   assign nasti.b_valid = b_valid;
-   assign nasti.b_id = b_id;
-   assign nasti.b_resp = b_resp;
-   assign nasti.b_user = b_user;
+   assign #1 nasti.b_valid = b_valid;
+   assign #1 nasti.b_id = b_id;
+   assign #1 nasti.b_resp = b_resp;
+   assign #1 nasti.b_user = b_user;
 
    always @(negedge clk or negedge rstn)
      if(!rstn)
@@ -150,11 +150,11 @@ module nasti_ram_behav
      else if(!r_valid || nasti.r_ready)
        r_valid <= memory_read_resp(r_id, r_data, r_resp, r_last, r_user);
 
-   assign nasti.r_valid = r_valid;
-   assign nasti.r_data = r_data;
-   assign nasti.r_last = r_last;
-   assign nasti.r_id = r_id;
-   assign nasti.r_resp = r_resp;
-   assign nasti.r_user = r_user;
+   assign #1 nasti.r_valid = r_valid;
+   assign #1 nasti.r_data = r_data;
+   assign #1 nasti.r_last = r_last;
+   assign #1 nasti.r_id = r_id;
+   assign #1 nasti.r_resp = r_resp;
+   assign #1 nasti.r_user = r_user;
 
 endmodule // nasti_ram_behav
