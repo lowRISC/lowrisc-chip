@@ -1,4 +1,4 @@
-#define DRAM_BASE 0x40000000
+#define DRAM_BASE 0x80000000
 
 .section .text.start, "ax", @progbits
 .globl _start
