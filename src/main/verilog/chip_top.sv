@@ -832,6 +832,15 @@ module chip_top
        .DATA_WIDTH  ( `LOWRISC_IO_DAT_WIDTH     ))
    io_host_lite();
 
+`ifdef ADD_HOST
+   host_behav host
+     (
+      .clk          ( clk          ),
+      .rstn         ( rstn         ),
+      .nasti        ( io_host_lite )
+      );
+`endif
+
    /////////////////////////////////////////////////////////////
    // IO crossbar
 
@@ -879,6 +888,11 @@ module chip_top
       .master ( io_lite     ),
       .slave  ( io_cbo_lite )
       );
+
+`ifdef ADD_HOST
+   defparam io_crossbar.BASE0 = `HOST_BASE ;
+   defparam io_crossbar.MASK0 = `HOST_SIZE - 1 ;
+`endif
 
 `ifdef ADD_UART
    defparam io_crossbar.BASE1 = `UART_BASE;

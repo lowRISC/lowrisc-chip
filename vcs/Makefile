@@ -71,17 +71,20 @@ verilog_headers = \
 
 test_verilog_srcs = \
 	$(base_dir)/src/test/verilog/chip_top_tb.sv \
+	$(base_dir)/src/test/verilog/host_behav.sv \
 	$(base_dir)/src/test/verilog/nasti_ram_behav.sv \
 
 test_cxx_srcs = \
 	$(base_dir)/src/test/cxx/common/globals.cpp \
 	$(base_dir)/src/test/cxx/common/loadelf.cpp \
+	$(base_dir)/src/test/cxx/common/dpi_host_behav.cpp \
 	$(base_dir)/src/test/cxx/common/dpi_ram_behav.cpp \
 
 test_cxx_headers = \
 	$(base_dir)/src/test/cxx/common/globals.h \
 	$(base_dir)/src/test/cxx/common/loadelf.hpp \
 	$(base_dir)/src/test/cxx/common/dpi_ram_behav.h \
+	$(base_dir)/src/test/cxx/common/dpi_host_behav.h \
 
 dpi_libs = \
 	$(sim_dir)/libdpi.so \
