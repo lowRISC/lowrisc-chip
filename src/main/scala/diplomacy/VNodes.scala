@@ -108,7 +108,7 @@ abstract class VirtualNode[D, U, EO, EI, B <: Data](
   lazy val bundleIn  = wireI(flipI(HeterogeneousBag(edgesIn .map(imp.bundleI(_)))))
 
   // connects the outward part of a node with the inward part of this node
-  private def bind(h: OutwardNodeHandle[D, U, B], binding: NodeBinding)
+  protected def bind(h: OutwardNodeHandle[D, U, B], binding: NodeBinding, bindBundle: Boolean)
                   (implicit p: Parameters, sourceInfo: SourceInfo): Option[MonitorBase] = {
     val x = this // x := y
     val y = h.outward
@@ -121,15 +121,36 @@ abstract class VirtualNode[D, U, EO, EI, B <: Data](
       case BIND_STAR  => BIND_QUERY
       case BIND_QUERY => BIND_STAR })
     x.iPush(o, y, binding)
+
+    // only the virtual bus root node need actual bundle (IO) binding
+    def edges() = {
+      val (iStart, iEnd) = x.iPortMapping(i)
+      val (oStart, oEnd) = y.oPortMapping(o)
+      require (iEnd - iStart == oEnd - oStart, s"Bug in diplomacy; ${iEnd-iStart} != ${oEnd-oStart} means port resolution failed")
+      Seq.tabulate(iEnd - iStart) { j => x.edgesIn(iStart+j) }
+    }
+    def bundles() = {
+      val (iStart, iEnd) = x.iPortMapping(i)
+      val (oStart, oEnd) = y.oPortMapping(o)
+      require (iEnd - iStart == oEnd - oStart, s"Bug in diplomacy; ${iEnd-iStart} != ${oEnd-oStart} means port resolution failed")
+      Seq.tabulate(iEnd - iStart) { j =>
+        (x.bundleIn(iStart+j), y.bundleOut(oStart+j))
+      }
+    }
+
+    val (out, newbinding) = imp.connect(edges _, bundles _, false)
+    if(bindBundle) {
+      LazyModule.stack.head.bindings = newbinding :: LazyModule.stack.head.bindings
+    }
     None
   }
 
   // attach the outer port of a slave to the inner port of this node
-  override def :=  (h: OutwardNodeHandle[D, U, B])(implicit p: Parameters, sourceInfo: SourceInfo): Option[MonitorBase] = bind(h, BIND_ONCE)
+  override def :=  (h: OutwardNodeHandle[D, U, B])(implicit p: Parameters, sourceInfo: SourceInfo): Option[MonitorBase] = bind(h, BIND_ONCE, false)
   // attach the outer ports of a slave to multiple inner ports of this node (not used for virtual bus)
-  override def :*= (h: OutwardNodeHandle[D, U, B])(implicit p: Parameters, sourceInfo: SourceInfo): Option[MonitorBase] = bind(h, BIND_STAR)
+  override def :*= (h: OutwardNodeHandle[D, U, B])(implicit p: Parameters, sourceInfo: SourceInfo): Option[MonitorBase] = bind(h, BIND_STAR, false)
   // attach multiple outer ports of a slave to the inner ports of this node
-  override def :=* (h: OutwardNodeHandle[D, U, B])(implicit p: Parameters, sourceInfo: SourceInfo): Option[MonitorBase] = bind(h, BIND_QUERY)
+  override def :=* (h: OutwardNodeHandle[D, U, B])(implicit p: Parameters, sourceInfo: SourceInfo): Option[MonitorBase] = bind(h, BIND_QUERY, false)
 
   // meta-data for printing the node graph
   protected[diplomacy] def colour  = imp.colour
@@ -154,6 +175,12 @@ class VirtualBusNode[D, U, EO, EI, B <: Data](
   override val externalOut: Boolean = true
   override val flip = true
   override lazy val bundleOut = bundleIn
+
+  override def :=  (h: OutwardNodeHandle[D, U, B])(implicit p: Parameters, sourceInfo: SourceInfo): Option[MonitorBase] = bind(h, BIND_ONCE, true)
+  // attach the outer ports of a slave to multiple inner ports of this node (not used for virtual bus)
+  override def :*= (h: OutwardNodeHandle[D, U, B])(implicit p: Parameters, sourceInfo: SourceInfo): Option[MonitorBase] = bind(h, BIND_STAR, true)
+  // attach multiple outer ports of a slave to the inner ports of this node
+  override def :=* (h: OutwardNodeHandle[D, U, B])(implicit p: Parameters, sourceInfo: SourceInfo): Option[MonitorBase] = bind(h, BIND_QUERY, true)
 
   protected[diplomacy] def resolveStar(iKnown: Int, oKnown: Int, iStars: Int, oStars: Int): (Int, Int) = {
     require (iStars == 0, s"${name} (a virtual bus) cannot appear left of a :*= ${lazyModule.line}")

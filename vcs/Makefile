@@ -31,6 +31,8 @@ include $(base_dir)/Makefrag
 # Sources
 #--------------------------------------------------------------------
 
+bootrom_image = $(base_dir)/bootrom/bootrom.img
+
 lowrisc_srcs = \
 	$(generated_dir)/$(MODEL).$(CONFIG).sv \
 	$(generated_dir)/$(MODEL).$(CONFIG).behav_srams.sv \
