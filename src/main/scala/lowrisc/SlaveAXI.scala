@@ -98,7 +98,7 @@ trait HasAXI4VirtualBus extends HasPeripheryBus {
 
     // dump SV marcos
     val slave_macro_name = d.name.toUpperCase
-    DumpMacro("USE_" ++ slave_macro_name)
+    DumpMacro("ADD_" ++ slave_macro_name)
     DumpMacro(slave_macro_name ++ "_BASE", d.base)
     DumpMacro(slave_macro_name ++ "_SIZE", d.size) // potentially to support mask instead of size
 
@@ -113,7 +113,7 @@ trait HasAXI4VirtualBus extends HasPeripheryBus {
       int_size += d.interrupts
     }
     if(int_size > 0) {
-      DumpMacro("USE_ROCKET_INT")
+      DumpMacro("ADD_ROCKET_INT")
       DumpMacro("ROCKET_INT_SIZE", int_size)
     }
   })
@@ -140,4 +140,8 @@ trait HasAXI4VirtualBusModuleImp extends LazyMultiIOModuleImp with HasAXI4Virtua
   val mmio_axi4 = IO(outer.mmio_axi4.bundleOut)
   val mmio_interrupts = IO(UInt(INPUT, width = outer.int_size))
   outer.int_nodes.map(_.bundleIn).flatten.flatten.zipWithIndex.foreach {case(o,i) => o := mmio_interrupts(i)}
+}
+
+object SlaveDevice {
+  val entries = collection.mutable.ArrayBuffer[ExSlaveParams]()
 }
