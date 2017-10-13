@@ -47,6 +47,7 @@ verilog_srcs = \
 	$(base_dir)/socip/nasti/channel.sv \
 	$(base_dir)/socip/nasti/lite_nasti_reader.sv \
 	$(base_dir)/socip/nasti/lite_nasti_writer.sv \
+	$(base_dir)/socip/nasti/nasti_bram_ctrl.sv \
 	$(base_dir)/socip/nasti/nasti_buf.sv \
 	$(base_dir)/socip/nasti/nasti_combiner.sv \
 	$(base_dir)/socip/nasti/nasti_crossbar.sv \
@@ -55,6 +56,9 @@ verilog_srcs = \
 	$(base_dir)/socip/nasti/nasti_lite_reader.sv \
 	$(base_dir)/socip/nasti/nasti_lite_writer.sv \
 	$(base_dir)/socip/nasti/nasti_mux.sv \
+	$(base_dir)/socip/nasti/nasti_narrower_reader.sv \
+	$(base_dir)/socip/nasti/nasti_narrower.sv \
+	$(base_dir)/socip/nasti/nasti_narrower_writer.sv \
 	$(base_dir)/socip/nasti/nasti_slicer.sv \
 	$(base_dir)/socip/util/arbiter.sv \
 	$(base_dir)/vsrc/AsyncResetReg.v \
