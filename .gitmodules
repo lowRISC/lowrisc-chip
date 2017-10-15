@@ -40,3 +40,6 @@
 [submodule "riscv-tools"]
 	path = riscv-tools
 	url = https://github.com/lowrisc/riscv-tools.git
+[submodule "riscv-poky"]
+	path = riscv-poky
+	url = https://github.com/lowRISC/riscv-poky.git
