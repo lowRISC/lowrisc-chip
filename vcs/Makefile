@@ -148,28 +148,34 @@ junk += $(CONFIG)-sim* csrc DVEfiles simv.daidir
 # Test cases
 #--------------------------------------------------------------------
 rv32ui = simple add addi and andi auipc beq bge bgeu blt bltu bne fence_i \
-         j jal jalr lb lbu lh lhu lui lw or ori sb sh sw sll slli \
+         jal jalr lb lbu lh lhu lui lw or ori sb sh sw sll slli \
          slt slti sra srai srl srli sub xor xori \
+
+rv32uc = rvc
 
 rv32um = mul mulh mulhsu mulhu div divu rem remu \
 
-rv32ua = amoadd_w amoand_w amoor_w amoxor_w amoswap_w amomax_w amomaxu_w amomin_w amominu_w \
+rv32ua = amoadd_w amoand_w amoor_w amoxor_w amoswap_w amomax_w amomaxu_w amomin_w amominu_w lrsc \
 
-rv32si = csr ma_fetch scall sbreak wfi hpm \
+rv32si = csr ma_fetch scall sbreak wfi dirty \
 
-rv32mi = csr mcsr dirty illegal ma_addr ma_fetch sbreak scall \
+rv32mi = csr mcsr illegal ma_addr ma_fetch sbreak scall \
 
 rv64ui = $(rv32ui) addw addiw ld lwu sd slliw sllw sltiu sltu sraiw sraw srliw srlw subw \
 
+rv64uc = $(rv32uc)
+
 rv64um = $(rv32um) divuw divw mulw remuw remw \
 
-rv64ua = amoadd_d amoand_d amoor_d amoxor_d amoswap_d amomax_d amomaxu_d amomin_d amominu_d \
+rv64ua = $(rv32ua) amoadd_d amoand_d amoor_d amoxor_d amoswap_d amomax_d amomaxu_d amomin_d amominu_d \
 
-rv64uf = ldst move fsgnj fcmp fcvt fcvt_w fclass fadd fdiv fmin fmadd structural \
+rv64uf = ldst move fcmp fcvt fcvt_w fclass fadd fdiv fmin fmadd \
+
+rv64ud = $(rv64uf) structural \
 
 rv64si = $(rv32si)
 
-rv64mi = $(rv32mi)
+rv64mi = $(rv32mi) breakpoint
 
 bmarks = median multiply qsort towers vvadd mm dhrystone spmv mt-vvadd mt-matmul
 
@@ -183,16 +189,18 @@ tagcaches = loadstore
 
 #--------------------------------------------------------------------
 asm_p_tests  += $(addprefix rv64ui-p-, $(rv64ui))
-asm_p_tests  += $(addprefix rv64ui-p-, $(rv64um))
-asm_p_tests  += $(addprefix rv64ui-p-, $(rv64ua))
-asm_p_tests  += $(addprefix rv64uf-p-, $(rv64uf))
+asm_p_tests  += $(addprefix rv64uc-p-, $(rv64uc))
+asm_p_tests  += $(addprefix rv64um-p-, $(rv64um))
+asm_p_tests  += $(addprefix rv64ua-p-, $(rv64ua))
+asm_p_tests  += $(addprefix rv64ud-p-, $(rv64ud))
 asm_p_tests  += $(addprefix rv64si-p-, $(rv64si))
 asm_p_tests  += $(addprefix rv64mi-p-, $(rv64mi))
 
 asm_v_tests  += $(addprefix rv64ui-v-, $(rv64ui))
-asm_v_tests  += $(addprefix rv64ui-v-, $(rv64um))
-asm_v_tests  += $(addprefix rv64ui-v-, $(rv64ua))
-asm_v_tests  += $(addprefix rv64uf-v-, $(rv64uf))
+asm_v_tests  += $(addprefix rv64uc-v-, $(rv64uc))
+asm_v_tests  += $(addprefix rv64um-v-, $(rv64um))
+asm_v_tests  += $(addprefix rv64ua-v-, $(rv64ua))
+asm_v_tests  += $(addprefix rv64ud-v-, $(rv64ud))
 
 bmarks_tests += $(bmarks)
 
