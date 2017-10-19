@@ -1,4 +1,4 @@
-# See LICENSE for license details.
+# See LICENSE.Cambridge for license details.
 
 # check RISCV environment variable
 ifndef VCS_HOME

@@ -31,13 +31,15 @@ include $(base_dir)/Makefrag
 # Sources
 #--------------------------------------------------------------------
 
+bootrom_image = $(base_dir)/bootrom/bootrom.img
+
 lowrisc_srcs = \
 	$(generated_dir)/$(MODEL).$(CONFIG).sv \
+	$(generated_dir)/$(MODEL).$(CONFIG).behav_srams.sv \
 
 lowrisc_headers = \
 	$(generated_dir)/consts.vh \
-	$(generated_dir)/dev_map.vh \
-	$(generated_dir)/dev_map.h \
+	$(generated_dir)/consts.hpp \
 
 verilog_srcs = \
 	$(osd_dir)/interfaces/common/dii_channel.sv \
@@ -45,6 +47,7 @@ verilog_srcs = \
 	$(base_dir)/socip/nasti/channel.sv \
 	$(base_dir)/socip/nasti/lite_nasti_reader.sv \
 	$(base_dir)/socip/nasti/lite_nasti_writer.sv \
+	$(base_dir)/socip/nasti/nasti_bram_ctrl.sv \
 	$(base_dir)/socip/nasti/nasti_buf.sv \
 	$(base_dir)/socip/nasti/nasti_combiner.sv \
 	$(base_dir)/socip/nasti/nasti_crossbar.sv \
@@ -53,96 +56,28 @@ verilog_srcs = \
 	$(base_dir)/socip/nasti/nasti_lite_reader.sv \
 	$(base_dir)/socip/nasti/nasti_lite_writer.sv \
 	$(base_dir)/socip/nasti/nasti_mux.sv \
+	$(base_dir)/socip/nasti/nasti_narrower_reader.sv \
+	$(base_dir)/socip/nasti/nasti_narrower.sv \
+	$(base_dir)/socip/nasti/nasti_narrower_writer.sv \
 	$(base_dir)/socip/nasti/nasti_slicer.sv \
 	$(base_dir)/socip/util/arbiter.sv \
-	$(base_dir)/src/main/verilog/debug_system.sv \
-	$(osd_dir)/interconnect/common/debug_ring_expand.sv \
-	$(osd_dir)/interconnect/common/ring_router.sv \
-	$(osd_dir)/interconnect/common/ring_router_mux.sv \
-	$(osd_dir)/interconnect/common/ring_router_mux_rr.sv \
-	$(osd_dir)/interconnect/common/ring_router_demux.sv \
-	$(osd_dir)/blocks/buffer/common/dii_buffer.sv \
-	$(osd_dir)/blocks/buffer/common/osd_fifo.sv \
-	$(osd_dir)/blocks/timestamp/common/osd_timestamp.sv \
-	$(osd_dir)/blocks/tracepacket/common/osd_trace_packetization.sv \
-	$(osd_dir)/blocks/tracesample/common/osd_tracesample.sv \
-	$(osd_dir)/blocks/regaccess/common/osd_regaccess.sv \
-	$(osd_dir)/blocks/regaccess/common/osd_regaccess_demux.sv \
-	$(osd_dir)/blocks/regaccess/common/osd_regaccess_layer.sv \
-	$(osd_dir)/modules/dem_uart/common/osd_dem_uart.sv \
-	$(osd_dir)/modules/dem_uart/common/osd_dem_uart_16550.sv \
-	$(osd_dir)/modules/dem_uart/common/osd_dem_uart_nasti.sv \
-	$(osd_dir)/modules/him/common/osd_him.sv \
-	$(osd_dir)/modules/scm/common/osd_scm.sv \
-	$(osd_dir)/modules/mam/common/osd_mam.sv \
-	$(osd_dir)/modules/stm/common/osd_stm.sv \
-	$(osd_dir)/modules/ctm/common/osd_ctm.sv \
-	$(glip_dir)/common/logic/interface/glip_channel.sv \
-	$(base_dir)/minion_subsystem/verilog/coremem.sv \
-	$(base_dir)/minion_subsystem/verilog/debouncer.v \
-	$(base_dir)/minion_subsystem/verilog/dpram.v \
-	$(base_dir)/minion_subsystem/verilog/dualmem.v \
-	$(base_dir)/minion_subsystem/verilog/fstore2.v \
-	$(base_dir)/minion_subsystem/verilog/minion_soc.sv \
-	$(base_dir)/minion_subsystem/verilog/my_fifo.v \
-	$(base_dir)/minion_subsystem/verilog/ps2_keyboard.v \
-	$(base_dir)/minion_subsystem/verilog/ps2_translation_table.v \
-	$(base_dir)/minion_subsystem/verilog/ps2.v \
-	$(base_dir)/minion_subsystem/verilog/rambyte.v \
-	$(base_dir)/minion_subsystem/verilog/rx_delay.v \
-	$(base_dir)/minion_subsystem/verilog/sd_clock_divider.v \
-	$(base_dir)/minion_subsystem/verilog/sd_cmd_serial_host.v \
-	$(base_dir)/minion_subsystem/verilog/sd_crc_16.v \
-	$(base_dir)/minion_subsystem/verilog/sd_crc_7.v \
-	$(base_dir)/minion_subsystem/verilog/sd_data_serial_host.sv \
-	$(base_dir)/minion_subsystem/verilog/sd_top.sv \
-	$(base_dir)/minion_subsystem/verilog/uart.v \
-	$(base_dir)/minion_subsystem/verilog/vga_ctrl.v \
-	$(base_dir)/minion_subsystem/pulpino/ips/riscv/include/riscv_defines.sv \
-	$(base_dir)/minion_subsystem/pulpino/ips/riscv/controller.sv \
-	$(base_dir)/minion_subsystem/pulpino/ips/riscv/cs_registers.sv \
-	$(base_dir)/minion_subsystem/pulpino/ips/riscv/debug_unit.sv \
-	$(base_dir)/minion_subsystem/pulpino/ips/riscv/decoder.sv \
-	$(base_dir)/minion_subsystem/pulpino/ips/riscv/exc_controller.sv \
-	$(base_dir)/minion_subsystem/pulpino/ips/riscv/ex_stage.sv \
-	$(base_dir)/minion_subsystem/pulpino/ips/riscv/hwloop_controller.sv \
-	$(base_dir)/minion_subsystem/pulpino/ips/riscv/hwloop_regs.sv \
-	$(base_dir)/minion_subsystem/pulpino/ips/riscv/id_stage.sv \
-	$(base_dir)/minion_subsystem/pulpino/ips/riscv/if_stage.sv \
-	$(base_dir)/minion_subsystem/pulpino/ips/riscv/include/riscv_config.sv \
-	$(base_dir)/minion_subsystem/pulpino/ips/riscv/load_store_unit.sv \
-	$(base_dir)/minion_subsystem/pulpino/ips/riscv/mult.sv \
-	$(base_dir)/minion_subsystem/pulpino/ips/riscv/prefetch_L0_buffer.sv \
-	$(base_dir)/minion_subsystem/pulpino/ips/riscv/register_file_ff.sv \
-	$(base_dir)/minion_subsystem/pulpino/ips/riscv/riscv_core.sv \
-	$(base_dir)/minion_subsystem/pulpino/rtl/components/cluster_clock_gating.sv \
-	$(base_dir)/minion_subsystem/pulpino/ips/riscv/alu.sv \
-	$(base_dir)/minion_subsystem/pulpino/ips/riscv/alu_div.sv \
-	$(base_dir)/minion_subsystem/pulpino/ips/riscv/compressed_decoder.sv \
-	$(base_dir)/minion_subsystem/pulpino/ips/riscv/prefetch_buffer.sv \
-	$(base_dir)/minion_subsystem/software/bootstrap/code.v \
-	$(base_dir)/minion_subsystem/software/bootstrap/data.v \
+	$(base_dir)/vsrc/AsyncResetReg.v \
+	$(base_dir)/vsrc/plusarg_reader.v \
+	$(base_dir)/vsrc/SimDTM_dummy.v \
 
 verilog_headers = \
 	$(base_dir)/src/main/verilog/config.vh \
 	$(base_dir)/socip/nasti/nasti_request.vh \
-	$(base_dir)/minion_subsystem/verilog/ps2_defines.v \
-	$(base_dir)/minion_subsystem/verilog/sd_defines.h \
-	$(base_dir)/minion_subsystem/verilog/ascii_code.v \
-	$(base_dir)/minion_subsystem/pulpino/rtl/includes/config.sv \
 
 test_verilog_srcs = \
 	$(base_dir)/src/test/verilog/host_behav.sv \
 	$(base_dir)/src/test/verilog/nasti_ram_behav.sv \
-	$(glip_dir)/backend_tcp/logic/dpi/glip_tcp_toplevel.sv \
 
 test_cxx_srcs = \
 	$(base_dir)/src/test/cxx/common/globals.cpp \
 	$(base_dir)/src/test/cxx/common/loadelf.cpp \
-	$(base_dir)/src/test/cxx/common/dpi_ram_behav.cpp \
 	$(base_dir)/src/test/cxx/common/dpi_host_behav.cpp \
-	$(base_dir)/opensocdebug/glip/src/backend_tcp/logic/dpi/glip_tcp_dpi.cpp \
-	$(base_dir)/opensocdebug/glip/src/backend_tcp/logic/dpi/GlipTcp.cpp \
+	$(base_dir)/src/test/cxx/common/dpi_ram_behav.cpp \
 	$(base_dir)/src/test/cxx/veri/veri_top.cc \
 
 test_cxx_headers = \
@@ -173,25 +108,32 @@ veri_flags = \
 	+incdir+$(base_dir)/src/main/verilog \
 	+incdir+$(base_dir)/socip/nasti \
 	+incdir+$(base_dir)/minion_subsystem/verilog \
-        +incdir+$(base_dir)/minion_subsystem/pulpino/rtl/includes \
-        +incdir+$(base_dir)/minion_subsystem/pulpino/ips/riscv/include \
+    +incdir+$(base_dir)/minion_subsystem/pulpino/rtl/includes \
+    +incdir+$(base_dir)/minion_subsystem/pulpino/ips/riscv/include \
+	+define+PRINTF_COND=1 \
+	+define+STOP_COND=1 \
 	--top-module $(tb_top) \
 	--unroll-count 256 \
 	--error-limit 500 \
-        --output-split 80000 \
-	--output-split-cfuncs 10000 \
+    --output-split 20000 \
+	--output-split-cfuncs 20000 \
 	-Wno-lint -Wno-style -Wno-STMTDLY -Wno-ASSIGNIN\
+	--x-assign unique \
 	-CFLAGS "-std=c++11" \
 	-CFLAGS "-I$(base_dir)/src/test/cxx/common -I$(base_dir)/src/test/cxx/veri -I$(glip_dir)/backend_tcp/logic/dpi" \
 	-LDFLAGS "-pthread" \
 	--exe \
 	--assert \
 
+#	-DRANDOMIZE_GARBAGE_ASSIGN \
+#	-DRANDOMIZE_INVALID_ASSIGN \
+#	-DRANDOMIZE_REG_INIT \
+#	-DRANDOMIZE_MEM_INIT \
+
 # remove optimization if compilation takes too long or run out of memory
 veri_opt_flags = --Mdir $(sim_dir)/verilator.opt -O3 -CFLAGS "-O3"
-veri_norm_flags = --Mdir $(sim_dir)/verilator.norm -O1 -CFLAGS "-O3"
-#veri_dbg_flags = --Mdir $(sim_dir)/verilator.debug --trace -O1 -CFLAGS "-g -DDELAY_EXIT -DVERBOSE_MEMORY -DTRACE_VCD"
-veri_dbg_flags = --Mdir $(sim_dir)/verilator.debug --trace -O1 -CFLAGS "-O3 -DDELAY_EXIT -DTRACE_VCD"
+veri_norm_flags = --Mdir $(sim_dir)/verilator.norm --trace -O1 -CFLAGS "-O1"
+veri_dbg_flags = --Mdir $(sim_dir)/verilator.debug --trace -O1 -CFLAGS "-O1 -DDELAY_EXIT -DTRACE_VCD"
 
 #--------------------------------------------------------------------
 # Build the simulator (verilator)
@@ -230,28 +172,34 @@ junk += $(generated_dir) $(CONFIG)-sim verilator.norm verilator.norm.log $(CONFI
 # Test cases
 #--------------------------------------------------------------------
 rv32ui = simple add addi and andi auipc beq bge bgeu blt bltu bne fence_i \
-         j jal jalr lb lbu lh lhu lui lw or ori sb sh sw sll slli \
+         jal jalr lb lbu lh lhu lui lw or ori sb sh sw sll slli \
          slt slti sra srai srl srli sub xor xori \
+
+rv32uc = rvc
 
 rv32um = mul mulh mulhsu mulhu div divu rem remu \
 
-rv32ua = amoadd_w amoand_w amoor_w amoxor_w amoswap_w amomax_w amomaxu_w amomin_w amominu_w \
+rv32ua = amoadd_w amoand_w amoor_w amoxor_w amoswap_w amomax_w amomaxu_w amomin_w amominu_w lrsc \
 
-rv32si = csr ma_fetch scall sbreak wfi hpm \
+rv32si = csr ma_fetch scall sbreak wfi dirty \
 
-rv32mi = csr mcsr dirty illegal ma_addr ma_fetch sbreak scall \
+rv32mi = csr mcsr illegal ma_addr ma_fetch sbreak scall \
 
 rv64ui = $(rv32ui) addw addiw ld lwu sd slliw sllw sltiu sltu sraiw sraw srliw srlw subw \
 
+rv64uc = $(rv32uc)
+
 rv64um = $(rv32um) divuw divw mulw remuw remw \
 
-rv64ua = amoadd_d amoand_d amoor_d amoxor_d amoswap_d amomax_d amomaxu_d amomin_d amominu_d \
+rv64ua = $(rv32ua) amoadd_d amoand_d amoor_d amoxor_d amoswap_d amomax_d amomaxu_d amomin_d amominu_d \
 
-rv64uf = ldst move fsgnj fcmp fcvt fcvt_w fclass fadd fdiv fmin fmadd structural \
+rv64uf = ldst move fcmp fcvt fcvt_w fclass fadd fdiv fmin fmadd \
+
+rv64ud = $(rv64uf) structural \
 
 rv64si = $(rv32si)
 
-rv64mi = $(rv32mi)
+rv64mi = $(rv32mi) breakpoint
 
 bmarks = median multiply qsort towers vvadd mm dhrystone spmv mt-vvadd mt-matmul
 
@@ -265,16 +213,18 @@ tagcaches = loadstore
 
 #--------------------------------------------------------------------
 asm_p_tests  += $(addprefix rv64ui-p-, $(rv64ui))
-asm_p_tests  += $(addprefix rv64ui-p-, $(rv64um))
-asm_p_tests  += $(addprefix rv64ui-p-, $(rv64ua))
-asm_p_tests  += $(addprefix rv64uf-p-, $(rv64uf))
+asm_p_tests  += $(addprefix rv64uc-p-, $(rv64uc))
+asm_p_tests  += $(addprefix rv64um-p-, $(rv64um))
+asm_p_tests  += $(addprefix rv64ua-p-, $(rv64ua))
+asm_p_tests  += $(addprefix rv64ud-p-, $(rv64ud))
 asm_p_tests  += $(addprefix rv64si-p-, $(rv64si))
 asm_p_tests  += $(addprefix rv64mi-p-, $(rv64mi))
 
 asm_v_tests  += $(addprefix rv64ui-v-, $(rv64ui))
-asm_v_tests  += $(addprefix rv64ui-v-, $(rv64um))
-asm_v_tests  += $(addprefix rv64ui-v-, $(rv64ua))
-asm_v_tests  += $(addprefix rv64uf-v-, $(rv64uf))
+asm_v_tests  += $(addprefix rv64uc-v-, $(rv64uc))
+asm_v_tests  += $(addprefix rv64um-v-, $(rv64um))
+asm_v_tests  += $(addprefix rv64ua-v-, $(rv64ua))
+asm_v_tests  += $(addprefix rv64ud-v-, $(rv64ud))
 
 bmarks_tests += $(bmarks)
 

@@ -11,7 +11,7 @@
 #include <vector>
 #include <iostream>
 
-#include "GlipTcp.h"
+//#include "GlipTcp.h"
 
 using std::string;
 using std::vector;
@@ -66,14 +66,14 @@ int main(int argc, char** argv) {
 
   top->eval();
   
-  GlipTcp &glip = GlipTcp::instance();
+//  GlipTcp &glip = GlipTcp::instance();
   while(!Verilated::gotFinish() && (!exit_code || exit_delay > 1) &&
         (max_time == 0 || main_time < max_time) &&
         (exit_delay != 1)
         ) {
-    if (!glip.connected() && wait_debug) {
-      continue;
-    }
+//    if (!glip.connected() && wait_debug) {
+//      continue;
+//    }
     if(main_time > 133) {
       top->rst_top = 0;
     }
