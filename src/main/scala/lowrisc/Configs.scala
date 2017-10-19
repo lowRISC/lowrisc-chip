@@ -18,8 +18,8 @@ class LoRCBaseConfig extends Config(new BaseCoreplexConfig().alter((site,here,up
   case IncludeJtagDTM => false
   case JtagDTMKey => new JtagDTMKeyDefault()
   case ExtMem => MasterPortParams(
-    base = 0x80000000L,
-    size = 0x10000000L,
+    base = DumpMacro("MEM_BASE", 0x80000000L),
+    size = DumpMacro("MEM_SIZE", 0x10000000L),
     beatBytes = site(MemoryBusParams).beatBytes,
     idBits = 4)
   case ExPeriperals => ExPeriperalsParams(
@@ -85,3 +85,4 @@ class WithFlash extends Config(Parameters.empty) {
 }
 
 class LoRCDefaultConfig extends Config(new WithHost ++ new WithNBigCores(1) ++ new LoRCBaseConfig)
+class LoRCNexys4Config extends Config(new WithUART ++ new WithBootRAM ++ new WithSPI ++ new WithNBigCores(1) ++ new LoRCBaseConfig)

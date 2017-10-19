@@ -901,7 +901,7 @@ module chip_top
 
 `ifdef ADD_SPI
    defparam io_crossbar.BASE2 = `SPI_BASE;
-   defparam io_crossbar.MASK2 = `SPI_MASK;
+   defparam io_crossbar.MASK2 = `SPI_MASK - 1;
 `endif
 
    /////////////////////////////////////////////////////////////

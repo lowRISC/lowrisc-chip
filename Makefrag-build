@@ -22,7 +22,7 @@ $(generated_dir)/consts.hpp: $(generated_dir)/$(MODEL).$(CONFIG).fir
 	cp $(generated_dir)/$(CONFIG).hpp $(generated_dir)/consts.hpp
 
 $(generated_dir)/%.behav_srams.sv: $(generated_dir)/%.conf
-	$(base_dir)/scripts/vlsi_mem_gen $< > $@.tmp && mv -f $@.tmp $@
+	$(mem_gen) $< > $@.tmp && mv -f $@.tmp $@
 
 
 # emacs local variable
