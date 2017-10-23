@@ -2,6 +2,8 @@
 sudo: required
 dist: trusty
 group: edge  # Add this
+git:
+  submodules: false
 
 # Using the precompiled toolchain from docker
 services:
@@ -22,6 +24,7 @@ env:
 # actual test build
 
 before_install:
+ - git submodule update --init --recursive hardfloat socip opensocdebug/hardware opensocdebug/glip opensocdebug/software vsim/riscv-tests minion_subsystem chisel3 firrtl
  - docker pull lowrisc/lowrisc-docker:$DOCKER_TAG
 
 before_script:
