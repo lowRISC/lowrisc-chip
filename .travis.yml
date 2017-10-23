@@ -15,7 +15,7 @@ env:
     - DOCKER_TOP=/opt/lowrisc
     - DOCKER_TAG=rocket-v1.0
   matrix:
-    - CONFIG=DefaultConfig     TEST_CASE=run-asm-tests
+    - CONFIG=LoRCDefaultConfig     TEST_CASE=run-asm-tests
 
 # tag is not enabled for now
 #    - CONFIG=TagConfig         TEST_CASE=run-asm-tests
