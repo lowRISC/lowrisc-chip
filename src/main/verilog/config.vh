@@ -53,7 +53,7 @@
    `define NEXYS4_COMMON
   `endif
 
-  `define ADD_MINION_SD
+  //`define ADD_MINION_SD
 
  `endif //  `ifdef FPGA
 
