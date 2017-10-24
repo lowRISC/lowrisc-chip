@@ -14,7 +14,7 @@ default: sim
 base_dir = $(abspath ..)
 sim_dir = .
 output_dir = $(sim_dir)/output
-mem_gen = $(abspath ./vlsi_mem_gen)
+mem_gen = $(base_dir)/scripts/vlsi_mem_gen
 generated_dir = $(abspath ./generated-src)
 
 glip_dir = $(base_dir)/opensocdebug/glip/src
