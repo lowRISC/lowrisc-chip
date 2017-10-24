@@ -62,7 +62,9 @@ class WithSPI extends Config(Parameters.empty) {
   )
 }
 
-class WithBootRAM extends Config(Parameters.empty) {
+class WithBootRAM extends Config((site, here, up) => {
+  case BootROMParams => BootROMParams(hang = 0x10000, contentFileName = "./bootrom/bootrom.fpga.img")
+}) {
   SlaveDevice.entries += ExSlaveParams(
     name       = "bram",
     device     = () => new SimpleDevice("bram", Seq("xlnx,bram")),

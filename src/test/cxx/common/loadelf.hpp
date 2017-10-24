@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <functional>
 #include <map>
+#include <string>
 
 typedef std::function<void(uint32_t, uint32_t, const uint8_t*)> write_callback;
 
