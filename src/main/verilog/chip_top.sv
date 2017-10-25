@@ -535,28 +535,56 @@ module chip_top
    logic [BRAM_SIZE-1:0]               ram_addr;
    logic [`LOWRISC_IO_DAT_WIDTH-1:0]   ram_wrdata, ram_rddata;
    wire [31:0] ram_rddata_b;
-   //wire ram_sel_b;
+   wire ram_sel_b;
 
-   nasti_bram_ctrl
-     #(
-       .ID_WIDTH        ( `MMIO_MASTER_ID_WIDTH     ),
-       .ADDR_WIDTH      ( `MMIO_MASTER_ADDR_WIDTH   ),
-       .DATA_WIDTH      ( `MMIO_MASTER_DATA_WIDTH   ),
-       .BRAM_ADDR_WIDTH ( BRAM_SIZE                 )
-       )
-   BramCtl
+   axi_bram_ctrl_0 BramCtl
      (
-      .s_nasti_aclk    ( clk                       ),
-      .s_nasti_aresetn ( rstn                      ),
-      .s_nasti         ( local_bram_nasti          ),
-      .bram_rst        ( ram_rst                   ),
-      .bram_clk        ( ram_clk                   ),
-      .bram_en         ( ram_en                    ),
-      .bram_we         ( ram_we                    ),
-      .bram_addr       ( {ram_sel_b,ram_addr}      ),
-      .bram_wrdata     ( ram_wrdata                ),
-      .bram_rddata     ( ram_rddata                )
+      .s_axi_aclk      ( clk                       ),
+      .s_axi_aresetn   ( rstn                      ),
+      .s_axi_arid      ( local_bram_nasti.ar_id    ),
+      .s_axi_araddr    ( local_bram_nasti.ar_addr  ),
+      .s_axi_arlen     ( local_bram_nasti.ar_len   ),
+      .s_axi_arsize    ( local_bram_nasti.ar_size  ),
+      .s_axi_arburst   ( local_bram_nasti.ar_burst ),
+      .s_axi_arlock    ( local_bram_nasti.ar_lock  ),
+      .s_axi_arcache   ( local_bram_nasti.ar_cache ),
+      .s_axi_arprot    ( local_bram_nasti.ar_prot  ),
+      .s_axi_arready   ( local_bram_nasti.ar_ready ),
+      .s_axi_arvalid   ( local_bram_nasti.ar_valid ),
+      .s_axi_rid       ( local_bram_nasti.r_id     ),
+      .s_axi_rdata     ( local_bram_nasti.r_data   ),
+      .s_axi_rresp     ( local_bram_nasti.r_resp   ),
+      .s_axi_rlast     ( local_bram_nasti.r_last   ),
+      .s_axi_rready    ( local_bram_nasti.r_ready  ),
+      .s_axi_rvalid    ( local_bram_nasti.r_valid  ),
+      .s_axi_awid      ( local_bram_nasti.aw_id    ),
+      .s_axi_awaddr    ( local_bram_nasti.aw_addr  ),
+      .s_axi_awlen     ( local_bram_nasti.aw_len   ),
+      .s_axi_awsize    ( local_bram_nasti.aw_size  ),
+      .s_axi_awburst   ( local_bram_nasti.aw_burst ),
+      .s_axi_awlock    ( local_bram_nasti.aw_lock  ),
+      .s_axi_awcache   ( local_bram_nasti.aw_cache ),
+      .s_axi_awprot    ( local_bram_nasti.aw_prot  ),
+      .s_axi_awready   ( local_bram_nasti.aw_ready ),
+      .s_axi_awvalid   ( local_bram_nasti.aw_valid ),
+      .s_axi_wdata     ( local_bram_nasti.w_data   ),
+      .s_axi_wstrb     ( local_bram_nasti.w_strb   ),
+      .s_axi_wlast     ( local_bram_nasti.w_last   ),
+      .s_axi_wready    ( local_bram_nasti.w_ready  ),
+      .s_axi_wvalid    ( local_bram_nasti.w_valid  ),
+      .s_axi_bid       ( local_bram_nasti.b_id     ),
+      .s_axi_bresp     ( local_bram_nasti.b_resp   ),
+      .s_axi_bready    ( local_bram_nasti.b_ready  ),
+      .s_axi_bvalid    ( local_bram_nasti.b_valid  ),
+      .bram_rst_a      ( ram_rst                   ),
+      .bram_clk_a      ( ram_clk                   ),
+      .bram_en_a       ( ram_en                    ),
+      .bram_we_a       ( ram_we                    ),
+      .bram_addr_a     ( {ram_sel_b,ram_addr}      ),
+      .bram_wrdata_a   ( ram_wrdata                ),
+      .bram_rddata_a   ( ram_rddata                )
       );
+
 
    // the inferred BRAMs
    reg                            ram_sel_b_dly;
@@ -575,8 +603,8 @@ module chip_top
 
    always @(posedge ram_clk)
     begin
-     //ram_sel_b_dly <= ram_sel_b;     
-     if(ram_en /*& !ram_sel_b*/) begin
+     ram_sel_b_dly <= ram_sel_b;
+     if(ram_en & !ram_sel_b) begin
         ram_block_addr_delay <= ram_block_addr;
         ram_lsb_addr_delay <= ram_lsb_addr;
         foreach (ram_we_full[i])
@@ -586,7 +614,7 @@ module chip_top
 
    assign ram_rddata_full = ram[ram_block_addr_delay];
    assign ram_rddata_shift = ram_lsb_addr_delay << (BRAM_OFFSET_BITS + 3); // avoid ISim error
-   assign ram_rddata = /*ram_sel_b_dly ? ram_rddata_b : */ram_rddata_full >> ram_rddata_shift;
+   assign ram_rddata = ram_sel_b_dly ? ram_rddata_b : ram_rddata_full >> ram_rddata_shift;
 
    initial $readmemh("boot.mem", ram);
 
