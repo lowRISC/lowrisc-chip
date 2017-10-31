@@ -121,6 +121,52 @@ module chip_top
    output        sd_reset,
 `endif
 
+`ifdef ADD_HID
+   // 4-bit full SD interface
+   output        sd_sclk,
+   input         sd_detect,
+   inout [3:0]   sd_dat,
+   inout         sd_cmd,
+   output        sd_reset,
+
+   // LED and DIP switch
+   output [7:0]  o_led,
+   input  [3:0]  i_dip,
+
+   // push button array
+   input         GPIO_SW_C,
+   input         GPIO_SW_W,
+   input         GPIO_SW_E,
+   input         GPIO_SW_N,
+   input         GPIO_SW_S,
+
+   //keyboard
+   inout         PS2_CLK,
+   inout         PS2_DATA,
+
+  // display
+   output        VGA_HS_O,
+   output        VGA_VS_O,
+   output [3:0]  VGA_RED_O,
+   output [3:0]  VGA_BLUE_O,
+   output [3:0]  VGA_GREEN_O,
+`endif
+
+`ifdef ADD_ETH 
+ //! Ethernet MAC PHY interface signals
+ input wire [1:0]   i_erxd, // RMII receive data
+ input wire         i_erx_dv, // PHY data valid
+ input wire         i_erx_er, // PHY coding error
+ input wire         i_emdint, // PHY interrupt in active low
+ output reg         o_erefclk, // RMII clock out
+ output reg [1:0]   o_etxd, // RMII transmit data
+ output reg         o_etx_en, // RMII transmit enable
+ output wire        o_emdc, // MDIO clock
+ inout wire         io_emdio, // MDIO inout
+ output wire        o_erstn, // PHY reset active low
+`endif //  `ifdef ADD_ETH
+ 
+
    // clock and reset
    input         clk_p,
    input         clk_n,
@@ -146,6 +192,8 @@ module chip_top
        .ADDR_WIDTH  ( `MEM_ADDR_WIDTH ),
        .DATA_WIDTH  ( `MEM_DATA_WIDTH ))
    mem_nasti();
+wire io_emdio_i, phy_emdio_o, phy_emdio_t, clk_rmii, clk_rmii_quad, clk_locked, clk_locked_wiz;
+reg phy_emdio_i, io_emdio_o, io_emdio_t;
 
 `ifdef ADD_PHY_DDR
 
@@ -299,7 +347,7 @@ module chip_top
 
  `ifdef NEXYS4_COMMON
    //clock generator
-   logic mig_sys_clk, clk_locked, clk_pixel;
+   logic mig_sys_clk, clk_pixel, clk_rmii, clk_rmii_quad;
    logic clk_io_uart; // UART IO clock for debug
 
    clk_wiz_0 clk_gen
@@ -307,10 +355,14 @@ module chip_top
       .clk_in1       ( clk_p         ), // 100 MHz onboard
       .clk_out1      ( mig_sys_clk   ), // 200 MHz
       .clk_io_uart   ( clk_io_uart   ), // 60 MHz
+      .clk_rmii      ( clk_rmii      ), // 50 MHz rmii
+      .clk_rmii_quad ( clk_rmii_quad ), // 50 MHz rmii quad
       .clk_pixel     ( clk_pixel     ), // 120 MHz
       .resetn        ( rst_top       ),
-      .locked        ( clk_locked    )
+      .locked        ( clk_locked_wiz )
       );
+   
+   assign clk_locked = clk_locked_wiz & rst_top;
  `endif //  `ifdef NEXYS4_COMMON
 
    // DRAM controller
@@ -424,8 +476,11 @@ module chip_top
 `else // !`ifdef ADD_PHY_DDR
 
    assign clk = clk_p;
+    assign clk_rmii = clk_p;
+    assign clk_rmii_quad = clk_p;
    assign rstn = !rst_top;
    assign clk_locked = !rst_top;
+   assign clk_locked_wiz = !rst_top;
 
    nasti_ram_behav
      #(
@@ -535,7 +590,6 @@ module chip_top
    logic [BRAM_SIZE-1:0]               ram_addr;
    logic [`LOWRISC_IO_DAT_WIDTH-1:0]   ram_wrdata, ram_rddata;
    wire [31:0] ram_rddata_b;
-   wire ram_sel_b;
 
    axi_bram_ctrl_0 BramCtl
      (
@@ -580,14 +634,12 @@ module chip_top
       .bram_clk_a      ( ram_clk                   ),
       .bram_en_a       ( ram_en                    ),
       .bram_we_a       ( ram_we                    ),
-      .bram_addr_a     ( {ram_sel_b,ram_addr}      ),
+      .bram_addr_a     ( ram_addr                  ),
       .bram_wrdata_a   ( ram_wrdata                ),
       .bram_rddata_a   ( ram_rddata                )
       );
 
 
-   // the inferred BRAMs
-   reg                            ram_sel_b_dly;
    reg   [BRAM_WIDTH-1:0]         ram [0 : BRAM_LINE-1];
    logic [BRAM_ADDR_BLK_BITS-1:0] ram_block_addr, ram_block_addr_delay;
    logic [BRAM_ADDR_LSB_BITS-1:0] ram_lsb_addr, ram_lsb_addr_delay;
@@ -603,8 +655,7 @@ module chip_top
 
    always @(posedge ram_clk)
     begin
-     ram_sel_b_dly <= ram_sel_b;
-     if(ram_en & !ram_sel_b) begin
+     if(ram_en) begin
         ram_block_addr_delay <= ram_block_addr;
         ram_lsb_addr_delay <= ram_lsb_addr;
         foreach (ram_we_full[i])
@@ -614,9 +665,13 @@ module chip_top
 
    assign ram_rddata_full = ram[ram_block_addr_delay];
    assign ram_rddata_shift = ram_lsb_addr_delay << (BRAM_OFFSET_BITS + 3); // avoid ISim error
-   assign ram_rddata = ram_sel_b_dly ? ram_rddata_b : ram_rddata_full >> ram_rddata_shift;
+   assign ram_rddata = ram_rddata_full >> ram_rddata_shift;
 
+`ifdef BOOT_MEM
+   initial $readmemh(`BOOT_MEM, ram);
+`else
    initial $readmemh("boot.mem", ram);
+`endif
 
 `endif //  `ifdef ADD_BRAM
 
@@ -777,7 +832,8 @@ module chip_top
       .ss_i            ( spi_cs_i              ),
       .ss_o            ( spi_cs_o              ),
       .ss_t            ( spi_cs_t              ),
-      .ip2intc_irpt    ( spi_irq               ) // polling for now
+      .ip2intc_irpt    ( spi_irq               ), // polling for now
+      .sd_reset	       ( sd_reset              )
       );
 
 
@@ -800,7 +856,78 @@ module chip_top
 
 `endif // !`ifdef ADD_SPI
 
-   /////////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////////
+   // HID
+   nasti_channel
+     #(
+       .ADDR_WIDTH  ( `MMIO_MASTER_ADDR_WIDTH       ),
+       .DATA_WIDTH  ( `LOWRISC_IO_DAT_WIDTH     ))
+   io_hid_lite();
+   logic                       hid_irq, sd_irq;
+
+`ifdef ADD_HID
+   
+   wire                        hid_rst, hid_clk, hid_en;
+   wire [3:0]                  hid_we;
+   wire [16:0]                 hid_addr;
+   wire [31:0]                 hid_wrdata,  hid_rddata;
+
+axi_bram_ctrl_2 hid_i
+     (
+      .s_axi_aclk      ( clk                  ),
+      .s_axi_aresetn   ( rstn                 ),
+      .s_axi_araddr    ( io_hid_lite.ar_addr  ),
+      .s_axi_arready   ( io_hid_lite.ar_ready ),
+      .s_axi_arvalid   ( io_hid_lite.ar_valid ),
+      .s_axi_arprot    ( io_hid_lite.ar_prot  ),
+      .s_axi_awaddr    ( io_hid_lite.aw_addr  ),
+      .s_axi_awready   ( io_hid_lite.aw_ready ),
+      .s_axi_awvalid   ( io_hid_lite.aw_valid ),
+      .s_axi_awprot    ( io_hid_lite.aw_prot  ),
+      .s_axi_bready    ( io_hid_lite.b_ready  ),
+      .s_axi_bresp     ( io_hid_lite.b_resp   ),
+      .s_axi_bvalid    ( io_hid_lite.b_valid  ),
+      .s_axi_rdata     ( io_hid_lite.r_data   ),
+      .s_axi_rready    ( io_hid_lite.r_ready  ),
+      .s_axi_rresp     ( io_hid_lite.r_resp   ),
+      .s_axi_rvalid    ( io_hid_lite.r_valid  ),
+      .s_axi_wdata     ( io_hid_lite.w_data   ),
+      .s_axi_wready    ( io_hid_lite.w_ready  ),
+      .s_axi_wstrb     ( io_hid_lite.w_strb   ),
+      .s_axi_wvalid    ( io_hid_lite.w_valid  ),
+      .bram_rst_a(hid_rst),        // output wire hid_rst_a
+      .bram_clk_a(hid_clk),        // output wire hid_clk_a
+      .bram_en_a(hid_en),          // output wire hid_en_a
+      .bram_we_a(hid_we),          // output wire [3 : 0] hid_we_a
+      .bram_addr_a(hid_addr),      // output wire [15 : 0] hid_addr_a
+      .bram_wrdata_a(hid_wrdata),  // output wire [31 : 0] hid_wrdata_a
+      .bram_rddata_a(hid_rddata)   // input wire [31 : 0] hid_rddata_a
+      );
+
+   periph_soc psoc
+     (
+      .msoc_clk   ( clk             ),
+      .sd_sclk    ( sd_sclk         ),
+      .sd_detect  ( sd_detect       ),
+      .sd_dat     ( sd_dat          ),
+      .sd_cmd     ( sd_cmd          ),
+      .sd_irq     ( sd_irq          ),
+      .from_dip   ( {12'b0,i_dip}   ),
+      .to_led     ( o_led           ),
+      .rstn       ( clk_locked      ),
+      .clk_200MHz ( mig_sys_clk     ),
+      .pxl_clk    ( clk_pixel       ),
+      .*
+      );
+                       
+`else // !`ifdef ADD_HID
+
+   assign hid_irq = 1'b0;
+   assign sd_irq = 1'b0;
+
+`endif // !`ifdef ADD_HID
+
+  /////////////////////////////////////////////////////////////
    // UART or trace debugger
    nasti_channel
      #(
@@ -870,9 +997,146 @@ module chip_top
 `endif
 
    /////////////////////////////////////////////////////////////
+   // ETH
+   nasti_channel
+     #(
+       .ID_WIDTH    ( `MMIO_MASTER_ID_WIDTH      ),
+       .ADDR_WIDTH  ( `MMIO_MASTER_ADDR_WIDTH       ),
+       .DATA_WIDTH  ( `LOWRISC_IO_DAT_WIDTH     ))
+   io_eth_nasti();
+   logic                       eth_irq;
+
+`ifdef ADD_ETH
+   nasti_channel
+     #(
+       .ID_WIDTH    ( `MMIO_MASTER_ID_WIDTH      ),
+       .ADDR_WIDTH  ( `MMIO_MASTER_ADDR_WIDTH       ),
+       .DATA_WIDTH  ( `LOWRISC_IO_DAT_WIDTH     ))
+   local_eth_nasti();
+
+   nasti_narrower
+     #(
+       .ID_WIDTH          ( `MMIO_MASTER_ID_WIDTH  ),
+       .ADDR_WIDTH        ( `MMIO_MASTER_ADDR_WIDTH   ),
+       .MASTER_DATA_WIDTH ( `MMIO_MASTER_DATA_WIDTH  ),
+       .SLAVE_DATA_WIDTH  ( `LOWRISC_IO_DAT_WIDTH ))
+   eth_narrower
+     (
+      .clk    ( clk                ),
+      .rstn   ( rstn               ),
+      .master ( io_eth_nasti       ),
+      .slave  ( local_eth_nasti    )
+      );
+
+    logic [1:0] eth_txd;
+    logic eth_rstn, eth_refclk, eth_txen;
+    assign o_erstn = eth_rstn & clk_locked_wiz;
+    
+   always @(posedge clk_rmii)
+     begin
+        phy_emdio_i <= io_emdio_i;
+        io_emdio_o <= phy_emdio_o;
+        io_emdio_t <= phy_emdio_t;
+     end
+
+   IOBUF #(
+      .DRIVE(12), // Specify the output drive strength
+      .IBUF_LOW_PWR("TRUE"),  // Low Power - "TRUE", High Performance = "FALSE" 
+      .IOSTANDARD("DEFAULT"), // Specify the I/O standard
+      .SLEW("SLOW") // Specify the output slew rate
+   ) IOBUF_inst (
+      .O(io_emdio_i),     // Buffer output
+      .IO(io_emdio),   // Buffer inout port (connect directly to top-level port)
+      .I(io_emdio_o),     // Buffer input
+      .T(io_emdio_t)      // 3-state enable input, high=input, low=output
+   );
+
+  ODDR #(
+    .DDR_CLK_EDGE("OPPOSITE_EDGE"),
+    .INIT(1'b0),
+    .IS_C_INVERTED(1'b0),
+    .IS_D1_INVERTED(1'b0),
+    .IS_D2_INVERTED(1'b0),
+    .SRTYPE("SYNC")) 
+    refclk_inst
+       (.C(eth_refclk),
+        .CE(1'b1),
+        .D1(1'b1),
+        .D2(1'b0),
+        .Q(o_erefclk),
+        .R(1'b0),
+        .S( ));
+    
+    always @(posedge clk_rmii_quad)
+        begin
+        o_etxd = eth_txd;
+        o_etx_en = eth_txen;
+        end
+
+    mii_to_rmii_0_open eth_i
+     (
+      .clk_rmii(clk_rmii),
+      .locked(clk_locked),
+    // SMSC ethernet PHY connections
+      .eth_rstn    ( eth_rstn ),
+      .eth_crsdv   ( i_erx_dv ),
+      .eth_refclk  ( eth_refclk ),
+      .eth_txd     ( eth_txd ),
+      .eth_txen    ( eth_txen ),
+      .eth_rxd     ( i_erxd ),
+      .eth_rxerr   ( i_erx_er ),
+      .eth_mdc     ( o_emdc ),
+      .phy_mdio_i  ( phy_emdio_i ),
+      .phy_mdio_o  ( phy_emdio_o ),
+      .phy_mdio_t  ( phy_emdio_t ),
+      .eth_irq     ( eth_irq ),
+      .s_axi_aclk      ( clk                  ),
+      .s_axi_aresetn   ( rstn                 ),
+      .s_axi_arid      ( local_eth_nasti.ar_id    ),
+      .s_axi_araddr    ( local_eth_nasti.ar_addr  ),
+      .s_axi_arlen     ( local_eth_nasti.ar_len   ),
+      .s_axi_arsize    ( local_eth_nasti.ar_size  ),
+      .s_axi_arburst   ( local_eth_nasti.ar_burst ),
+      .s_axi_arlock    ( local_eth_nasti.ar_lock  ),
+      .s_axi_arcache   ( local_eth_nasti.ar_cache ),
+      .s_axi_arprot    ( local_eth_nasti.ar_prot  ),
+      .s_axi_arready   ( local_eth_nasti.ar_ready ),
+      .s_axi_arvalid   ( local_eth_nasti.ar_valid ),
+      .s_axi_rid       ( local_eth_nasti.r_id     ),
+      .s_axi_rdata     ( local_eth_nasti.r_data   ),
+      .s_axi_rresp     ( local_eth_nasti.r_resp   ),
+      .s_axi_rlast     ( local_eth_nasti.r_last   ),
+      .s_axi_rready    ( local_eth_nasti.r_ready  ),
+      .s_axi_rvalid    ( local_eth_nasti.r_valid  ),
+      .s_axi_awid      ( local_eth_nasti.aw_id    ),
+      .s_axi_awaddr    ( local_eth_nasti.aw_addr  ),
+      .s_axi_awlen     ( local_eth_nasti.aw_len   ),
+      .s_axi_awsize    ( local_eth_nasti.aw_size  ),
+      .s_axi_awburst   ( local_eth_nasti.aw_burst ),
+      .s_axi_awlock    ( local_eth_nasti.aw_lock  ),
+      .s_axi_awcache   ( local_eth_nasti.aw_cache ),
+      .s_axi_awprot    ( local_eth_nasti.aw_prot  ),
+      .s_axi_awready   ( local_eth_nasti.aw_ready ),
+      .s_axi_awvalid   ( local_eth_nasti.aw_valid ),
+      .s_axi_wdata     ( local_eth_nasti.w_data   ),
+      .s_axi_wstrb     ( local_eth_nasti.w_strb   ),
+      .s_axi_wlast     ( local_eth_nasti.w_last   ),
+      .s_axi_wready    ( local_eth_nasti.w_ready  ),
+      .s_axi_wvalid    ( local_eth_nasti.w_valid  ),
+      .s_axi_bid       ( local_eth_nasti.b_id     ),
+      .s_axi_bresp     ( local_eth_nasti.b_resp   ),
+      .s_axi_bready    ( local_eth_nasti.b_ready  ),
+      .s_axi_bvalid    ( local_eth_nasti.b_valid  ));
+
+`else // !`ifdef ADD_ETH
+
+   assign eth_irq = 1'b0;
+`endif
+
+   /////////////////////////////////////////////////////////////
    // IO crossbar
 
-   localparam NUM_DEVICE = 3;
+   localparam NUM_DEVICE = 4;
 
    // output of the IO crossbar
    nasti_channel
@@ -882,7 +1146,7 @@ module chip_top
        .DATA_WIDTH  ( `LOWRISC_IO_DAT_WIDTH     ))
    io_cbo_lite();
 
-   nasti_channel ios_dmm3(), ios_dmm4(), ios_dmm5(), ios_dmm6(), ios_dmm7(); // dummy channels
+   nasti_channel ios_dmm4(), ios_dmm5(), ios_dmm6(), ios_dmm7(); // dummy channels
 
    nasti_channel_slicer #(NUM_DEVICE)
    io_slicer (
@@ -890,7 +1154,7 @@ module chip_top
               .slave_0  ( io_host_lite  ),
               .slave_1  ( io_uart_lite  ),
               .slave_2  ( io_spi_lite   ),
-              .slave_3  ( ios_dmm3      ),
+              .slave_3  ( io_hid_lite   ),
               .slave_4  ( ios_dmm4      ),
               .slave_5  ( ios_dmm5      ),
               .slave_6  ( ios_dmm6      ),
@@ -932,6 +1196,10 @@ module chip_top
    defparam io_crossbar.MASK2 = `SPI_SIZE - 1;
 `endif
 
+`ifdef ADD_HID
+   defparam io_crossbar.BASE3 = `HID_BASE;
+   defparam io_crossbar.MASK3 = `HID_SIZE - 1;
+`endif
    /////////////////////////////////////////////////////////////
    // the Rocket chip
 
@@ -1077,12 +1345,12 @@ module chip_top
       );
 
    // interrupt
-   assign interrupts = {62'b0, spi_irq, uart_irq};
+   assign interrupt = {60'b0, sd_irq, eth_irq, spi_irq, uart_irq};
 
    /////////////////////////////////////////////////////////////
    // IO memory crossbar
 
-   localparam NUM_IO_MEM = 2;
+   localparam NUM_IO_MEM = 3;
 
    // output of the IO crossbar
    nasti_channel
@@ -1093,7 +1361,7 @@ module chip_top
        .DATA_WIDTH  ( `MMIO_MASTER_DATA_WIDTH ))
    io_mem_cbo_nasti();
 
-   nasti_channel io_mem_dmm3(), io_mem_dmm4(), io_mem_dmm5(), io_mem_dmm6(), io_mem_dmm7(); // dummy channels
+   nasti_channel io_mem_dmm4(), io_mem_dmm5(), io_mem_dmm6(), io_mem_dmm7(); // dummy channels
 
    nasti_channel_slicer #(NUM_IO_MEM + 1)
    io_mem_slicer (
@@ -1101,7 +1369,7 @@ module chip_top
                   .slave_0  ( io_io_nasti      ),
                   .slave_1  ( io_bram_nasti    ),
                   .slave_2  ( io_flash_nasti   ),
-                  .slave_3  ( io_mem_dmm3      ),
+                  .slave_3  ( io_eth_nasti     ),
                   .slave_4  ( io_mem_dmm4      ),
                   .slave_5  ( io_mem_dmm5      ),
                   .slave_6  ( io_mem_dmm6      ),
@@ -1139,5 +1407,10 @@ module chip_top
    defparam io_mem_crossbar.BASE2 = `FLASH_BASE;
    defparam io_mem_crossbar.MASK2 = `FLASH_SIZE - 1;
 `endif
-   
+
+  `ifdef ADD_ETH
+   defparam io_mem_crossbar.BASE3 = `ETH_BASE;
+   defparam io_mem_crossbar.MASK3 = `ETH_SIZE - 1;
+ `endif
+ 
 endmodule // chip_top

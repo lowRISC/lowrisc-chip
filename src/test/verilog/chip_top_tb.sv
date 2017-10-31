@@ -201,28 +201,32 @@ module tb;
    assign spi_miso = 'bz;
 `endif //  `ifdef ADD_SPI
 
-`ifdef ADD_MINION_SD
+`ifdef ADD_HID
 
    // 4-bit full SD interface
    wire         sd_sclk;
-   wire         sd_detect;
-   wire [3:0]   sd_dat;
-   wire         sd_cmd;
-   wire         sd_reset;
+   wire         sd_detect = 1'b0; // Simulate SD-card always there
+   wand [3:0]   sd_dat = oeDat ? sd_dat_to_host : 4'b1111;
+   wand         sd_cmd = oeCmd ? sd_cmd_to_host : 4'b1;
+   wire [3:0]   sd_dat_to_host;
+   wire         sd_cmd_to_host;
+   wire         sd_reset, oeCmd, oeDat;
 
-   sd_card
-   sdflash1
-     (
+sd_verilator_model sdflash1 (
       .sdClk ( sd_sclk ),
       .cmd   ( sd_cmd  ),
-      .dat   ( sd_dat  )
+             .cmdOut(sd_cmd_to_host),
+             .dat(sd_dat),
+             .datOut(sd_dat_to_host),
+             .oeCmd(oeCmd),
+             .oeDat(oeDat)
       );
 
    // LED and DIP switch
    wire [7:0]   o_led;
    wire [3:0]   i_dip;
 
-   assign i_dip = 'bzzzz;
+   assign i_dip = 8'h88;
 
    // push button array
    wire         GPIO_SW_C;
@@ -238,8 +242,8 @@ module tb;
    assign GPIO_SW_S = 'b1;
 
    //keyboard
-   wire         PS2_CLK;
-   wire         PS2_DATA;
+   tri1         PS2_CLK;
+   tri1         PS2_DATA;
 
    assign PS2_CLK = 'bz;
    assign PS2_DATA = 'bz;
@@ -302,6 +306,24 @@ module tb;
       else if(rv == 0)
         $finish();
    end
+`endif
+
+`ifdef ADD_ETH
+  wire         o_erefclk; // RMII clock out
+  wire [1:0]   i_erxd ;
+  wire         i_erx_dv ;
+  wire         i_erx_er ;
+  wire         i_emdint ;
+  wire [1:0]   o_etxd ;
+  wire         o_etx_en ;
+  wire         o_emdc ;
+  wire         io_emdio ;
+  wire         o_erstn ;
+
+   assign i_emdint = 1'b1;
+   assign i_erx_dv = o_etx_en;
+   assign i_erxd = o_etxd;
+   assign i_erx_er = 1'b0;
 `endif
 
 endmodule // tb
