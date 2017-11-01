@@ -40,6 +40,8 @@
 ////                                                              ////
 //////////////////////////////////////////////////////////////////////
 
+`default_nettype wire
+
 module ps2(clk, rst, rx_ascii_read, 
            PS2_K_CLK_IO, PS2_K_DATA_IO, PS2_M_CLK_IO, PS2_M_DATA_IO,
            ascii_code, ascii_data_ready, rx_translated_scan_code);

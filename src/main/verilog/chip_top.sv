@@ -165,8 +165,6 @@ module chip_top
  inout wire         io_emdio, // MDIO inout
  output wire        o_erstn, // PHY reset active low
 `endif //  `ifdef ADD_ETH
- 
-
    // clock and reset
    input         clk_p,
    input         clk_n,
@@ -272,7 +270,7 @@ reg phy_emdio_i, io_emdio_o, io_emdio_t;
       .s_axi_awcache        ( mem_nasti.aw_cache       ),
       .s_axi_awprot         ( mem_nasti.aw_prot        ),
       .s_axi_awqos          ( mem_nasti.aw_qos         ),
-      .s_axi_awregion       ( mem_nasti.aw_region      ),
+      .s_axi_awregion       ( 4'b0                     ), // not supported in AXI4
       .s_axi_awvalid        ( mem_nasti.aw_valid       ),
       .s_axi_awready        ( mem_nasti.aw_ready       ),
       .s_axi_wdata          ( mem_nasti.w_data         ),
@@ -293,7 +291,7 @@ reg phy_emdio_i, io_emdio_o, io_emdio_t;
       .s_axi_arcache        ( mem_nasti.ar_cache       ),
       .s_axi_arprot         ( mem_nasti.ar_prot        ),
       .s_axi_arqos          ( mem_nasti.ar_qos         ),
-      .s_axi_arregion       ( mem_nasti.ar_region      ),
+      .s_axi_arregion       ( 4'b0                     ), // not supported in AXI4
       .s_axi_arvalid        ( mem_nasti.ar_valid       ),
       .s_axi_arready        ( mem_nasti.ar_ready       ),
       .s_axi_rid            ( mem_nasti.r_id           ),
@@ -347,7 +345,7 @@ reg phy_emdio_i, io_emdio_o, io_emdio_t;
 
  `ifdef NEXYS4_COMMON
    //clock generator
-   logic mig_sys_clk, clk_pixel, clk_rmii, clk_rmii_quad;
+   logic mig_sys_clk, clk_pixel;
    logic clk_io_uart; // UART IO clock for debug
 
    clk_wiz_0 clk_gen
@@ -361,7 +359,6 @@ reg phy_emdio_i, io_emdio_o, io_emdio_t;
       .resetn        ( rst_top       ),
       .locked        ( clk_locked_wiz )
       );
-   
    assign clk_locked = clk_locked_wiz & rst_top;
  `endif //  `ifdef NEXYS4_COMMON
 
@@ -590,6 +587,7 @@ reg phy_emdio_i, io_emdio_o, io_emdio_t;
    logic [BRAM_SIZE-1:0]               ram_addr;
    logic [`LOWRISC_IO_DAT_WIDTH-1:0]   ram_wrdata, ram_rddata;
    wire [31:0] ram_rddata_b;
+   wire ram_sel_b;
 
    axi_bram_ctrl_0 BramCtl
      (
@@ -640,6 +638,7 @@ reg phy_emdio_i, io_emdio_o, io_emdio_t;
       );
 
 
+   // the inferred BRAMs
    reg   [BRAM_WIDTH-1:0]         ram [0 : BRAM_LINE-1];
    logic [BRAM_ADDR_BLK_BITS-1:0] ram_block_addr, ram_block_addr_delay;
    logic [BRAM_ADDR_LSB_BITS-1:0] ram_lsb_addr, ram_lsb_addr_delay;
@@ -832,8 +831,7 @@ reg phy_emdio_i, io_emdio_o, io_emdio_t;
       .ss_i            ( spi_cs_i              ),
       .ss_o            ( spi_cs_o              ),
       .ss_t            ( spi_cs_t              ),
-      .ip2intc_irpt    ( spi_irq               ), // polling for now
-      .sd_reset	       ( sd_reset              )
+      .ip2intc_irpt    ( spi_irq               ) // polling for now
       );
 
 
@@ -856,7 +854,7 @@ reg phy_emdio_i, io_emdio_o, io_emdio_t;
 
 `endif // !`ifdef ADD_SPI
 
-    /////////////////////////////////////////////////////////////
+   /////////////////////////////////////////////////////////////
    // HID
    nasti_channel
      #(
@@ -927,7 +925,7 @@ axi_bram_ctrl_2 hid_i
 
 `endif // !`ifdef ADD_HID
 
-  /////////////////////////////////////////////////////////////
+   /////////////////////////////////////////////////////////////
    // UART or trace debugger
    nasti_channel
      #(
@@ -1200,6 +1198,7 @@ axi_bram_ctrl_2 hid_i
    defparam io_crossbar.BASE3 = `HID_BASE;
    defparam io_crossbar.MASK3 = `HID_SIZE - 1;
 `endif
+
    /////////////////////////////////////////////////////////////
    // the Rocket chip
 
@@ -1408,9 +1407,9 @@ axi_bram_ctrl_2 hid_i
    defparam io_mem_crossbar.MASK2 = `FLASH_SIZE - 1;
 `endif
 
-  `ifdef ADD_ETH
+`ifdef ADD_ETH
    defparam io_mem_crossbar.BASE3 = `ETH_BASE;
    defparam io_mem_crossbar.MASK3 = `ETH_SIZE - 1;
- `endif
- 
+`endif
+   
 endmodule // chip_top

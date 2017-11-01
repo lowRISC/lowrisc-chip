@@ -75,16 +75,37 @@ class WithSPI extends Config(Parameters.empty) {
   )
 }
 
+class WithHID extends Config(Parameters.empty) {
+  SlaveDevice.entries +=  ExSlaveParams(
+    name       = "hid",
+    device     = () => new SimpleDevice("hid",Seq("lowrisc")),
+    base       = 0x41020000,
+    size       = 0x00020000,     // 128KB
+    interrupts = 1
+  )
+}
+
 class WithFlash extends Config(Parameters.empty) {
   SlaveDevice.entries += ExSlaveParams(
     name       = "flash",
     device     = () => new SimpleDevice("flash", Seq("xlnx,flash")),
     base       = 0x42000000,
-    size       = 0x01000000,     // 16M
+    size       = 0x01000000,     // 16MB
     resource   = Some("mem"),
     executable = true
   )
 }
 
+class WithETH extends Config(Parameters.empty) {
+  SlaveDevice.entries += ExSlaveParams(
+    name       = "eth",
+    device     = () => new SimpleDevice("eth", Seq("lowrisc")),
+    base       = 0x43000000,
+    size       = 0x00002000,     // 8KB
+    resource   = Some("mem"),
+    interrupts = 1
+  )
+}
+
 class LoRCDefaultConfig extends Config(new WithHost ++ new WithNBigCores(1) ++ new LoRCBaseConfig)
-class LoRCNexys4Config extends Config(new WithUART ++ new WithBootRAM ++ new WithSPI ++ new WithNBigCores(1) ++ new LoRCBaseConfig)
+class LoRCNexys4Config extends Config(new WithUART ++ new WithBootRAM ++ new WithHID ++ new WithETH ++ new WithNBigCores(1) ++ new LoRCBaseConfig)
