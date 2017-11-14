@@ -2,6 +2,7 @@
 
 `include "consts.vh"
 `include "config.vh"
+`timescale 1ns/1ps
 
 module tb;
 
@@ -175,8 +176,8 @@ module tb;
    wire         rts;
    wire         cts;
 
-   assign rxd = 'b1;
-   assign cts = 'b1;
+   assign rxd = txd;
+   assign cts = rts;
 
 `endif
 
@@ -205,12 +206,12 @@ module tb;
 
    // 4-bit full SD interface
    wire         sd_sclk;
-   wire         sd_detect = 1'b0; // Simulate SD-card always there
-   wand [3:0]   sd_dat = oeDat ? sd_dat_to_host : 4'b1111;
-   wand         sd_cmd = oeCmd ? sd_cmd_to_host : 4'b1;
    wire [3:0]   sd_dat_to_host;
    wire         sd_cmd_to_host;
    wire         sd_reset, oeCmd, oeDat;
+   wire         sd_detect = 1'b0; // Simulate SD-card always there
+   wand [3:0]   sd_dat = oeDat ? sd_dat_to_host : 4'b1111;
+   wand         sd_cmd = oeCmd ? sd_cmd_to_host : 4'b1;
 
 sd_verilator_model sdflash1 (
       .sdClk ( sd_sclk ),
