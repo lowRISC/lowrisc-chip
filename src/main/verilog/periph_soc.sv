@@ -56,6 +56,9 @@ module periph_soc
  reg [31:0]  keycode;
  wire [35:0] keyb_fifo_out;
  
+ logic [7:0] one_hot_data_addr;
+ logic [31:0] one_hot_rdata[7:0];
+
     ps2 keyb_mouse(
       .clk(msoc_clk),
       .rst(irst),
@@ -121,17 +124,17 @@ module periph_soc
  assign VGA_GREEN_O = green[7:4];
  assign VGA_BLUE_O = blue[7:4];
 
-//----------------------------------------------------------------------------//
-// Core Instantiation
-//----------------------------------------------------------------------------//
-// signals from/to core
-logic         core_instr_req;
-logic         core_instr_gnt;
-logic         core_instr_rvalid;
-logic [31:0]  core_instr_addr;
-
-  logic [3:0] one_hot_data_addr;
-  logic [31:0] one_hot_rdata[3:0];
+reg u_trans, u_recv, u_rd_ack, u_txq;
+reg [15:0] u_baud;
+reg [4:0] uart_rx_dly;
+wire u_received, recv_err, is_recv, is_trans, uart_maj, u_tx_ready;
+wire uart_rxalmostfull, uart_rxfull, uart_rxrderr, uart_rxwrerr, uart_rxempty;   
+wire uart_txalmostfull, uart_txfull, uart_txrderr, uart_txwrerr, uart_txempty;   
+wire [11:0] uart_rxwrcount, uart_rxrdcount;
+wire [11:0] uart_txwrcount, uart_txrdcount;
+wire [8:0] uart_fifo_data_out;
+wire [7:0] u_tx_byte, u_rx_byte;
+reg [31:0] u_rxdata;
 
 always_comb
   begin:onehot
@@ -185,6 +188,14 @@ logic [6:0] sd_clk_daddr;
 logic       sd_clk_dclk, sd_clk_den, sd_clk_drdy, sd_clk_dwe, sd_clk_locked;
 logic [15:0] sd_clk_din, sd_clk_dout;
 logic [3:0] sd_irq_en_reg, sd_irq_stat_reg;
+logic            sd_detect_reg;
+
+   logic [133:0]    sd_cmd_response, sd_cmd_response_reg;
+   logic [31:0] 	sd_cmd_resp_sel, sd_status_reg;
+   logic [31:0] 	sd_status, sd_cmd_wait, sd_data_wait, sd_cmd_wait_reg, sd_data_wait_reg;
+   logic [6:0] 	    sd_cmd_crc_val;
+   logic [47:0] 	sd_cmd_packet, sd_cmd_packet_reg;
+   logic [15:0] 	sd_transf_cnt, sd_transf_cnt_reg;
    
 assign sd_clk_dclk = msoc_clk;
 
@@ -310,14 +321,6 @@ always @(posedge sd_clk_o)
         end
         
    endgenerate					
-
-   logic [133:0]    sd_cmd_response, sd_cmd_response_reg;
-   logic [31:0] 	sd_cmd_resp_sel, sd_status_reg;
-   logic [31:0] 	sd_status, sd_cmd_wait, sd_data_wait, sd_cmd_wait_reg, sd_data_wait_reg;
-   logic [6:0] 	    sd_cmd_crc_val;
-   logic [47:0] 	sd_cmd_packet, sd_cmd_packet_reg;
-   logic [15:0] 	sd_transf_cnt, sd_transf_cnt_reg;
-   logic            sd_detect_reg;
 
    RAMB16_S36_S36 RAMB16_S1_inst_sd (
                                    .CLKA(~sd_clk_o),             // Port A Clock
