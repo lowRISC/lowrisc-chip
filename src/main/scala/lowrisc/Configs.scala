@@ -40,7 +40,7 @@ class WithBootRAM extends Config((site, here, up) => {
     name       = "bram",
     device     = () => new SimpleDevice("bram", Seq("xlnx,bram")),
     base       = 0x40000000,
-    size       = 0x00020000,     // 128KB
+    size       = 0x00100000,     // 1MB
     resource   = Some("mem"),
     executable = true
   )
@@ -86,5 +86,5 @@ class WithFlash extends Config(Parameters.empty) {
   )
 }
 
-class LoRCDefaultConfig extends Config(new WithHost ++ new WithNBigCores(1) ++ new LoRCBaseConfig)
+class LoRCDefaultConfig extends Config(new WithHost ++ new WithBootRAM ++ new WithNBigCores(1) ++ new LoRCBaseConfig)
 class LoRCNexys4Config extends Config(new WithUART ++ new WithBootRAM ++ new WithSPI ++ new WithNBigCores(1) ++ new LoRCBaseConfig)

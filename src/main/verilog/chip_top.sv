@@ -224,7 +224,7 @@ module chip_top
       .s_axi_awcache        ( mem_nasti.aw_cache       ),
       .s_axi_awprot         ( mem_nasti.aw_prot        ),
       .s_axi_awqos          ( mem_nasti.aw_qos         ),
-      .s_axi_awregion       ( mem_nasti.aw_region      ),
+      .s_axi_awregion       ( 4'b0                     ), // not supported in AXI4
       .s_axi_awvalid        ( mem_nasti.aw_valid       ),
       .s_axi_awready        ( mem_nasti.aw_ready       ),
       .s_axi_wdata          ( mem_nasti.w_data         ),
@@ -245,7 +245,7 @@ module chip_top
       .s_axi_arcache        ( mem_nasti.ar_cache       ),
       .s_axi_arprot         ( mem_nasti.ar_prot        ),
       .s_axi_arqos          ( mem_nasti.ar_qos         ),
-      .s_axi_arregion       ( mem_nasti.ar_region      ),
+      .s_axi_arregion       ( 4'b0                     ), // not supported in AXI4
       .s_axi_arvalid        ( mem_nasti.ar_valid       ),
       .s_axi_arready        ( mem_nasti.ar_ready       ),
       .s_axi_rid            ( mem_nasti.r_id           ),
@@ -498,6 +498,23 @@ module chip_top
        .DATA_WIDTH  ( `MMIO_MASTER_DATA_WIDTH ))
    io_bram_nasti();
 
+   /////////////////////////////////////////////////////////////
+   // Host for ISA regression
+
+   nasti_channel
+     #(
+       .ADDR_WIDTH  ( `MMIO_MASTER_ADDR_WIDTH   ),
+       .DATA_WIDTH  ( `LOWRISC_IO_DAT_WIDTH     ))
+   io_host_lite();
+
+`ifdef ADD_HOST
+   host_behav host
+     (
+      .clk          ( clk          ),
+      .rstn         ( rstn         ),
+      .nasti        ( io_host_lite )
+      );
+`else
 `ifdef ADD_BRAM
 
    nasti_channel
@@ -619,6 +636,7 @@ module chip_top
    initial $readmemh("boot.mem", ram);
 
 `endif //  `ifdef ADD_BRAM
+`endif
 
    /////////////////////////////////////////////////////////////
    // XIP SPI Flash
@@ -850,24 +868,6 @@ module chip_top
    assign uart_irq = 1'b0;
 
 `endif // !`ifdef ADD_UART
-
-   /////////////////////////////////////////////////////////////
-   // Host for ISA regression
-
-   nasti_channel
-     #(
-       .ADDR_WIDTH  ( `MMIO_MASTER_ADDR_WIDTH   ),
-       .DATA_WIDTH  ( `LOWRISC_IO_DAT_WIDTH     ))
-   io_host_lite();
-
-`ifdef ADD_HOST
-   host_behav host
-     (
-      .clk          ( clk          ),
-      .rstn         ( rstn         ),
-      .nasti        ( io_host_lite )
-      );
-`endif
 
    /////////////////////////////////////////////////////////////
    // IO crossbar
