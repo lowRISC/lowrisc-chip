@@ -86,5 +86,5 @@ class WithFlash extends Config(Parameters.empty) {
   )
 }
 
-class LoRCDefaultConfig extends Config(new WithHost ++ new WithBootRAM ++ new WithNBigCores(1) ++ new LoRCBaseConfig)
+class LoRCDefaultConfig extends Config(new WithHost ++ new WithNBigCores(1) ++ new LoRCBaseConfig)
 class LoRCNexys4Config extends Config(new WithUART ++ new WithBootRAM ++ new WithSPI ++ new WithNBigCores(1) ++ new LoRCBaseConfig)
