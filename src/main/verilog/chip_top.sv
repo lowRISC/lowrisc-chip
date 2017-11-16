@@ -5,6 +5,16 @@
 `include "consts.vh"
 `include "config.vh"
 
+// Allow ISA regression test to use proper FPGA configuration
+`ifdef ADD_HOST
+`ifndef FPGA_FULL
+`undef ADD_BRAM
+`undef ADD_UART
+`undef ADD_FLASH
+`undef ADD_SPI
+`endif
+`endif
+
 module chip_top
   (
 `ifdef ADD_PHY_DDR
@@ -498,23 +508,6 @@ module chip_top
        .DATA_WIDTH  ( `MMIO_MASTER_DATA_WIDTH ))
    io_bram_nasti();
 
-   /////////////////////////////////////////////////////////////
-   // Host for ISA regression
-
-   nasti_channel
-     #(
-       .ADDR_WIDTH  ( `MMIO_MASTER_ADDR_WIDTH   ),
-       .DATA_WIDTH  ( `LOWRISC_IO_DAT_WIDTH     ))
-   io_host_lite();
-
-`ifdef ADD_HOST
-   host_behav host
-     (
-      .clk          ( clk          ),
-      .rstn         ( rstn         ),
-      .nasti        ( io_host_lite )
-      );
-`else
 `ifdef ADD_BRAM
 
    nasti_channel
@@ -552,7 +545,6 @@ module chip_top
    logic [BRAM_SIZE-1:0]               ram_addr;
    logic [`LOWRISC_IO_DAT_WIDTH-1:0]   ram_wrdata, ram_rddata;
    wire [31:0] ram_rddata_b;
-   wire ram_sel_b;
 
    axi_bram_ctrl_0 BramCtl
      (
@@ -597,14 +589,12 @@ module chip_top
       .bram_clk_a      ( ram_clk                   ),
       .bram_en_a       ( ram_en                    ),
       .bram_we_a       ( ram_we                    ),
-      .bram_addr_a     ( {ram_sel_b,ram_addr}      ),
+      .bram_addr_a     ( ram_addr                  ),
       .bram_wrdata_a   ( ram_wrdata                ),
       .bram_rddata_a   ( ram_rddata                )
       );
 
 
-   // the inferred BRAMs
-   reg                            ram_sel_b_dly;
    reg   [BRAM_WIDTH-1:0]         ram [0 : BRAM_LINE-1];
    logic [BRAM_ADDR_BLK_BITS-1:0] ram_block_addr, ram_block_addr_delay;
    logic [BRAM_ADDR_LSB_BITS-1:0] ram_lsb_addr, ram_lsb_addr_delay;
@@ -620,8 +610,7 @@ module chip_top
 
    always @(posedge ram_clk)
     begin
-     ram_sel_b_dly <= ram_sel_b;
-     if(ram_en & !ram_sel_b) begin
+     if(ram_en) begin
         ram_block_addr_delay <= ram_block_addr;
         ram_lsb_addr_delay <= ram_lsb_addr;
         foreach (ram_we_full[i])
@@ -631,12 +620,11 @@ module chip_top
 
    assign ram_rddata_full = ram[ram_block_addr_delay];
    assign ram_rddata_shift = ram_lsb_addr_delay << (BRAM_OFFSET_BITS + 3); // avoid ISim error
-   assign ram_rddata = ram_sel_b_dly ? ram_rddata_b : ram_rddata_full >> ram_rddata_shift;
+   assign ram_rddata = ram_rddata_full >> ram_rddata_shift;
 
    initial $readmemh("boot.mem", ram);
 
 `endif //  `ifdef ADD_BRAM
-`endif
 
    /////////////////////////////////////////////////////////////
    // XIP SPI Flash
@@ -868,6 +856,24 @@ module chip_top
    assign uart_irq = 1'b0;
 
 `endif // !`ifdef ADD_UART
+
+   /////////////////////////////////////////////////////////////
+   // Host for ISA regression
+
+   nasti_channel
+     #(
+       .ADDR_WIDTH  ( `MMIO_MASTER_ADDR_WIDTH   ),
+       .DATA_WIDTH  ( `LOWRISC_IO_DAT_WIDTH     ))
+   io_host_lite();
+
+`ifdef ADD_HOST
+   host_behav host
+     (
+      .clk          ( clk          ),
+      .rstn         ( rstn         ),
+      .nasti        ( io_host_lite )
+      );
+`endif
 
    /////////////////////////////////////////////////////////////
    // IO crossbar

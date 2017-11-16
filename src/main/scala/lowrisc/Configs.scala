@@ -33,9 +33,7 @@ class LoRCBaseConfig extends Config(new BaseCoreplexConfig().alter((site,here,up
   case BootROMParams => BootROMParams(hang = 0x10000, contentFileName = "./bootrom/bootrom.img")
 }))
 
-class WithBootRAM extends Config((site, here, up) => {
-  case BootROMParams => BootROMParams(hang = 0x10000, contentFileName = "./bootrom/bootrom.fpga.img")
-}) {
+class WithBootRAM extends Config(Parameters.empty) {
   SlaveDevice.entries += ExSlaveParams(
     name       = "bram",
     device     = () => new SimpleDevice("bram", Seq("xlnx,bram")),
@@ -50,6 +48,15 @@ class WithHost extends Config(Parameters.empty) {
   SlaveDevice.entries += ExSlaveParams(
     name       = "host",
     device     = () => new SimpleDevice("host", Seq()),
+    base       = 0x41000000,
+    size       = 0x00001000
+  )
+}
+
+class WithDummyHost extends Config(Parameters.empty) {
+  SlaveDevice.entries += ExSlaveParams(
+    name       = "dumh",
+    device     = () => new SimpleDevice("dumh", Seq()),
     base       = 0x41000000,
     size       = 0x00001000
   )
@@ -86,5 +93,5 @@ class WithFlash extends Config(Parameters.empty) {
   )
 }
 
-class LoRCDefaultConfig extends Config(new WithHost ++ new WithBootRAM ++ new WithNBigCores(1) ++ new LoRCBaseConfig)
-class LoRCNexys4Config extends Config(new WithUART ++ new WithBootRAM ++ new WithSPI ++ new WithNBigCores(1) ++ new LoRCBaseConfig)
+class LoRCDefaultConfig extends Config(new WithHost ++ new WithUART ++ new WithBootRAM ++ new WithSPI ++ new WithNBigCores(1) ++ new LoRCBaseConfig)
+class LoRCNexys4Config extends Config(new WithDummyHost ++ new WithUART ++ new WithBootRAM ++ new WithSPI ++ new WithNBigCores(1) ++ new LoRCBaseConfig)
