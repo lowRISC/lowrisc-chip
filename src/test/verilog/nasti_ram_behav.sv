@@ -17,6 +17,90 @@ module nasti_ram_behav
    initial assert(DATA_WIDTH <= 256) else $error("Error: DATA_WIDTH > 256 is not supported!");
    initial assert(USER_WIDTH <= 16) else $error("Error: USER_WIDTH > 16 is not supported!");
 
+`ifdef FPGA
+
+   function bit memory_load_mem (input string filename);
+
+     begin
+     end
+
+   endfunction // memory_load_mem
+   
+   nasti_channel
+     #(
+       .ID_WIDTH    ( ID_WIDTH   ),
+       .ADDR_WIDTH  ( 32         ),
+       .DATA_WIDTH  ( 32         ))
+   local_behav_nasti();
+
+   nasti_narrower
+     #(
+       .ID_WIDTH          ( ID_WIDTH   ),
+       .ADDR_WIDTH        ( ADDR_WIDTH ),
+       .MASTER_DATA_WIDTH ( DATA_WIDTH ),
+       .SLAVE_DATA_WIDTH  ( 32         ))
+   bram_narrower
+     (
+      .*,
+      .master ( nasti     ),
+      .slave  ( local_behav_nasti  )
+      );
+
+   logic ram_clk, ram_rst, ram_en;
+   logic [3:0] ram_we;
+   logic [15:0] ram_addr;
+   logic [31:0]   ram_wrdata, ram_rddata = 'HDEADBEEF;
+   
+   axi_bram_ctrl_0 BehavCtrl
+     (
+      .s_axi_aclk      ( clk                       ),
+      .s_axi_aresetn   ( rstn                      ),
+      .s_axi_arid      ( local_behav_nasti.ar_id    ),
+      .s_axi_araddr    ( local_behav_nasti.ar_addr  ),
+      .s_axi_arlen     ( local_behav_nasti.ar_len   ),
+      .s_axi_arsize    ( local_behav_nasti.ar_size  ),
+      .s_axi_arburst   ( local_behav_nasti.ar_burst ),
+      .s_axi_arlock    ( local_behav_nasti.ar_lock  ),
+      .s_axi_arcache   ( local_behav_nasti.ar_cache ),
+      .s_axi_arprot    ( local_behav_nasti.ar_prot  ),
+      .s_axi_arready   ( local_behav_nasti.ar_ready ),
+      .s_axi_arvalid   ( local_behav_nasti.ar_valid ),
+      .s_axi_rid       ( local_behav_nasti.r_id     ),
+      .s_axi_rdata     ( local_behav_nasti.r_data   ),
+      .s_axi_rresp     ( local_behav_nasti.r_resp   ),
+      .s_axi_rlast     ( local_behav_nasti.r_last   ),
+      .s_axi_rready    ( local_behav_nasti.r_ready  ),
+      .s_axi_rvalid    ( local_behav_nasti.r_valid  ),
+      .s_axi_awid      ( local_behav_nasti.aw_id    ),
+      .s_axi_awaddr    ( local_behav_nasti.aw_addr  ),
+      .s_axi_awlen     ( local_behav_nasti.aw_len   ),
+      .s_axi_awsize    ( local_behav_nasti.aw_size  ),
+      .s_axi_awburst   ( local_behav_nasti.aw_burst ),
+      .s_axi_awlock    ( local_behav_nasti.aw_lock  ),
+      .s_axi_awcache   ( local_behav_nasti.aw_cache ),
+      .s_axi_awprot    ( local_behav_nasti.aw_prot  ),
+      .s_axi_awready   ( local_behav_nasti.aw_ready ),
+      .s_axi_awvalid   ( local_behav_nasti.aw_valid ),
+      .s_axi_wdata     ( local_behav_nasti.w_data   ),
+      .s_axi_wstrb     ( local_behav_nasti.w_strb   ),
+      .s_axi_wlast     ( local_behav_nasti.w_last   ),
+      .s_axi_wready    ( local_behav_nasti.w_ready  ),
+      .s_axi_wvalid    ( local_behav_nasti.w_valid  ),
+      .s_axi_bid       ( local_behav_nasti.b_id     ),
+      .s_axi_bresp     ( local_behav_nasti.b_resp   ),
+      .s_axi_bready    ( local_behav_nasti.b_ready  ),
+      .s_axi_bvalid    ( local_behav_nasti.b_valid  ),
+      .bram_rst_a      ( ram_rst                   ),
+      .bram_clk_a      ( ram_clk                   ),
+      .bram_en_a       ( ram_en                    ),
+      .bram_we_a       ( ram_we                    ),
+      .bram_addr_a     ( ram_addr                  ),
+      .bram_wrdata_a   ( ram_wrdata                ),
+      .bram_rddata_a   ( ram_rddata                )
+      );
+   
+`else
+   
    import "DPI-C" function bit memory_write_req (
                                                  input bit [15:0] id,
                                                  input bit [31:0] addr,
@@ -157,4 +241,6 @@ module nasti_ram_behav
    assign #1 nasti.r_resp = r_resp;
    assign #1 nasti.r_user = r_user;
 
+`endif
+   
 endmodule // nasti_ram_behav

@@ -34,3 +34,6 @@
 [submodule "firrtl"]
 	path = firrtl
 	url = https://github.com/lowrisc/firrtl.git
+[submodule "riscv-poky"]
+	path = riscv-poky
+	url = https://github.com/riscv/riscv-poky.git

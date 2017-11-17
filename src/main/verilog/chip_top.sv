@@ -7,7 +7,7 @@
 
 // Allow ISA regression test to use proper FPGA configuration
 `ifdef ADD_HOST
-`ifndef FPGA_FULL
+`ifndef FPGA
 `undef ADD_BRAM
 `undef ADD_UART
 `undef ADD_FLASH
