@@ -24,6 +24,8 @@
   *  
   */
 
+`default_nettype wire
+
 module AsyncResetReg (
                       input      d,
                       output reg q,

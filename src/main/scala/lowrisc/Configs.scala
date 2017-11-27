@@ -49,16 +49,16 @@ class WithHost extends Config(Parameters.empty) {
     name       = "host",
     device     = () => new SimpleDevice("host", Seq()),
     base       = 0x41000000,
-    size       = 0x00001000
+    size       = 0x00002000
   )
 }
 
-class WithDummyHost extends Config(Parameters.empty) {
+class WithEthHost extends Config(Parameters.empty) {
   SlaveDevice.entries += ExSlaveParams(
-    name       = "dumh",
-    device     = () => new SimpleDevice("dumh", Seq()),
+    name       = "eth",
+    device     = () => new SimpleDevice("eth", Seq()),
     base       = 0x41000000,
-    size       = 0x00001000
+    size       = 0x00002000
   )
 }
 
@@ -94,4 +94,4 @@ class WithFlash extends Config(Parameters.empty) {
 }
 
 class LoRCDefaultConfig extends Config(new WithHost ++ new WithUART ++ new WithBootRAM ++ new WithSPI ++ new WithNBigCores(1) ++ new LoRCBaseConfig)
-class LoRCNexys4Config extends Config(new WithDummyHost ++ new WithUART ++ new WithBootRAM ++ new WithSPI ++ new WithNBigCores(1) ++ new LoRCBaseConfig)
+class LoRCNexys4Config extends Config(new WithEthHost ++ new WithUART ++ new WithBootRAM ++ new WithSPI ++ new WithNBigCores(1) ++ new LoRCBaseConfig)
