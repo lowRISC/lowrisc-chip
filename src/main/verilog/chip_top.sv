@@ -1003,18 +1003,18 @@ axi_bram_ctrl_2 hid_i
    // IO crossbar
    nasti_channel
      #(
-       .ID_WIDTH    ( `MMIO_MASTER_ID_WIDTH      ),
-       .ADDR_WIDTH  ( `MMIO_MASTER_ADDR_WIDTH       ),
-       .DATA_WIDTH  ( `LOWRISC_IO_DAT_WIDTH     ))
+       .ID_WIDTH    ( `MMIO_MASTER_ID_WIDTH   ),
+       .ADDR_WIDTH  ( `MMIO_MASTER_ADDR_WIDTH ),
+       .DATA_WIDTH  ( `MMIO_MASTER_DATA_WIDTH ))
    io_eth_nasti();
    logic                       eth_irq;
 
 `ifdef ADD_ETH
    nasti_channel
      #(
-       .ID_WIDTH    ( `MMIO_MASTER_ID_WIDTH      ),
-       .ADDR_WIDTH  ( `MMIO_MASTER_ADDR_WIDTH       ),
-       .DATA_WIDTH  ( `LOWRISC_IO_DAT_WIDTH     ))
+       .ID_WIDTH    ( `MMIO_MASTER_ID_WIDTH   ),
+       .ADDR_WIDTH  ( `MMIO_MASTER_ADDR_WIDTH ),
+       .DATA_WIDTH  ( `LOWRISC_IO_DAT_WIDTH   ))
    local_eth_nasti();
 
    nasti_narrower

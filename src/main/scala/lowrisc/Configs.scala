@@ -49,7 +49,7 @@ class WithHost extends Config(Parameters.empty) {
     name       = "host",
     device     = () => new SimpleDevice("host", Seq()),
     base       = 0x41000000,
-    size       = 0x00002000
+    size       = 0x00001000
   )
 }
 
@@ -58,7 +58,9 @@ class WithEthHost extends Config(Parameters.empty) {
     name       = "eth",
     device     = () => new SimpleDevice("eth", Seq()),
     base       = 0x41000000,
-    size       = 0x00002000
+    size       = 0x00002000,
+    resource   = Some("mem"),
+    interrupts = 1
   )
 }
 
