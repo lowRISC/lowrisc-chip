@@ -51,7 +51,7 @@ module periph_soc
  
  wire [19:0] dummy;
  wire        irst, ascii_ready;
- wire [7:0]  readch, scancode;
+ wire [7:0]  readch, scancode, fstore_data;
  wire        keyb_empty;   
  reg [31:0]  keycode;
  wire [35:0] keyb_fifo_out;
@@ -72,9 +72,9 @@ module periph_soc
        .rd_clk(~msoc_clk),      // input wire read clk
        .wr_clk(~msoc_clk),      // input wire write clk
        .rst(~rstn),      // input wire rst
-       .din({19'b0, readch[6:0], scancode}),      // input wire [31 : 0] din
+       .din({21'b0, readch[6:0], scancode}),      // input wire [31 : 0] din
        .wr_en(ascii_ready),  // input wire wr_en
-       .rd_en(hid_en&hid_we&one_hot_data_addr[0]),  // input wire rd_en
+       .rd_en(hid_en&(|hid_we)&one_hot_data_addr[0]),  // input wire rd_en
        .dout(keyb_fifo_out),    // output wire [31 : 0] dout
        .rdcount(),         // 12-bit output: Read count
        .rderr(),             // 1-bit output: Read error
@@ -103,11 +103,11 @@ module periph_soc
       .red(red),
       .green(green),
       .blue(blue),
-      .web(hid_en & one_hot_data_addr[1] & hid_we),
+      .web(hid_en & one_hot_data_addr[1] & (|hid_we)),
       .enb(hid_en),
       .addrb(hid_addr[14:2]),
-      .dinb(hid_wrdata),
-      .doutb(one_hot_rdata[1]),
+      .dinb(hid_wrdata[7:0]),
+      .doutb(fstore_data),
       .irst(~rstn),
       .clk_data(msoc_clk),
       .GPIO_SW_C(GPIO_SW_C),
@@ -116,7 +116,8 @@ module periph_soc
       .GPIO_SW_E(GPIO_SW_E),
       .GPIO_SW_W(GPIO_SW_W)              
      );
- 
+
+ assign one_hot_rdata[1] = {24'b0,fstore_data};
  assign VGA_RED_O = red[7:4];
  assign VGA_GREEN_O = green[7:4];
  assign VGA_BLUE_O = blue[7:4];

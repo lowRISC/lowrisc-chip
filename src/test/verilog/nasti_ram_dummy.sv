@@ -3,15 +3,21 @@
 
 module nasti_ram_behav
   #(
-    ID_WIDTH = 1,
-    ADDR_WIDTH = 16,
-    DATA_WIDTH = 128,
+    ID_WIDTH = 8,
+    ADDR_WIDTH = 32,
+    DATA_WIDTH = 64,
     USER_WIDTH = 1
     )
    (
     input clk, rstn,
     nasti_channel.slave nasti
     );
+
+   // BRAM controller
+   logic ram_clk, ram_rst, ram_en;
+   logic [DATA_WIDTH/8-1:0] ram_we;
+   logic [18:0]   ram_addr;
+   logic [DATA_WIDTH-1:0]   ram_wrdata, ram_rddata;
 
 axi_bram_ctrl_3 BramCtl
      (
@@ -51,7 +57,16 @@ axi_bram_ctrl_3 BramCtl
       .s_axi_bid       ( nasti.b_id     ),
       .s_axi_bresp     ( nasti.b_resp   ),
       .s_axi_bready    ( nasti.b_ready  ),
-      .s_axi_bvalid    ( nasti.b_valid  )
+      .s_axi_bvalid    ( nasti.b_valid  ),
+      .bram_rst_a      ( ram_rst                   ),
+      .bram_clk_a      ( ram_clk                   ),
+      .bram_en_a       ( ram_en                    ),
+      .bram_we_a       ( ram_we                    ),
+      .bram_addr_a     ( ram_addr                  ),
+      .bram_wrdata_a   ( ram_wrdata                ),
+      .bram_rddata_a   ( ram_rddata                )
       );
 
+   assign ram_rddata = 32'HDEADBEEF;
+   
 endmodule // spi_wrapper
