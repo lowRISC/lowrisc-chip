@@ -36,7 +36,7 @@ logic  [7:0] mii_rx_data_i;
 logic [10:0] tx_frame_addr, rx_length_axis, tx_packet_length;
 logic [12:0] axis_tx_frame_size;
 logic        ce_d_dly;
-logic [31:0] framing_rdata_axis, framing_rdata_pkt, framing_wdata_pkt;
+logic [31:0] framing_rdata_pkt, framing_wdata_pkt;
 logic [3:0] tx_enable_dly;
 
 reg [12:0] addr_tap, nxt_addr;
@@ -243,7 +243,7 @@ always @(posedge clk_rmii)
     12'b101??????111 : framing_rdata = {axis_error_bad_fcs, axis_error_bad_frame, 19'b0, rx_length_axis};
     12'b100????????? : framing_rdata = framing_rdata_pkt;
     12'b110????????? : framing_rdata = framing_wdata_pkt;
-    12'b111????????? : framing_rdata = framing_rdata_axis;
+    12'b111????????? : framing_rdata = 32'hDEADBEEF;
     default: framing_rdata = 'h0;
     endcase
 
@@ -348,27 +348,6 @@ always @(posedge clk_rmii)
        .ifg_delay(8'd12),
        .crc_state(axis_crc_state)
    );
-
-   RAMB16_S9_S36 RAMB16_S1_axis_rx (
-                                    .CLKA(clk_rmii),              // Port A Clock
-                                    .CLKB(msoc_clk),              // Port A Clock
-                                    .DOA(),                       // Port A 9-bit Data Output
-                                    .ADDRA(rx_addr_axis),         // Port A 11-bit Address Input
-                                    .DIA(rx_axis_tdata),          // Port A 8-bit Data Input
-                                    .DIPA(1'b0),                  // Port A parity unused
-                                    .SSRA(1'b0),                  // Port A Synchronous Set/Reset Input
-                                    .ENA(rx_axis_tvalid),         // Port A RAM Enable Input
-                                    .WEA(rx_axis_tvalid),         // Port A Write Enable Input
-                                    .DOB(framing_rdata_axis),     // Port B 32-bit Data Output
-                                    .DOPB(),                      // Port B parity unused
-                                    .ADDRB(core_lsu_addr[10:2]),  // Port B 9-bit Address Input
-                                    .DIB(core_lsu_wdata),         // Port B 32-bit Data Input
-                                    .DIPB(4'b0),                  // Port B parity unused
-                                    .ENB(ce_d & framing_sel & (core_lsu_addr[12:11]==2'b11)),
-                                                                  // Port B RAM Enable Input
-                                    .SSRB(1'b0),                  // Port B Synchronous Set/Reset Input
-                                    .WEB(we_d)                    // Port B Write Enable Input
-                                    );
 
    assign o_eduttxd = axis_eduttxd;
    assign o_eduttx_en = axis_eduttx_en;
