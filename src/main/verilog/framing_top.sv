@@ -30,37 +30,56 @@ output reg eth_irq
 
 logic [12:0] core_lsu_addr_dly;   
 
-logic tx_enable_i, tx_byte_sent_o, tx_busy_o, rx_frame_o, rx_byte_received_o, rx_error, rx_error_o;
-logic mac_tx_enable, mac_tx_gap, mac_tx_byte_sent;
+logic tx_enable_i;
 logic [47:0] mac_address;
-logic  [7:0] rx_data_o1, rx_data_o2, rx_data_o3, rx_data_o, tx_data_i, mac_tx_data, mac_rx_data, mii_rx_data_i;
-logic [10:0] rx_frame_size_o, tx_frame_addr, rx_packet_length, rx_packet_length_o, rx_length_axis;
-logic [15:0] tx_packet_length, tx_frame_size, axis_tx_frame_size;
-logic        ce_d_dly, rx_fcs_err, rx_fcs_err_o;
-logic [31:0] framing_rdata_axis, framing_rdata_pkt, framing_wdata_pkt, tx_fcs_o, rx_fcs_o;
+logic  [7:0] mii_rx_data_i;
+logic [10:0] tx_frame_addr, rx_length_axis, tx_packet_length;
+logic [12:0] axis_tx_frame_size;
+logic        ce_d_dly;
+logic [31:0] framing_rdata_axis, framing_rdata_pkt, framing_wdata_pkt;
 logic [3:0] tx_enable_dly;
 
 reg [12:0] addr_tap, nxt_addr;
 reg [23:0] rx_byte, rx_nxt, rx_byte_dly;
 reg  [2:0] rx_pair;
-reg        mii_rx_byte_received_i, full, byte_sync, sync, irq_en, axis_en, mii_rx_frame_i, rx_frame_old;
+reg        mii_rx_byte_received_i, full, byte_sync, sync, irq_en, mii_rx_frame_i;
 
    wire [3:0] m_enb = (we_d ? core_lsu_be : 4'hF);
-   logic edutmdio, o_edutmdclk, o_edutrst, cooked, tx_enable_old, loopback, loopback2, promiscuous;
-   logic [1:0] data_dly;   
-   logic [10:0] rx_addr, rx_addr_axis;
-   logic [7:0] rx_data;
-   logic rx_ena, rx_wea;
-   reg [1:0] 	    mac_eduttxd ;
-   reg 		    mac_eduttx_en;
+   logic edutmdio, o_edutmdclk, o_edutrst, cooked, tx_enable_old, loopback;
+   logic [3:0] spare;   
+   logic [10:0] rx_addr_axis;
    
+       /*
+        * AXI input
+        */
+        reg         tx_axis_tvalid;
+        reg         tx_axis_tvalid_dly;
+        reg 	    tx_axis_tlast;
+        wire [7:0]  tx_axis_tdata;
+        wire        tx_axis_tready;
+        wire        tx_axis_tuser = 0;
+   
+       /*
+        * AXI output
+        */
+       wire [7:0]  rx_axis_tdata;
+       wire        rx_axis_tvalid;
+       wire        rx_axis_tlast;
+       wire        rx_axis_tuser;
+   
+       /*
+        * GMII interface
+        */
+        wire        gmii_rx_er = loopback ? 1'b0 : i_edutrx_er;
+        wire [7:0]  gmii_txd;
+        wire        gmii_tx_en;
+        wire        gmii_tx_er;
       /*
         * AXIS Status
         */
          wire        axis_error_bad_frame;
          wire        axis_error_bad_fcs;
-         wire        tx_axis_gtlast = (tx_frame_size[12:2] > tx_packet_length);
-         wire        tx_frame_gtlast = (tx_frame_addr[10:8] > 6); /* beyond valid 1536 octet range */
+         wire        tx_axis_gtlast = (axis_tx_frame_size[12:2] > tx_packet_length+16);
 
    always @(posedge clk_rmii)
      if (rstn == 1'b0)
@@ -97,113 +116,26 @@ reg        mii_rx_byte_received_i, full, byte_sync, sync, irq_en, axis_en, mii_r
                mii_rx_frame_i <= rx_byte_dly[2];
 	       mii_rx_data_i <= {rx_byte_dly[10:9],rx_byte_dly[7:6],rx_byte_dly[4:3],rx_byte_dly[1:0]};
             end
-	  if (( rx_frame_o == 1'b0 ) && ( rx_frame_old == 1'b1 ))
-	    begin
-	       if (cooked)
-		 begin
-		    byte_sync = 1'b0;
-		    addr_tap <= 'H0;
-		 end
-	    end
-	  rx_frame_old = rx_frame_o;
+	  if (rx_axis_tlast)
+            begin
+	       byte_sync = 1'b0;
+	       addr_tap <= 'H0;
+            end
        end
-
-   assign mac_tx_byte_sent = &tx_frame_size[1:0];
-   assign tx_frame_addr = tx_frame_size[12:2] - 7;
-   
-   framing framing_inst_0 (
-			.rx_reset_i             ( ~rstn ),
-			.tx_clock_i             ( clk_rmii ),
-			.tx_reset_i             ( ~rstn ),
-			.rx_clock_i             ( clk_rmii ),
-			.mac_address_i          ( mac_address ),
-			.tx_enable_i            ( tx_enable_i ),
-			.tx_data_i              ( tx_data_i ),
-			.tx_byte_sent_o         ( tx_byte_sent_o ),
-			.tx_busy_o              ( tx_busy_o ),
-			.tx_fcs_o               ( tx_fcs_o ),
-			.rx_frame_o             ( rx_frame_o ),
-			.rx_data_o              ( rx_data_o ),
-			.rx_byte_received_o     ( rx_byte_received_o ),
-			.rx_error_o             ( rx_error_o ),
-			.rx_frame_size_o        ( rx_frame_size_o ),
-			.rx_packet_length_o     ( rx_packet_length_o ),
-			.rx_fcs_o               ( rx_fcs_o ),
-			.rx_fcs_err_o           ( rx_fcs_err_o ),
-			.mii_tx_enable_o        ( mac_tx_enable ),
-			.mii_tx_gap_o           ( mac_tx_gap ),
-			.mii_tx_data_o          ( mac_tx_data ),
-			.mii_tx_byte_sent_i     ( mac_tx_byte_sent ),
-			.mii_rx_frame_i         ( mii_rx_frame_i ),
-			.mii_rx_data_i          ( mii_rx_data_i ),
-			.mii_rx_byte_received_i ( mii_rx_byte_received_i ),
-			.mii_rx_error_i         ( loopback ? 1'b0 : i_edutrx_er ),
-                        .promiscuous_i          ( promiscuous )
-		);
 
    always @(posedge clk_rmii)
-     if (rstn == 0)
-       begin
-       tx_frame_size <= 0;
-       mac_eduttxd <= 0;
-       mac_eduttx_en <= 0;
-       end
-     else
-       begin
-       mac_eduttx_en = mac_tx_enable & ~mac_tx_gap;
-	   if (tx_enable_i & (tx_enable_old == 0))
-	     tx_frame_size <= 0;
-	   if (tx_busy_o)
-            begin
-               tx_frame_size <= tx_frame_size + 1;
-	       mac_eduttxd <= mac_tx_data >> {tx_frame_size[1:0],1'b0};
-            end
-	   tx_enable_old <= tx_enable_i;
-       end
-
-   always @(posedge clk_rmii) if (rx_byte_received_o)
-     begin
-	rx_data_o3 <= rx_data_o2;
-	rx_data_o2 <= rx_data_o1;
-	rx_data_o1 <= cooked ? rx_data_o : mii_rx_data_i;
-     end
-   
-   always @* casez({loopback2,cooked})
-     2'b1?: begin
-	rx_addr = tx_frame_size[12:2];
-	rx_data = mac_tx_data;
-	rx_ena = tx_busy_o;
-	rx_wea = mac_tx_byte_sent;
-        end
-     2'b01: begin
-	rx_addr = rx_frame_size_o;
-	casez(data_dly)
-	  2'b00: rx_data = rx_data_o;
-	  2'b01: rx_data = rx_data_o1;
-	  2'b10: rx_data = rx_data_o2;
-	  2'b11: rx_data = rx_data_o3;
-	endcase
-	rx_ena = rx_frame_o;
-	rx_wea = rx_byte_received_o;
-        end
-     2'b00: begin
-	rx_addr = addr_tap[12:2];
-	rx_data = rx_data_o3;
-	rx_ena = full==0;
-	rx_wea = mii_rx_byte_received_i;
-        end
-     endcase
+       tx_enable_old <= tx_enable_i;
            
    RAMB16_S9_S36 RAMB16_S1_inst_rx (
-                                    .CLKA(clk_rmii),               // Port A Clock
+                                    .CLKA(clk_rmii),              // Port A Clock
                                     .CLKB(msoc_clk),              // Port A Clock
                                     .DOA(),                       // Port A 9-bit Data Output
-                                    .ADDRA(rx_addr),              // Port A 11-bit Address Input
-                                    .DIA(rx_data),                // Port A 8-bit Data Input
+                                    .ADDRA(rx_addr_axis),         // Port A 11-bit Address Input
+                                    .DIA(rx_axis_tdata),          // Port A 8-bit Data Input
                                     .DIPA(1'b0),                  // Port A parity unused
                                     .SSRA(1'b0),                  // Port A Synchronous Set/Reset Input
-                                    .ENA(rx_ena),                 // Port A RAM Enable Input
-                                    .WEA(rx_wea),                 // Port A Write Enable Input
+                                    .ENA(rx_axis_tvalid),         // Port A RAM Enable Input
+                                    .WEA(rx_axis_tvalid),         // Port A Write Enable Input
                                     .DOB(framing_rdata_pkt),      // Port B 32-bit Data Output
                                     .DOPB(),                      // Port B parity unused
                                     .ADDRB(core_lsu_addr[10:2]),  // Port B 9-bit Address Input
@@ -216,16 +148,16 @@ reg        mii_rx_byte_received_i, full, byte_sync, sync, irq_en, axis_en, mii_r
                                     );
 
    RAMB16_S9_S36 RAMB16_S1_inst_tx (
-                                   .CLKA(clk_rmii),               // Port A Clock
+                                   .CLKA(~clk_rmii),             // Port A Clock
                                    .CLKB(msoc_clk),              // Port A Clock
-                                   .DOA(tx_data_i),              // Port A 9-bit Data Output
+                                   .DOA(tx_axis_tdata),          // Port A 9-bit Data Output
                                    .ADDRA(tx_frame_addr),        // Port A 11-bit Address Input
                                    .DIA(8'b0),                   // Port A 8-bit Data Input
                                    .DIPA(1'b0),                  // Port A parity unused
                                    .SSRA(1'b0),                  // Port A Synchronous Set/Reset Input
-                                   .ENA(tx_enable_i),            // Port A RAM Enable Input
+                                   .ENA(tx_axis_tvalid),         // Port A RAM Enable Input
                                    .WEA(1'b0),                   // Port A Write Enable Input
-                                   .DOB(framing_wdata_pkt),          // Port B 32-bit Data Output
+                                   .DOB(framing_wdata_pkt),      // Port B 32-bit Data Output
                                    .DOPB(),                      // Port B parity unused
                                    .ADDRB(core_lsu_addr[10:2]),  // Port B 9-bit Address Input
                                    .DIB(core_lsu_wdata),         // Port B 32-bit Data Input
@@ -248,8 +180,7 @@ always @(posedge msoc_clk)
     tx_enable_dly <= 0;
     cooked <= 1'b0;
     loopback <= 1'b0;
-    loopback2 <= 1'b0;
-    promiscuous <= 1'b0;
+    spare <= 4'b0;
     oe_edutmdio <= 1'b0;
     o_edutmdio <= 1'b0;
     o_edutmdclk <= 1'b0;
@@ -257,9 +188,7 @@ always @(posedge msoc_clk)
     sync <= 1'b0;
     eth_irq <= 1'b0;
     irq_en <= 1'b0;
-    axis_en <= 1'b0;
     ce_d_dly <= 1'b0;
-    data_dly <= 2'b00;
     end
   else
     begin
@@ -270,8 +199,8 @@ always @(posedge msoc_clk)
     if (framing_sel&we_d&(core_lsu_addr[12:11]==2'b01))
       case(core_lsu_addr[5:2])
         0: mac_address[31:0] <= core_lsu_wdata;
-        1: {axis_en,irq_en,promiscuous,data_dly,loopback2,loopback,cooked,mac_address[47:32]} <= core_lsu_wdata;
-        2: begin tx_enable_dly <= 10; tx_packet_length <= core_lsu_wdata+6; end
+        1: {irq_en,spare,loopback,cooked,mac_address[47:32]} <= core_lsu_wdata;
+        2: begin tx_enable_dly <= 10; tx_packet_length <= core_lsu_wdata; end
         3: begin tx_enable_dly <= 0; tx_packet_length <= 0; end
         4: begin {o_edutrst,oe_edutmdio,o_edutmdio,o_edutmdclk} <= core_lsu_wdata; end
         6: begin sync = 0; end
@@ -279,11 +208,8 @@ always @(posedge msoc_clk)
        if (byte_sync & (~rx_pair[2]) & ~sync)
          begin
             sync = 1'b1;
-            rx_error <= rx_error_o;
-            rx_fcs_err <= rx_fcs_err_o;
-            rx_packet_length <= rx_packet_length_o;
          end
-       if (tx_busy_o && tx_axis_gtlast)
+       if (gmii_tx_en && tx_axis_gtlast)
          begin
             tx_enable_dly <= 0;
          end
@@ -298,7 +224,7 @@ always @(posedge clk_rmii)
     end
   else
     begin
-    if (tx_busy_o && tx_axis_gtlast)
+    if (gmii_tx_en && tx_axis_gtlast)
        begin
        tx_enable_i <= 1'b0;
        end
@@ -308,13 +234,13 @@ always @(posedge clk_rmii)
 
    always @* casez({ce_d_dly,core_lsu_addr_dly[12:2]})
     12'b101??????000 : framing_rdata = mac_address[31:0];
-    12'b101??????001 : framing_rdata = {irq_en, promiscuous, data_dly, loopback2, loopback, cooked, mac_address[47:32]};
-    12'b101??????010 : framing_rdata = {tx_busy_o, 4'b0, tx_frame_addr, tx_packet_length};
-    12'b101??????011 : framing_rdata = {tx_fcs_o};
+    12'b101??????001 : framing_rdata = {irq_en, spare, loopback, cooked, mac_address[47:32]};
+    12'b101??????010 : framing_rdata = {5'b0, tx_frame_addr, 5'b0, tx_packet_length};
+    12'b101??????011 : framing_rdata = {32'b0};
     12'b101??????100 : framing_rdata = {i_edutmdio,oe_edutmdio,o_edutmdio,o_edutmdclk};
-    12'b101??????101 : framing_rdata = {rx_fcs_o};
+    12'b101??????101 : framing_rdata = {32'b0};
     12'b101??????110 : framing_rdata = {eth_irq, sync};
-    12'b101??????111 : framing_rdata = {axis_error_bad_fcs, axis_error_bad_frame, rx_fcs_err, rx_error, 1'b0, rx_frame_size_o, 5'b0, rx_length_axis};
+    12'b101??????111 : framing_rdata = {axis_error_bad_fcs, axis_error_bad_frame, 19'b0, rx_length_axis};
     12'b100????????? : framing_rdata = framing_rdata_pkt;
     12'b110????????? : framing_rdata = framing_wdata_pkt;
     12'b111????????? : framing_rdata = framing_rdata_axis;
@@ -323,35 +249,8 @@ always @(posedge clk_rmii)
 
    assign o_edutrstn = ~o_edutrst;
   
-   parameter ENABLE_PADDING = 1;
-   parameter MIN_FRAME_LENGTH = 64;
    parameter dly = 0;
    
-       /*
-        * AXI input
-        */
-        reg         tx_axis_tvalid;
-        reg         tx_axis_tvalid_dly;
-        wire 	    tx_axis_tlast;
-        wire [8:0]  tx_axis_tdata;
-        wire        tx_axis_tready, eth_fifo_empty, eth_fifo_read, eth_fifo_write;
-        wire        tx_axis_tuser = 0;
-   
-       /*
-        * AXI output
-        */
-       wire [7:0]  rx_axis_tdata;
-       wire        rx_axis_tvalid;
-       wire        rx_axis_tlast;
-       wire        rx_axis_tuser;
-   
-       /*
-        * GMII interface
-        */
-        wire        gmii_rx_er = loopback ? 1'b0 : i_edutrx_er;
-        wire [7:0]  gmii_txd;
-        wire        gmii_tx_en;
-        wire        gmii_tx_er;
    reg [1:0] 	    axis_eduttxd ;
    reg 		    axis_eduttx_en;
    reg [31:0] 	    axis_crc_state;
@@ -365,27 +264,6 @@ always @(posedge clk_rmii)
                                           axis_crc_state[28],axis_crc_state[29],axis_crc_state[30],axis_crc_state[31]};
    wire axis_tx_byte_sent = &axis_tx_frame_size[1:0];
    
-   assign eth_fifo_read = tx_axis_tready | (tx_axis_tvalid_dly & axis_tx_byte_sent & ~tx_axis_tvalid);
-   assign eth_fifo_write = axis_tx_byte_sent & ~(tx_frame_gtlast | tx_axis_gtlast);
-   assign tx_axis_tlast = eth_fifo_empty & tx_axis_tvalid_dly;
-   
- my_fifo #(.width(9)) eth_fifo (
-       .rd_clk(~clk_rmii),      // input wire read clk
-       .wr_clk(clk_rmii),      // input wire write clk
-       .rst(~rstn),      // input wire rst
-       .din({1'b0, tx_data_i}),      // input wire [8 : 0] din
-       .wr_en(eth_fifo_write),  // input wire wr_en
-       .rd_en(eth_fifo_read),  // input wire rd_en
-       .dout(tx_axis_tdata),    // output wire [8 : 0] dout
-       .rdcount(),         // 12-bit output: Read count
-       .rderr(),             // 1-bit output: Read error
-       .wrcount(),         // 12-bit output: Write count
-       .wrerr(),             // 1-bit output: Write error
-       .almostfull(),   // output wire almost full
-       .full(),    // output wire full
-       .empty(eth_fifo_empty)  // output wire empty
-     );
-  
    always @(posedge clk_rmii)
      if (~rstn)
        begin
@@ -396,21 +274,34 @@ always @(posedge clk_rmii)
 	  axis_eduttxd <= 'b0;
 	  axis_eduttx_en <= 'b0;
 	  tx_axis_tvalid_dly <= 'b0;
+	  tx_frame_addr <= 'b0;
+	  tx_axis_tlast <= 'b0;
        end
      else
        begin
 	  axis_eduttx_en <= gmii_tx_en;
 	  if (tx_enable_i & (tx_enable_old == 0))
-	     axis_tx_frame_size <= 0;
-	  else // if (gmii_tx_en)
+	    begin
+	       axis_tx_frame_size <= 'b0;
+	       tx_frame_addr <= 'b0;
+	    end
+	  else if (1'b0 == &axis_tx_frame_size)
             begin
                axis_tx_frame_size <= axis_tx_frame_size + 1;
 	       axis_eduttxd <= gmii_txd >> {axis_tx_frame_size[1:0],1'b0};
             end
+	  if (tx_axis_tready)
+	    begin
+	       tx_frame_addr <= tx_frame_addr + 1;
+	       tx_axis_tlast <= (tx_frame_addr == tx_packet_length+3) & tx_axis_tvalid_dly;
+	    end
           if (axis_tx_byte_sent)
 	    begin
-	    tx_axis_tvalid <= tx_axis_tvalid_dly;
-	    tx_axis_tvalid_dly <= (tx_enable_old | ~eth_fifo_empty) & ~tx_frame_gtlast;
+	       tx_axis_tvalid <= tx_axis_tvalid_dly;
+	       if (tx_enable_old)
+		 tx_axis_tvalid_dly <= 1'b1;
+	       else if (~tx_axis_tlast)
+		 tx_axis_tvalid_dly <= 1'b0;
 	    end
 	  if (rx_axis_tvalid)
             rx_addr_axis <= rx_addr_axis + 1;
@@ -438,15 +329,15 @@ always @(posedge clk_rmii)
    );
    
    axis_gmii_tx #(
-       .ENABLE_PADDING(ENABLE_PADDING),
-       .MIN_FRAME_LENGTH(MIN_FRAME_LENGTH)
+       .ENABLE_PADDING(1),
+       .MIN_FRAME_LENGTH(64)
    )
    gmii_tx_inst (
        .clk(clk_rmii),
        .rst(~rstn),
        .mii_select(1'b0),
-       .clk_enable(axis_tx_byte_sent & ~tx_frame_gtlast),
-       .input_axis_tdata(tx_axis_tdata[7:0]),
+       .clk_enable(axis_tx_byte_sent),
+       .input_axis_tdata(tx_axis_tdata),
        .input_axis_tvalid(tx_axis_tvalid),
        .input_axis_tready(tx_axis_tready),
        .input_axis_tlast(tx_axis_tlast),
@@ -459,7 +350,7 @@ always @(posedge clk_rmii)
    );
 
    RAMB16_S9_S36 RAMB16_S1_axis_rx (
-                                    .CLKA(~clk_rmii),             // Port A Clock
+                                    .CLKA(clk_rmii),              // Port A Clock
                                     .CLKB(msoc_clk),              // Port A Clock
                                     .DOA(),                       // Port A 9-bit Data Output
                                     .ADDRA(rx_addr_axis),         // Port A 11-bit Address Input
@@ -469,7 +360,7 @@ always @(posedge clk_rmii)
                                     .ENA(rx_axis_tvalid),         // Port A RAM Enable Input
                                     .WEA(rx_axis_tvalid),         // Port A Write Enable Input
                                     .DOB(framing_rdata_axis),     // Port B 32-bit Data Output
-                                    .DOPB(),          // Port B parity unused
+                                    .DOPB(),                      // Port B parity unused
                                     .ADDRB(core_lsu_addr[10:2]),  // Port B 9-bit Address Input
                                     .DIB(core_lsu_wdata),         // Port B 32-bit Data Input
                                     .DIPB(4'b0),                  // Port B parity unused
@@ -479,8 +370,8 @@ always @(posedge clk_rmii)
                                     .WEB(we_d)                    // Port B Write Enable Input
                                     );
 
-   assign o_eduttxd = axis_en ? axis_eduttxd : mac_eduttxd;
-   assign o_eduttx_en = axis_en ? axis_eduttx_en : mac_eduttx_en;
+   assign o_eduttxd = axis_eduttxd;
+   assign o_eduttx_en = axis_eduttx_en;
    
 endmodule // framing_top
 `default_nettype wire
