@@ -60,6 +60,7 @@ reg        mii_rx_byte_received_i, full, byte_sync, sync, irq_en, axis_en, mii_r
          wire        axis_error_bad_frame;
          wire        axis_error_bad_fcs;
          wire        tx_axis_gtlast = (tx_frame_size[12:2] > tx_packet_length);
+         wire        tx_frame_gtlast = (tx_frame_addr[10:8] > 6); /* beyond valid 1536 octet range */
 
    always @(posedge clk_rmii)
      if (rstn == 1'b0)
@@ -365,7 +366,7 @@ always @(posedge clk_rmii)
    wire axis_tx_byte_sent = &axis_tx_frame_size[1:0];
    
    assign eth_fifo_read = tx_axis_tready | (tx_axis_tvalid_dly & axis_tx_byte_sent & ~tx_axis_tvalid);
-   assign eth_fifo_write = axis_tx_byte_sent & ~(tx_frame_addr[10] | tx_axis_gtlast);
+   assign eth_fifo_write = axis_tx_byte_sent & ~(tx_frame_gtlast | tx_axis_gtlast);
    assign tx_axis_tlast = eth_fifo_empty & tx_axis_tvalid_dly;
    
  my_fifo #(.width(9)) eth_fifo (
@@ -409,7 +410,7 @@ always @(posedge clk_rmii)
           if (axis_tx_byte_sent)
 	    begin
 	    tx_axis_tvalid <= tx_axis_tvalid_dly;
-	    tx_axis_tvalid_dly <= (tx_enable_old | ~eth_fifo_empty) & ~tx_frame_addr[10];
+	    tx_axis_tvalid_dly <= (tx_enable_old | ~eth_fifo_empty) & ~tx_frame_gtlast;
 	    end
 	  if (rx_axis_tvalid)
             rx_addr_axis <= rx_addr_axis + 1;
@@ -444,7 +445,7 @@ always @(posedge clk_rmii)
        .clk(clk_rmii),
        .rst(~rstn),
        .mii_select(1'b0),
-       .clk_enable(axis_tx_byte_sent & ~tx_frame_addr[10]),
+       .clk_enable(axis_tx_byte_sent & ~tx_frame_gtlast),
        .input_axis_tdata(tx_axis_tdata[7:0]),
        .input_axis_tvalid(tx_axis_tvalid),
        .input_axis_tready(tx_axis_tready),
@@ -453,19 +454,19 @@ always @(posedge clk_rmii)
        .gmii_txd(gmii_txd),
        .gmii_tx_en(gmii_tx_en),
        .gmii_tx_er(gmii_tx_er),
-       .ifg_delay(8'd9),
+       .ifg_delay(8'd12),
        .crc_state(axis_crc_state)
    );
 
    RAMB16_S9_S36 RAMB16_S1_axis_rx (
-                                    .CLKA(clk_rmii),               // Port A Clock
+                                    .CLKA(~clk_rmii),             // Port A Clock
                                     .CLKB(msoc_clk),              // Port A Clock
                                     .DOA(),                       // Port A 9-bit Data Output
                                     .ADDRA(rx_addr_axis),         // Port A 11-bit Address Input
                                     .DIA(rx_axis_tdata),          // Port A 8-bit Data Input
                                     .DIPA(1'b0),                  // Port A parity unused
                                     .SSRA(1'b0),                  // Port A Synchronous Set/Reset Input
-                                    .ENA(axis_en),                // Port A RAM Enable Input
+                                    .ENA(rx_axis_tvalid),         // Port A RAM Enable Input
                                     .WEA(rx_axis_tvalid),         // Port A Write Enable Input
                                     .DOB(framing_rdata_axis),     // Port B 32-bit Data Output
                                     .DOPB(),          // Port B parity unused
