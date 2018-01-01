@@ -51,13 +51,51 @@ class JtagControllerIO(irLength: Int) extends JtagBlockIO(irLength, false) {
   override def cloneType = new JtagControllerIO(irLength).asInstanceOf[this.type]
 }
 
+/* JTAG state machine black box version */
+
+class JtagTapController(irLength: Int, initialInstruction: BigInt) extends BlackBox {
+  val io = IO(new Bundle {
+    val clock = Input(Clock())
+    val reset = Input(Bool())
+    val jtag = new Bundle {
+      val TCK = Input(Clock())
+      val TMS = Input(Bool())
+      val TDI = Input(Bool())
+      val TDO = new Bundle {
+      val data = Input(Bool())
+      val driven = Input(Bool())
+      }
+    }
+    val control = new Bundle {
+      val jtag_reset = Input(Bool())
+      }
+    val output = new Bundle {
+      val state = Output(UInt(4.W))
+      val instruction = Output(UInt(irLength.W))
+      val reset = Output(Bool())
+      }
+    val dataChainOut = new Bundle {
+      val shift = Output(Bool())
+      val data = Input(Bool())
+      val capture = Output(Bool())
+      val update = Output(Bool())
+      }
+    val dataChainIn = new Bundle {
+      val shift = Input(Bool())
+      val data = Input(Bool())
+      val capture = Input(Bool())
+      val update = Input(Bool())
+      }
+  })
+}
+
 /** JTAG TAP controller internal block, responsible for instruction decode and data register chain
   * control signal generation.
   *
   * Misc notes:
   * - Figure 6-3 and 6-4 provides examples with timing behavior
   */
-class JtagTapController(irLength: Int, initialInstruction: BigInt) extends Module {
+class JtagTapControllerASIC(irLength: Int, initialInstruction: BigInt) extends Module {
   require(irLength >= 2)  // 7.1.1a
 
   val io = IO(new JtagControllerIO(irLength))
@@ -187,7 +225,8 @@ object JtagTapGenerator {
 
     require(!(allInstructions contains bypassIcode), "instructions may not contain BYPASS code")
 
-    val controllerInternal = Module(new JtagTapController(irLength, initialInstruction))
+//    val controllerInternal = Module(new JtagTapController(irLength, initialInstruction))
+    val controllerInternal = Module(new JtagTapControllerASIC(irLength, initialInstruction))
 
     val unusedChainOut = Wire(new ShifterIO)  // De-selected chain output
     unusedChainOut.shift := false.B

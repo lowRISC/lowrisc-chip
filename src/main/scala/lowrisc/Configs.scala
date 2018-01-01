@@ -15,8 +15,8 @@ class LoRCBaseConfig extends Config(new BaseCoreplexConfig().alter((site,here,up
   case DTSModel => "freechips,rocketchip-unknown"
   case DTSCompat => Nil
   // External port parameters
-  case IncludeJtagDTM => false
-  case JtagDTMKey => new JtagDTMKeyDefault()
+  case IncludeJtagDTM => true
+  case JtagDTMKey => new JtagDTMConfig(idcodeVersion = 0, idcodePartNum = 0, idcodeManufId = 0, debugIdleCycles = 5)
   case ExtMem => MasterPortParams(
     base = DumpMacro("MEM_BASE", 0x80000000L),
     size = DumpMacro("MEM_SIZE", 0x10000000L),

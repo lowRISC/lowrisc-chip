@@ -33,6 +33,11 @@ class CoreplexTop()(implicit p: Parameters) extends RawModule {
   val coreplex = LazyModule(new LoRCCoreplex)
   val clk = IO(Input(Clock()))
   val rst = IO(Input(Bool()))
+  val TCK = IO(Input(Clock()))
+  val TMS = IO(Input(Bool()))
+  val TDI = IO(Input(Bool()))
+  val TDO = IO(Output(Bool()))
+
   val interrupts = IO(UInt(INPUT, width = coreplex.int_size))
   val mem = IO(coreplex.mem_axi4.bundleOut.cloneType)
   val mmio_master = IO(coreplex.mmio_axi4.bundleOut.cloneType)
@@ -45,7 +50,18 @@ class CoreplexTop()(implicit p: Parameters) extends RawModule {
     mem <> rocket.mem_axi4
     mmio_master <> rocket.mmio_axi4
     rocket.l2_frontend_bus_axi4 <> mmio_slave
-    rocket.connectDebug(clk, rst, success) // currently not sure how to hook up debug
+
+    rocket.debug.systemjtag.foreach { sj =>
+      sj.jtag.TCK <> TCK
+      sj.jtag.TMS <> TMS
+      sj.jtag.TDI <> TDI
+      TDO <> sj.jtag.TDO.data
+      val rst = sj.reset
+      
+      sj.mfr_id := UInt(42) // dummy value
+    }
+
+//    jtagout <> rocket.debug.systemjtag
   }
 
 
