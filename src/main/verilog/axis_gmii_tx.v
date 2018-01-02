@@ -20,6 +20,13 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
+commit 9a507b388ddddb0a7b54f88ad217d5e4bc48822c
+Author: Alex Forencich <alex@alexforencich.com>
+Date:   Fri Jun 9 21:17:28 2017 -0700
+
+origin	https://github.com/alexforencich/verilog-ethernet.git
+
+Modified by the LowRISC team (Jonathan Kimmitt) to export crc_state as a port.
 */
 
 // Language: Verilog 2001
