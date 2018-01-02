@@ -371,6 +371,7 @@ reg phy_emdio_i, io_emdio_o, io_emdio_t;
       .locked        ( clk_locked_wiz )
       );
    assign clk_locked = clk_locked_wiz & rst_top;
+      
  `endif //  `ifdef NEXYS4_COMMON
 
    // DRAM controller
@@ -1206,8 +1207,34 @@ axi_bram_ctrl_2 hid_i
    /////////////////////////////////////////////////////////////
    // the Rocket chip
 
+   wire CAPTURE, DRCK, RESET, RUNTEST, SEL, SHIFT, TCK, TDI, TMS, UPDATE, TDO;
+   
+   BSCANE2 #(
+      .JTAG_CHAIN(2)  // Value for USER command.
+   )
+   BSCANE2_inst1 (
+      .CAPTURE(CAPTURE), // 1-bit output: CAPTURE output from TAP controller.
+      .DRCK(DRCK),       // 1-bit output: Gated TCK output. When SEL is asserted, DRCK toggles when CAPTURE or
+                         // SHIFT are asserted.
+
+      .RESET(RESET),     // 1-bit output: Reset output for TAP controller.
+      .RUNTEST(RUNTEST), // 1-bit output: Output asserted when TAP controller is in Run Test/Idle state.
+      .SEL(SEL),         // 1-bit output: USER instruction active output.
+      .SHIFT(SHIFT),     // 1-bit output: SHIFT output from TAP controller.
+      .TCK(TCK),         // 1-bit output: Test Clock output. Fabric connection to TAP Clock pin.
+      .TDI(TDI),         // 1-bit output: Test Data Input (TDI) output from TAP controller.
+      .TMS(TMS),         // 1-bit output: Test Mode Select output. Fabric connection to TAP.
+      .UPDATE(UPDATE),   // 1-bit output: UPDATE output from TAP controller
+      .TDO(TDO)          // 1-bit input: Test Data Output (TDO) input for USER function.
+   );
+
    CoreplexTop Rocket
      (
+      .success(),
+      .TCK(TCK),
+      .TMS(TMS),
+      .TDI(TDI),
+      .TDO(TDO),
       .mem_0_aw_valid                ( mem_nasti.aw_valid                     ),
       .mem_0_aw_ready                ( mem_nasti.aw_ready                     ),
       .mem_0_aw_bits_id              ( mem_nasti.aw_id                        ),
@@ -1341,14 +1368,11 @@ axi_bram_ctrl_2 hid_i
       .mmio_slave_0_r_bits_user      ( io_salve_nasti.r_user                  ),
 `endif
 `ifdef ADD_ROCKET_INT
-      .interrupts                    ( interrupts                             ),
+      .interrupts                    ( {60'b0, sd_irq, eth_irq, spi_irq, uart_irq} ),
 `endif
       .clk                           ( clk                                    ),
       .rst                           ( sys_rst                                )
       );
-
-   // interrupt
-   assign interrupt = {60'b0, sd_irq, eth_irq, spi_irq, uart_irq};
 
    /////////////////////////////////////////////////////////////
    // IO memory crossbar
