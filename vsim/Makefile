@@ -63,7 +63,7 @@ verilog_srcs = \
 	$(base_dir)/socip/util/arbiter.sv \
 	$(base_dir)/vsrc/AsyncResetReg.v \
 	$(base_dir)/vsrc/plusarg_reader.v \
-	$(base_dir)/vsrc/SimDTM_dummy.sv \
+	$(base_dir)/vsrc/vsim_bscan_dummy.v \
 
 verilog_headers = \
 	$(base_dir)/src/main/verilog/config.vh \
