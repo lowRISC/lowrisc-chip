@@ -123,7 +123,7 @@ output wire eth_irq);
    wire     bram_clk_a;
    wire     bram_en_a;
    wire [3:0] bram_we_a;
-   wire [12:0] bram_addr_a;
+   wire [14:0] bram_addr_a;
    wire [31:0] bram_wrdata_a, bram_rddata_a;
 
    axi_bram_ctrl_1 BramCtl
@@ -131,7 +131,7 @@ output wire eth_irq);
       .s_axi_aclk(s_axi_aclk),        // input wire s_axi_aclk
       .s_axi_aresetn(s_axi_aresetn),  // input wire s_axi_aresetn
       .s_axi_awid(s_axi_awid),        // input wire [7 : 0] s_axi_awid
-      .s_axi_awaddr(s_axi_awaddr[12:0]),    // input wire [12 : 0] s_axi_awaddr
+      .s_axi_awaddr(s_axi_awaddr[14:0]),    // input wire [14 : 0] s_axi_awaddr
       .s_axi_awlen(s_axi_awlen),      // input wire [7 : 0] s_axi_awlen
       .s_axi_awsize(s_axi_awsize),    // input wire [2 : 0] s_axi_awsize
       .s_axi_awburst(s_axi_awburst),  // input wire [1 : 0] s_axi_awburst
@@ -150,7 +150,7 @@ output wire eth_irq);
       .s_axi_bvalid(s_axi_bvalid),    // output wire s_axi_bvalid
       .s_axi_bready(s_axi_bready),    // input wire s_axi_bready
       .s_axi_arid(s_axi_arid),        // input wire [7 : 0] s_axi_arid
-      .s_axi_araddr(s_axi_araddr[12:0]),    // input wire [12 : 0] s_axi_araddr
+      .s_axi_araddr(s_axi_araddr[14:0]),    // input wire [14 : 0] s_axi_araddr
       .s_axi_arlen(s_axi_arlen),      // input wire [7 : 0] s_axi_arlen
       .s_axi_arsize(s_axi_arsize),    // input wire [2 : 0] s_axi_arsize
       .s_axi_arburst(s_axi_arburst),  // input wire [1 : 0] s_axi_arburst

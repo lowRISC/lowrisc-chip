@@ -57,7 +57,7 @@ class BaseConfig extends Config (
         Dump("ADD_SPI", 1)
       }
       if (site(UseEth)) {
-        entries += AddrMapEntry("eth", MemSize(1<<13, 1<<13, MemAttr(AddrMapProt.RW)))
+        entries += AddrMapEntry("eth", MemSize(1<<15, 1<<15, MemAttr(AddrMapProt.RW)))
         Dump("ADD_ETH", true)
       }
       if (site(UseHID)) {
