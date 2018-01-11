@@ -20,6 +20,13 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
+commit 9a507b388ddddb0a7b54f88ad217d5e4bc48822c
+Author: Alex Forencich <alex@alexforencich.com>
+Date:   Fri Jun 9 21:17:28 2017 -0700
+
+origin	https://github.com/alexforencich/verilog-ethernet.git
+
+Modified by the lowrisc team (Jonathan Kimmitt) to extract CRC bytes
 */
 
 // Language: Verilog 2001
@@ -109,9 +116,9 @@ reg error_bad_fcs_reg = 1'b0, error_bad_fcs_next;
 reg [31:0] fcs_next;
 reg [31:0] crc_state;
 reg [1:0] crc_cnt, crc_cnt_next;
-   
+
 wire [31:0] crc_next;
-   
+
 assign output_axis_tdata = output_axis_tdata_reg;
 assign output_axis_tvalid = output_axis_tvalid_reg;
 assign output_axis_tlast = output_axis_tlast_reg;

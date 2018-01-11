@@ -20,6 +20,13 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
+commit 9a507b388ddddb0a7b54f88ad217d5e4bc48822c
+Author: Alex Forencich <alex@alexforencich.com>
+Date:   Fri Jun 9 21:17:28 2017 -0700
+
+origin	https://github.com/alexforencich/verilog-ethernet.git
+
+Modified by the LowRISC team (Jonathan Kimmitt) to extract CRC and correct packet gap logic.
 */
 
 // Language: Verilog 2001
@@ -136,7 +143,7 @@ always @* begin
     frame_ptr_next = frame_ptr_reg;
     fcs_next = fcs_reg;
     ifg_next = ifg_reg;
- 
+
     input_axis_tready_next = 1'b0;
 
     input_tdata_next = input_tdata_reg;
