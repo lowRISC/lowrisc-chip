@@ -251,9 +251,9 @@ sd_verilator_model sdflash1 (
 
    // LED and DIP switch
    wire [7:0]   o_led;
-   wire [3:0]   i_dip;
+   wire [15:0]   i_dip;
 
-   assign i_dip = 8'h88;
+   assign i_dip = 16'hF;
 
    // push button array
    wire         GPIO_SW_C;

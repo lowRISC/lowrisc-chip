@@ -132,7 +132,7 @@ module chip_top
 
    // LED and DIP switch
    output [7:0]  o_led,
-   input  [3:0]  i_dip,
+   input  [15:0] i_dip,
 
    // push button array
    input         GPIO_SW_C,
@@ -908,7 +908,7 @@ axi_bram_ctrl_2 hid_i
       .sd_dat     ( sd_dat          ),
       .sd_cmd     ( sd_cmd          ),
       .sd_irq     ( sd_irq          ),
-      .from_dip   ( {12'b0,i_dip}   ),
+      .from_dip   ( i_dip           ),
       .to_led     ( o_led           ),
       .rstn       ( clk_locked      ),
       .clk_200MHz ( mig_sys_clk     ),
