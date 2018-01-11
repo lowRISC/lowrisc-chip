@@ -26,6 +26,7 @@ Date:   Fri Jun 9 21:17:28 2017 -0700
 
 origin	https://github.com/alexforencich/verilog-ethernet.git
 
+Modified by the lowrisc team (Jonathan Kimmitt) to extract CRC bytes
 */
 
 // Language: Verilog 2001
@@ -65,14 +66,19 @@ module axis_gmii_rx
      * Status
      */
     output wire        error_bad_frame,
-    output wire        error_bad_fcs
+    output wire        error_bad_fcs,
+
+    /* debug */
+    output reg [31:0]  fcs_reg
+ 
 );
 
 localparam [2:0]
     STATE_IDLE = 3'd0,
     STATE_PAYLOAD = 3'd1,
-    STATE_WAIT_LAST = 3'd2;
-
+    STATE_WAIT_LAST = 3'd2,
+    STATE_CRC = 3'd3;
+   
 reg [2:0] state_reg = STATE_IDLE, state_next;
 
 // datapath control signals
@@ -107,8 +113,10 @@ reg output_axis_tuser_reg = 1'b0, output_axis_tuser_next;
 
 reg error_bad_frame_reg = 1'b0, error_bad_frame_next;
 reg error_bad_fcs_reg = 1'b0, error_bad_fcs_next;
+reg [31:0] fcs_next;
+reg [31:0] crc_state;
+reg [1:0] crc_cnt, crc_cnt_next;
 
-reg [31:0] crc_state = 32'hFFFFFFFF;
 wire [31:0] crc_next;
 
 assign output_axis_tdata = output_axis_tdata_reg;
@@ -148,7 +156,9 @@ always @* begin
 
     error_bad_frame_next = 1'b0;
     error_bad_fcs_next = 1'b0;
-
+    fcs_next = fcs_reg;
+    crc_cnt_next = crc_cnt;
+   
     if (!clk_enable) begin
         // clock disabled - hold state
         state_next = state_reg;
@@ -179,10 +189,9 @@ always @* begin
                     output_axis_tlast_next = 1'b1;
                     output_axis_tuser_next = 1'b1;
                     error_bad_frame_next = 1'b1;
+                    fcs_next = 32'HDEADBEEF;
                     state_next = STATE_WAIT_LAST;
                 end else if (~gmii_rx_dv) begin
-                    // end of packet
-                    output_axis_tlast_next = 1'b1;
                     if (gmii_rx_er_d0 | gmii_rx_er_d1 | gmii_rx_er_d2 | gmii_rx_er_d3) begin
                         // error received in FCS bytes
                         output_axis_tuser_next = 1'b1;
@@ -196,9 +205,28 @@ always @* begin
                         error_bad_frame_next = 1'b1;
                         error_bad_fcs_next = 1'b1;
                     end
-                    state_next = STATE_IDLE;
+                    crc_cnt_next = 2'b0;
+                    state_next = STATE_CRC;
                 end else begin
                     state_next = STATE_PAYLOAD;
+                end
+            end
+            STATE_CRC: begin
+                // wait for CRC
+                update_crc = 1'b1;
+
+                output_axis_tdata_next = gmii_rxd_d4;
+                output_axis_tvalid_next = 1'b1;
+
+                crc_cnt_next = crc_cnt + 1;
+                if (&crc_cnt) begin
+                    // end of packet + CRC bytes
+                    fcs_next = crc_next;
+                    output_axis_tlast_next = 1'b1;
+                    state_next = STATE_IDLE;
+                end else begin
+                    fcs_next = 32'b0;
+                    state_next = STATE_CRC;
                 end
             end
             STATE_WAIT_LAST: begin
@@ -222,9 +250,10 @@ always @(posedge clk) begin
 
         error_bad_frame_reg <= 1'b0;
         error_bad_fcs_reg <= 1'b0;
-
+        fcs_reg <= 32'hFFFFFFFF;
         crc_state <= 32'hFFFFFFFF;
-
+        crc_cnt <= 2'b0;
+       
         mii_locked <= 1'b0;
         mii_odd <= 1'b0;
 
@@ -241,6 +270,9 @@ always @(posedge clk) begin
         error_bad_frame_reg <= error_bad_frame_next;
         error_bad_fcs_reg <= error_bad_fcs_next;
 
+        fcs_reg <= fcs_next;
+        crc_cnt <= crc_cnt_next;
+       
         // datapath
         if (reset_crc) begin
             crc_state <= 32'hFFFFFFFF;
