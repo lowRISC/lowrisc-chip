@@ -12,10 +12,11 @@ import freechips.rocketchip.diplomacy.RegionType
 import freechips.rocketchip.tile.{XLen, CoreModule, CoreBundle}
 import freechips.rocketchip.tilelink._
 import freechips.rocketchip.util._
+import freechips.rocketchip.util.property._
+import chisel3.internal.sourceinfo.SourceInfo
 
-case object PAddrBits extends Field[Int]
-case object PgLevels extends Field[Int]
-case object ASIdBits extends Field[Int]
+case object PgLevels extends Field[Int](2)
+case object ASIdBits extends Field[Int](0)
 
 class SFenceReq(implicit p: Parameters) extends CoreBundle()(p) {
   val rs1 = Bool()
@@ -27,7 +28,6 @@ class SFenceReq(implicit p: Parameters) extends CoreBundle()(p) {
 class TLBReq(lgMaxSize: Int)(implicit p: Parameters) extends CoreBundle()(p) {
   val vaddr = UInt(width = vaddrBitsExtended)
   val passthrough = Bool()
-  val instruction = Bool()
   val sfence = Valid(new SFenceReq)
   val size = UInt(width = log2Ceil(lgMaxSize + 1))
   val cmd  = Bits(width = M_SZ)
@@ -98,12 +98,11 @@ class TLB(instruction: Boolean, lgMaxSize: Int, nEntries: Int)(implicit edge: TL
   val vm_enabled = Bool(usingVM) && io.ptw.ptbr.mode(io.ptw.ptbr.mode.getWidth-1) && priv_uses_vm && !io.req.bits.passthrough
 
   // share a single physical memory attribute checker (unshare if critical path)
-  val (vpn, pgOffset) = Split(io.req.bits.vaddr, pgIdxBits)
   val refill_ppn = io.ptw.resp.bits.pte.ppn(ppnBits-1, 0)
   val do_refill = Bool(usingVM) && io.ptw.resp.valid
   val invalidate_refill = state.isOneOf(s_request /* don't care */, s_wait_invalidate)
   val mpu_ppn = Mux(do_refill, refill_ppn,
-                Mux(vm_enabled, entries.last.ppn, vpn))
+                Mux(vm_enabled, entries.last.ppn, io.req.bits.vaddr >> pgIdxBits))
   val mpu_physaddr = Cat(mpu_ppn, io.req.bits.vaddr(pgIdxBits-1, 0))
   val pmp = Module(new PMPChecker(lgMaxSize))
   pmp.io.addr := mpu_physaddr
@@ -113,17 +112,18 @@ class TLB(instruction: Boolean, lgMaxSize: Int, nEntries: Int)(implicit edge: TL
   val legal_address = edge.manager.findSafe(mpu_physaddr).reduce(_||_)
   def fastCheck(member: TLManagerParameters => Boolean) =
     legal_address && edge.manager.fastProperty(mpu_physaddr, member, (b:Boolean) => Bool(b))
-  val cacheable = fastCheck(_.supportsAcquireB) && (instruction || !usingDataScratchpad)
+  val cacheable = fastCheck(_.supportsAcquireT) && (instruction || !usingDataScratchpad)
   val homogeneous = TLBPageLookup(edge.manager.managers, xLen, p(CacheBlockBytes), BigInt(1) << pgIdxBits)(mpu_physaddr).homogeneous
   val prot_r = fastCheck(_.supportsGet) && pmp.io.r
   val prot_w = fastCheck(_.supportsPutFull) && pmp.io.w
-  val prot_al = fastCheck(_.supportsLogical) || cacheable
-  val prot_aa = fastCheck(_.supportsArithmetic) || cacheable
+  val prot_al = fastCheck(_.supportsLogical) || (cacheable && usingAtomicsInCache)
+  val prot_aa = fastCheck(_.supportsArithmetic) || (cacheable && usingAtomicsInCache)
   val prot_x = fastCheck(_.executable) && pmp.io.x
   val prot_eff = fastCheck(Seq(RegionType.PUT_EFFECTS, RegionType.GET_EFFECTS) contains _.regionType)
 
-  val lookup_tag = Cat(io.ptw.ptbr.asid, vpn(vpnBits-1,0))
-  val hitsVec = (0 until totalEntries).map { i => vm_enabled && {
+  val vpn = io.req.bits.vaddr(vaddrBits-1, pgIdxBits)
+  val lookup_tag = Cat(io.ptw.ptbr.asid, vpn)
+  val hitsVec = (0 until totalEntries).map { i => if (!usingVM) false.B else vm_enabled && {
     var tagMatch = valid(i)
     for (j <- 0 until pgLevels) {
       val base = vpnBits - (j + 1) * pgLevelBits
@@ -134,7 +134,7 @@ class TLB(instruction: Boolean, lgMaxSize: Int, nEntries: Int)(implicit edge: TL
   val hits = hitsVec.asUInt
   val level = Mux1H(hitsVec.init, entries.map(_.level))
   val partialPPN = Mux1H(hitsVec.init, entries.map(_.ppn))
-  val ppn = {
+  val ppn = if (!usingVM) vpn else {
     var ppn = Mux(vm_enabled, partialPPN, vpn)(pgLevelBits*pgLevels - 1, pgLevelBits*(pgLevels - 1))
     for (i <- 1 until pgLevels)
       ppn = Cat(ppn, (Mux(level < i, vpn, 0.U) | partialPPN)(vpnBits - i*pgLevelBits - 1, vpnBits - (i + 1)*pgLevelBits))
@@ -188,9 +188,9 @@ class TLB(instruction: Boolean, lgMaxSize: Int, nEntries: Int)(implicit edge: TL
   val misaligned = (io.req.bits.vaddr & (UIntToOH(io.req.bits.size) - 1)).orR
   val bad_va = vm_enabled &&
     (if (vpnBits == vpnBitsExtended) Bool(false)
-     else vpn(vpnBits) =/= vpn(vpnBits-1))
+     else (io.req.bits.vaddr.asSInt < 0.S) =/= (vpn.asSInt < 0.S))
 
-  val lrscAllowed = Mux(Bool(usingDataScratchpad), 0.U, c_array)
+  val lrscAllowed = Mux(Bool(usingDataScratchpad || usingAtomicsOnlyForIO), 0.U, c_array)
   val ae_array =
     Mux(misaligned, eff_array, 0.U) |
     Mux(Bool(usingAtomics) && io.req.bits.cmd.isOneOf(M_XLR, M_XSC), ~lrscAllowed, 0.U)
@@ -231,7 +231,7 @@ class TLB(instruction: Boolean, lgMaxSize: Int, nEntries: Int)(implicit edge: TL
   io.resp.cacheable := (c_array & hits).orR
   io.resp.prefetchable := (prefetchable_array & hits).orR && edge.manager.managers.forall(m => !m.supportsAcquireB || m.supportsHint)
   io.resp.miss := do_refill || tlb_miss || multipleHits
-  io.resp.paddr := Cat(ppn, pgOffset)
+  io.resp.paddr := Cat(ppn, io.req.bits.vaddr(pgIdxBits-1, 0))
 
   io.ptw.req.valid := state === s_request
   io.ptw.req.bits <> io.ptw.status
@@ -257,12 +257,24 @@ class TLB(instruction: Boolean, lgMaxSize: Int, nEntries: Int)(implicit edge: TL
     }
 
     when (sfence) {
-      assert((io.req.bits.sfence.bits.addr >> pgIdxBits) === vpn(vpnBits-1,0))
+      assert((io.req.bits.sfence.bits.addr >> pgIdxBits) === vpn)
       valid := Mux(io.req.bits.sfence.bits.rs1, valid & ~hits(totalEntries-1, 0),
                Mux(io.req.bits.sfence.bits.rs2, valid & entries.map(_.g).asUInt, 0))
     }
     when (multipleHits) {
       valid := 0
     }
+
+    ccover(io.ptw.req.fire(), "MISS", "TLB miss")
+    ccover(io.ptw.req.valid && !io.ptw.req.ready, "PTW_STALL", "TLB miss, but PTW busy")
+    ccover(state === s_wait_invalidate, "SFENCE_DURING_REFILL", "flush TLB during TLB refill")
+    ccover(sfence && !io.req.bits.sfence.bits.rs1 && !io.req.bits.sfence.bits.rs2, "SFENCE_ALL", "flush TLB")
+    ccover(sfence && !io.req.bits.sfence.bits.rs1 && io.req.bits.sfence.bits.rs2, "SFENCE_ASID", "flush TLB ASID")
+    ccover(sfence && io.req.bits.sfence.bits.rs1 && !io.req.bits.sfence.bits.rs2, "SFENCE_LINE", "flush TLB line")
+    ccover(sfence && io.req.bits.sfence.bits.rs1 && io.req.bits.sfence.bits.rs2, "SFENCE_LINE_ASID", "flush TLB line/ASID")
+    ccover(multipleHits, "MULTIPLE_HITS", "Two matching translations in TLB")
   }
+
+  def ccover(cond: Bool, label: String, desc: String)(implicit sourceInfo: SourceInfo) =
+    cover(cond, s"${if (instruction) "I" else "D"}TLB_$label", "MemorySystem;;" + desc)
 }

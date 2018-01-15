@@ -6,20 +6,19 @@ import Chisel._
 import Chisel.ImplicitConversions._
 
 import freechips.rocketchip.config.Parameters
-import freechips.rocketchip.coreplex.CacheBlockBytes
 import freechips.rocketchip.diplomacy._
 import freechips.rocketchip.tile._
 import freechips.rocketchip.tilelink._
 import freechips.rocketchip.util._
 
-class ScratchpadSlavePort(address: AddressSet)(implicit p: Parameters) extends LazyModule
-    with HasCoreParameters {
+/* This adapter converts between diplomatic TileLink and non-diplomatic HellaCacheIO */
+class ScratchpadSlavePort(address: AddressSet, coreDataBytes: Int, usingAtomics: Boolean)(implicit p: Parameters) extends LazyModule {
   val device = new SimpleDevice("dtim", Seq("sifive,dtim0"))
   val node = TLManagerNode(Seq(TLManagerPortParameters(
     Seq(TLManagerParameters(
       address            = List(address),
       resources          = device.reg("mem"),
-      regionType         = RegionType.UNCACHED,
+      regionType         = RegionType.UNCACHEABLE,
       executable         = true,
       supportsArithmetic = if (usingAtomics) TransferSizes(4, coreDataBytes) else TransferSizes.none,
       supportsLogical    = if (usingAtomics) TransferSizes(4, coreDataBytes) else TransferSizes.none,
@@ -31,13 +30,11 @@ class ScratchpadSlavePort(address: AddressSet)(implicit p: Parameters) extends L
     minLatency = 1)))
 
   lazy val module = new LazyModuleImp(this) {
-    val io = new Bundle {
-      val tl_in = node.bundleIn
+    val io = IO(new Bundle {
       val dmem = new HellaCacheIO
-    }
+    })
 
-    val tl_in = io.tl_in(0)
-    val edge = node.edgesIn(0)
+    val (tl_in, edge) = node.in(0)
 
     val s_ready :: s_wait :: s_replay :: s_grant :: Nil = Enum(UInt(), 4)
     val state = Reg(init = s_ready)
@@ -94,44 +91,4 @@ class ScratchpadSlavePort(address: AddressSet)(implicit p: Parameters) extends L
     tl_in.c.ready := Bool(true)
     tl_in.e.ready := Bool(true)
   }
-}
-
-/** Mix-ins for constructing tiles that have optional scratchpads */
-trait CanHaveScratchpad extends HasHellaCache with HasICacheFrontend with HasCoreParameters {
-  val module: CanHaveScratchpadModule
-
-  val slaveNode = TLInputNode() // Up to two uses for this input node:
-
-  // 1) Frontend always exists, but may or may not have a scratchpad node
-  val fg = LazyModule(new TLFragmenter(fetchWidth*coreInstBytes, p(CacheBlockBytes), earlyAck=true))
-  val ww = LazyModule(new TLWidthWidget(xLen/8))
-  frontend.slaveNode connectButDontMonitorSlaves fg.node
-  fg.node connectButDontMonitorSlaves ww.node
-  ww.node connectButDontMonitorSlaves slaveNode
-
-  // 2) ScratchpadSlavePort always has a node, but only exists when the HellaCache has a scratchpad
-  val scratch = tileParams.dcache.flatMap(d => d.scratch.map(s =>
-    LazyModule(new ScratchpadSlavePort(AddressSet(s, d.dataScratchpadBytes-1)))))
-  scratch foreach { lm => lm.node connectButDontMonitor TLFragmenter(xLen/8, p(CacheBlockBytes), earlyAck=true)(slaveNode) }
-
-  def findScratchpadFromICache: Option[AddressSet] = scratch.map { s =>
-    val finalNode = frontend.masterNode.edgesOut.head.manager.managers.find(_.nodePath.last == s.node)
-    require (finalNode.isDefined, "Could not find the scratch pad; not reachable via icache?")
-    require (finalNode.get.address.size == 1, "Scratchpad address space was fragmented!")
-    finalNode.get.address(0)
-  }
-
-  nDCachePorts += (scratch.isDefined).toInt
-}
-
-trait CanHaveScratchpadBundle extends HasHellaCacheBundle with HasICacheFrontendBundle {
-  val outer: CanHaveScratchpad
-  val slave = outer.slaveNode.bundleIn
-}
-
-trait CanHaveScratchpadModule extends HasHellaCacheModule with HasICacheFrontendModule {
-  val outer: CanHaveScratchpad
-  val io: CanHaveScratchpadBundle
-
-  outer.scratch.foreach { lm => dcachePorts += lm.module.io.dmem }
 }
