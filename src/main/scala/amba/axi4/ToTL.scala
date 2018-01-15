@@ -3,13 +3,12 @@
 package freechips.rocketchip.amba.axi4
 
 import Chisel._
-import chisel3.internal.sourceinfo.SourceInfo
 import freechips.rocketchip.config.Parameters
 import freechips.rocketchip.diplomacy._
 import freechips.rocketchip.tilelink._
 import freechips.rocketchip.util._
 
-case class AXI4ToTLNode() extends MixedAdapterNode(AXI4Imp, TLImp)(
+case class AXI4ToTLNode()(implicit valName: ValName) extends MixedAdapterNode(AXI4Imp, TLImp)(
   dFn = { case AXI4MasterPortParameters(masters, userBits) =>
     masters.foreach { m => require (m.maxFlight.isDefined, "AXI4 must include a transaction maximum per ID to convert to TL") }
     val maxFlight = masters.map(_.maxFlight.get).max
@@ -44,12 +43,7 @@ class AXI4ToTL()(implicit p: Parameters) extends LazyModule
   val node = AXI4ToTLNode()
 
   lazy val module = new LazyModuleImp(this) {
-    val io = new Bundle {
-      val in = node.bundleIn
-      val out = node.bundleOut
-    }
-
-    ((io.in zip io.out) zip (node.edgesIn zip node.edgesOut)) foreach { case ((in, out), (edgeIn, edgeOut)) =>
+    (node.in zip node.out) foreach { case ((in, edgeIn), (out, edgeOut)) =>
       val numIds = edgeIn.master.endId
       val beatBytes = edgeOut.manager.beatBytes
       val beatCountBits = AXI4Parameters.lenBits + (1 << AXI4Parameters.sizeBits) - 1
@@ -166,9 +160,9 @@ class AXI4BundleRError(params: AXI4BundleParameters) extends AXI4BundleBase(para
 
 object AXI4ToTL
 {
-  def apply()(x: AXI4OutwardNode)(implicit p: Parameters, sourceInfo: SourceInfo): TLOutwardNode = {
-    val tl = LazyModule(new AXI4ToTL)
-    tl.node := x
-    tl.node
+  def apply()(implicit p: Parameters) =
+  {
+    val axi42tl = LazyModule(new AXI4ToTL)
+    axi42tl.node
   }
 }

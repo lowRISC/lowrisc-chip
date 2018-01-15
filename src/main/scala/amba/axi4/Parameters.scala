@@ -3,6 +3,7 @@
 package freechips.rocketchip.amba.axi4
 
 import Chisel._
+import chisel3.internal.sourceinfo.SourceInfo
 import freechips.rocketchip.config.Parameters
 import freechips.rocketchip.diplomacy._
 import scala.math.max
@@ -124,7 +125,18 @@ object AXI4BundleParameters
 
 case class AXI4EdgeParameters(
   master: AXI4MasterPortParameters,
-  slave:  AXI4SlavePortParameters)
+  slave:  AXI4SlavePortParameters,
+  params: Parameters,
+  sourceInfo: SourceInfo)
 {
   val bundle = AXI4BundleParameters(master, slave)
+}
+
+case class AXI4AsyncSlavePortParameters(depth: Int, base: AXI4SlavePortParameters) { require(isPow2(depth)) }
+case class AXI4AsyncMasterPortParameters(base: AXI4MasterPortParameters)
+
+case class AXI4AsyncBundleParameters(depth: Int, base: AXI4BundleParameters) { require (isPow2(depth)) }
+case class AXI4AsyncEdgeParameters(master: AXI4AsyncMasterPortParameters, slave: AXI4AsyncSlavePortParameters, params: Parameters, sourceInfo: SourceInfo)
+{
+  val bundle = AXI4AsyncBundleParameters(slave.depth, AXI4BundleParameters(master.base, slave.base))
 }

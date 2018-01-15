@@ -3,13 +3,12 @@
 package freechips.rocketchip.amba.ahb
 
 import Chisel._
-import chisel3.internal.sourceinfo.SourceInfo
 import freechips.rocketchip.config.Parameters
 import freechips.rocketchip.diplomacy._
 import freechips.rocketchip.tilelink._
 import freechips.rocketchip.util.MaskGen
 
-case class AHBToTLNode() extends MixedAdapterNode(AHBImp, TLImp)(
+case class AHBToTLNode()(implicit valName: ValName) extends MixedAdapterNode(AHBImp, TLImp)(
   dFn = { case AHBMasterPortParameters(masters) =>
     TLClientPortParameters(clients = masters.map { m =>
       TLClientParameters(name = m.name, nodePath = m.nodePath)
@@ -41,12 +40,7 @@ class AHBToTL()(implicit p: Parameters) extends LazyModule
   val node = AHBToTLNode()
 
   lazy val module = new LazyModuleImp(this) {
-    val io = new Bundle {
-      val in = node.bundleIn
-      val out = node.bundleOut
-    }
-
-    ((io.in zip io.out) zip (node.edgesIn zip node.edgesOut)) foreach { case ((in, out), (edgeIn, edgeOut)) =>
+    (node.in zip node.out) foreach { case ((in, edgeIn), (out, edgeOut)) =>
       val beatBytes = edgeOut.manager.beatBytes
 
       val d_send  = RegInit(Bool(false))
@@ -112,7 +106,14 @@ class AHBToTL()(implicit p: Parameters) extends LazyModule
       out.a.bits.mask    := MaskGen(d_addr, d_size, beatBytes)
 
       out.d.ready  := d_recv // backpressure AccessAckData arriving faster than AHB beats
-      in.hrdata    := out.d.bits.data
+
+      // NOTE: on error, we present the read result on the hreadyout LOW cycle
+      // This means that if you latch hrdata from an error, the result is garbage.
+      // To fix this would require a bus-wide register, and the AHB spec says this:
+      // "A slave only has to provide valid data when a transfer completes with an OKAY
+      //  response. ERROR responses do not require valid read data."
+      // Therefore, we choose to accept this slight TL-AHB infidelity.
+      in.hrdata := out.d.bits.data
 
       // In a perfect world, we'd use these signals
       val hresp = d_error || (out.d.valid && out.d.bits.error)
@@ -137,9 +138,9 @@ class AHBToTL()(implicit p: Parameters) extends LazyModule
 
 object AHBToTL
 {
-  def apply()(x: AHBOutwardNode)(implicit p: Parameters, sourceInfo: SourceInfo): TLOutwardNode = {
-    val tl = LazyModule(new AHBToTL)
-    tl.node := x
-    tl.node
+  def apply()(implicit p: Parameters) =
+  {
+    val ahb2tl = LazyModule(new AHBToTL)
+    ahb2tl.node
   }
 }

@@ -3,7 +3,6 @@
 package freechips.rocketchip.amba.axi4
 
 import Chisel._
-import chisel3.internal.sourceinfo.SourceInfo
 import chisel3.util.IrrevocableIO
 import freechips.rocketchip.config.Parameters
 import freechips.rocketchip.diplomacy._
@@ -26,12 +25,7 @@ class AXI4Fragmenter()(implicit p: Parameters) extends LazyModule
     slaveFn  = { sp => sp.copy(slaves  = sp.slaves .map(s => mapSlave(s, sp.beatBytes))) })
 
   lazy val module = new LazyModuleImp(this) {
-    val io = new Bundle {
-      val in  = node.bundleIn
-      val out = node.bundleOut
-    }
-
-    ((io.in zip io.out) zip (node.edgesIn zip node.edgesOut)) foreach { case ((in, out), (edgeIn, edgeOut)) =>
+    (node.in zip node.out) foreach { case ((in, edgeIn), (out, edgeOut)) =>
       val slave     = edgeOut.slave
       val slaves    = slave.slaves
       val beatBytes = slave.beatBytes
@@ -73,6 +67,7 @@ class AXI4Fragmenter()(implicit p: Parameters) extends LazyModule
         val alignment = hi(AXI4Parameters.lenBits-1,0)
 
         // We don't care about illegal addresses; bursts or no bursts... whatever circuit is simpler (AXI4ToTL will fix it)
+        // !!! think about this more -- what if illegal?
         val sizes1 = (supportedSizes1 zip slave.slaves.map(_.address)).filter(_._1 >= 0).groupBy(_._1).mapValues(_.flatMap(_._2))
         val reductionMask = AddressDecoder(sizes1.values.toList)
         val support1 = Mux1H(sizes1.toList.map { case (v, a) => // maximum supported size-1 based on target address
@@ -205,10 +200,9 @@ class AXI4Fragmenter()(implicit p: Parameters) extends LazyModule
 
 object AXI4Fragmenter
 {
-  // applied to the AXI4 source node; y.node := AXI4Fragmenter()(x.node)
-  def apply()(x: AXI4OutwardNode)(implicit p: Parameters, sourceInfo: SourceInfo): AXI4OutwardNode = {
-    val fragmenter = LazyModule(new AXI4Fragmenter)
-    fragmenter.node := x
-    fragmenter.node
+  def apply()(implicit p: Parameters): AXI4Node =
+  {
+    val axi4frag = LazyModule(new AXI4Fragmenter)
+    axi4frag.node
   }
 }

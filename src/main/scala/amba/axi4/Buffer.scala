@@ -3,7 +3,6 @@
 package freechips.rocketchip.amba.axi4
 
 import Chisel._
-import chisel3.internal.sourceinfo.SourceInfo
 import chisel3.util.IrrevocableIO
 import freechips.rocketchip.config.Parameters
 import freechips.rocketchip.diplomacy._
@@ -26,11 +25,6 @@ class AXI4Buffer(
     slaveFn  = { p => p.copy(minLatency = p.minLatency + min(aw.latency,ar.latency) + min(r.latency,b.latency)) })
 
   lazy val module = new LazyModuleImp(this) {
-    val io = new Bundle {
-      val in  = node.bundleIn
-      val out = node.bundleOut
-    }
-
     def buffer[T <: Data](config: BufferParams, data: IrrevocableIO[T]): IrrevocableIO[T] = {
       if (config.isDefined) {
         Queue.irrevocable(data, config.depth, pipe=config.pipe, flow=config.flow)
@@ -39,7 +33,7 @@ class AXI4Buffer(
       }
     }
 
-    ((io.in zip io.out) zip (node.edgesIn zip node.edgesOut)) foreach { case ((in, out), (edgeIn, edgeOut)) =>
+    (node.in zip node.out) foreach { case ((in, edgeIn), (out, edgeOut)) =>
       out.aw <> buffer(aw, in .aw)
       out.w  <> buffer(w,  in .w)
       in .b  <> buffer(b,  out.b)
@@ -51,18 +45,17 @@ class AXI4Buffer(
 
 object AXI4Buffer
 {
-  // applied to the AXI4 source node; y.node := AXI4Buffer(x.node)
-  def apply()                                  (x: AXI4OutwardNode)(implicit p: Parameters, sourceInfo: SourceInfo): AXI4OutwardNode = apply(BufferParams.default)(x)
-  def apply(z: BufferParams)                   (x: AXI4OutwardNode)(implicit p: Parameters, sourceInfo: SourceInfo): AXI4OutwardNode = apply(z, z)(x)
-  def apply(aw: BufferParams, br: BufferParams)(x: AXI4OutwardNode)(implicit p: Parameters, sourceInfo: SourceInfo): AXI4OutwardNode = apply(aw, aw, br, aw, br)(x)
+  def apply()                                  (implicit p: Parameters): AXI4Node = apply(BufferParams.default)
+  def apply(z: BufferParams)                   (implicit p: Parameters): AXI4Node = apply(z, z)
+  def apply(aw: BufferParams, br: BufferParams)(implicit p: Parameters): AXI4Node = apply(aw, aw, br, aw, br)
   def apply(
     aw: BufferParams,
     w:  BufferParams,
     b:  BufferParams,
     ar: BufferParams,
-    r:  BufferParams)(x: AXI4OutwardNode)(implicit p: Parameters, sourceInfo: SourceInfo): AXI4OutwardNode = {
-    val buffer = LazyModule(new AXI4Buffer(aw, w, b, ar, r))
-    buffer.node := x
-    buffer.node
+    r:  BufferParams)(implicit p: Parameters): AXI4Node =
+  {
+    val axi4buf = LazyModule(new AXI4Buffer(aw, w, b, ar, r))
+    axi4buf.node
   }
 }

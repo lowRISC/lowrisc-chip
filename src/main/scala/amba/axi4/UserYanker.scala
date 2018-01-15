@@ -3,7 +3,6 @@
 package freechips.rocketchip.amba.axi4
 
 import Chisel._
-import chisel3.internal.sourceinfo.SourceInfo
 import freechips.rocketchip.config.Parameters
 import freechips.rocketchip.diplomacy._
 import freechips.rocketchip.util.UIntToOH1
@@ -22,12 +21,7 @@ class AXI4UserYanker(capMaxFlight: Option[Int] = None)(implicit p: Parameters) e
     slaveFn = { sp => sp })
 
   lazy val module = new LazyModuleImp(this) {
-    val io = new Bundle {
-      val in  = node.bundleIn
-      val out = node.bundleOut
-    }
-
-    ((io.in zip io.out) zip (node.edgesIn zip node.edgesOut)) foreach { case ((in, out), (edgeIn, edgeOut)) =>
+    (node.in zip node.out) foreach { case ((in, edgeIn), (out, edgeOut)) =>
       val bits = edgeIn.bundle.userBits
       val need_bypass = edgeOut.slave.minLatency < 1
       require (bits > 0) // useless UserYanker!
@@ -97,10 +91,9 @@ class AXI4UserYanker(capMaxFlight: Option[Int] = None)(implicit p: Parameters) e
 
 object AXI4UserYanker
 {
-  // applied to the AXI4 source node; y.node := AXI4UserYanker(idBits, maxFlight)(x.node)
-  def apply(capMaxFlight: Option[Int] = None)(x: AXI4OutwardNode)(implicit p: Parameters, sourceInfo: SourceInfo): AXI4OutwardNode = {
-    val yanker = LazyModule(new AXI4UserYanker(capMaxFlight))
-    yanker.node := x
-    yanker.node
+  def apply(capMaxFlight: Option[Int] = None)(implicit p: Parameters): AXI4Node =
+  {
+    val axi4yank = LazyModule(new AXI4UserYanker(capMaxFlight))
+    axi4yank.node
   }
 }

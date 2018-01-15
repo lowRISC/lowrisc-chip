@@ -3,7 +3,6 @@
 package freechips.rocketchip.amba.axi4
 
 import Chisel._
-import chisel3.internal.sourceinfo.SourceInfo
 import chisel3.util.IrrevocableIO
 import freechips.rocketchip.config.Parameters
 import freechips.rocketchip.diplomacy._
@@ -22,12 +21,7 @@ class AXI4Deinterleaver(maxReadBytes: Int)(implicit p: Parameters) extends LazyM
   })
 
   lazy val module = new LazyModuleImp(this) {
-    val io = new Bundle {
-      val in  = node.bundleIn
-      val out = node.bundleOut
-    }
-
-    ((io.in zip io.out) zip (node.edgesIn zip node.edgesOut)) foreach { case ((in, out), (edgeIn, edgeOut)) =>
+    (node.in zip node.out) foreach { case ((in, edgeIn), (out, edgeOut)) =>
       val endId = edgeOut.master.endId
       val beatBytes = edgeOut.slave.beatBytes
       val beats = (maxReadBytes+beatBytes-1) / beatBytes
@@ -46,9 +40,9 @@ class AXI4Deinterleaver(maxReadBytes: Int)(implicit p: Parameters) extends LazyM
         val qs = Seq.tabulate(endId) { i =>
           val depth = edgeOut.master.masters.find(_.id.contains(i)).flatMap(_.maxFlight).getOrElse(0)
           if (depth > 0) {
-            Module(new Queue(out.r.bits, beats)).io
+            Module(new Queue(out.r.bits.cloneType, beats)).io
           } else {
-            Wire(new QueueIO(out.r.bits, beats))
+            Wire(new QueueIO(out.r.bits.cloneType, beats))
           }
         }
 
@@ -105,10 +99,9 @@ class AXI4Deinterleaver(maxReadBytes: Int)(implicit p: Parameters) extends LazyM
 
 object AXI4Deinterleaver
 {
-  // applied to the AXI4 source node; y.node := AXI4Deinterleaver()(x.node)
-  def apply(maxReadBytes: Int)(x: AXI4OutwardNode)(implicit p: Parameters, sourceInfo: SourceInfo): AXI4OutwardNode = {
-    val deinterleaver = LazyModule(new AXI4Deinterleaver(maxReadBytes))
-    deinterleaver.node := x
-    deinterleaver.node
+  def apply(maxReadBytes: Int)(implicit p: Parameters): AXI4Node =
+  {
+    val axi4deint = LazyModule(new AXI4Deinterleaver(maxReadBytes))
+    axi4deint.node
   }
 }
