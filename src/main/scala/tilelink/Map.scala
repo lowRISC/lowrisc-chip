@@ -3,7 +3,6 @@
 package freechips.rocketchip.tilelink
 
 import Chisel._
-import chisel3.internal.sourceinfo.SourceInfo
 import freechips.rocketchip.config.Parameters
 import freechips.rocketchip.diplomacy._
 import scala.math.{min,max}
@@ -20,14 +19,8 @@ class TLMap(fn: AddressSet => BigInt)(implicit p: Parameters) extends LazyModule
           AddressSet(fn(a), a.mask)))))})
 
   lazy val module = new LazyModuleImp(this) {
-    val io = new Bundle {
-      val in = node.bundleIn
-      val out = node.bundleOut
-    }
-
-    io.out <> io.in
-
-    ((io.in zip io.out) zip (node.edgesIn zip node.edgesOut)) foreach { case ((in, out), (edgeIn, edgeOut)) =>
+    (node.in zip node.out) foreach { case ((in, edgeIn), (out, edgeOut)) =>
+      out <> in
       val convert = edgeIn.manager.managers.flatMap(_.address) zip edgeOut.manager.managers.flatMap(_.address)
       def forward(x: UInt) =
         convert.map { case (i, o) => Mux(i.contains(x), UInt(o.base) | (x & UInt(o.mask)), UInt(0)) }.reduce(_ | _)
@@ -45,10 +38,9 @@ class TLMap(fn: AddressSet => BigInt)(implicit p: Parameters) extends LazyModule
 
 object TLMap
 {
-  // applied to the TL source node; y.node := TLMap(fn)(x.node)
-  def apply(fn: AddressSet => BigInt)(x: TLOutwardNode)(implicit p: Parameters, sourceInfo: SourceInfo): TLOutwardNode = {
+  def apply(fn: AddressSet => BigInt)(implicit p: Parameters): TLNode =
+  {
     val map = LazyModule(new TLMap(fn))
-    map.node := x
     map.node
   }
 }

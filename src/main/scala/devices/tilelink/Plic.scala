@@ -10,6 +10,7 @@ import freechips.rocketchip.diplomacy._
 import freechips.rocketchip.regmapper._
 import freechips.rocketchip.tile.XLen
 import freechips.rocketchip.tilelink._
+import freechips.rocketchip.interrupts._
 import freechips.rocketchip.util._
 import scala.math.min
 
@@ -52,13 +53,13 @@ object PLICConsts
   require(hartBase >= enableBase(maxHarts))
 }
 
-case class PLICParams(baseAddress: BigInt = 0xC000000, maxPriorities: Int = 7)
+case class PLICParams(baseAddress: BigInt = 0xC000000, maxPriorities: Int = 7, intStages: Int = 0)
 {
   require (maxPriorities >= 0)
   def address = AddressSet(baseAddress, PLICConsts.size-1)
 }
 
-case object PLICParams extends Field[PLICParams]
+case object PLICKey extends Field(PLICParams())
 
 /** Platform-Level Interrupt Controller */
 class TLPLIC(params: PLICParams)(implicit p: Parameters) extends LazyModule
@@ -85,18 +86,18 @@ class TLPLIC(params: PLICParams)(implicit p: Parameters) extends LazyModule
     concurrency = 1) // limiting concurrency handles RAW hazards on claim registers
 
   val intnode = IntNexusNode(
-    numSourcePorts = 0 to 1024,
-    numSinkPorts   = 0 to 1024,
-    sourceFn       = { _ => IntSourcePortParameters(Seq(IntSourceParameters(1, Seq(Resource(device, "int"))))) },
-    sinkFn         = { _ => IntSinkPortParameters(Seq(IntSinkParameters())) })
+    sourceFn = { _ => IntSourcePortParameters(Seq(IntSourceParameters(1, Seq(Resource(device, "int"))))) },
+    sinkFn   = { _ => IntSinkPortParameters(Seq(IntSinkParameters())) },
+    outputRequiresInput = false,
+    inputRequiresOutput = false)
 
   /* Negotiated sizes */
-  def nDevices: Int = intnode.edgesIn.map(_.source.num).sum
+  def nDevices: Int = intnode.edges.in.map(_.source.num).sum
   def nPriorities = min(params.maxPriorities, nDevices)
-  def nHarts = intnode.edgesOut.map(_.source.num).sum
+  def nHarts = intnode.edges.out.map(_.source.num).sum
 
   // Assign all the devices unique ranges
-  lazy val sources = intnode.edgesIn.map(_.source)
+  lazy val sources = intnode.edges.in.map(_.source)
   lazy val flatSources = (sources zip sources.map(_.num).scanLeft(0)(_+_).init).map {
     case (s, o) => s.sources.map(z => z.copy(range = z.range.offset(o)))
   }.flatten
@@ -109,16 +110,13 @@ class TLPLIC(params: PLICParams)(implicit p: Parameters) extends LazyModule
   }
 
   lazy val module = new LazyModuleImp(this) {
-    val io = new Bundle {
-      val tl_in = node.bundleIn
-      val devices = intnode.bundleIn
-      val harts = intnode.bundleOut
-    }
+    val (io_devices, edgesIn) = intnode.in.unzip
+    val (io_harts, _) = intnode.out.unzip
 
     // Compact the interrupt vector the same way
-    val interrupts = (intnode.edgesIn zip io.devices).map { case (e, i) => i.take(e.source.num) }.flatten
+    val interrupts = intnode.in.map { case (i, e) => i.take(e.source.num) }.flatten
     // This flattens the harts into an MSMSMSMSMS... or MMMMM.... sequence
-    val harts = io.harts.flatten
+    val harts = io_harts.flatten
 
     println(s"Interrupt map (${nHarts} harts ${nDevices} interrupts):")
     flatSources.foreach { s =>
@@ -166,7 +164,7 @@ class TLPLIC(params: PLICParams)(implicit p: Parameters) extends LazyModule
       val (maxPri, maxDev) = findMax(effectivePriority)
 
       maxDevs(hart) := maxDev
-      harts(hart) := Reg(next = maxPri) > Cat(UInt(1), threshold(hart))
+      harts(hart) := ShiftRegister(Reg(next = maxPri) > Cat(UInt(1), threshold(hart)), params.intStages)
     }
 
     def priorityRegField(x: UInt) = if (nPriorities > 0) RegField(32, x) else RegField.r(32, x)
@@ -238,7 +236,7 @@ class TLPLIC(params: PLICParams)(implicit p: Parameters) extends LazyModule
 
 /** Trait that will connect a PLIC to a coreplex */
 trait HasPeripheryPLIC extends HasInterruptBus with HasPeripheryBus {
-  val plic  = LazyModule(new TLPLIC(p(PLICParams)))
+  val plic  = LazyModule(new TLPLIC(p(PLICKey)))
   plic.node := pbus.toVariableWidthSlaves
   plic.intnode := ibus.toPLIC
 }

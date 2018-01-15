@@ -3,12 +3,12 @@
 package freechips.rocketchip.coreplex
 
 import Chisel._
-import freechips.rocketchip.diplomacy.{LazyMultiIOModuleImp, DTSTimebase}
+import freechips.rocketchip.diplomacy.{LazyModuleImp, DTSTimebase}
 import freechips.rocketchip.devices.tilelink.HasPeripheryClint
 
-trait HasRTCModuleImp extends LazyMultiIOModuleImp {
+trait HasRTCModuleImp extends LazyModuleImp {
   val outer: HasPeripheryClint
-  private val pbusFreq = outer.p(PeripheryBusParams).frequency
+  private val pbusFreq = outer.p(PeripheryBusKey).frequency
   private val rtcFreq = outer.p(DTSTimebase)
   private val internalPeriod: BigInt = pbusFreq / rtcFreq
 

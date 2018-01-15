@@ -3,7 +3,6 @@
 package freechips.rocketchip.tilelink
 
 import Chisel._
-import chisel3.internal.sourceinfo.SourceInfo
 import freechips.rocketchip.config.Parameters
 import freechips.rocketchip.diplomacy._
 import scala.math.max
@@ -41,12 +40,7 @@ class TLFIFOFixer(policy: TLFIFOFixer.Policy = TLFIFOFixer.all)(implicit p: Para
     })
 
   lazy val module = new LazyModuleImp(this) {
-    val io = new Bundle {
-      val in  = node.bundleIn
-      val out = node.bundleOut
-    }
-
-    ((io.in zip io.out) zip (node.edgesIn zip node.edgesOut)) foreach { case ((in, out), (edgeIn, edgeOut)) =>
+    (node.in zip node.out) foreach { case ((in, edgeIn), (out, edgeOut)) =>
       val (fixMap, splatMap) = fifoMap(edgeOut.manager.managers)
 
       // Do we need to serialize the request to this manager?
@@ -119,10 +113,9 @@ object TLFIFOFixer
   val allFIFO:        Policy = m => m.fifoId.isDefined
   val allUncacheable: Policy = m => m.regionType <= UNCACHEABLE
 
-  // applied to the TL source node; y.node := TLFIFOFixer()(x.node)
-  def apply(policy: Policy = all)(x: TLOutwardNode)(implicit p: Parameters, sourceInfo: SourceInfo): TLOutwardNode = {
+  def apply(policy: Policy = all)(implicit p: Parameters): TLNode =
+  {
     val fixer = LazyModule(new TLFIFOFixer(policy))
-    fixer.node := x
     fixer.node
   }
 }

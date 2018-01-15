@@ -10,16 +10,19 @@ import freechips.rocketchip.tilelink._
 import freechips.rocketchip.util._
 import scala.math.min
 
-abstract class TLBusBypassBase(beatBytes: Int)(implicit p: Parameters) extends LazyModule
+abstract class TLBusBypassBase(beatBytes: Int, deadlock: Boolean = false)(implicit p: Parameters) extends LazyModule
 {
-  protected val nodeIn = TLInputNode()
-  protected val nodeOut = TLOutputNode()
+  protected val nodeIn = TLIdentityNode()
+  protected val nodeOut = TLIdentityNode()
   val node = NodeHandle(nodeIn, nodeOut)
 
   protected val bar = LazyModule(new TLBusBypassBar)
   protected val everything = Seq(AddressSet(0, BigInt("ffffffffffffffffffffffffffffffff", 16))) // 128-bit
-  protected val error = LazyModule(new TLError(ErrorParams(everything), beatBytes))
+  protected val params = ErrorParams(everything, maxAtomic=16, maxTransfer=4096)
+  protected val error = if (deadlock) LazyModule(new DeadlockDevice(params, beatBytes))
+                        else LazyModule(new TLError(params, beatBytes))
 
+  // order matters
   bar.node := nodeIn
   error.node := bar.node
   nodeOut := bar.node
@@ -28,53 +31,60 @@ abstract class TLBusBypassBase(beatBytes: Int)(implicit p: Parameters) extends L
 class TLBusBypass(beatBytes: Int)(implicit p: Parameters) extends TLBusBypassBase(beatBytes)
 {
   lazy val module = new LazyModuleImp(this) {
-    val io = new Bundle {
-      val in = nodeIn.bundleIn
-      val out = nodeOut.bundleOut
+    val io = IO(new Bundle {
       val bypass = Bool(INPUT)
-    }
+    })
     bar.module.io.bypass := io.bypass
   }
 }
 
+class TLBypassNode(implicit valName: ValName) extends TLCustomNode
+{
+  def resolveStar(iKnown: Int, oKnown: Int, iStars: Int, oStars: Int): (Int, Int) = {
+    require (iStars == 0 && oStars == 0, "TLBypass node does not support :=* or :*=")
+    require (iKnown == 1, "TLBypass node expects exactly one input")
+    require (oKnown == 2, "TLBypass node expects exactly one output")
+    (0, 0)
+  }
+  def mapParamsD(n: Int, p: Seq[TLClientPortParameters]): Seq[TLClientPortParameters] = { p ++ p }
+  def mapParamsU(n: Int, p: Seq[TLManagerPortParameters]): Seq[TLManagerPortParameters] = { p.tail }
+}
+
 class TLBusBypassBar(implicit p: Parameters) extends LazyModule
 {
-  // The client only sees the second slave port
-  val node = TLNexusNode(
-    numClientPorts  = 2 to 2 ,
-    numManagerPorts = 1 to 1,
-    clientFn = { seq => seq(0) },
-    managerFn = { seq => seq(1) })
+  val node = new TLBypassNode()
 
   lazy val module = new LazyModuleImp(this) {
-    val io = new Bundle {
-      val in  = node.bundleIn
-      val out = node.bundleOut
+    val io = IO(new Bundle {
       val bypass = Bool(INPUT)
-    }
+      val pending = Bool(OUTPUT)
+    })
 
-    val in   = io.in(0)
-    val out0 = io.out(0)
-    val out1 = io.out(1)
+    val (in, edgeIn) = node.in(0)
+    val Seq((out0, edgeOut0), (out1, edgeOut1)) = node.out
 
-    val edge = node.edgesIn(0)
-    val bce = edge.manager.anySupportAcquireB && edge.client.anySupportProbe
+    require (edgeOut0.manager.beatBytes == edgeOut1.manager.beatBytes,
+      s"BusBypass slave device widths mismatch (${edgeOut0.manager.managers.map(_.name)} has ${edgeOut0.manager.beatBytes}B vs ${edgeOut1.manager.managers.map(_.name)} has ${edgeOut1.manager.beatBytes}B)")
+
+    val bce = edgeIn.manager.anySupportAcquireB && edgeIn.client.anySupportProbe
 
     // We need to be locked to the given bypass direction until all transactions stop
-    val flight = RegInit(UInt(0, width = log2Ceil(3*edge.client.endSourceId+1)))
+    val flight = RegInit(UInt(0, width = log2Ceil(3*edgeIn.client.endSourceId+1)))
     val bypass = RegInit(io.bypass) // synchronous reset required
 
-    val (a_first, a_last, _) = edge.firstlast(in.a)
-    val (b_first, b_last, _) = edge.firstlast(in.b)
-    val (c_first, c_last, _) = edge.firstlast(in.c)
-    val (d_first, d_last, _) = edge.firstlast(in.d)
-    val (e_first, e_last, _) = edge.firstlast(in.e)
+    io.pending := (flight > 0.U)
 
-    val (a_request, a_response) = (edge.isRequest(in.a.bits), edge.isResponse(in.a.bits))
-    val (b_request, b_response) = (edge.isRequest(in.b.bits), edge.isResponse(in.b.bits))
-    val (c_request, c_response) = (edge.isRequest(in.c.bits), edge.isResponse(in.c.bits))
-    val (d_request, d_response) = (edge.isRequest(in.d.bits), edge.isResponse(in.d.bits))
-    val (e_request, e_response) = (edge.isRequest(in.e.bits), edge.isResponse(in.e.bits))
+    val (a_first, a_last, _) = edgeIn.firstlast(in.a)
+    val (b_first, b_last, _) = edgeIn.firstlast(in.b)
+    val (c_first, c_last, _) = edgeIn.firstlast(in.c)
+    val (d_first, d_last, _) = edgeIn.firstlast(in.d)
+    val (e_first, e_last, _) = edgeIn.firstlast(in.e)
+
+    val (a_request, a_response) = (edgeIn.isRequest(in.a.bits), edgeIn.isResponse(in.a.bits))
+    val (b_request, b_response) = (edgeIn.isRequest(in.b.bits), edgeIn.isResponse(in.b.bits))
+    val (c_request, c_response) = (edgeIn.isRequest(in.c.bits), edgeIn.isResponse(in.c.bits))
+    val (d_request, d_response) = (edgeIn.isRequest(in.d.bits), edgeIn.isResponse(in.d.bits))
+    val (e_request, e_response) = (edgeIn.isRequest(in.e.bits), edgeIn.isResponse(in.e.bits))
 
     val a_inc = in.a.fire() && a_first && a_request
     val b_inc = in.b.fire() && b_first && b_request
@@ -94,7 +104,7 @@ class TLBusBypassBar(implicit p: Parameters) extends LazyModule
     flight := next_flight
 
     when (next_flight === UInt(0)) { bypass := io.bypass }
-    val stall = bypass != io.bypass
+    val stall = (bypass != io.bypass) && a_first
 
     out0.a.valid := !stall && in.a.valid &&  bypass
     out1.a.valid := !stall && in.a.valid && !bypass

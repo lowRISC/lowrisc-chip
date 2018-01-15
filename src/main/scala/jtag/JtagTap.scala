@@ -2,9 +2,14 @@
 
 package freechips.rocketchip.jtag
 
-import chisel3._
+import scala.collection.SortedMap
+
+// !!! See Issue #1160.
+// import chisel3._
+import Chisel._
+import chisel3.core.{Input, Output}
 import chisel3.util._
-import chisel3.experimental._
+import freechips.rocketchip.config.Parameters
 
 /** JTAG signals, viewed from the master side
   */
@@ -53,89 +58,13 @@ class JtagControllerIO(irLength: Int) extends JtagBlockIO(irLength, false) {
   override def cloneType = new JtagControllerIO(irLength).asInstanceOf[this.type]
 }
 
-/* JTAG state machine Xilinx version */
-// BSCANE2: Boundary-Scan User Instruction
-//          Artix-7
-// Xilinx HDL Language Template, version 2015.4
-
-class BSCANE2(chain: Int) extends BlackBox(Map("DISABLE_JTAG" -> "FALSE", "JTAG_CHAIN" -> chain)) {
-  val io = IO(new Bundle {
-    val CAPTURE = Output(Bool())
-    val DRCK = Output(Bool())
-    val RESET = Output(Bool())
-    val RUNTEST = Output(Bool())
-    val SEL = Output(Bool())
-    val SHIFT = Output(Bool())
-    val TCK = Output(Clock())
-    val TDI = Output(Bool())
-    val TMS = Output(Bool())
-    val UPDATE = Output(Bool())
-    val TDO = Input(Bool())
-    })
-}
-
-class JtagTapController(irLength: Int, initialInstruction: BigInt) extends Module {
-  val io = IO(new Bundle {
-    val clock = Input(Clock())
-    val reset = Input(Bool())
-    val jtag = new Bundle {
-      val TCK = Input(Clock())
-      val TMS = Input(Bool())
-      val TDI = Input(Bool())
-      val TDO = new Bundle {
-      val data = Output(Bool())
-      val driven = Output(Bool())
-      }
-    }
-    val control = new Bundle {
-      val jtag_reset = Input(Bool())
-      }
-    val output = new Bundle {
-      val state = Output(UInt(4.W))
-      val instruction = Output(UInt(irLength.W))
-      val reset = Output(Bool())
-      }
-    val dataChainOut = new Bundle {
-      val shift = Output(Bool())
-      val data = Output(Bool())
-      val capture = Output(Bool())
-      val update = Output(Bool())
-      }
-    val dataChainIn = new Bundle {
-      val shift = Input(Bool())
-      val data = Input(Bool())
-      val capture = Input(Bool())
-      val update = Input(Bool())
-      }
-  })
-
-//  val parameters = Parameters.empty
-  val chain02 = Module(new BSCANE2(0x1));
-  val chain22 = Module(new BSCANE2(0x3));
-  val chain23 = Module(new BSCANE2(0x4));
-
-  chain02.io.TDO <> io.dataChainIn.data
-  chain22.io.TDO <> io.dataChainIn.data
-  chain23.io.TDO <> io.dataChainIn.data
-  io.dataChainOut.data := (chain02.io.SEL & chain02.io.TDI) | (chain22.io.SEL & chain22.io.TDI) | (chain23.io.SEL & chain23.io.TDI)
-  io.jtag.TDO.driven := true.B
-  io.output.instruction := (chain02.io.SEL * 9.asUInt(irLength.W)) +
-                           (chain22.io.SEL * 34.asUInt(irLength.W)) +
-                           (chain23.io.SEL * 35.asUInt(irLength.W))
-  io.output.reset := chain02.io.RESET | chain22.io.RESET | chain23.io.RESET
-  io.dataChainOut.shift := chain02.io.SHIFT | chain22.io.SHIFT | chain23.io.SHIFT
-  io.jtag.TDO.data := io.dataChainOut.data
-  io.dataChainOut.capture := chain02.io.CAPTURE | chain22.io.CAPTURE | chain23.io.CAPTURE
-  io.dataChainOut.update := chain02.io.UPDATE | chain22.io.UPDATE | chain23.io.UPDATE
-}
-
 /** JTAG TAP controller internal block, responsible for instruction decode and data register chain
   * control signal generation.
   *
   * Misc notes:
   * - Figure 6-3 and 6-4 provides examples with timing behavior
   */
-class JtagTapControllerASIC(irLength: Int, initialInstruction: BigInt) extends Module {
+class JtagTapController(irLength: Int, initialInstruction: BigInt)(implicit val p: Parameters) extends Module {
   require(irLength >= 2)  // 7.1.1a
 
   val io = IO(new JtagControllerIO(irLength))
@@ -178,13 +107,15 @@ class JtagTapControllerASIC(irLength: Int, initialInstruction: BigInt) extends M
   val nextActiveInstruction = Wire(UInt(irLength.W))
   val activeInstruction = NegativeEdgeLatch(clock, nextActiveInstruction, updateInstruction, name = Some("irReg"))   // 7.2.1d active instruction output latches on TCK falling edge
 
-  when (reset) {
+  when (reset.toBool) {
     nextActiveInstruction := initialInstruction.U(irLength.W)
     updateInstruction := true.B
   } .elsewhen (currState === JtagState.UpdateIR.U) {
     nextActiveInstruction := irChain.io.update.bits
     updateInstruction := true.B
   } .otherwise {
+    //!!! Needed when using chisel3._ (See #1160)
+    // nextActiveInstruction := DontCare
     updateInstruction := false.B
   }
   io.output.instruction := activeInstruction
@@ -209,6 +140,8 @@ class JtagTapControllerASIC(irLength: Int, initialInstruction: BigInt) extends M
     tdo := irChain.io.chainOut.data
     tdo_driven := true.B
   } .otherwise {
+    //!!! Needed when using chisel3._ (See #1160)
+    //tdo := DontCare
     tdo_driven := false.B
   }
 }
@@ -238,7 +171,7 @@ object JtagTapGenerator {
     * TODO:
     * - support concatenated scan chains
     */
-  def apply(irLength: Int, instructions: Map[BigInt, Chain], icode: Option[BigInt] = None): JtagBlockIO = {
+  def apply(irLength: Int, instructions: Map[BigInt, Chain], icode: Option[BigInt] = None)(implicit p: Parameters): JtagBlockIO = {
 
     val internalIo = Wire(new JtagBlockIO(irLength, icode.isDefined))
 
@@ -266,7 +199,6 @@ object JtagTapGenerator {
     require(!(allInstructions contains bypassIcode), "instructions may not contain BYPASS code")
 
     val controllerInternal = Module(new JtagTapController(irLength, initialInstruction))
-//    val controllerInternal = Module(new JtagTapControllerASIC(irLength, initialInstruction))
 
     val unusedChainOut = Wire(new ShifterIO)  // De-selected chain output
     unusedChainOut.shift := false.B
@@ -280,9 +212,12 @@ object JtagTapGenerator {
     bypassChain.io.chainIn := controllerInternal.io.dataChainOut  // for simplicity, doesn't visibly affect anything else
     require(allInstructions.size > 0, "Seriously? JTAG TAP with no instructions?")
 
-    val chainToIcode = allInstructions groupBy { case (icode, chain) => chain } map {
+    // Need to ensure that this mapping is ordered to produce deterministic verilog,
+    // and neither Map nor groupBy are deterministic.
+    // Therefore, we first sort by IDCODE, then sort the groups by the first IDCODE in each group.
+    val chainToIcode = (SortedMap(allInstructions.toList:_*).groupBy { case (icode, chain) => chain } map {
       case (chain, icodeToChain) => chain -> icodeToChain.keys
-    }
+    }).toList.sortBy(_._2.head)
 
     val chainToSelect = chainToIcode map {
       case (chain, icodes) => {
@@ -317,8 +252,8 @@ object JtagTapGenerator {
     chainToSelect.map(mapInSelect)
 
     controllerInternal.io.jtag <> internalIo.jtag
-    controllerInternal.io.control <> internalIo.control
-    controllerInternal.io.output <> internalIo.output
+    internalIo.control <> controllerInternal.io.control
+    internalIo.output <> controllerInternal.io.output
 
     internalIo
   }

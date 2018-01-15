@@ -8,26 +8,22 @@ import freechips.rocketchip.config.Parameters
 import freechips.rocketchip.diplomacy._
 import freechips.rocketchip.util.{HeterogeneousBag, PlusArg}
 
-case class TLMonitorArgs(edge: () => Seq[TLEdge], sourceInfo: SourceInfo, p: Parameters)
+case class TLMonitorArgs(edge: TLEdge)
 
-abstract class TLMonitorBase(args: TLMonitorArgs) extends MonitorBase()(args.sourceInfo, args.p)
+abstract class TLMonitorBase(args: TLMonitorArgs) extends Module
 {
-  def legalize(bundle: TLBundleSnoop, edge: TLEdge, reset: Bool): Unit
-
-  lazy val module = new LazyModuleImp(this) {
-    val edges = args.edge()
-    val io = new Bundle {
-      val in = HeterogeneousBag(edges.map(p => new TLBundleSnoop(p.bundle))).flip
-    }
-
-    (edges zip io.in).foreach { case (e, in) => legalize(in, e, reset) }
+  val io = new Bundle {
+    val in = new TLBundleSnoop(args.edge.bundle).flip
   }
+
+  def legalize(bundle: TLBundleSnoop, edge: TLEdge, reset: Bool): Unit
+  legalize(io.in, args.edge, reset)
 }
 
 class TLMonitor(args: TLMonitorArgs) extends TLMonitorBase(args)
 {
   def extra = {
-    sourceInfo match {
+    args.edge.sourceInfo match {
       case SourceLine(filename, line, col) => s" (connected at $filename:$line:$col)"
       case _ => ""
     }
@@ -41,14 +37,25 @@ class TLMonitor(args: TLMonitorArgs) extends TLMonitorBase(args)
     val is_aligned = edge.isAligned(bundle.address, bundle.size)
     val mask = edge.full_mask(bundle)
 
-    when (bundle.opcode === TLMessages.Acquire) {
-      assert (edge.manager.supportsAcquireBSafe(edge.address(bundle), bundle.size), "'A' channel carries Acquire type unsupported by manager" + extra)
-      assert (edge.client.supportsProbe(edge.source(bundle), bundle.size), "'A' channel carries Acquire from a client which does not support Probe" + extra)
-      assert (source_ok, "'A' channel Acquire carries invalid source ID" + extra)
-      assert (bundle.size >= UInt(log2Ceil(edge.manager.beatBytes)), "'A' channel Acquire smaller than a beat" + extra)
-      assert (is_aligned, "'A' channel Acquire address not aligned to size" + extra)
-      assert (TLPermissions.isGrow(bundle.param), "'A' channel Acquire carries invalid grow param" + extra)
-      assert (~bundle.mask === UInt(0), "'A' channel Acquire contains invalid mask" + extra)
+    when (bundle.opcode === TLMessages.AcquireBlock) {
+      assert (edge.manager.supportsAcquireBSafe(edge.address(bundle), bundle.size), "'A' channel carries AcquireBlock type unsupported by manager" + extra)
+      assert (edge.client.supportsProbe(edge.source(bundle), bundle.size), "'A' channel carries AcquireBlock from a client which does not support Probe" + extra)
+      assert (source_ok, "'A' channel AcquireBlock carries invalid source ID" + extra)
+      assert (bundle.size >= UInt(log2Ceil(edge.manager.beatBytes)), "'A' channel AcquireBlock smaller than a beat" + extra)
+      assert (is_aligned, "'A' channel AcquireBlock address not aligned to size" + extra)
+      assert (TLPermissions.isGrow(bundle.param), "'A' channel AcquireBlock carries invalid grow param" + extra)
+      assert (~bundle.mask === UInt(0), "'A' channel AcquireBlock contains invalid mask" + extra)
+    }
+
+    when (bundle.opcode === TLMessages.AcquirePerm) {
+      assert (edge.manager.supportsAcquireBSafe(edge.address(bundle), bundle.size), "'A' channel carries AcquirePerm type unsupported by manager" + extra)
+      assert (edge.client.supportsProbe(edge.source(bundle), bundle.size), "'A' channel carries AcquirePerm from a client which does not support Probe" + extra)
+      assert (source_ok, "'A' channel AcquirePerm carries invalid source ID" + extra)
+      assert (bundle.size >= UInt(log2Ceil(edge.manager.beatBytes)), "'A' channel AcquirePerm smaller than a beat" + extra)
+      assert (is_aligned, "'A' channel AcquirePerm address not aligned to size" + extra)
+      assert (TLPermissions.isGrow(bundle.param), "'A' channel AcquirePerm carries invalid grow param" + extra)
+      assert (bundle.param =/= TLPermissions.NtoB, "'A' channel AcquirePerm requests NtoB" + extra)
+      assert (~bundle.mask === UInt(0), "'A' channel AcquirePerm contains invalid mask" + extra)
     }
 
     when (bundle.opcode === TLMessages.Get) {
@@ -357,12 +364,14 @@ class TLMonitor(args: TLMonitorArgs) extends TLMonitorBase(args)
     val size    = Reg(UInt())
     val source  = Reg(UInt())
     val address = Reg(UInt())
+    val error   = RegEnable(c.bits.error, c.fire())
     when (c.valid && !c_first) {
       assert (c.bits.opcode === opcode, "'C' channel opcode changed within multibeat operation" + extra)
       assert (c.bits.param  === param,  "'C' channel param changed within multibeat operation" + extra)
       assert (c.bits.size   === size,   "'C' channel size changed within multibeat operation" + extra)
       assert (c.bits.source === source, "'C' channel source changed within multibeat operation" + extra)
       assert (c.bits.address=== address,"'C' channel address changed with multibeat operation" + extra)
+      assert (c.bits.error || !error,   "'C' channel burst lowered error" + extra)
     }
     when (c.fire() && c_first) {
       opcode  := c.bits.opcode
@@ -380,12 +389,14 @@ class TLMonitor(args: TLMonitorArgs) extends TLMonitorBase(args)
     val size    = Reg(UInt())
     val source  = Reg(UInt())
     val sink    = Reg(UInt())
+    val error   = RegEnable(d.bits.error, d.fire())
     when (d.valid && !d_first) {
       assert (d.bits.opcode === opcode, "'D' channel opcode changed within multibeat operation" + extra)
       assert (d.bits.param  === param,  "'D' channel param changed within multibeat operation" + extra)
       assert (d.bits.size   === size,   "'D' channel size changed within multibeat operation" + extra)
       assert (d.bits.source === source, "'D' channel source changed within multibeat operation" + extra)
       assert (d.bits.sink   === sink,   "'D' channel sink changed with multibeat operation" + extra)
+      assert (d.bits.error || !error,   "'D' channel burst lowered error" + extra)
     }
     when (d.fire() && d_first) {
       opcode  := d.bits.opcode

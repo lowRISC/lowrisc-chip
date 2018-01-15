@@ -3,7 +3,6 @@
 package freechips.rocketchip.tilelink
 
 import Chisel._
-import chisel3.internal.sourceinfo.SourceInfo
 import freechips.rocketchip.config.Parameters
 import freechips.rocketchip.diplomacy._
 import scala.math.min
@@ -16,12 +15,7 @@ class TLHintHandler(supportManagers: Boolean = true, supportClients: Boolean = f
     managerFn = { m => if (!supportManagers) m else m.copy(minLatency = min(1, m.minLatency), managers = m.managers.map(_.copy(supportsHint = TransferSizes(1, m.maxTransfer)))) })
 
   lazy val module = new LazyModuleImp(this) {
-    val io = new Bundle {
-      val in  = node.bundleIn
-      val out = node.bundleOut
-    }
-
-    ((io.in zip io.out) zip (node.edgesIn zip node.edgesOut)) foreach { case ((in, out), (edgeIn, edgeOut)) =>
+    (node.in zip node.out) foreach { case ((in, edgeIn), (out, edgeOut)) =>
       // Don't add support for clients if there is no BCE channel
       val bce = edgeOut.manager.anySupportAcquireB && edgeIn.client.anySupportProbe
       require (!supportClients || bce)
@@ -97,10 +91,9 @@ class TLHintHandler(supportManagers: Boolean = true, supportClients: Boolean = f
 
 object TLHintHandler
 {
-  // applied to the TL source node; y.node := TLHintHandler(x.node)
-  def apply(supportManagers: Boolean = true, supportClients: Boolean = false, passthrough: Boolean = true)(x: TLOutwardNode)(implicit p: Parameters, sourceInfo: SourceInfo): TLOutwardNode = {
+  def apply(supportManagers: Boolean = true, supportClients: Boolean = false, passthrough: Boolean = true)(implicit p: Parameters): TLNode =
+  {
     val hints = LazyModule(new TLHintHandler(supportManagers, supportClients, passthrough))
-    hints.node := x
     hints.node
   }
 }
@@ -115,14 +108,20 @@ class TLRAMHintHandler(txns: Int)(implicit p: Parameters) extends LazyModule {
   val model = LazyModule(new TLRAMModel("HintHandler"))
   val ram  = LazyModule(new TLRAM(AddressSet(0x0, 0x3ff)))
 
-  model.node := fuzz.node
-  ram.node := TLFragmenter(4, 256)(TLDelayer(0.1)(TLHintHandler()(TLDelayer(0.1)(model.node))))
+  (ram.node
+    := TLFragmenter(4, 256)
+    := TLDelayer(0.1)
+    := TLHintHandler()
+    := TLDelayer(0.1)
+    := model.node
+    := fuzz.node)
 
-  lazy val module = new LazyModuleImp(this) with HasUnitTestIO {
+  lazy val module = new LazyModuleImp(this) with UnitTestModule {
     io.finished := fuzz.module.io.finished
   }
 }
 
 class TLRAMHintHandlerTest(txns: Int = 5000, timeout: Int = 500000)(implicit p: Parameters) extends UnitTest(timeout) {
-  io.finished := Module(LazyModule(new TLRAMHintHandler(txns)).module).io.finished
+  val dut = Module(LazyModule(new TLRAMHintHandler(txns)).module)
+  io.finished := dut.io.finished
 }

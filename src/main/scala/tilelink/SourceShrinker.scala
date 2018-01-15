@@ -3,7 +3,6 @@
 package freechips.rocketchip.tilelink
 
 import Chisel._
-import chisel3.internal.sourceinfo.SourceInfo
 import freechips.rocketchip.config.Parameters
 import freechips.rocketchip.diplomacy._
 import freechips.rocketchip.util._
@@ -23,12 +22,7 @@ class TLSourceShrinker(maxInFlight: Int)(implicit p: Parameters) extends LazyMod
     managerFn = { mp => mp.copy(managers = mp.managers.map(_.copy(fifoId = None)))  })
 
   lazy val module = new LazyModuleImp(this) {
-    val io = new Bundle {
-      val in  = node.bundleIn
-      val out = node.bundleOut
-    }
-
-    ((io.in zip io.out) zip (node.edgesIn zip node.edgesOut)) foreach { case ((in, out), (edgeIn, edgeOut)) =>
+    (node.in zip node.out) foreach { case ((in, edgeIn), (out, edgeOut)) =>
       // Acquires cannot pass this adapter; it makes Probes impossible
       require (!edgeIn.client.anySupportProbe || 
                !edgeOut.manager.anySupportAcquireB)
@@ -80,10 +74,9 @@ class TLSourceShrinker(maxInFlight: Int)(implicit p: Parameters) extends LazyMod
 
 object TLSourceShrinker
 {
-  // applied to the TL source node; y.node := TLSourceShrinker(n)(x.node)
-  def apply(maxInFlight: Int)(x: TLOutwardNode)(implicit p: Parameters, sourceInfo: SourceInfo): TLOutwardNode = {
+  def apply(maxInFlight: Int)(implicit p: Parameters): TLNode =
+  {
     val shrinker = LazyModule(new TLSourceShrinker(maxInFlight))
-    shrinker.node := x
     shrinker.node
   }
 }

@@ -100,12 +100,12 @@ object RegField
 
   // This RegField wraps an explicit register
   // (e.g. Black-Boxed Register) to create a R/W register.
-  def rwReg(n: Int, bb: SimpleRegIO) : RegField =
+  def rwReg(n: Int, bb: SimpleRegIO, name: String = "", description: String = "") : RegField =
     RegField(n, bb.q, RegWriteFn((valid, data) => {
       bb.en := valid
       bb.d := data
       Bool(true)
-    }))
+    }), name, description)
 
   // Create byte-sized read-write RegFields out of a large UInt register.
   // It is updated when any of the bytes are written. Because the RegFields
@@ -113,15 +113,23 @@ object RegField
   // than the intended bus width of the device (atomic updates are impossible).
   def bytes(reg: UInt, numBytes: Int): Seq[RegField] = {
     val pad = reg | UInt(0, width = 8*numBytes)
-    val bytes = Wire(init = Vec.tabulate(numBytes) { i => pad(8*(i+1)-1, 8*i) })
+    val oldBytes = Vec.tabulate(numBytes) { i => pad(8*(i+1)-1, 8*i) }
+    val newBytes = Wire(init = oldBytes)
     val valids = Wire(init = Vec.fill(numBytes) { Bool(false) })
-    when (valids.reduce(_ || _)) { reg := bytes.asUInt }
-    bytes.zipWithIndex.map { case (b, i) => RegField(8, b,
-      RegWriteFn((valid, data) => {
+    when (valids.reduce(_ || _)) { reg := newBytes.asUInt }
+    Seq.tabulate(numBytes) { i =>
+      RegField(8, oldBytes(i),
+        RegWriteFn((valid, data) => {
         valids(i) := valid
-        when (valid) { bytes(i) := data }
+        when (valid) { newBytes(i) := data }
         Bool(true)
       }))}}
+
+  def bytes(reg: UInt): Seq[RegField] = {
+    val width = reg.getWidth
+    require (width % 8 == 0, s"RegField.bytes must be called on byte-sized reg, not ${width} bits")
+    bytes(reg, width/8)
+  }
 }
 
 trait HasRegMap

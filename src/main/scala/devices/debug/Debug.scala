@@ -9,6 +9,7 @@ import freechips.rocketchip.regmapper._
 import freechips.rocketchip.rocket.Instructions
 import freechips.rocketchip.tile.XLen
 import freechips.rocketchip.tilelink._
+import freechips.rocketchip.interrupts._
 import freechips.rocketchip.util._
 
 /** Constant values used by both Debug Bus Response & Request
@@ -43,8 +44,6 @@ object DsbBusConsts {
 
 object DsbRegAddrs{
 
-  // These may need to move around to be used by the serial interface.
-
   // These are used by the ROM.
   def HALTED       = 0x100
   def GOING        = 0x104
@@ -60,8 +59,14 @@ object DsbRegAddrs{
   def DATA         = 0x380
 
   // We want DATA to immediately follow PROGBUF so that we can
-  // use them interchangeably.
-  def PROGBUF(cfg:DebugModuleParams) = {DATA - (cfg.nProgramBufferWords * 4)}
+  // use them interchangeably. Leave another slot if there is an
+  // implicit ebreak.
+  def PROGBUF(cfg:DebugModuleParams) = {
+    val tmp = DATA - (cfg.nProgramBufferWords * 4)
+    if (cfg.hasImplicitEbreak) (tmp - 4) else tmp
+  }
+  // This is unused if hasImpEbreak is false, and just points to the end of the PROGBUF.
+  def IMPEBREAK(cfg: DebugModuleParams) = { DATA - 4 }
 
   // We want abstract to be immediately before PROGBUF
   // because we auto-generate 2 instructions.
@@ -107,9 +112,11 @@ import DebugAbstractCommandType._
   *  nProgamBufferWords: Number of 32-bit words for Program Buffer
   *  hasBusMaster: Whethr or not a bus master should be included
   *    The size of the accesses supported by the Bus Master. 
-  *  nSerialPorts : Number of serial ports to instantiate
   *  supportQuickAccess : Whether or not to support the quick access command.
   *  supportHartArray : Whether or not to implement the hart array register.
+  *  hartIdToHartSel: For systems where hart ids are not 1:1 with hartsel, provide the mapping.
+  *  hartSelToHartId: Provide inverse mapping of the above
+  *  hasImplicitEbreak: There is an additional RO program buffer word containing an ebreak
   **/
 
 case class DebugModuleParams (
@@ -124,27 +131,25 @@ case class DebugModuleParams (
   hasAccess32  : Boolean = false,
   hasAccess16  : Boolean = false,
   hasAccess8   : Boolean = false,
-  nSerialPorts : Int = 0,
   supportQuickAccess : Boolean = false,
   supportHartArray   : Boolean = false,
   hartIdToHartSel : (UInt) => UInt = (x:UInt) => x,
-  hartSelToHartId : (UInt) => UInt = (x:UInt) => x
+  hartSelToHartId : (UInt) => UInt = (x:UInt) => x,
+  hasImplicitEbreak : Boolean = false
 ) {
 
   if (hasBusMaster == false){
-    require (hasAccess128 == false)
-    require (hasAccess64  == false)
-    require (hasAccess32  == false)
-    require (hasAccess16  == false)
-    require (hasAccess8   == false)
+    require (hasAccess128 == false, "No Bus mastering support in Debug Module yet")
+    require (hasAccess64  == false, "No Bus mastering support in Debug Module yet")
+    require (hasAccess32  == false, "No Bus mastering support in Debug Module yet")
+    require (hasAccess16  == false, "No Bus mastering support in Debug Module yet")
+    require (hasAccess8   == false, "No Bus mastering support in Debug Module yet")
   }
 
-  require (nSerialPorts <= 8)
+  require ((nDMIAddrSize >= 7) && (nDMIAddrSize <= 32), s"Legal DMIAddrSize is 7-32, not ${nDMIAddrSize}")
 
-  require ((nDMIAddrSize >= 7) && (nDMIAddrSize <= 32))
-
-  require ((nAbstractDataWords  > 0)  && (nAbstractDataWords  <= 16))
-  require ((nProgramBufferWords >= 0) && (nProgramBufferWords <= 16))
+  require ((nAbstractDataWords  > 0)  && (nAbstractDataWords  <= 16), s"Legal nAbstractDataWords is 0-16, not ${nAbstractDataWords}")
+  require ((nProgramBufferWords >= 0) && (nProgramBufferWords <= 16), s"Legal nProgramBufferWords is 0-16, not ${nProgramBufferWords}")
 
   if (supportQuickAccess) {
     // TODO: Check that quick access requirements are met.
@@ -200,8 +205,9 @@ class DMIIO(implicit val p: Parameters) extends ParameterizedBundle()(p) {
  */
 
 class DebugInternalBundle ()(implicit val p: Parameters) extends ParameterizedBundle()(p) {
-  val resumereq = Bool()
-  val hartsel = UInt(10.W)
+  val resumereq    = Bool()
+  val hartsel      = UInt(10.W)
+  val ackhavereset = Bool()
 }
 
 /* structure for top-level Debug Module signals which aren't the bus interfaces.
@@ -243,11 +249,11 @@ class DebugCtrlBundle (nComponents: Int)(implicit val p: Parameters) extends Par
   */
 
 // Local reg mapper function : Notify when written, but give the value as well.  
-object WNotify {
+object WNotifyWire {
   def apply(n: Int, value: UInt, set: Bool) : RegField = {
-    RegField(n, value, RegWriteFn((valid, data) => {
+    RegField(n, UInt(0), RegWriteFn((valid, data) => {
       set := valid
-      when(valid) {value := data}
+      value := data
       Bool(true)
     }))
   }
@@ -273,11 +279,9 @@ class TLDebugModuleOuter(device: Device)(implicit p: Parameters) extends LazyMod
   import DMI_RegAddrs._
 
   val intnode = IntNexusNode(
-    numSourcePorts = 1 to 1024,
-    numSinkPorts   = 0 to 0,
     sourceFn       = { _ => IntSourcePortParameters(Seq(IntSourceParameters(1, Seq(Resource(device, "int"))))) },
-    sinkFn         = { _ => IntSinkPortParameters(Seq(IntSinkParameters())) }
-  )
+    sinkFn         = { _ => IntSinkPortParameters(Seq(IntSinkParameters())) },
+    outputRequiresInput = false)
 
   val dmiNode = TLRegisterNode (
     address = AddressSet.misaligned(DMI_DMCONTROL << 2, 4),
@@ -287,15 +291,14 @@ class TLDebugModuleOuter(device: Device)(implicit p: Parameters) extends LazyMod
   )
 
   lazy val module = new LazyModuleImp(this) {
+    require (intnode.edges.in.size == 0, "Debug Module does not accept interrupts")
 
-    val nComponents = intnode.bundleOut.size
+    val nComponents = intnode.out.size
 
-    val io = new Bundle {
+    val io = IO(new Bundle {
       val ctrl = (new DebugCtrlBundle(nComponents))
-      val tlIn = dmiNode.bundleIn
-      val debugInterrupts = intnode.bundleOut
       val innerCtrl = new DecoupledIO(new DebugInternalBundle())
-    }
+    })
 
     //----DMCONTROL (The whole point of 'Outer' is to maintain this register on dmiClock (e.g. TCK) domain, so that it
     //               can be written even if 'Inner' is not being clocked or is in reset. This allows halting
@@ -325,10 +328,11 @@ class TLDebugModuleOuter(device: Device)(implicit p: Parameters) extends LazyMod
       DMCONTROLNxt := DMCONTROLReset
     } .otherwise {
       when (DMCONTROLWrEn) {
-        DMCONTROLNxt.ndmreset  := DMCONTROLWrData.ndmreset
-        DMCONTROLNxt.hartsel   := DMCONTROLWrData.hartsel
-        DMCONTROLNxt.haltreq   := DMCONTROLWrData.haltreq
-        DMCONTROLNxt.resumereq := DMCONTROLWrData.resumereq
+        DMCONTROLNxt.ndmreset     := DMCONTROLWrData.ndmreset
+        DMCONTROLNxt.hartsel      := DMCONTROLWrData.hartsel
+        DMCONTROLNxt.haltreq      := DMCONTROLWrData.haltreq
+        DMCONTROLNxt.resumereq    := DMCONTROLWrData.resumereq
+        DMCONTROLNxt.ackhavereset := DMCONTROLWrData.ackhavereset
       }
     }
 
@@ -355,8 +359,9 @@ class TLDebugModuleOuter(device: Device)(implicit p: Parameters) extends LazyMod
 
     debugIntNxt := debugIntRegs
 
+    val (intnode_out, _) = intnode.out.unzip
     for (component <- 0 until nComponents) {
-      io.debugInterrupts(component)(0) := debugIntRegs(component)
+      intnode_out(component)(0) := debugIntRegs(component)
     }
 
     // Halt request registers are set & cleared by writes to DMCONTROL.haltreq
@@ -378,8 +383,9 @@ class TLDebugModuleOuter(device: Device)(implicit p: Parameters) extends LazyMod
     }
 
     io.innerCtrl.valid := DMCONTROLWrEn
-    io.innerCtrl.bits.hartsel   := DMCONTROLWrData.hartsel
-    io.innerCtrl.bits.resumereq := DMCONTROLWrData.resumereq
+    io.innerCtrl.bits.hartsel      := DMCONTROLWrData.hartsel
+    io.innerCtrl.bits.resumereq    := DMCONTROLWrData.resumereq
+    io.innerCtrl.bits.ackhavereset := DMCONTROLWrData.ackhavereset 
 
     io.ctrl.ndreset := DMCONTROLReg.ndmreset
     io.ctrl.dmactive := DMCONTROLReg.dmactive
@@ -393,27 +399,22 @@ class TLDebugModuleOuterAsync(device: Device)(implicit p: Parameters) extends La
   val dmiXbar = LazyModule (new TLXbar())
 
   val dmOuter = LazyModule( new TLDebugModuleOuter(device))
-  val intnode = IntOutputNode()
+  val intnode = IntSyncCrossingSource(alreadyRegistered = true) :*= dmOuter.intnode
 
-  val dmiInnerNode = TLAsyncOutputNode()
-
-  intnode :*= dmOuter.intnode
+  val dmiInnerNode = TLAsyncCrossingSource() := dmiXbar.node
 
   dmiXbar.node := dmi2tl.node
   dmOuter.dmiNode := dmiXbar.node
-  dmiInnerNode := TLAsyncCrossingSource()(dmiXbar.node)
   
   lazy val module = new LazyModuleImp(this) {
 
-    val nComponents = intnode.bundleOut.size
+    val nComponents = dmOuter.intnode.edges.out.size
 
-    val io = new Bundle {
+    val io = IO(new Bundle {
       val dmi   = new DMIIO()(p).flip()
-      val dmiInner = dmiInnerNode.bundleOut
       val ctrl = new DebugCtrlBundle(nComponents)
-      val debugInterrupts = intnode.bundleOut
       val innerCtrl = new AsyncBundle(depth=1, new DebugInternalBundle())
-    }
+    })
 
     dmi2tl.module.io.dmi <> io.dmi
 
@@ -447,13 +448,11 @@ class TLDebugModuleInner(device: Device, getNComponents: () => Int)(implicit p: 
 
     val nComponents = getNComponents()
 
-    val io = new Bundle {
-      val hart_in = tlNode.bundleIn
-      val dmi_in = dmiNode.bundleIn
+    val io = IO(new Bundle {
       val dmactive = Bool(INPUT)
       val innerCtrl = (new DecoupledIO(new DebugInternalBundle())).flip
       val debugUnavail = Vec(nComponents, Bool()).asInput
-    }
+    })
 
     //--------------------------------------------------------------
     // Import constants for shorter variable names
@@ -468,17 +467,17 @@ class TLDebugModuleInner(device: Device, getNComponents: () => Int)(implicit p: 
     // Sanity Check Configuration For this implementation.
     //--------------------------------------------------------------
 
-    require (cfg.nSerialPorts == 0)
-    require (cfg.hasBusMaster == false)
-    require (cfg.supportQuickAccess == false)
-    require (cfg.supportHartArray == false)
+    require (cfg.hasBusMaster == false, "No Bus Mastering support yet")
+    require (cfg.supportQuickAccess == false, "No Quick Access support yet")
+    require (cfg.supportHartArray == false, "No Hart Array support yet")
 
     //--------------------------------------------------------------
     // Register & Wire Declarations (which need to be pre-declared)
     //--------------------------------------------------------------
 
-    val haltedBitRegs  = RegInit(Vec.fill(nComponents){false.B})
-    val resumeReqRegs  = RegInit(Vec.fill(nComponents){false.B})
+    val haltedBitRegs    = RegInit(Vec.fill(nComponents){false.B})
+    val resumeReqRegs    = RegInit(Vec.fill(nComponents){false.B})
+    val haveResetBitRegs = RegInit(Vec.fill(nComponents){true.B})
 
     // --- regmapper outputs
 
@@ -519,16 +518,12 @@ class TLDebugModuleInner(device: Device, getNComponents: () => Int)(implicit p: 
 
     val DMSTATUSRdData = Wire(init = (new DMSTATUSFields()).fromBits(0.U))
     DMSTATUSRdData.authenticated := true.B // Not implemented
-    DMSTATUSRdData.versionlo       := "b10".U
-
-    // Chisel3 Issue #527 , have to do intermediate assignment.
-    val unavailVec = Wire(init = Vec.fill(nComponents){false.B})
-    unavailVec := io.debugUnavail
+    DMSTATUSRdData.version       := 2.U    // Version 0.13
 
     when (selectedHartReg >= nComponents.U) {
       DMSTATUSRdData.allnonexistent := true.B
       DMSTATUSRdData.anynonexistent := true.B
-    }.elsewhen (unavailVec(selectedHartReg)) {
+    }.elsewhen (io.debugUnavail(selectedHartReg)) {
       DMSTATUSRdData.allunavail := true.B
       DMSTATUSRdData.anyunavail := true.B
     }.elsewhen (haltedBitRegs(selectedHartReg)) {
@@ -538,14 +533,24 @@ class TLDebugModuleInner(device: Device, getNComponents: () => Int)(implicit p: 
       DMSTATUSRdData.allrunning := true.B
       DMSTATUSRdData.anyrunning := true.B
     }
+    DMSTATUSRdData.allhavereset := haveResetBitRegs(selectedHartReg)
+    DMSTATUSRdData.anyhavereset := haveResetBitRegs(selectedHartReg)
 
     val resumereq = io.innerCtrl.fire() && io.innerCtrl.bits.resumereq
+
+    when (io.innerCtrl.fire()){
+      when (io.innerCtrl.bits.ackhavereset) {
+        haveResetBitRegs(io.innerCtrl.bits.hartsel) := false.B
+      }
+    }
  
     DMSTATUSRdData.allresumeack := ~resumeReqRegs(selectedHartReg) && ~resumereq
     DMSTATUSRdData.anyresumeack := ~resumeReqRegs(selectedHartReg) && ~resumereq
 
     //TODO
-    DMSTATUSRdData.cfgstrvalid := false.B
+    DMSTATUSRdData.devtreevalid := false.B
+
+    DMSTATUSRdData.impebreak := (cfg.hasImplicitEbreak).B
 
     //----HARTINFO
 
@@ -569,8 +574,8 @@ class TLDebugModuleInner(device: Device, getNComponents: () => Int)(implicit p: 
     //----ABSTRACTCS
 
     val ABSTRACTCSReset = Wire(init = (new ABSTRACTCSFields()).fromBits(0.U))
-    ABSTRACTCSReset.datacount := cfg.nAbstractDataWords.U
-    ABSTRACTCSReset.progsize := cfg.nProgramBufferWords.U
+    ABSTRACTCSReset.datacount   := cfg.nAbstractDataWords.U
+    ABSTRACTCSReset.progbufsize := cfg.nProgramBufferWords.U
 
     val ABSTRACTCSReg       = Reg(new ABSTRACTCSFields())
     val ABSTRACTCSWrDataVal = Wire(init = 0.U(32.W))
@@ -875,18 +880,19 @@ class TLDebugModuleInner(device: Device, getNComponents: () => Int)(implicit p: 
 
     tlNode.regmap(
       // This memory is writable.
-      HALTED      -> Seq(WNotify(sbIdWidth, hartHaltedId, hartHaltedWrEn)),
-      GOING       -> Seq(WNotify(sbIdWidth, hartGoingId,  hartGoingWrEn)),
-      RESUMING    -> Seq(WNotify(sbIdWidth, hartResumingId,  hartResumingWrEn)),
-      EXCEPTION   -> Seq(WNotify(sbIdWidth, hartExceptionId,  hartExceptionWrEn)),
+      HALTED      -> Seq(WNotifyWire(sbIdWidth, hartHaltedId, hartHaltedWrEn)),
+      GOING       -> Seq(WNotifyWire(sbIdWidth, hartGoingId,  hartGoingWrEn)),
+      RESUMING    -> Seq(WNotifyWire(sbIdWidth, hartResumingId,  hartResumingWrEn)),
+      EXCEPTION   -> Seq(WNotifyWire(sbIdWidth, hartExceptionId,  hartExceptionWrEn)),
       DATA        -> abstractDataMem.map(x => RegField(8, x)),
       PROGBUF(cfg)-> programBufferMem.map(x => RegField(8, x)),
 
       // These sections are read-only.
-      WHERETO      -> Seq(RegField.r(32, jalAbstract.asUInt)),
-      ABSTRACT(cfg)-> abstractGeneratedMem.map{x => RegField.r(32, x)},
-      FLAGS        -> flags.map{x => RegField.r(8, x.asUInt())},
-      ROMBASE      -> DebugRomContents().map(x => RegField.r(8, (x & 0xFF).U(8.W)))
+      IMPEBREAK(cfg)-> {if (cfg.hasImplicitEbreak) Seq(RegField.r(32,  Instructions.EBREAK.value.U)) else Nil},
+      WHERETO       -> Seq(RegField.r(32, jalAbstract.asUInt)),
+      ABSTRACT(cfg) -> abstractGeneratedMem.map{x => RegField.r(32, x)},
+      FLAGS         -> flags.map{x => RegField.r(8, x.asUInt())},
+      ROMBASE       -> DebugRomContents().map(x => RegField.r(8, (x & 0xFF).U(8.W)))
 
     )
 
@@ -1011,30 +1017,27 @@ class TLDebugModuleInner(device: Device, getNComponents: () => Int)(implicit p: 
 // Also is the Sink side of hartsel & resumereq fields of DMCONTROL.
 class TLDebugModuleInnerAsync(device: Device, getNComponents: () => Int)(implicit p: Parameters) extends LazyModule{
 
-  val dmInner = LazyModule(new TLDebugModuleInner(device, getNComponents)(p))
-  val dmiNode = TLAsyncInputNode()
-  val tlNode = TLInputNode()
+  val dmInner = LazyModule(new TLDebugModuleInner(device, getNComponents))
+  val dmiXing = LazyModule(new TLAsyncCrossingSink(depth=1))
+  val dmiNode = dmiXing.node
+  val tlNode = dmInner.tlNode
 
-  dmInner.dmiNode := TLAsyncCrossingSink(depth=1)(dmiNode)
-  dmInner.tlNode  := tlNode
+  dmInner.dmiNode := dmiXing.node
 
   lazy val module = new LazyModuleImp(this) {
 
-    val io = new Bundle {
-      // this comes from tlClk domain.
-      val tl_in = tlNode.bundleIn
+    val io = IO(new Bundle {
       // These are all asynchronous and come from Outer
-      val dmi_in = dmiNode.bundleIn
       val dmactive = Bool(INPUT)
       val innerCtrl = new AsyncBundle(1, new DebugInternalBundle()).flip
       // This comes from tlClk domain.
       val debugUnavail    = Vec(getNComponents(), Bool()).asInput
-    }
+      val psd = new PSDTestMode().asInput
+    })
 
     dmInner.module.io.innerCtrl := FromAsyncBundle(io.innerCtrl)
-    dmInner.module.io.dmactive := ~ResetCatchAndSync(clock, ~io.dmactive)
+    dmInner.module.io.dmactive := ~ResetCatchAndSync(clock, ~io.dmactive, "dmactiveSync", io.psd)
     dmInner.module.io.debugUnavail := io.debugUnavail
-
   }
 }
 
@@ -1049,25 +1052,22 @@ class TLDebugModule(implicit p: Parameters) extends LazyModule {
     override val alwaysExtended = true
   }
 
-  val node = TLInputNode()
-  val intnode = IntOutputNode()
-
   val dmOuter = LazyModule(new TLDebugModuleOuterAsync(device)(p))
-  val dmInner = LazyModule(new TLDebugModuleInnerAsync(device, () => {intnode.bundleOut.size})(p))
+  val dmInner = LazyModule(new TLDebugModuleInnerAsync(device, () => {dmOuter.dmOuter.intnode.edges.out.size})(p))
+
+  val node = dmInner.tlNode
+  val intnode = dmOuter.intnode
 
   dmInner.dmiNode := dmOuter.dmiInnerNode
-  dmInner.tlNode := node
-  intnode :*= dmOuter.intnode
 
   lazy val module = new LazyModuleImp(this) {
-    val nComponents = intnode.bundleOut.size
+    val nComponents = dmOuter.dmOuter.intnode.edges.out.size
 
-    val io = new Bundle {
+    val io = IO(new Bundle {
       val ctrl = new DebugCtrlBundle(nComponents)
       val dmi = new ClockedDMIIO().flip
-      val in = node.bundleIn
-      val debugInterrupts = intnode.bundleOut
-    }
+      val psd = new PSDTestMode().asInput
+    })
 
     dmOuter.module.io.dmi <> io.dmi.dmi
     dmOuter.module.reset := io.dmi.dmiReset
@@ -1076,6 +1076,8 @@ class TLDebugModule(implicit p: Parameters) extends LazyModule {
     dmInner.module.io.innerCtrl    := dmOuter.module.io.innerCtrl
     dmInner.module.io.dmactive     := dmOuter.module.io.ctrl.dmactive
     dmInner.module.io.debugUnavail := io.ctrl.debugUnavail
+
+    dmInner.module.io.psd <> io.psd
 
     io.ctrl <> dmOuter.module.io.ctrl
 
@@ -1099,16 +1101,14 @@ class ClockedDMIIO(implicit val p: Parameters) extends ParameterizedBundle()(p){
 
 class DMIToTL(implicit p: Parameters) extends LazyModule {
 
-  val node = TLClientNode(TLClientParameters("debug"))
+  val node = TLClientNode(Seq(TLClientPortParameters(Seq(TLClientParameters("debug")))))
 
   lazy val module = new LazyModuleImp(this) {
-    val io = new Bundle {
+    val io = IO(new Bundle {
       val dmi = new DMIIO()(p).flip()
-      val out = node.bundleOut
-    }
+    })
 
-    val tl = io.out(0)
-    val edge = node.edgesOut(0)
+    val (tl, edge) = node.out(0)
 
     val src  = Wire(init = 0.U)
     val addr = Wire(init = (io.dmi.req.bits.addr << 2))

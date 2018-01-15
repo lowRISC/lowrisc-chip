@@ -5,10 +5,12 @@ package freechips.rocketchip.tile
 
 import Chisel._
 import freechips.rocketchip.config._
-import freechips.rocketchip.coreplex._
+import freechips.rocketchip.coreplex.CoreplexClockCrossing
+import freechips.rocketchip.devices.tilelink._
 import freechips.rocketchip.diplomacy._
-import freechips.rocketchip.rocket._
+import freechips.rocketchip.interrupts._
 import freechips.rocketchip.tilelink._
+import freechips.rocketchip.rocket._
 import freechips.rocketchip.util._
 
 case class RocketTileParams(
@@ -18,131 +20,107 @@ case class RocketTileParams(
     rocc: Seq[RoCCParams] = Nil,
     btb: Option[BTBParams] = Some(BTBParams()),
     dataScratchpadBytes: Int = 0,
-    boundaryBuffers: Boolean = false) extends TileParams {
+    trace: Boolean = false,
+    hcfOnUncorrectable: Boolean = false,
+    name: Option[String] = Some("tile"),
+    hartId: Int = 0,
+    blockerCtrlAddr: Option[BigInt] = None,
+    boundaryBuffers: Boolean = false // if synthesized with hierarchical PnR, cut feed-throughs?
+    ) extends TileParams {
   require(icache.isDefined)
   require(dcache.isDefined)
 }
-  
-class RocketTile(val rocketParams: RocketTileParams, val hartid: Int)(implicit p: Parameters) extends BaseTile(rocketParams)(p)
+
+class RocketTile(
+    val rocketParams: RocketTileParams,
+    crossing: CoreplexClockCrossing)
+  (implicit p: Parameters) extends BaseTile(rocketParams, crossing)(p)
     with HasExternalInterrupts
     with HasLazyRoCC  // implies CanHaveSharedFPU with CanHavePTW with HasHellaCache
-    with CanHaveScratchpad { // implies CanHavePTW with HasHellaCache with HasICacheFrontend
+    with HasHellaCache
+    with HasICacheFrontend {
 
-  nDCachePorts += 1 // core TODO dcachePorts += () => module.core.io.dmem ??
+  val intOutwardNode = IntIdentityNode()
+  val slaveNode = TLIdentityNode()
+  val masterNode = TLIdentityNode()
 
-  private def ofInt(x: Int) = Seq(ResourceInt(BigInt(x)))
-  private def ofStr(x: String) = Seq(ResourceString(x))
-  private def ofRef(x: Device) = Seq(ResourceReference(x.label))
+  val dtim_adapter = tileParams.dcache.flatMap { d => d.scratch.map(s =>
+    LazyModule(new ScratchpadSlavePort(AddressSet(s, d.dataScratchpadBytes-1), xBytes, tileParams.core.useAtomics && !tileParams.core.useAtomicsOnlyForIO)))
+  }
+  dtim_adapter.foreach(lm => connectTLSlave(lm.node, xBytes))
+
+  val bus_error_unit = tileParams.core.tileControlAddr map { a =>
+    val beu = LazyModule(new BusErrorUnit(new L1BusErrors, BusErrorUnitParams(a)))
+    intOutwardNode := beu.intNode
+    connectTLSlave(beu.node, xBytes)
+    beu
+  }
+
+  val tile_master_blocker =
+    tileParams.blockerCtrlAddr
+      .map(BasicBusBlockerParams(_, xBytes, masterPortBeatBytes, deadlock = true))
+      .map(bp => LazyModule(new BasicBusBlocker(bp)))
+
+  tile_master_blocker.foreach(lm => connectTLSlave(lm.controlNode, xBytes))
+
+  // TODO: this doesn't block other masters, e.g. RoCCs
+  tlOtherMastersNode := tile_master_blocker.map { _.node := tlMasterXbar.node } getOrElse { tlMasterXbar.node }
+  masterNode :=* tlOtherMastersNode
+  DisableMonitors { implicit p => tlSlaveXbar.node :*= slaveNode }
+
+  def findScratchpadFromICache: Option[AddressSet] = dtim_adapter.map { s =>
+    val finalNode = frontend.masterNode.edges.out.head.manager.managers.find(_.nodePath.last == s.node)
+    require (finalNode.isDefined, "Could not find the scratch pad; not reachable via icache?")
+    require (finalNode.get.address.size == 1, "Scratchpad address space was fragmented!")
+    finalNode.get.address(0)
+  }
+
+  nDCachePorts += 1 /*core */ + (dtim_adapter.isDefined).toInt
+
+  val dtimProperty = dtim_adapter.map(d => Map(
+    "sifive,dtim" -> d.device.asProperty)).getOrElse(Nil)
+
+  val itimProperty = tileParams.icache.flatMap(_.itimAddr.map(i => Map(
+    "sifive,itim" -> frontend.icache.device.asProperty))).getOrElse(Nil)
 
   val cpuDevice = new Device {
-    def describe(resources: ResourceBindings): Description = {
-      val block =  p(CacheBlockBytes)
-      val m = if (rocketParams.core.mulDiv.nonEmpty) "m" else ""
-      val a = if (rocketParams.core.useAtomics) "a" else ""
-      val f = if (rocketParams.core.fpu.nonEmpty) "f" else ""
-      val d = if (rocketParams.core.fpu.nonEmpty && p(XLen) > 32) "d" else ""
-      val c = if (rocketParams.core.useCompressed) "c" else ""
-      val isa = s"rv${p(XLen)}i$m$a$f$d$c"
-
-      val dcache = rocketParams.dcache.filter(!_.scratch.isDefined).map(d => Map(
-        "d-cache-block-size"   -> ofInt(block),
-        "d-cache-sets"         -> ofInt(d.nSets),
-        "d-cache-size"         -> ofInt(d.nSets * d.nWays * block))).getOrElse(Map())
-
-      val dtim = scratch.map(d => Map(
-        "sifive,dtim"          -> ofRef(d.device))).getOrElse(Map())
-
-      val itim = if (!frontend.icache.slaveNode.isDefined) Map() else Map(
-        "sifive,itim"          -> ofRef(frontend.icache.device))
-
-      val icache = rocketParams.icache.map(i => Map(
-        "i-cache-block-size"   -> ofInt(block),
-        "i-cache-sets"         -> ofInt(i.nSets),
-        "i-cache-size"         -> ofInt(i.nSets * i.nWays * block))).getOrElse(Map())
-
-      val dtlb = rocketParams.dcache.filter(_ => rocketParams.core.useVM).map(d => Map(
-        "d-tlb-size"           -> ofInt(d.nTLBEntries),
-        "d-tlb-sets"           -> ofInt(1))).getOrElse(Map())
-
-      val itlb = rocketParams.icache.filter(_ => rocketParams.core.useVM).map(i => Map(
-        "i-tlb-size"           -> ofInt(i.nTLBEntries),
-        "i-tlb-sets"           -> ofInt(1))).getOrElse(Map())
-
-      val mmu = if (!rocketParams.core.useVM) Map() else Map(
-        "tlb-split" -> Nil,
-        "mmu-type"  -> ofStr(p(PgLevels) match {
-          case 2 => "riscv,sv32"
-          case 3 => "riscv,sv39"
-          case 4 => "riscv,sv48"
-      }))
-
-      // Find all the caches
-      val outer = masterNode.edgesOut
-        .flatMap(_.manager.managers)
-        .filter(_.supportsAcquireB)
-        .flatMap(_.resources.headOption)
-        .map(_.owner.label)
-        .distinct
-      val nextlevel: Option[(String, Seq[ResourceValue])] =
-        if (outer.isEmpty) None else
-        Some("next-level-cache" -> outer.map(l => ResourceReference(l)).toList)
-
-      Description(s"cpus/cpu@${hartid}", Map(
-        "reg"                  -> resources("reg").map(_.value),
-        "device_type"          -> ofStr("cpu"),
-        "compatible"           -> Seq(ResourceString("sifive,rocket0"), ResourceString("riscv")),
-        "status"               -> ofStr("okay"),
-        "clock-frequency"      -> Seq(ResourceInt(rocketParams.core.bootFreqHz)),
-        "riscv,isa"            -> ofStr(isa))
-        ++ dcache ++ icache ++ nextlevel ++ mmu ++ itlb ++ dtlb ++ dtim ++itim)
-    }
-  }
-  val intcDevice = new Device {
-    def describe(resources: ResourceBindings): Description = {
-      Description(s"cpus/cpu@${hartid}/interrupt-controller", Map(
-        "compatible"           -> ofStr("riscv,cpu-intc"),
-        "interrupt-controller" -> Nil,
-        "#interrupt-cells"     -> ofInt(1)))
-    }
+    def describe(resources: ResourceBindings): Description =
+      toDescription(resources)("sifive,rocket0", dtimProperty ++ itimProperty)
   }
 
   ResourceBinding {
-    Resource(cpuDevice, "reg").bind(ResourceInt(BigInt(hartid)))
-    Resource(intcDevice, "reg").bind(ResourceInt(BigInt(hartid)))
-
-    intNode.edgesIn.flatMap(_.source.sources).map { case s =>
-      for (i <- s.range.start until s.range.end) {
-       csrIntMap.lift(i).foreach { j =>
-          s.resources.foreach { r =>
-            r.bind(intcDevice, ResourceInt(j))
-          }
-        }
-      }
-    }
+    Resource(cpuDevice, "reg").bind(ResourceInt(BigInt(hartId)))
   }
 
-  override lazy val module = new RocketTileModule(this)
+  override lazy val module = new RocketTileModuleImp(this)
 }
 
-class RocketTileBundle(outer: RocketTile) extends BaseTileBundle(outer)
-    with HasExternalInterruptsBundle
-    with CanHaveScratchpadBundle
-
-class RocketTileModule(outer: RocketTile) extends BaseTileModule(outer, () => new RocketTileBundle(outer))
-    with HasExternalInterruptsModule
-    with HasLazyRoCCModule
-    with CanHaveScratchpadModule {
-
-  require(outer.p(PAddrBits) >= outer.masterNode.edgesIn(0).bundle.addressBits,
-    s"outer.p(PAddrBits) (${outer.p(PAddrBits)}) must be >= outer.masterNode.addressBits (${outer.masterNode.edgesIn(0).bundle.addressBits})")
+class RocketTileModuleImp(outer: RocketTile) extends BaseTileModuleImp(outer)
+    with HasLazyRoCCModule[RocketTile]
+    with HasHellaCacheModule
+    with HasICacheFrontendModule {
 
   val core = Module(p(BuildCore)(outer.p))
-  decodeCoreInterrupts(core.io.interrupts) // Decode the interrupt vector
-  core.io.hartid := io.hartid // Pass through the hartid
+
+  val uncorrectable = RegInit(Bool(false))
+  val halt_and_catch_fire = outer.rocketParams.hcfOnUncorrectable.option(IO(Bool(OUTPUT)))
+
+  outer.dtim_adapter.foreach { lm => dcachePorts += lm.module.io.dmem }
+
+  outer.bus_error_unit.foreach { lm =>
+    lm.module.io.errors.dcache := outer.dcache.module.io.errors
+    lm.module.io.errors.icache := outer.frontend.module.io.errors
+  }
+
+  outer.decodeCoreInterrupts(core.io.interrupts) // Decode the interrupt vector
+  outer.bus_error_unit.foreach { beu => core.io.interrupts.buserror.get := beu.module.io.interrupt }
+  core.io.hartid := constants.hartid // Pass through the hartid
+  trace.foreach { _ := core.io.trace }
+  halt_and_catch_fire.foreach { _ := uncorrectable }
   outer.frontend.module.io.cpu <> core.io.imem
-  outer.frontend.module.io.resetVector := io.resetVector
-  outer.frontend.module.io.hartid := io.hartid
-  outer.dcache.module.io.hartid := io.hartid
+  outer.frontend.module.io.reset_vector := constants.reset_vector
+  outer.frontend.module.io.hartid := constants.hartid
+  outer.dcache.module.io.hartid := constants.hartid
   dcachePorts += core.io.dmem // TODO outer.dcachePorts += () => module.core.io.dmem ??
   fpuOpt foreach { fpu => core.io.fpu <> fpu.io }
   core.io.ptw <> ptw.io.dpath
@@ -152,6 +130,12 @@ class RocketTileModule(outer: RocketTile) extends BaseTileModule(outer, () => ne
   core.io.rocc.busy := roccCore.busy
   core.io.rocc.interrupt := roccCore.interrupt
 
+  when(!uncorrectable) { uncorrectable :=
+    List(outer.frontend.module.io.errors, outer.dcache.module.io.errors)
+      .flatMap { e => e.uncorrectable.map(_.valid) }
+      .reduceOption(_||_)
+      .getOrElse(false.B)
+  }
 
   // TODO eliminate this redundancy
   val h = dcachePorts.size
@@ -162,115 +146,4 @@ class RocketTileModule(outer: RocketTile) extends BaseTileModule(outer, () => ne
   // TODO figure out how to move the below into their respective mix-ins
   dcacheArb.io.requestor <> dcachePorts
   ptw.io.requestor <> ptwPorts
-}
-
-abstract class RocketTileWrapper(rtp: RocketTileParams, hartid: Int)(implicit p: Parameters) extends LazyModule {
-  val rocket = LazyModule(new RocketTile(rtp, hartid))
-  val masterNode: OutputNode[_,_,_,_,_]
-  val slaveNode: InputNode[_,_,_,_,_]
-  val asyncIntNode   = IntInputNode()
-  val periphIntNode  = IntInputNode()
-  val coreIntNode    = IntInputNode()
-  val intXbar = LazyModule(new IntXbar)
-
-  rocket.intNode := intXbar.intnode
-
-  def optionalMasterBuffer(in: TLOutwardNode): TLOutwardNode = {
-    if (rtp.boundaryBuffers) {
-      val mbuf = LazyModule(new TLBuffer(BufferParams.none, BufferParams.flow, BufferParams.none, BufferParams.flow, BufferParams(1)))
-      mbuf.node :=* in
-      mbuf.node
-    } else {
-      in
-    }
-  }
-
-  def optionalSlaveBuffer(in: TLOutwardNode): TLOutwardNode = {
-    if (rtp.boundaryBuffers) {
-      val sbuf = LazyModule(new TLBuffer(BufferParams.flow, BufferParams.none, BufferParams.none, BufferParams.none, BufferParams.none))
-      sbuf.node connectButDontMonitorSlaves in
-      sbuf.node
-    } else {
-      in
-    }
-  }
-
-  lazy val module = new LazyModuleImp(this) {
-    val io = new CoreBundle with HasExternallyDrivenTileConstants {
-      val master = masterNode.bundleOut
-      val slave = slaveNode.bundleIn
-      val asyncInterrupts  = asyncIntNode.bundleIn
-      val periphInterrupts = periphIntNode.bundleIn
-      val coreInterrupts   = coreIntNode.bundleIn
-    }
-    // signals that do not change based on crossing type:
-    rocket.module.io.hartid := io.hartid
-    rocket.module.io.resetVector := io.resetVector
-  }
-}
-
-class SyncRocketTile(rtp: RocketTileParams, hartid: Int)(implicit p: Parameters) extends RocketTileWrapper(rtp, hartid) {
-  val masterNode = TLOutputNode()
-  masterNode :=* optionalMasterBuffer(rocket.masterNode)
-
-  val slaveNode = new TLInputNode() { override def reverse = true }
-  rocket.slaveNode connectButDontMonitorSlaves optionalSlaveBuffer(slaveNode)
-
-  // Fully async interrupts need synchronizers.
-  // Others need no synchronization.
-  val xing = LazyModule(new IntXing(3))
-  xing.intnode := asyncIntNode
-
-  intXbar.intnode  := xing.intnode
-  intXbar.intnode  := periphIntNode
-  intXbar.intnode  := coreIntNode
-}
-
-class AsyncRocketTile(rtp: RocketTileParams, hartid: Int)(implicit p: Parameters) extends RocketTileWrapper(rtp, hartid) {
-  val masterNode = TLAsyncOutputNode()
-  val source = LazyModule(new TLAsyncCrossingSource)
-  source.node :=* rocket.masterNode
-  masterNode :=* source.node
-
-  val slaveNode = new TLAsyncInputNode() { override def reverse = true }
-  val sink = LazyModule(new TLAsyncCrossingSink)
-  rocket.slaveNode connectButDontMonitorSlaves sink.node
-  sink.node connectButDontMonitorSlaves slaveNode
-
-  // Fully async interrupts need synchronizers,
-  // as do those coming from the periphery clock.
-  // Others need no synchronization.
-  val asyncXing = LazyModule(new IntXing(3))
-  val periphXing = LazyModule(new IntXing(3))
-  asyncXing.intnode := asyncIntNode
-  periphXing.intnode := periphIntNode
-
-  intXbar.intnode  := asyncXing.intnode
-  intXbar.intnode  := periphXing.intnode
-  intXbar.intnode  := coreIntNode
-}
-
-class RationalRocketTile(rtp: RocketTileParams, hartid: Int)(implicit p: Parameters) extends RocketTileWrapper(rtp, hartid) {
-  val masterNode = TLRationalOutputNode()
-  val source = LazyModule(new TLRationalCrossingSource)
-  source.node :=* optionalMasterBuffer(rocket.masterNode)
-  masterNode :=* source.node
-
-  val slaveNode = new TLRationalInputNode() { override def reverse = true }
-  val sink = LazyModule(new TLRationalCrossingSink(SlowToFast))
-  sink.node connectButDontMonitorSlaves slaveNode
-  rocket.slaveNode connectButDontMonitorSlaves optionalSlaveBuffer(sink.node)
-
-  // Fully async interrupts need synchronizers.
-  // Those coming from periphery clock need a
-  // rational synchronizer.
-  // Others need no synchronization.
-  val asyncXing    = LazyModule(new IntXing(3))
-  val periphXing = LazyModule(new IntXing(1))
-  asyncXing.intnode := asyncIntNode
-  periphXing.intnode := periphIntNode
-
-  intXbar.intnode  := asyncXing.intnode
-  intXbar.intnode  := periphXing.intnode
-  intXbar.intnode  := coreIntNode
 }

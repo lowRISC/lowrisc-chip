@@ -6,32 +6,29 @@ package freechips.rocketchip.system
 import Chisel._
 import freechips.rocketchip.config.Config
 import freechips.rocketchip.coreplex._
-import freechips.rocketchip.devices.debug._
-import freechips.rocketchip.devices.tilelink._
+import freechips.rocketchip.devices.debug.{IncludeJtagDTM, JtagDTMKey}
 import freechips.rocketchip.diplomacy._
+
+class WithJtagDTMSystem extends freechips.rocketchip.coreplex.WithJtagDTM
 
 class BaseConfig extends Config(new BaseCoreplexConfig().alter((site,here,up) => {
   // DTS descriptive parameters
   case DTSModel => "freechips,rocketchip-unknown"
   case DTSCompat => Nil
+  case DTSTimebase => BigInt(1000000) // 1 MHz
   // External port parameters
-  case IncludeJtagDTM => false
-  case JtagDTMKey => new JtagDTMKeyDefault()
   case NExtTopInterrupts => 2
   case ExtMem => MasterPortParams(
-                      base = 0x80000000L,
-                      size = 0x10000000L,
-                      beatBytes = site(MemoryBusParams).beatBytes,
+                      base = x"8000_0000",
+                      size = x"1000_0000",
+                      beatBytes = site(MemoryBusKey).beatBytes,
                       idBits = 4)
   case ExtBus => MasterPortParams(
-                      base = 0x60000000L,
-                      size = 0x20000000L,
-                      beatBytes = site(MemoryBusParams).beatBytes,
+                      base = x"6000_0000",
+                      size = x"2000_0000",
+                      beatBytes = site(MemoryBusKey).beatBytes,
                       idBits = 4)
   case ExtIn  => SlavePortParams(beatBytes = 8, idBits = 8, sourceBits = 4)
-  // Additional device Parameters
-  case ErrorParams => ErrorParams(Seq(AddressSet(0x3000, 0xfff)))
-  case BootROMParams => BootROMParams(contentFileName = "./bootrom/bootrom.img")
 }))
 
 class DefaultConfig extends Config(new WithNBigCores(1) ++ new BaseConfig)
@@ -68,15 +65,13 @@ class EightChannelConfig extends Config(new WithNMemoryChannels(8) ++ new BaseCo
 class DualCoreConfig extends Config(
   new WithNBigCores(2) ++ new BaseConfig)
 
-class HeterogeneousDualCoreConfig extends Config(
-  new WithNSmallCores(1) ++ new WithNBigCores(1) ++ new BaseConfig)
-
 class TinyConfig extends Config(
   new WithNMemoryChannels(0) ++
-  new WithStatelessBridge ++
-  new WithNTinyCores(1) ++
+  new WithIncoherentTiles ++
+  new With1TinyCore ++
   new BaseConfig)
 
-class DefaultFPGAConfig extends Config(new BaseConfig)
+class BaseFPGAConfig extends Config(new BaseConfig)
 
-class DefaultFPGASmallConfig extends Config(new WithNSmallCores(1) ++ new DefaultFPGAConfig)
+class DefaultFPGAConfig extends Config(new WithNSmallCores(1) ++ new BaseFPGAConfig)
+class DefaultFPGASmallConfig extends Config(new DefaultFPGAConfig)

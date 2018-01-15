@@ -3,6 +3,8 @@
 package freechips.rocketchip.tilelink
 
 import Chisel._
+import chisel3.internal.sourceinfo.SourceInfo
+import freechips.rocketchip.config.Parameters
 import freechips.rocketchip.diplomacy._
 import freechips.rocketchip.util.RationalDirection
 import scala.math.max
@@ -30,15 +32,15 @@ case class TLManagerParameters(
   address.foreach { a => require (a.finite) }
 
   address.combinations(2).foreach { case Seq(x,y) => require (!x.overlaps(y), s"$x and $y overlap.") }
-  require (supportsPutFull.contains(supportsPutPartial))
-  require (supportsPutFull.contains(supportsArithmetic))
-  require (supportsPutFull.contains(supportsLogical))
-  require (supportsGet.contains(supportsArithmetic))
-  require (supportsGet.contains(supportsLogical))
-  require (supportsAcquireB.contains(supportsAcquireT))
+  require (supportsPutFull.contains(supportsPutPartial), s"PutFull($supportsPutFull) < PutPartial($supportsPutPartial)")
+  require (supportsPutFull.contains(supportsArithmetic), s"PutFull($supportsPutFull) < Arithmetic($supportsArithmetic)")
+  require (supportsPutFull.contains(supportsLogical),    s"PutFull($supportsPutFull) < Logical($supportsLogical)")
+  require (supportsGet.contains(supportsArithmetic),     s"Get($supportsGet) < Arithmetic($supportsArithmetic)")
+  require (supportsGet.contains(supportsLogical),        s"Get($supportsGet) < Logical($supportsLogical)")
+  require (supportsAcquireB.contains(supportsAcquireT),  s"AcquireB($supportsAcquireB) < AcquireT($supportsAcquireT)")
 
   // Make sure that the regionType agrees with the capabilities
-  require (!supportsAcquireB || regionType >= RegionType.UNCACHED) // acquire -> uncached, tracked, cached
+  require (!supportsAcquireB || regionType >= RegionType.UNCACHEABLE) // acquire -> uncached, tracked, cached
   require (regionType <= RegionType.UNCACHED || supportsAcquireB)  // tracked, cached -> acquire
   require (regionType != RegionType.UNCACHED || supportsGet) // uncached -> supportsGet
 
@@ -62,8 +64,16 @@ case class TLManagerParameters(
       r = supportsAcquireB || supportsGet,
       w = supportsAcquireT || supportsPutFull,
       x = executable,
-      c = supportsAcquireB))
+      c = regionType >= RegionType.UNCACHED,
+      a = supportsArithmetic && supportsLogical))
   }
+
+  def findTreeViolation() = nodePath.find {
+    case _: MixedAdapterNode[_, _, _, _, _, _, _, _] => false
+    case _: SinkNode[_, _, _, _, _] => false
+    case node => node.inputs.size != 1
+  }
+  def isTree = findTreeViolation() == None
 }
 
 case class TLManagerPortParameters(
@@ -167,6 +177,9 @@ case class TLManagerPortParameters(
   def supportsPutFullFast   (address: UInt, lgSize: UInt, range: Option[TransferSizes] = None) = supportHelper(false, _.supportsPutFull,    address, lgSize, range)
   def supportsPutPartialFast(address: UInt, lgSize: UInt, range: Option[TransferSizes] = None) = supportHelper(false, _.supportsPutPartial, address, lgSize, range)
   def supportsHintFast      (address: UInt, lgSize: UInt, range: Option[TransferSizes] = None) = supportHelper(false, _.supportsHint,       address, lgSize, range)
+
+  def findTreeViolation() = managers.flatMap(_.findTreeViolation()).headOption
+  def isTree = !managers.exists(!_.isTree)
 }
 
 case class TLClientParameters(
@@ -205,7 +218,6 @@ case class TLClientParameters(
 
 case class TLClientPortParameters(
   clients:       Seq[TLClientParameters],
-  unsafeAtomics: Boolean = false,
   minLatency:    Int = 0) // Only applies to B=>C
 {
   require (!clients.isEmpty)
@@ -312,7 +324,9 @@ object TLBundleParameters
 
 case class TLEdgeParameters(
   client:  TLClientPortParameters,
-  manager: TLManagerPortParameters)
+  manager: TLManagerPortParameters,
+  params:  Parameters,
+  sourceInfo: SourceInfo)
 {
   val maxTransfer = max(client.maxTransfer, manager.maxTransfer)
   val maxLgSize = log2Ceil(maxTransfer)
@@ -340,7 +354,7 @@ object TLAsyncBundleParameters
   def union(x: Seq[TLAsyncBundleParameters]) = x.foldLeft(emptyBundleParams)((x,y) => x.union(y))
 }
 
-case class TLAsyncEdgeParameters(client: TLAsyncClientPortParameters, manager: TLAsyncManagerPortParameters)
+case class TLAsyncEdgeParameters(client: TLAsyncClientPortParameters, manager: TLAsyncManagerPortParameters, params: Parameters, sourceInfo: SourceInfo)
 {
   val bundle = TLAsyncBundleParameters(manager.depth, TLBundleParameters(client.base, manager.base))
 }
@@ -348,7 +362,7 @@ case class TLAsyncEdgeParameters(client: TLAsyncClientPortParameters, manager: T
 case class TLRationalManagerPortParameters(direction: RationalDirection, base: TLManagerPortParameters)
 case class TLRationalClientPortParameters(base: TLClientPortParameters)
 
-case class TLRationalEdgeParameters(client: TLRationalClientPortParameters, manager: TLRationalManagerPortParameters)
+case class TLRationalEdgeParameters(client: TLRationalClientPortParameters, manager: TLRationalManagerPortParameters, params: Parameters, sourceInfo: SourceInfo)
 {
   val bundle = TLBundleParameters(client.base, manager.base)
 }

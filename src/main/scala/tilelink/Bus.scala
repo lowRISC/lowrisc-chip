@@ -6,7 +6,7 @@ import Chisel._
 import freechips.rocketchip.config.{Field, Parameters}
 import freechips.rocketchip.diplomacy._
 
-case object TLBusDelayProbability extends Field[Double]
+case object TLBusDelayProbability extends Field[Double](0.0)
 
 /** Specifies widths of various attachement points in the SoC */
 trait TLBusParams {
@@ -21,7 +21,9 @@ trait TLBusParams {
   def blockOffset: Int = log2Up(blockBytes)
 }
 
-abstract class TLBusWrapper(params: TLBusParams)(implicit p: Parameters) extends TLBusParams {
+abstract class TLBusWrapper(params: TLBusParams, val busName: String)(implicit p: Parameters)
+    extends SimpleLazyModule with LazyScope with TLBusParams {
+
   val beatBytes = params.beatBytes
   val blockBytes = params.blockBytes
   val masterBuffering = params.masterBuffering
@@ -30,10 +32,17 @@ abstract class TLBusWrapper(params: TLBusParams)(implicit p: Parameters) extends
   private val delayProb = p(TLBusDelayProbability)
 
   protected val xbar = LazyModule(new TLXbar)
+  xbar.suggestName(busName)
+
   private val master_buffer = LazyModule(new TLBuffer(masterBuffering))
+  master_buffer.suggestName(s"${busName}_master_TLBuffer")
   private val slave_buffer = LazyModule(new TLBuffer(slaveBuffering))
+  slave_buffer.suggestName(s"${busName}_slave_TLBuffer")
   private val slave_frag = LazyModule(new TLFragmenter(beatBytes, blockBytes))
+  slave_frag.suggestName(s"${busName}_slave_TLFragmenter")
+  
   private val slave_ww = LazyModule(new TLWidthWidget(beatBytes))
+  slave_ww.suggestName(s"${busName}_slave_TLWidthWidget")
 
   private val delayedNode = if (delayProb > 0.0) {
     val firstDelay = LazyModule(new TLDelayer(delayProb))
@@ -63,45 +72,13 @@ abstract class TLBusWrapper(params: TLBusParams)(implicit p: Parameters) extends
 
   def bufferToSlaves: TLOutwardNode = outwardBufNode 
 
-  def toAsyncSlaves(sync: Int = 3): TLAsyncOutwardNode = {
-    val source = LazyModule(new TLAsyncCrossingSource(sync))
-    source.node :*= outwardNode
-    source.node
-  }
-
-  def toRationalSlaves: TLRationalOutwardNode = {
-    val source = LazyModule(new TLRationalCrossingSource())
-    source.node :*= outwardNode
-    source.node
+  def toSyncSlaves(name: Option[String] = None, addBuffers: Int = 0): TLOutwardNode = {
+    TLBuffer.chain(addBuffers).foldRight(outwardBufNode)(_ :*= _)
   }
 
   def toVariableWidthSlaves: TLOutwardNode = outwardFragNode
 
-  def toAsyncVariableWidthSlaves(sync: Int = 3): TLAsyncOutwardNode = {
-    val source = LazyModule(new TLAsyncCrossingSource(sync))
-    source.node :*= outwardFragNode
-    source.node
-  }
-
-  def toRationalVariableWidthSlaves: TLRationalOutwardNode = {
-    val source = LazyModule(new TLRationalCrossingSource())
-    source.node :*= outwardFragNode
-    source.node
-  }
-
   def toFixedWidthSlaves: TLOutwardNode = outwardWWNode
-
-  def toAsyncFixedWidthSlaves(sync: Int = 3): TLAsyncOutwardNode = {
-    val source = LazyModule(new TLAsyncCrossingSource(sync))
-    source.node := outwardWWNode
-    source.node
-  }
-
-  def toRationalFixedWidthSlaves: TLRationalOutwardNode = {
-    val source = LazyModule(new TLRationalCrossingSource())
-    source.node :*= outwardWWNode
-    source.node
-  }
 
   def toFixedWidthPorts: TLOutwardNode = outwardWWNode // TODO, do/don't buffer here; knowing we will after the necessary port conversions
 

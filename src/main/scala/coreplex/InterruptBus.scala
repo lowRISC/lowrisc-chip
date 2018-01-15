@@ -5,7 +5,7 @@ package freechips.rocketchip.coreplex
 import Chisel._
 import freechips.rocketchip.config.{Field, Parameters}
 import freechips.rocketchip.diplomacy._
-import freechips.rocketchip.tilelink._
+import freechips.rocketchip.interrupts._
 
 /** Collects interrupts from internal and external devices and feeds them into the PLIC */ 
 class InterruptBusWrapper(implicit p: Parameters) {
@@ -30,7 +30,7 @@ trait HasInterruptBus {
 }
 
 /** Specifies the number of external interrupts */
-case object NExtTopInterrupts extends Field[Int]
+case object NExtTopInterrupts extends Field[Int](0)
 
 /** This trait adds externally driven interrupts to the system. 
   * However, it should not be used directly; instead one of the below
@@ -44,7 +44,7 @@ abstract trait HasExtInterrupts extends HasInterruptBus {
   }
 
   val nExtInterrupts = p(NExtTopInterrupts)
-  val extInterrupts = IntInternalInputNode(IntSourcePortSimple(num = nExtInterrupts, resources = device.int))
+  val extInterrupts = IntSourceNode(IntSourcePortSimple(num = nExtInterrupts, resources = device.int))
 }
 
 /** This trait should be used if the External Interrupts have NOT
@@ -77,9 +77,9 @@ trait HasExtInterruptsBundle {
 /** This trait performs the translation from a UInt IO into Diplomatic Interrupts.
   * The wiring must be done in the concrete LazyModuleImp. 
   */
-trait HasExtInterruptsModuleImp extends LazyMultiIOModuleImp with HasExtInterruptsBundle {
+trait HasExtInterruptsModuleImp extends LazyModuleImp with HasExtInterruptsBundle {
   val outer: HasExtInterrupts
   val interrupts = IO(UInt(INPUT, width = outer.nExtInterrupts))
 
-  outer.extInterrupts.bundleIn.flatten.zipWithIndex.foreach { case(o, i) => o := interrupts(i) }
+  outer.extInterrupts.out.map(_._1).flatten.zipWithIndex.foreach { case(o, i) => o := interrupts(i) }
 }

@@ -3,7 +3,6 @@
 package freechips.rocketchip.tilelink
 
 import Chisel._
-import chisel3.internal.sourceinfo.SourceInfo
 import freechips.rocketchip.config.Parameters
 import freechips.rocketchip.diplomacy._
 import freechips.rocketchip.util._
@@ -17,11 +16,6 @@ class TLWidthWidget(innerBeatBytes: Int)(implicit p: Parameters) extends LazyMod
     managerFn = { case m => m.copy(beatBytes = innerBeatBytes) })
 
   lazy val module = new LazyModuleImp(this) {
-    val io = new Bundle {
-      val in  = node.bundleIn
-      val out = node.bundleOut
-    }
-
     def merge[T <: TLDataChannel](edgeIn: TLEdge, in: DecoupledIO[T], edgeOut: TLEdge, out: DecoupledIO[T]) = {
       val inBytes = edgeIn.manager.beatBytes
       val outBytes = edgeOut.manager.beatBytes
@@ -55,13 +49,6 @@ class TLWidthWidget(innerBeatBytes: Int)(implicit p: Parameters) extends LazyMod
         Cat(mdata.reverse)
       }
 
-      def reduce(i: Bool): Bool = {
-        val state = Reg(Bool())
-        val next = i || (!first && state)
-        when (in.fire()) { state := next }
-        next
-      }
-
       in.ready := out.ready || !last
       out.valid := in.valid && last
       out.bits := in.bits
@@ -72,8 +59,8 @@ class TLWidthWidget(innerBeatBytes: Int)(implicit p: Parameters) extends LazyMod
       (out.bits, in.bits) match {
         case (o: TLBundleA, i: TLBundleA) => o.mask := edgeOut.mask(o.address, o.size) & Mux(hasData, helper(i.mask), ~UInt(0, width=outBytes))
         case (o: TLBundleB, i: TLBundleB) => o.mask := edgeOut.mask(o.address, o.size) & Mux(hasData, helper(i.mask), ~UInt(0, width=outBytes))
-        case (o: TLBundleC, i: TLBundleC) => o.error := reduce(i.error)
-        case (o: TLBundleD, i: TLBundleD) => o.error := reduce(i.error)
+        case (o: TLBundleC, i: TLBundleC) => () // monotone errors: last beat's error taken combinationally is ok
+        case (o: TLBundleD, i: TLBundleD) => ()
         case _ => require(false, "Impossible bundle combination in WidthWidget")
       }
     }
@@ -125,8 +112,8 @@ class TLWidthWidget(innerBeatBytes: Int)(implicit p: Parameters) extends LazyMod
       (out.bits, in.bits) match {
         case (o: TLBundleA, i: TLBundleA) => o.mask := helper(i.mask, 1)
         case (o: TLBundleB, i: TLBundleB) => o.mask := helper(i.mask, 1)
-        case (o: TLBundleC, i: TLBundleC) => () // error handled by bulk connect
-        case (o: TLBundleD, i: TLBundleD) => () // error handled by bulk connect
+        case (o: TLBundleC, i: TLBundleC) => () // monotone errors: replicating error to all beats is ok
+        case (o: TLBundleD, i: TLBundleD) => ()
         case _ => require(false, "Impossbile bundle combination in WidthWidget")
       }
 
@@ -154,7 +141,7 @@ class TLWidthWidget(innerBeatBytes: Int)(implicit p: Parameters) extends LazyMod
       }
     }
 
-    ((io.in zip io.out) zip (node.edgesIn zip node.edgesOut)) foreach { case ((in, out), (edgeIn, edgeOut)) =>
+    (node.in zip node.out) foreach { case ((in, edgeIn), (out, edgeOut)) =>
 
       // If the master is narrower than the slave, the D channel must be narrowed.
       // This is tricky, because the D channel has no address data.
@@ -197,10 +184,9 @@ class TLWidthWidget(innerBeatBytes: Int)(implicit p: Parameters) extends LazyMod
 
 object TLWidthWidget
 {
-  // applied to the TL source node; y.node := WidthWidget(x.node, 16)
-  def apply(innerBeatBytes: Int)(x: TLOutwardNode)(implicit p: Parameters, sourceInfo: SourceInfo): TLOutwardNode = {
+  def apply(innerBeatBytes: Int)(implicit p: Parameters): TLNode =
+  {
     val widget = LazyModule(new TLWidthWidget(innerBeatBytes))
-    widget.node := x
     widget.node
   }
 }
@@ -213,18 +199,21 @@ class TLRAMWidthWidget(first: Int, second: Int, txns: Int)(implicit p: Parameter
   val model = LazyModule(new TLRAMModel("WidthWidget"))
   val ram  = LazyModule(new TLRAM(AddressSet(0x0, 0x3ff)))
 
-  model.node := fuzz.node
-  ram.node := TLDelayer(0.1)(TLFragmenter(4, 256)(
-                if (first == second ) { TLWidthWidget(first)(TLDelayer(0.1)(model.node)) }
-                else {
-                  TLWidthWidget(second)(
-                    TLWidthWidget(first)(TLDelayer(0.1)(model.node)))}))
+  (ram.node
+    := TLDelayer(0.1)
+    := TLFragmenter(4, 256)
+    := TLWidthWidget(second)
+    := TLWidthWidget(first)
+    := TLDelayer(0.1)
+    := model.node
+    := fuzz.node)
 
-  lazy val module = new LazyModuleImp(this) with HasUnitTestIO {
+  lazy val module = new LazyModuleImp(this) with UnitTestModule {
     io.finished := fuzz.module.io.finished
   }
 }
 
 class TLRAMWidthWidgetTest(little: Int, big: Int, txns: Int = 5000, timeout: Int = 500000)(implicit p: Parameters) extends UnitTest(timeout) {
-  io.finished := Module(LazyModule(new TLRAMWidthWidget(little,big,txns)).module).io.finished
+  val dut = Module(LazyModule(new TLRAMWidthWidget(little,big,txns)).module)
+  io.finished := dut.io.finished
 }

@@ -279,6 +279,9 @@ case class BufferParams(depth: Int, flow: Boolean, pipe: Boolean)
       sq.io.enq <> x
       sq.io.deq
     }
+
+  override def toString() = "BufferParams:%d%s%s".format(depth, if (flow) "F" else "", if (pipe) "P" else "")
+
 }
 
 object BufferParams
@@ -289,4 +292,15 @@ object BufferParams
   val none    = BufferParams(0)
   val flow    = BufferParams(1, true, false)
   val pipe    = BufferParams(1, false, true)
+}
+
+case class TriStateValue(value: Boolean, set: Boolean)
+{
+  def update(orig: Boolean) = if (set) value else orig
+}
+
+object TriStateValue
+{
+  implicit def apply(value: Boolean): TriStateValue = TriStateValue(value, true)
+  def unset = TriStateValue(false, false)
 }

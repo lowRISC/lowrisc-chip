@@ -3,15 +3,14 @@
 package freechips.rocketchip.tilelink
 
 import Chisel._
-import chisel3.internal.sourceinfo.SourceInfo
 import freechips.rocketchip.config.Parameters
 import freechips.rocketchip.diplomacy._
 import freechips.rocketchip.amba.apb._
 import scala.math.{min, max}
 import APBParameters._
 
-case class TLToAPBNode() extends MixedAdapterNode(TLImp, APBImp)(
-  dFn = { case TLClientPortParameters(clients, unsafeAtomics, minLatency) =>
+case class TLToAPBNode()(implicit valName: ValName) extends MixedAdapterNode(TLImp, APBImp)(
+  dFn = { case TLClientPortParameters(clients, minLatency) =>
     val masters = clients.map { case c => APBMasterParameters(name = c.name, nodePath = c.nodePath) }
     APBMasterPortParameters(masters)
   },
@@ -38,12 +37,7 @@ class TLToAPB(val aFlow: Boolean = true)(implicit p: Parameters) extends LazyMod
   val node = TLToAPBNode()
 
   lazy val module = new LazyModuleImp(this) {
-    val io = new Bundle {
-      val in = node.bundleIn
-      val out = node.bundleOut
-    }
-
-    ((io.in zip io.out) zip (node.edgesIn zip node.edgesOut)) foreach { case ((in, out), (edgeIn, edgeOut)) =>
+    (node.in zip node.out) foreach { case ((in, edgeIn), (out, edgeOut)) =>
       val beatBytes = edgeOut.slave.beatBytes
       val lgBytes = log2Ceil(beatBytes)
 
@@ -91,10 +85,9 @@ class TLToAPB(val aFlow: Boolean = true)(implicit p: Parameters) extends LazyMod
 
 object TLToAPB
 {
-  // applied to the TL source node; y.node := TLToAPB()(x.node)
-  def apply(aFlow: Boolean = true)(x: TLOutwardNode)(implicit p: Parameters, sourceInfo: SourceInfo): APBOutwardNode = {
-    val apb = LazyModule(new TLToAPB(aFlow))
-    apb.node := x
-    apb.node
+  def apply(aFlow: Boolean = true)(implicit p: Parameters) =
+  {
+    val tl2apb = LazyModule(new TLToAPB(aFlow))
+    tl2apb.node
   }
 }

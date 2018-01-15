@@ -3,7 +3,6 @@
 package freechips.rocketchip.tilelink
 
 import Chisel._
-import chisel3.internal.sourceinfo.SourceInfo
 import freechips.rocketchip.amba.ahb._
 import freechips.rocketchip.config.Parameters
 import freechips.rocketchip.diplomacy._
@@ -11,8 +10,8 @@ import freechips.rocketchip.util._
 import scala.math.{min, max}
 import AHBParameters._
 
-case class TLToAHBNode() extends MixedAdapterNode(TLImp, AHBImp)(
-  dFn = { case TLClientPortParameters(clients, unsafeAtomics, minLatency) =>
+case class TLToAHBNode()(implicit valName: ValName) extends MixedAdapterNode(TLImp, AHBImp)(
+  dFn = { case TLClientPortParameters(clients, minLatency) =>
     val masters = clients.map { case c => AHBMasterParameters(name = c.name, nodePath = c.nodePath) }
     AHBMasterPortParameters(masters)
   },
@@ -53,12 +52,7 @@ class TLToAHB(val aFlow: Boolean = false)(implicit p: Parameters) extends LazyMo
   val node = TLToAHBNode()
 
   lazy val module = new LazyModuleImp(this) {
-    val io = new Bundle {
-      val in = node.bundleIn
-      val out = node.bundleOut
-    }
-
-   ((io.in zip io.out) zip (node.edgesIn zip node.edgesOut)) foreach { case ((in, out), (edgeIn, edgeOut)) =>
+   (node.in zip node.out) foreach { case ((in, edgeIn), (out, edgeOut)) =>
       val beatBytes = edgeOut.slave.beatBytes
       val maxTransfer = edgeOut.slave.maxTransfer
       val lgMax = log2Ceil(maxTransfer)
@@ -174,7 +168,7 @@ class TLToAHB(val aFlow: Boolean = false)(implicit p: Parameters) extends LazyMo
 
       when (out.hreadyout) {
         d_valid := send.send && (send.last || !send.write)
-        when (out.hresp)  { d_error := d_write }
+        when (out.hresp)  { d_error := Bool(true) }
         when (send.first) { d_error := Bool(false) }
       }
 
@@ -192,10 +186,9 @@ class TLToAHB(val aFlow: Boolean = false)(implicit p: Parameters) extends LazyMo
 
 object TLToAHB
 {
-  // applied to the TL source node; y.node := TLToAHB()(x.node)
-  def apply(aFlow: Boolean = true)(x: TLOutwardNode)(implicit p: Parameters, sourceInfo: SourceInfo): AHBOutwardNode = {
-    val ahb = LazyModule(new TLToAHB(aFlow))
-    ahb.node := x
-    ahb.node
+  def apply(aFlow: Boolean = true)(implicit p: Parameters) =
+  {
+    val tl2ahb = LazyModule(new TLToAHB(aFlow))
+    tl2ahb.node
   }
 }
