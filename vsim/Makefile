@@ -11,19 +11,19 @@ endif
 
 default: sim
 
-base_dir = $(abspath ..)
+base_dir = $(abspath ../rocket-chip)
 sim_dir = .
 output_dir = $(sim_dir)/output
 mem_gen = $(base_dir)/scripts/vlsi_mem_gen
 generated_dir = $(abspath ./generated-src)
 
-glip_dir = $(base_dir)/opensocdebug/glip/src
-osd_dir = $(base_dir)/opensocdebug/hardware
+glip_dir = $(abspath ..)/opensocdebug/glip/src
+osd_dir = $(abspath ..)/opensocdebug/hardware
 
 BACKEND ?= v
-CONFIG ?= LoRCDefaultConfig
+CONFIG ?= DefaultFPGAConfig
 
-include $(base_dir)/Makefrag
+include $(abspath ..)/Makefrag
 
 .PHONY: default
 
@@ -92,7 +92,7 @@ test_cxx_headers = \
 
 verilog: $(lowrisc_srcs) $(lowrisc_headers)
 
-include $(base_dir)/Makefrag-build
+include $(abspath ..)/Makefrag-build
 
 .PHONY: verilog
 junk += $(generated_dir)

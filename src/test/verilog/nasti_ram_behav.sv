@@ -2,7 +2,7 @@
 
 module nasti_ram_behav
   #(
-    ID_WIDTH = 1,
+    ID_WIDTH = 8,
     ADDR_WIDTH = 16,
     DATA_WIDTH = 128,
     USER_WIDTH = 1
@@ -25,71 +25,55 @@ module nasti_ram_behav
      end
 
    endfunction // memory_load_mem
-   
-   nasti_channel
-     #(
-       .ID_WIDTH    ( ID_WIDTH   ),
-       .ADDR_WIDTH  ( 32         ),
-       .DATA_WIDTH  ( 32         ))
-   local_behav_nasti();
-
-   nasti_narrower
-     #(
-       .ID_WIDTH          ( ID_WIDTH   ),
-       .ADDR_WIDTH        ( ADDR_WIDTH ),
-       .MASTER_DATA_WIDTH ( DATA_WIDTH ),
-       .SLAVE_DATA_WIDTH  ( 32         ))
-   bram_narrower
-     (
-      .*,
-      .master ( nasti     ),
-      .slave  ( local_behav_nasti  )
-      );
 
    logic ram_clk, ram_rst, ram_en;
-   logic [3:0] ram_we;
-   logic [15:0] ram_addr;
-   logic [31:0]   ram_wrdata, ram_rddata = 'HDEADBEEF;
+   logic [7:0] ram_we;
+   logic [18:0] ram_addr;
+   logic [63:0]   ram_wrdata, ram_rddata = 'HDEADBEEF;
+   logic [30:0] bram_ar_addr, bram_aw_addr;
    
-   axi_bram_ctrl_0 BehavCtrl
+   assign bram_ar_addr = nasti.ar_addr ;
+   assign bram_aw_addr = nasti.aw_addr ;
+   
+   axi_bram_ctrl_dummy BehavCtrl
      (
-      .s_axi_aclk      ( clk                       ),
-      .s_axi_aresetn   ( rstn                      ),
-      .s_axi_arid      ( local_behav_nasti.ar_id    ),
-      .s_axi_araddr    ( local_behav_nasti.ar_addr  ),
-      .s_axi_arlen     ( local_behav_nasti.ar_len   ),
-      .s_axi_arsize    ( local_behav_nasti.ar_size  ),
-      .s_axi_arburst   ( local_behav_nasti.ar_burst ),
-      .s_axi_arlock    ( local_behav_nasti.ar_lock  ),
-      .s_axi_arcache   ( local_behav_nasti.ar_cache ),
-      .s_axi_arprot    ( local_behav_nasti.ar_prot  ),
-      .s_axi_arready   ( local_behav_nasti.ar_ready ),
-      .s_axi_arvalid   ( local_behav_nasti.ar_valid ),
-      .s_axi_rid       ( local_behav_nasti.r_id     ),
-      .s_axi_rdata     ( local_behav_nasti.r_data   ),
-      .s_axi_rresp     ( local_behav_nasti.r_resp   ),
-      .s_axi_rlast     ( local_behav_nasti.r_last   ),
-      .s_axi_rready    ( local_behav_nasti.r_ready  ),
-      .s_axi_rvalid    ( local_behav_nasti.r_valid  ),
-      .s_axi_awid      ( local_behav_nasti.aw_id    ),
-      .s_axi_awaddr    ( local_behav_nasti.aw_addr  ),
-      .s_axi_awlen     ( local_behav_nasti.aw_len   ),
-      .s_axi_awsize    ( local_behav_nasti.aw_size  ),
-      .s_axi_awburst   ( local_behav_nasti.aw_burst ),
-      .s_axi_awlock    ( local_behav_nasti.aw_lock  ),
-      .s_axi_awcache   ( local_behav_nasti.aw_cache ),
-      .s_axi_awprot    ( local_behav_nasti.aw_prot  ),
-      .s_axi_awready   ( local_behav_nasti.aw_ready ),
-      .s_axi_awvalid   ( local_behav_nasti.aw_valid ),
-      .s_axi_wdata     ( local_behav_nasti.w_data   ),
-      .s_axi_wstrb     ( local_behav_nasti.w_strb   ),
-      .s_axi_wlast     ( local_behav_nasti.w_last   ),
-      .s_axi_wready    ( local_behav_nasti.w_ready  ),
-      .s_axi_wvalid    ( local_behav_nasti.w_valid  ),
-      .s_axi_bid       ( local_behav_nasti.b_id     ),
-      .s_axi_bresp     ( local_behav_nasti.b_resp   ),
-      .s_axi_bready    ( local_behav_nasti.b_ready  ),
-      .s_axi_bvalid    ( local_behav_nasti.b_valid  ),
+      .s_axi_aclk      ( clk            ),
+      .s_axi_aresetn   ( rstn           ),
+      .s_axi_arid      ( nasti.ar_id    ),
+      .s_axi_araddr    ( bram_ar_addr[18:0]   ),
+      .s_axi_arlen     ( nasti.ar_len   ),
+      .s_axi_arsize    ( nasti.ar_size  ),
+      .s_axi_arburst   ( nasti.ar_burst ),
+      .s_axi_arlock    ( nasti.ar_lock  ),
+      .s_axi_arcache   ( nasti.ar_cache ),
+      .s_axi_arprot    ( nasti.ar_prot  ),
+      .s_axi_arready   ( nasti.ar_ready ),
+      .s_axi_arvalid   ( nasti.ar_valid ),
+      .s_axi_rid       ( nasti.r_id     ),
+      .s_axi_rdata     ( nasti.r_data   ),
+      .s_axi_rresp     ( nasti.r_resp   ),
+      .s_axi_rlast     ( nasti.r_last   ),
+      .s_axi_rready    ( nasti.r_ready  ),
+      .s_axi_rvalid    ( nasti.r_valid  ),
+      .s_axi_awid      ( nasti.aw_id    ),
+      .s_axi_awaddr    ( bram_aw_addr[18:0]   ),
+      .s_axi_awlen     ( nasti.aw_len   ),
+      .s_axi_awsize    ( nasti.aw_size  ),
+      .s_axi_awburst   ( nasti.aw_burst ),
+      .s_axi_awlock    ( nasti.aw_lock  ),
+      .s_axi_awcache   ( nasti.aw_cache ),
+      .s_axi_awprot    ( nasti.aw_prot  ),
+      .s_axi_awready   ( nasti.aw_ready ),
+      .s_axi_awvalid   ( nasti.aw_valid ),
+      .s_axi_wdata     ( nasti.w_data   ),
+      .s_axi_wstrb     ( nasti.w_strb   ),
+      .s_axi_wlast     ( nasti.w_last   ),
+      .s_axi_wready    ( nasti.w_ready  ),
+      .s_axi_wvalid    ( nasti.w_valid  ),
+      .s_axi_bid       ( nasti.b_id     ),
+      .s_axi_bresp     ( nasti.b_resp   ),
+      .s_axi_bready    ( nasti.b_ready  ),
+      .s_axi_bvalid    ( nasti.b_valid  ),
       .bram_rst_a      ( ram_rst                   ),
       .bram_clk_a      ( ram_clk                   ),
       .bram_en_a       ( ram_en                    ),

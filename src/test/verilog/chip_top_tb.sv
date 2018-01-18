@@ -1,7 +1,10 @@
 // See LICENSE for license details.
+`timescale 1ns/1ps
 
 `include "consts.vh"
 `include "config.vh"
+`define RANDOMIZE_MEM_INIT
+`define RANDOMIZE_REG_INIT
 
 module tb;
 
@@ -169,17 +172,6 @@ module tb;
  `endif // !`elsif NEXYS4
 `endif //  `ifdef ADD_PHY_DDR
 
-`ifdef ADD_UART
-   wire         rxd;
-   wire         txd;
-   wire         rts;
-   wire         cts;
-
-   assign rxd = 'b1;
-   assign cts = 'b1;
-
-`endif
-
 `ifdef ADD_FLASH
    wire         flash_ss;
    wire [3:0]   flash_io;
@@ -201,22 +193,34 @@ module tb;
    assign spi_miso = 'bz;
 `endif //  `ifdef ADD_SPI
 
-`ifdef ADD_MINION_SD
+`ifdef ADD_HID
+   
+   wire         rxd;
+   wire         txd;
+   wire         rts;
+   wire         cts;
+
+   assign rxd = 'b1;
+   assign cts = 'b1;
 
    // 4-bit full SD interface
    wire         sd_sclk;
-   wire         sd_detect;
-   wire [3:0]   sd_dat;
-   wire         sd_cmd;
-   wire         sd_reset;
+   wire [3:0]   sd_dat_to_host;
+   wire         sd_cmd_to_host;
+   wire         sd_reset, oeCmd, oeDat;
+   wire         sd_detect = 1'b0; // Simulate SD-card always there
+   wand [3:0]   sd_dat = oeDat ? sd_dat_to_host : 4'b1111;
+   wand         sd_cmd = oeCmd ? sd_cmd_to_host : 4'b1;
 
-   sd_card
-   sdflash1
-     (
-      .sdClk ( sd_sclk ),
-      .cmd   ( sd_cmd  ),
-      .dat   ( sd_dat  )
-      );
+sd_verilator_model sdflash1 (
+             .sdClk(sd_sclk),
+             .cmd(sd_cmd),
+             .cmdOut(sd_cmd_to_host),
+             .dat(sd_dat),
+             .datOut(sd_dat_to_host),
+             .oeCmd(oeCmd),
+             .oeDat(oeDat)
+);
 
    // LED and DIP switch
    wire [7:0]   o_led;
@@ -274,7 +278,7 @@ module tb;
 
    // vcd
    initial begin
-      if($test$plusargs("vcd"))
+//      if($test$plusargs("vcd"))
         vcd_name = "test.vcd";
 
       $value$plusargs("vcd_name=%s", vcd_name);

@@ -5,8 +5,8 @@ ifndef RISCV
 $(error Please set environment variable RISCV. Please take a look at README)
 endif
 
-MODEL := CoreplexTop
-PROJECT := freechips.rocketchip.lowrisc
+MODEL := TestHarness
+PROJECT := freechips.rocketchip.system
 CXX := g++
 CXXFLAGS := -O1
 JVM_MEMORY ?= 2G
@@ -32,7 +32,7 @@ src_path := src/main/scala
 default_submodules := . hardfloat chisel3
 chisel_srcs := $(foreach submodule, $(default_submodules), $(shell find $(base_dir)/$(submodule)/$(src_path) -name "*.scala"))
 
-osd_base = $(base_dir)/opensocdebug/hardware
+osd_base = $(osd_dir)
 include $(osd_base)/Makefrag
 chisel_srcs += $(osd_srcs)
 

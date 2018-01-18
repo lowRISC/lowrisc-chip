@@ -2,7 +2,7 @@
 
 module nasti_ram_behav
   #(
-    ID_WIDTH = 1,
+    ID_WIDTH = 8,
     ADDR_WIDTH = 16,
     DATA_WIDTH = 128,
     USER_WIDTH = 1
