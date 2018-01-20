@@ -7,6 +7,7 @@ import freechips.rocketchip.config.{Config, Parameters}
 import freechips.rocketchip.coreplex._
 import freechips.rocketchip.devices.debug._
 import freechips.rocketchip.devices.tilelink._
+import freechips.rocketchip.devices.debug.{IncludeJtagDTM, JtagDTMKey}
 import freechips.rocketchip.diplomacy._
 import scala.collection.mutable.ListBuffer
 

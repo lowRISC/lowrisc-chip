@@ -967,7 +967,9 @@ axi_bram_ctrl_2 HidCtl
    // the Rocket chip
 
    wire CAPTURE, DRCK, RESET, RUNTEST, SEL, SHIFT, TCK, TDI, TMS, UPDATE, TDO;
-   
+
+   /* This block is just used to feed the JTAG clock into the parts of Rocket that need it */
+      
    BSCANE2 #(
       .JTAG_CHAIN(2)  // Value for USER command.
    )
@@ -986,45 +988,22 @@ axi_bram_ctrl_2 HidCtl
       .UPDATE(UPDATE),   // 1-bit output: UPDATE output from TAP controller
       .TDO(TDO)          // 1-bit input: Test Data Output (TDO) input for USER function.
    );
-
-  assign TDO = TDI;
   
   /* DMI interface tie-off */
-  wire  ExampleRocketSystem_debug_clockeddmi_dmi_req_ready;
-  wire  ExampleRocketSystem_debug_clockeddmi_dmi_req_valid = 1'b0;
-  wire [6:0] ExampleRocketSystem_debug_clockeddmi_dmi_req_bits_addr = 7'b0;
-  wire [31:0] ExampleRocketSystem_debug_clockeddmi_dmi_req_bits_data = 32'b0;
-  wire [1:0] ExampleRocketSystem_debug_clockeddmi_dmi_req_bits_op = 2'b0;
-  wire  ExampleRocketSystem_debug_clockeddmi_dmi_resp_ready = 1'b0;
-  wire  ExampleRocketSystem_debug_clockeddmi_dmi_resp_valid;
-  wire [31:0] ExampleRocketSystem_debug_clockeddmi_dmi_resp_bits_data;
-  wire [1:0] ExampleRocketSystem_debug_clockeddmi_dmi_resp_bits_resp;
-  wire  ExampleRocketSystem_debug_clockeddmi_dmiClock = clk;
-  wire  ExampleRocketSystem_debug_clockeddmi_dmiReset = sys_rst;
   wire  ExampleRocketSystem_debug_ndreset;
   wire  ExampleRocketSystem_debug_dmactive;
 
    ExampleRocketSystem Rocket
      (
-     .debug_clockeddmi_dmi_req_ready(ExampleRocketSystem_debug_clockeddmi_dmi_req_ready),
-     .debug_clockeddmi_dmi_req_valid(ExampleRocketSystem_debug_clockeddmi_dmi_req_valid),
-     .debug_clockeddmi_dmi_req_bits_addr(ExampleRocketSystem_debug_clockeddmi_dmi_req_bits_addr),
-     .debug_clockeddmi_dmi_req_bits_data(ExampleRocketSystem_debug_clockeddmi_dmi_req_bits_data),
-     .debug_clockeddmi_dmi_req_bits_op(ExampleRocketSystem_debug_clockeddmi_dmi_req_bits_op),
-     .debug_clockeddmi_dmi_resp_ready(ExampleRocketSystem_debug_clockeddmi_dmi_resp_ready),
-     .debug_clockeddmi_dmi_resp_valid(ExampleRocketSystem_debug_clockeddmi_dmi_resp_valid),
-     .debug_clockeddmi_dmi_resp_bits_data(ExampleRocketSystem_debug_clockeddmi_dmi_resp_bits_data),
-     .debug_clockeddmi_dmi_resp_bits_resp(ExampleRocketSystem_debug_clockeddmi_dmi_resp_bits_resp),
-     .debug_clockeddmi_dmiClock(ExampleRocketSystem_debug_clockeddmi_dmiClock),
-     .debug_clockeddmi_dmiReset(ExampleRocketSystem_debug_clockeddmi_dmiReset),
-     .debug_ndreset(ExampleRocketSystem_debug_ndreset),
-     .debug_dmactive(ExampleRocketSystem_debug_dmactive),
-/*
-      .TCK(TCK),
-      .TMS(TMS),
-      .TDI(TDI),
-      .TDO(TDO),
-*/
+      .debug_systemjtag_jtag_TCK(TCK),
+      .debug_systemjtag_jtag_TMS(TMS),
+      .debug_systemjtag_jtag_TDI(TDI),
+      .debug_systemjtag_jtag_TDO_data(TDO),
+      .debug_systemjtag_jtag_TDO_driven(TDO_driven),
+      .debug_systemjtag_reset(RESET),
+      .debug_systemjtag_mfr_id(11'h5AA),
+      .debug_ndreset(ExampleRocketSystem_debug_ndreset),
+      .debug_dmactive(ExampleRocketSystem_debug_dmactive),
       .mem_axi4_0_aw_valid                ( mem_nasti.aw_valid                     ),
       .mem_axi4_0_aw_ready                ( mem_nasti.aw_ready                     ),
       .mem_axi4_0_aw_bits_id              ( mem_nasti.aw_id                        ),
