@@ -144,7 +144,7 @@ module chip_top
 
    // LED and DIP switch
    output [7:0]  o_led,
-   input  [3:0]  i_dip,
+   input  [15:0] i_dip,
 
    // push button array
    input         GPIO_SW_C,
