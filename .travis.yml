@@ -24,7 +24,7 @@ env:
 # actual test build
 
 before_install:
- - git submodule update --init --recursive hardfloat socip opensocdebug/hardware opensocdebug/glip opensocdebug/software vsim/riscv-tests minion_subsystem chisel3 firrtl
+ - git submodule update --init --recursive hardfloat socip opensocdebug/hardware opensocdebug/glip opensocdebug/software vsim/riscv-tests chisel3 firrtl
  - docker pull lowrisc/lowrisc-docker:$DOCKER_TAG
 
 before_script:
