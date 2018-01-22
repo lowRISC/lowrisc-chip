@@ -48,7 +48,22 @@ module periph_soc
  output wire          VGA_VS_O,
  output wire [3:0]    VGA_RED_O,
  output wire [3:0]    VGA_BLUE_O,
- output wire [3:0]    VGA_GREEN_O
+ output wire [3:0]    VGA_GREEN_O,
+// SMSC ethernet PHY to framing_top connections
+input wire clk_rmii,
+input wire locked,
+output wire eth_rstn,
+input wire eth_crsdv,
+output wire eth_refclk,
+output wire[1:0] eth_txd,
+output wire eth_txen,
+input wire[1:0] eth_rxd,
+input wire eth_rxerr,
+output wire eth_mdc,
+input wire phy_mdio_i,
+output wire phy_mdio_o,
+output wire phy_mdio_t,
+output wire eth_irq
  );
  
  wire [19:0] dummy;
@@ -59,8 +74,8 @@ module periph_soc
  wire [35:0] keyb_fifo_out;
  // signals from/to core
   logic  [7:0] core_lsu_rx_byte;
-logic [3:0] one_hot_data_addr;
-logic [31:0] one_hot_rdata[3:0];
+logic [4:0] one_hot_data_addr;
+logic [31:0] one_hot_rdata[4:0];
 
     ps2 keyb_mouse(
       .clk(msoc_clk),
@@ -163,9 +178,9 @@ always_comb
   begin:onehot
      integer i;
      hid_rddata = 32'b0;
-     for (i = 0; i < 4; i++)
+     for (i = 0; i < 5; i++)
        begin
-	   one_hot_data_addr[i] = hid_addr[16:15] == i;
+	   one_hot_data_addr[i] = hid_addr[17:15] == i;
 	   hid_rddata |= (one_hot_data_addr[i] ? one_hot_rdata[i] : 32'b0);
        end
   end
@@ -482,5 +497,31 @@ sd_top sdtop(
     .sd_xfr_addr(sd_xfr_addr)
     );
 
+framing_top open
+  (
+   .rstn(locked),
+   .msoc_clk(msoc_clk),
+   .clk_rmii(clk_rmii),
+   .core_lsu_addr(hid_addr[12:0]),
+   .core_lsu_wdata(hid_wrdata),
+   .core_lsu_be(hid_we),
+   .ce_d(hid_en),
+   .we_d(hid_en & one_hot_data_addr[4] & (|hid_we)),
+   .framing_sel(hid_en),
+   .framing_rdata(one_hot_rdata[4]),
+   .o_edutrefclk(eth_refclk),
+   .i_edutrxd(eth_rxd),
+   .i_edutrx_dv(eth_crsdv),
+   .i_edutrx_er(eth_rxerr),
+   .o_eduttxd(eth_txd),
+   .o_eduttx_en(eth_txen),
+   .o_edutmdc(eth_mdc),
+   .i_edutmdio(phy_mdio_i),
+   .o_edutmdio(phy_mdio_o),
+   .oe_edutmdio(phy_mdio_t),
+   .o_edutrstn(eth_rstn),
+   .eth_irq(eth_irq)
+);
+   
 endmodule // chip_top
 `default_nettype wire

@@ -163,9 +163,7 @@ module chip_top
    output [3:0]  VGA_RED_O,
    output [3:0]  VGA_BLUE_O,
    output [3:0]  VGA_GREEN_O,
-`endif
 
-`ifdef ADD_ETH 
  //! Ethernet MAC PHY interface signals
  input wire [1:0]   i_erxd, // RMII receive data
  input wire         i_erx_dv, // PHY data valid
@@ -177,7 +175,7 @@ module chip_top
  output wire        o_emdc, // MDIO clock
  inout wire         io_emdio, // MDIO inout
  output wire        o_erstn, // PHY reset active low
-`endif //  `ifdef ADD_ETH
+`endif //  `ifdef ADD_HID
    // clock and reset
    input         clk_p,
    input         clk_n,
@@ -755,6 +753,50 @@ reg phy_emdio_i, io_emdio_o, io_emdio_t;
    wire [17:0]                 hid_addr;
    wire [31:0]                 hid_wrdata,  hid_rddata;
    logic [30:0]                hid_ar_addr, hid_aw_addr;
+   logic [1:0] eth_txd;
+   logic eth_rstn, eth_refclk, eth_txen;
+   assign o_erstn = eth_rstn & clk_locked_wiz;
+    
+   always @(posedge clk_rmii)
+     begin
+        phy_emdio_i <= io_emdio_i;
+        io_emdio_o <= phy_emdio_o;
+        io_emdio_t <= phy_emdio_t;
+     end
+
+   IOBUF #(
+      .DRIVE(12), // Specify the output drive strength
+      .IBUF_LOW_PWR("TRUE"),  // Low Power - "TRUE", High Performance = "FALSE" 
+      .IOSTANDARD("DEFAULT"), // Specify the I/O standard
+      .SLEW("SLOW") // Specify the output slew rate
+   ) IOBUF_inst (
+      .O(io_emdio_i),     // Buffer output
+      .IO(io_emdio),   // Buffer inout port (connect directly to top-level port)
+      .I(io_emdio_o),     // Buffer input
+      .T(io_emdio_t)      // 3-state enable input, high=input, low=output
+   );
+
+  ODDR #(
+    .DDR_CLK_EDGE("OPPOSITE_EDGE"),
+    .INIT(1'b0),
+    .IS_C_INVERTED(1'b0),
+    .IS_D1_INVERTED(1'b0),
+    .IS_D2_INVERTED(1'b0),
+    .SRTYPE("SYNC")) 
+    refclk_inst
+       (.C(eth_refclk),
+        .CE(1'b1),
+        .D1(1'b1),
+        .D2(1'b0),
+        .Q(o_erefclk),
+        .R(1'b0),
+        .S( ));
+    
+    always @(posedge clk_rmii_quad)
+        begin
+        o_etxd = eth_txd;
+        o_etx_en = eth_txen;
+        end
 
    assign hid_ar_addr = mmio2_master_nasti.ar_addr ;
    assign hid_aw_addr = mmio2_master_nasti.aw_addr ;
@@ -822,6 +864,21 @@ axi_bram_ctrl_2 HidCtl
       .pxl_clk    ( clk_pixel       ),
       .uart_rx    ( rxd             ),
       .uart_tx    ( txd             ),
+      .clk_rmii   ( clk_rmii        ),
+      .locked     ( clk_locked      ),
+    // SMSC ethernet PHY connections
+      .eth_rstn   ( eth_rstn        ),
+      .eth_crsdv  ( i_erx_dv        ),
+      .eth_refclk ( eth_refclk      ),
+      .eth_txd    ( eth_txd         ),
+      .eth_txen   ( eth_txen        ),
+      .eth_rxd    ( i_erxd          ),
+      .eth_rxerr  ( i_erx_er        ),
+      .eth_mdc    ( o_emdc          ),
+      .phy_mdio_i ( phy_emdio_i     ),
+      .phy_mdio_o ( phy_emdio_o     ),
+      .phy_mdio_t ( phy_emdio_t     ),
+      .eth_irq    ( eth_irq         ),
       .*
       );
 
@@ -831,6 +888,7 @@ axi_bram_ctrl_2 HidCtl
 
    assign hid_irq = 1'b0;
    assign sd_irq = 1'b0;
+   assign eth_irq = 1'b0;
 
 `endif // !`ifdef ADD_HID
 
@@ -852,115 +910,6 @@ axi_bram_ctrl_2 HidCtl
       .rstn         ( rstn         ),
       .nasti        ( io_host_lite )
       );
-`endif
-
-   /////////////////////////////////////////////////////////////
-
-`ifdef ADD_ETH
-
-    logic [1:0] eth_txd;
-    logic eth_rstn, eth_refclk, eth_txen;
-    assign o_erstn = eth_rstn & clk_locked_wiz;
-    
-   always @(posedge clk_rmii)
-     begin
-        phy_emdio_i <= io_emdio_i;
-        io_emdio_o <= phy_emdio_o;
-        io_emdio_t <= phy_emdio_t;
-     end
-
-   IOBUF #(
-      .DRIVE(12), // Specify the output drive strength
-      .IBUF_LOW_PWR("TRUE"),  // Low Power - "TRUE", High Performance = "FALSE" 
-      .IOSTANDARD("DEFAULT"), // Specify the I/O standard
-      .SLEW("SLOW") // Specify the output slew rate
-   ) IOBUF_inst (
-      .O(io_emdio_i),     // Buffer output
-      .IO(io_emdio),   // Buffer inout port (connect directly to top-level port)
-      .I(io_emdio_o),     // Buffer input
-      .T(io_emdio_t)      // 3-state enable input, high=input, low=output
-   );
-
-  ODDR #(
-    .DDR_CLK_EDGE("OPPOSITE_EDGE"),
-    .INIT(1'b0),
-    .IS_C_INVERTED(1'b0),
-    .IS_D1_INVERTED(1'b0),
-    .IS_D2_INVERTED(1'b0),
-    .SRTYPE("SYNC")) 
-    refclk_inst
-       (.C(eth_refclk),
-        .CE(1'b1),
-        .D1(1'b1),
-        .D2(1'b0),
-        .Q(o_erefclk),
-        .R(1'b0),
-        .S( ));
-    
-    always @(posedge clk_rmii_quad)
-        begin
-        o_etxd = eth_txd;
-        o_etx_en = eth_txen;
-        end
-
-    mii_to_rmii_0_open eth_i
-     (
-      .clk_rmii(clk_rmii),
-      .locked(clk_locked),
-    // SMSC ethernet PHY connections
-      .eth_rstn    ( eth_rstn ),
-      .eth_crsdv   ( i_erx_dv ),
-      .eth_refclk  ( eth_refclk ),
-      .eth_txd     ( eth_txd ),
-      .eth_txen    ( eth_txen ),
-      .eth_rxd     ( i_erxd ),
-      .eth_rxerr   ( i_erx_er ),
-      .eth_mdc     ( o_emdc ),
-      .phy_mdio_i  ( phy_emdio_i ),
-      .phy_mdio_o  ( phy_emdio_o ),
-      .phy_mdio_t  ( phy_emdio_t ),
-      .eth_irq     ( eth_irq ),
-      .s_axi_aclk      ( clk                  ),
-      .s_axi_aresetn   ( rstn                 ),
-      .s_axi_arid      ( local_eth_nasti.ar_id    ),
-      .s_axi_araddr    ( local_eth_nasti.ar_addr  ),
-      .s_axi_arlen     ( local_eth_nasti.ar_len   ),
-      .s_axi_arsize    ( local_eth_nasti.ar_size  ),
-      .s_axi_arburst   ( local_eth_nasti.ar_burst ),
-      .s_axi_arlock    ( local_eth_nasti.ar_lock  ),
-      .s_axi_arcache   ( local_eth_nasti.ar_cache ),
-      .s_axi_arprot    ( local_eth_nasti.ar_prot  ),
-      .s_axi_arready   ( local_eth_nasti.ar_ready ),
-      .s_axi_arvalid   ( local_eth_nasti.ar_valid ),
-      .s_axi_rid       ( local_eth_nasti.r_id     ),
-      .s_axi_rdata     ( local_eth_nasti.r_data   ),
-      .s_axi_rresp     ( local_eth_nasti.r_resp   ),
-      .s_axi_rlast     ( local_eth_nasti.r_last   ),
-      .s_axi_rready    ( local_eth_nasti.r_ready  ),
-      .s_axi_rvalid    ( local_eth_nasti.r_valid  ),
-      .s_axi_awid      ( local_eth_nasti.aw_id    ),
-      .s_axi_awaddr    ( local_eth_nasti.aw_addr  ),
-      .s_axi_awlen     ( local_eth_nasti.aw_len   ),
-      .s_axi_awsize    ( local_eth_nasti.aw_size  ),
-      .s_axi_awburst   ( local_eth_nasti.aw_burst ),
-      .s_axi_awlock    ( local_eth_nasti.aw_lock  ),
-      .s_axi_awcache   ( local_eth_nasti.aw_cache ),
-      .s_axi_awprot    ( local_eth_nasti.aw_prot  ),
-      .s_axi_awready   ( local_eth_nasti.aw_ready ),
-      .s_axi_awvalid   ( local_eth_nasti.aw_valid ),
-      .s_axi_wdata     ( local_eth_nasti.w_data   ),
-      .s_axi_wstrb     ( local_eth_nasti.w_strb   ),
-      .s_axi_wlast     ( local_eth_nasti.w_last   ),
-      .s_axi_wready    ( local_eth_nasti.w_ready  ),
-      .s_axi_wvalid    ( local_eth_nasti.w_valid  ),
-      .s_axi_bid       ( local_eth_nasti.b_id     ),
-      .s_axi_bresp     ( local_eth_nasti.b_resp   ),
-      .s_axi_bready    ( local_eth_nasti.b_ready  ),
-      .s_axi_bvalid    ( local_eth_nasti.b_valid  ));
-
-`else // !`ifdef ADD_ETH
-
-   assign eth_irq = 1'b0;
 `endif
 
    /////////////////////////////////////////////////////////////
