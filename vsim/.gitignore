@@ -8,3 +8,8 @@ output
 verilator*
 DVEfiles
 .nodeIdDynamicRanges
+cnvmem.mem
+cnvmem.old
+tlbtest
+tlbtest.bin
+tlbtest.dis

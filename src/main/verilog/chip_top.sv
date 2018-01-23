@@ -1,7 +1,5 @@
 // See LICENSE for license details.
 
-// import dii_package::dii_flit;
-
 `include "consts.vh"
 `include "config.vh"
 

@@ -1,33 +1,6 @@
-[submodule "hardfloat"]
-	path = hardfloat
-	url = https://github.com/ucb-bar/berkeley-hardfloat.git
 [submodule "fpga"]
         path = fpga
         url = https://github.com/lowrisc/lowrisc-fpga.git
-[submodule "socip"]
-	path = socip
-	url = https://github.com/lowrisc/socip.git
-[submodule "opensocdebug/hardware"]
-	path = opensocdebug/hardware
-	url = https://github.com/opensocdebug/hardware
-[submodule "opensocdebug/glip"]
-	path = opensocdebug/glip
-	url = https://github.com/tum-lis/glip
-[submodule "opensocdebug/software"]
-	path = opensocdebug/software
-	url = https://github.com/opensocdebug/software
-[submodule "vsim/riscv-tests"]
-	path = vsim/riscv-tests
-	url = https://github.com/lowrisc/riscv-tests.git
-[submodule "vcs/riscv-tests"]
-	path = vcs/riscv-tests
-	url = https://github.com/lowrisc/riscv-tests.git
-[submodule "chisel3"]
-	path = chisel3
-	url = https://github.com/lowrisc/chisel3.git
-[submodule "firrtl"]
-	path = firrtl
-	url = https://github.com/lowrisc/firrtl.git
 [submodule "riscv-poky"]
 	path = riscv-poky
 	url = https://github.com/riscv/riscv-poky.git

@@ -2313,6 +2313,13 @@ vm:
 	 * Page tables
 	 */
 
+        la      t0, page_table_1
+        li      s1, 512
+1:      
+        sd      zero, (t0)
+        addi    t0, t0, 8
+        add     s1, s1, -1
+        bnez    s1, 1b
 	/* Add L1 entry for kernel */
 	la	s1, pagetable_l1
 	la	s2, pagetable_l2	/* Link to next level PN */
@@ -2337,6 +2344,9 @@ vm:
 	li	a6, PTE_SIZE
 	mulw	a5, a5, a6
 	add	t0, s1, a5
+        li	t4, (PTE_V | PTE_RWX | PTE_D)
+        srli	t5, s9, 2
+        or	t6, t4, t5
 	sd	t6, (t0)
 
 	/* Level 2 superpages (512 x 2MiB) */
@@ -2496,9 +2506,6 @@ RVTEST_DATA_BEGIN
 
         .align 12
 page_table_1:
-        .dword (0 << PTE_PPN_SHIFT) | PTE_V | PTE_R | PTE_W | PTE_X | PTE_A | PTE_D
-        .dword (DRAM_BASE/RISCV_PGSIZE/2 << PTE_PPN_SHIFT) | PTE_V | PTE_R | PTE_W | PTE_X | PTE_A | PTE_D
-        .dword (DRAM_BASE/RISCV_PGSIZE << PTE_PPN_SHIFT) | PTE_V | PTE_R | PTE_W | PTE_X | PTE_A | PTE_D
 dummy: .dword 0
 
 RVTEST_DATA_END
