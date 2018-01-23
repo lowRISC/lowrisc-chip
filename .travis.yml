@@ -24,7 +24,7 @@ env:
 # actual test build
 
 before_install:
- - git submodule update --init --recursive hardfloat socip opensocdebug/hardware opensocdebug/glip opensocdebug/software vsim/riscv-tests chisel3 firrtl
+ - git submodule update --init --recursive rocket-chip
  - docker pull lowrisc/lowrisc-docker:$DOCKER_TAG
 
 before_script:
@@ -32,7 +32,7 @@ before_script:
  - docker start test
 
 script:
- - docker exec test make -C $DOCKER_TOP/vsim CONFIG=$CONFIG $TEST_CASE
+ - docker exec test make -C $DOCKER_TOP/rocket-chip/vsim CONFIG=$CONFIG $TEST_CASE
 
 after_script:
  - docker stop test
