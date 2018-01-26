@@ -493,7 +493,7 @@ reg phy_emdio_i, io_emdio_o, io_emdio_t;
    assign clk_pixel = clk_p;   
    assign sys_rst = rst_top;
    
-   nasti_ram_behav
+   nasti_ram_sim
      #(
        .ID_WIDTH     ( `MEM_ID_WIDTH    ),
        .ADDR_WIDTH   ( `MEM_ADDR_WIDTH  ),
@@ -855,7 +855,7 @@ axi_bram_ctrl_2 HidCtl
       .sd_dat     ( sd_dat          ),
       .sd_cmd     ( sd_cmd          ),
       .sd_irq     ( sd_irq          ),
-      .from_dip   ( {12'b0,i_dip}   ),
+      .from_dip   ( i_dip           ),
       .to_led     ( o_led           ),
       .rstn       ( clk_locked      ),
       .clk_200MHz ( mig_sys_clk     ),
@@ -939,7 +939,17 @@ axi_bram_ctrl_2 HidCtl
   /* DMI interface tie-off */
   wire  ExampleRocketSystem_debug_ndreset;
   wire  ExampleRocketSystem_debug_dmactive;
+  reg [31:0] io_reset_vector;
 
+   always @*
+     begin
+        casez (i_dip[1:0])
+          2'b?0: io_reset_vector = 32'h40000000;
+          2'b01: io_reset_vector = 32'h80000000;
+          2'b11: io_reset_vector = 32'h80200000;
+        endcase // casez ()
+     end
+   
    ExampleRocketSystem Rocket
      (
       .debug_systemjtag_jtag_TCK(TCK),
@@ -1130,6 +1140,7 @@ axi_bram_ctrl_2 HidCtl
       .l2_frontend_bus_axi4_0_r_bits_user      ( io_salve_nasti.r_user                  ),
 `endif
       .interrupts                    ( {sd_irq, eth_irq, spi_irq, uart_irq} ),
+      .io_reset_vector               ( io_reset_vector                      ),
       .clock                         ( clk                                  ),
       .reset                         ( sys_rst                              )
       );

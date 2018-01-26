@@ -172,6 +172,44 @@ module tb;
  `endif // !`elsif NEXYS4
 `endif //  `ifdef ADD_PHY_DDR
 
+`ifdef ADD_HID
+   wire         rxd;
+   wire         txd;
+   wire         rts;
+   wire         cts;
+
+   assign rxd = 'b1;
+   assign cts = 'b1;
+
+reg u_trans;
+reg [15:0] u_baud;
+wire received, recv_err, is_recv, is_trans, u_tx, u_rx;
+wire [7:0] u_rx_byte;
+reg  [7:0] u_tx_byte;
+
+   assign u_trans = received;
+   assign u_tx_byte = u_rx_byte;
+   assign u_baud = 16'd52;
+   assign u_rx = txd;
+   
+uart i_uart(
+    .clk(clk), // The master clock for this module
+    .rst(rst), // Synchronous reset.
+    .rx(u_rx), // Incoming serial line
+    .tx(u_tx), // Outgoing serial line
+    .transmit(u_trans), // Signal to transmit
+    .tx_byte(u_tx_byte), // Byte to transmit
+    .received(received), // Indicated that a byte has been received.
+    .rx_byte(u_rx_byte), // Byte received
+    .is_receiving(is_recv), // Low when receive line is idle.
+    .is_transmitting(is_trans), // Low when transmit line is idle.
+    .recv_error(recv_err), // Indicates error in receiving packet.
+    .baud(u_baud),
+    .recv_ack(received)
+    );
+
+`endif
+
 `ifdef ADD_FLASH
    wire         flash_ss;
    wire [3:0]   flash_io;
@@ -194,21 +232,13 @@ module tb;
 `endif //  `ifdef ADD_SPI
 
 `ifdef ADD_HID
-   
-   wire         rxd;
-   wire         txd;
-   wire         rts;
-   wire         cts;
-
-   assign rxd = 'b1;
-   assign cts = 'b1;
 
    // 4-bit full SD interface
    wire         sd_sclk;
+   wire         sd_detect = 1'b0; // Simulate SD-card always there
    wire [3:0]   sd_dat_to_host;
    wire         sd_cmd_to_host;
    wire         sd_reset, oeCmd, oeDat;
-   wire         sd_detect = 1'b0; // Simulate SD-card always there
    wand [3:0]   sd_dat = oeDat ? sd_dat_to_host : 4'b1111;
    wand         sd_cmd = oeCmd ? sd_cmd_to_host : 4'b1;
 
@@ -224,9 +254,9 @@ sd_verilator_model sdflash1 (
 
    // LED and DIP switch
    wire [7:0]   o_led;
-   wire [3:0]   i_dip;
+   wire [15:0]   i_dip;
 
-   assign i_dip = 'bzzzz;
+   assign i_dip = 16'h0;
 
    // push button array
    wire         GPIO_SW_C;
@@ -308,4 +338,32 @@ sd_verilator_model sdflash1 (
    end
 `endif
 
+`ifdef ADD_HID
+  wire         o_erefclk; // RMII clock out
+  wire [1:0]   i_erxd ;
+  wire         i_erx_dv ;
+  wire         i_erx_er ;
+  wire         i_emdint ;
+  wire [1:0]   o_etxd ;
+  wire         o_etx_en ;
+  wire         o_emdc ;
+  wire         io_emdio ;
+  wire         o_erstn ;
+
+   assign i_emdint = 1'b1;
+   assign i_erx_dv = o_etx_en;
+   assign i_erxd = o_etxd;
+   assign i_erx_er = 1'b0;
+`endif //  `ifdef ADD_HID
+
+   initial
+     begin
+       force tb.DUT.Rocket.debug_systemjtag_jtag_TCK = 1'b0;
+       force tb.DUT.Rocket.debug_systemjtag_jtag_TMS = 1'b0;
+       force tb.DUT.Rocket.debug_systemjtag_jtag_TDI = 1'b0;
+       force tb.DUT.Rocket.debug_systemjtag_reset = 1'b1;
+       #130; 
+       force tb.DUT.Rocket.debug_systemjtag_reset = 1'b0;
+     end
+   
 endmodule // tb
