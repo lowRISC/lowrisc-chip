@@ -9,93 +9,21 @@ module data_arrays_0_ext(
   output [255:0] RW0_rdata
 );
 
-  `ifdef FPGA_FULL
-  
 /* name=data_arrays_0_ext, width=256, depth=512, mask_gran=8, mask_seg=32, ports=['mrw'] FPGA special case */
-blk_mem_gen_256_512_8_mrw my_block_ram (
-  .clka(RW0_clk),    // input wire clka
-  .ena(RW0_en && RW0_wmode),      // input wire ena
-  .wea({RW0_wmask}),   // input wire [31 : 0] wea
-  .addra(RW0_addr),  // input wire [8: 0] addra
-  .dina(RW0_wdata),  // input wire [255 : 0] dina
-  .douta(),  // output wire [255 : 0] douta
-  .clkb(RW0_clk),    // input wire clkb
-  .enb(RW0_en && !RW0_mode),      // input wire enb
-  .web(32'b0),      // input wire [31 : 0] web
-  .addrb(RW0_addr),  // input wire [8 : 0] addrb
-  .dinb(256'b0),    // input wire [255 : 0] dinb
-  .doutb(RW0_rdata)  // output wire [255 : 0] doutb
-);
 
-  `else // not FPGA_FULL
-  reg reg_RW0_ren;
-  reg [8:0] reg_RW0_addr;
-  reg [255:0] ram [511:0];
-  `ifdef RANDOMIZE_MEM_INIT
-    integer initvar;
-    initial begin
-      #0.002 begin end
-      for (initvar = 0; initvar < 512; initvar = initvar+1)
-        ram[initvar] = {8 {$random}};
-      reg_RW0_addr = {1 {$random}};
-    end
-  `endif
-  integer i;
-  always @(posedge RW0_clk)
-    reg_RW0_ren <= RW0_en && !RW0_wmode;
-  always @(posedge RW0_clk)
-    if (RW0_en && !RW0_wmode) reg_RW0_addr <= RW0_addr;
-  always @(posedge RW0_clk)
-    if (RW0_en && RW0_wmode) begin
-      if (RW0_wmask[0]) ram[RW0_addr][7:0] <= RW0_wdata[7:0];
-      if (RW0_wmask[1]) ram[RW0_addr][15:8] <= RW0_wdata[15:8];
-      if (RW0_wmask[2]) ram[RW0_addr][23:16] <= RW0_wdata[23:16];
-      if (RW0_wmask[3]) ram[RW0_addr][31:24] <= RW0_wdata[31:24];
-      if (RW0_wmask[4]) ram[RW0_addr][39:32] <= RW0_wdata[39:32];
-      if (RW0_wmask[5]) ram[RW0_addr][47:40] <= RW0_wdata[47:40];
-      if (RW0_wmask[6]) ram[RW0_addr][55:48] <= RW0_wdata[55:48];
-      if (RW0_wmask[7]) ram[RW0_addr][63:56] <= RW0_wdata[63:56];
-      if (RW0_wmask[8]) ram[RW0_addr][71:64] <= RW0_wdata[71:64];
-      if (RW0_wmask[9]) ram[RW0_addr][79:72] <= RW0_wdata[79:72];
-      if (RW0_wmask[10]) ram[RW0_addr][87:80] <= RW0_wdata[87:80];
-      if (RW0_wmask[11]) ram[RW0_addr][95:88] <= RW0_wdata[95:88];
-      if (RW0_wmask[12]) ram[RW0_addr][103:96] <= RW0_wdata[103:96];
-      if (RW0_wmask[13]) ram[RW0_addr][111:104] <= RW0_wdata[111:104];
-      if (RW0_wmask[14]) ram[RW0_addr][119:112] <= RW0_wdata[119:112];
-      if (RW0_wmask[15]) ram[RW0_addr][127:120] <= RW0_wdata[127:120];
-      if (RW0_wmask[16]) ram[RW0_addr][135:128] <= RW0_wdata[135:128];
-      if (RW0_wmask[17]) ram[RW0_addr][143:136] <= RW0_wdata[143:136];
-      if (RW0_wmask[18]) ram[RW0_addr][151:144] <= RW0_wdata[151:144];
-      if (RW0_wmask[19]) ram[RW0_addr][159:152] <= RW0_wdata[159:152];
-      if (RW0_wmask[20]) ram[RW0_addr][167:160] <= RW0_wdata[167:160];
-      if (RW0_wmask[21]) ram[RW0_addr][175:168] <= RW0_wdata[175:168];
-      if (RW0_wmask[22]) ram[RW0_addr][183:176] <= RW0_wdata[183:176];
-      if (RW0_wmask[23]) ram[RW0_addr][191:184] <= RW0_wdata[191:184];
-      if (RW0_wmask[24]) ram[RW0_addr][199:192] <= RW0_wdata[199:192];
-      if (RW0_wmask[25]) ram[RW0_addr][207:200] <= RW0_wdata[207:200];
-      if (RW0_wmask[26]) ram[RW0_addr][215:208] <= RW0_wdata[215:208];
-      if (RW0_wmask[27]) ram[RW0_addr][223:216] <= RW0_wdata[223:216];
-      if (RW0_wmask[28]) ram[RW0_addr][231:224] <= RW0_wdata[231:224];
-      if (RW0_wmask[29]) ram[RW0_addr][239:232] <= RW0_wdata[239:232];
-      if (RW0_wmask[30]) ram[RW0_addr][247:240] <= RW0_wdata[247:240];
-      if (RW0_wmask[31]) ram[RW0_addr][255:248] <= RW0_wdata[255:248];
-    end
-  `ifdef RANDOMIZE_GARBAGE_ASSIGN
-  reg [255:0] RW0_random;
-  `ifdef RANDOMIZE_MEM_INIT
-    initial begin
-      #0.002 begin end
-      RW0_random = {$random, $random, $random, $random, $random, $random, $random, $random};
-      reg_RW0_ren = RW0_random[0];
-    end
-  `endif
-  always @(posedge RW0_clk) RW0_random <= {$random, $random, $random, $random, $random, $random, $random, $random};
-  assign RW0_rdata = reg_RW0_ren ? ram[reg_RW0_addr] : RW0_random[255:0];
-  `else
-  assign RW0_rdata = ram[reg_RW0_addr];
-  `endif
-  `endif // FPGA_FULL
-
+  infer_bram  #(
+    .BRAM_SIZE(9),
+    .BRAM_WIDTH(256),
+    .IO_DAT_WIDTH(256))
+    my_block_ram (
+  .ram_clk(RW0_clk),    // input wire clka
+  .ram_en(RW0_en),      // input wire ena
+  .ram_we({RW0_wmask}),   // input wire [31 : 0] wea
+  .ram_addr({RW0_addr,5'b0}),  // input wire [8: 0] addra
+  .ram_wrdata(RW0_wdata),  // input wire [255 : 0] dina
+  .ram_rddata(RW0_rdata)  // output wire [255 : 0] douta
+  );
+  
 endmodule
 
 module tag_array_ext(
@@ -216,65 +144,20 @@ module data_arrays_0_0_ext(
   output [127:0] RW0_rdata
 );
 
-  `ifdef FPGA_FULL
-  
 /* name=data_arrays_0_0_ext, width=128, depth=512, mask_gran=32, mask_seg=4, ports=['mrw'] FPGA special case */
 
-blk_mem_gen_128_512_32_mrw my_block_ram (
-  .clka(RW0_clk),    // input wire clka
-  .ena(RW0_en && RW0_wmode),      // input wire ena
-  .wea({RW0_wmask[3],RW0_wmask[3],RW0_wmask[3],RW0_wmask[3],RW0_wmask[2],RW0_wmask[2],RW0_wmask[2],RW0_wmask[2],RW0_wmask[1],RW0_wmask[1],RW0_wmask[1],RW0_wmask[1],RW0_wmask[0],RW0_wmask[0],RW0_wmask[0],RW0_wmask[0]}),   // input wire [15 : 0] wea
-  .addra(RW0_addr),  // input wire [8: 0] addra
-  .dina(RW0_wdata),  // input wire [255 : 0] dina
-  .douta(),  // output wire [255 : 0] douta
-  .clkb(RW0_clk),    // input wire clkb
-  .enb(RW0_en && !RW0_mode),      // input wire enb
-  .web(32'b0),      // input wire [31 : 0] web
-  .addrb(RW0_addr),  // input wire [8 : 0] addrb
-  .dinb(256'b0),    // input wire [255 : 0] dinb
-  .doutb(RW0_rdata)  // output wire [255 : 0] doutb
-);
-
-  `else // not FPGA_FULL
-  reg reg_RW0_ren;
-  reg [8:0] reg_RW0_addr;
-  reg [127:0] ram [511:0];
-  `ifdef RANDOMIZE_MEM_INIT
-    integer initvar;
-    initial begin
-      #0.002 begin end
-      for (initvar = 0; initvar < 512; initvar = initvar+1)
-        ram[initvar] = {4 {$random}};
-      reg_RW0_addr = {1 {$random}};
-    end
-  `endif
-  integer i;
-  always @(posedge RW0_clk)
-    reg_RW0_ren <= RW0_en && !RW0_wmode;
-  always @(posedge RW0_clk)
-    if (RW0_en && !RW0_wmode) reg_RW0_addr <= RW0_addr;
-  always @(posedge RW0_clk)
-    if (RW0_en && RW0_wmode) begin
-      if (RW0_wmask[0]) ram[RW0_addr][31:0] <= RW0_wdata[31:0];
-      if (RW0_wmask[1]) ram[RW0_addr][63:32] <= RW0_wdata[63:32];
-      if (RW0_wmask[2]) ram[RW0_addr][95:64] <= RW0_wdata[95:64];
-      if (RW0_wmask[3]) ram[RW0_addr][127:96] <= RW0_wdata[127:96];
-    end
-  `ifdef RANDOMIZE_GARBAGE_ASSIGN
-  reg [127:0] RW0_random;
-  `ifdef RANDOMIZE_MEM_INIT
-    initial begin
-      #0.002 begin end
-      RW0_random = {$random, $random, $random, $random};
-      reg_RW0_ren = RW0_random[0];
-    end
-  `endif
-  always @(posedge RW0_clk) RW0_random <= {$random, $random, $random, $random};
-  assign RW0_rdata = reg_RW0_ren ? ram[reg_RW0_addr] : RW0_random[127:0];
-  `else
-  assign RW0_rdata = ram[reg_RW0_addr];
-  `endif
-  `endif // FPGA_FULL
+  infer_bram  #(
+    .BRAM_SIZE(9),
+    .BRAM_WIDTH(128),
+    .IO_DAT_WIDTH(128))
+    my_block_ram (
+  .ram_clk(RW0_clk),    // input wire clka
+  .ram_en(RW0_en),      // input wire ena
+  .ram_we({RW0_wmask[3],RW0_wmask[3],RW0_wmask[3],RW0_wmask[3],RW0_wmask[2],RW0_wmask[2],RW0_wmask[2],RW0_wmask[2],RW0_wmask[1],RW0_wmask[1],RW0_wmask[1],RW0_wmask[1],RW0_wmask[0],RW0_wmask[0],RW0_wmask[0],RW0_wmask[0]}),   // input wire [15 : 0] wea
+  .ram_addr({RW0_addr,5'b0}),  // input wire [8: 0] addra
+  .ram_wrdata(RW0_wdata),  // input wire [255 : 0] dina
+  .ram_rddata(RW0_rdata)  // output wire [255 : 0] douta
+  );
 
 endmodule
 
@@ -290,30 +173,16 @@ module mem_ext(
   output [63:0] R0_data
 );
 
-  `ifdef FPGA_FULL
-
+  
 /* name=mem_ext, width=64, depth=33554432, mask_gran=8, mask_seg=8, ports=['mwrite', 'read'] normal case */
-
-blk_mem_gen_64_49152_8_mrw my_mem_ext (
-  .clka(W0_clk),    // input wire clka
-  .ena(W0_en),      // input wire ena
-  .wea(W0_mask),      // input wire [7 : 0] wea
-  .addra(W0_addr),  // input wire [14 : 0] addra
-  .dina(W0_data),    // input wire [63 : 0] dina
-  .douta(),  // output wire [63 : 0] douta
-  .clkb(R0_clk),    // input wire clkb
-  .enb(R0_en),      // input wire enb
-  .web(8'b0),      // input wire [7 : 0] web
-  .addrb(R0_addr),  // input wire [14 : 0] addrb
-  .dinb(64'b0),    // input wire [63 : 0] dinb
-  .doutb(R0_data)  // output wire [63 : 0] doutb
-);
-
-  `else // not FPGA_FULL
 
   reg reg_R0_ren;
   reg [24:0] reg_R0_addr;
+  `ifdef FPGA_FULL
+  reg [63:0] ram [65535:0];
+  `else
   reg [63:0] ram [33554431:0];
+  `endif
   `ifdef RANDOMIZE_MEM_INIT
     integer initvar;
     initial begin
@@ -354,8 +223,6 @@ blk_mem_gen_64_49152_8_mrw my_mem_ext (
   assign R0_data = ram[reg_R0_addr];
   `endif
 
- `endif // FPGA_FULL
-
 endmodule
 
 module mem_0_ext(
@@ -375,12 +242,12 @@ module mem_0_ext(
 
   reg reg_R0_ren;
   reg [8:0] reg_R0_addr;
-  reg [63:0] ram [63:0];
+  reg [63:0] ram [511:0];
   `ifdef RANDOMIZE_MEM_INIT
     integer initvar;
     initial begin
       #0.002 begin end
-      for (initvar = 0; initvar < 256; initvar = initvar+1)
+      for (initvar = 0; initvar < 512; initvar = initvar+1)
         ram[initvar] = {2 {$random}};
       reg_R0_addr = {1 {$random}};
     end
