@@ -661,11 +661,7 @@ reg phy_emdio_i, io_emdio_o, io_emdio_t;
    assign ram_rddata_shift = ram_lsb_addr_delay << (BRAM_OFFSET_BITS + 3); // avoid ISim error
    assign ram_rddata = ram_rddata_full >> ram_rddata_shift;
 
-`ifdef BOOT_MEM
-   initial $readmemh(`BOOT_MEM, ram);
-`else
    initial $readmemh("boot.mem", ram);
-`endif
 
 `endif //  `ifdef ADD_BRAM
 

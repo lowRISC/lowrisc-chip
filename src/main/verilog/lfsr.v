@@ -376,7 +376,7 @@ genvar n;
 
 generate
 
-if (STYLE_INT == "REDUCTION") begin
+if (STYLE_INT == "REDUCTION") begin:reduce
 
     // use Verilog reduction operator
     // fast in iverilog
@@ -391,7 +391,7 @@ if (STYLE_INT == "REDUCTION") begin
         assign data_out[n] = ^{(state_in & output_mask_state[n]), (data_in & output_mask_data[n])};
     end
 
-end else if (STYLE_INT == "LOOP") begin
+end else if (STYLE_INT == "LOOP") begin:loop
 
     // use nested loops
     // very slow in iverilog
@@ -434,7 +434,7 @@ end else if (STYLE_INT == "LOOP") begin
         end
     end
 
-end else begin
+end else begin:other
 
     initial begin
         $error("Error: unknown style setting!");

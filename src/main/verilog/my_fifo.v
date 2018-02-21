@@ -30,7 +30,9 @@
    //           Artix-7
    // Xilinx HDL Language Template, version 2015.4
 
-   generate if (width==36)
+   generate
+         if (width==36)
+      begin:gen36
      
      FIFO18E1 #(
                 .ALMOST_EMPTY_OFFSET(13'h0080),    // Sets the almost empty threshold
@@ -69,7 +71,9 @@
                         .DI(DI),                   // 32-bit input: Data input
                         .DIP(DIP)                  // 4-bit input: Parity input
                         );
+         end
    else   
+           begin:genelse
      FIFO18E1 #(
                 .ALMOST_EMPTY_OFFSET(13'h0080),    // Sets the almost empty threshold
                 .ALMOST_FULL_OFFSET(13'h0080),     // Sets almost full threshold
@@ -108,7 +112,7 @@
                         .DI(DI),                   // 32-bit input: Data input
                         .DIP(DIP)                  // 4-bit input: Parity input
                         );
-      
+      end
    endgenerate
    
 endmodule

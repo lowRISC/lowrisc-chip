@@ -1,5 +1,9 @@
 // See LICENSE for license details.
+`timescale 1ns/1ps
 
+//`define FPGA_FULL
+//`define ADD_PHY_DDR
+`define NEXYS4
 `include "consts.vh"
 `include "config.vh"
 
@@ -233,11 +237,11 @@ uart i_uart(
    // 4-bit full SD interface
    wire         sd_sclk;
    wire         sd_detect = 1'b0; // Simulate SD-card always there
-   wand [3:0]   sd_dat = oeDat ? sd_dat_to_host : 4'b1111;
-   wand         sd_cmd = oeCmd ? sd_cmd_to_host : 4'b1;
    wire [3:0]   sd_dat_to_host;
    wire         sd_cmd_to_host;
    wire         sd_reset, oeCmd, oeDat;
+   wand [3:0]   sd_dat = oeDat ? sd_dat_to_host : 4'b1111;
+   wand         sd_cmd = oeCmd ? sd_cmd_to_host : 4'b1;
 
 sd_verilator_model sdflash1 (
              .sdClk(sd_sclk),
@@ -304,14 +308,14 @@ sd_verilator_model sdflash1 (
 
    // vcd
    initial begin
-      if($test$plusargs("vcd"))
+//      if($test$plusargs("vcd"))
         vcd_name = "test.vcd";
 
       $value$plusargs("vcd_name=%s", vcd_name);
 
       if(vcd_name != "") begin
          $dumpfile(vcd_name);
-         $dumpvars(0, DUT);
+         $dumpvars(0, DUT.psoc.the_fstore.ram1);
          $dumpon;
       end
    end // initial begin

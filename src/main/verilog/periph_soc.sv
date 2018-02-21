@@ -56,6 +56,10 @@ module periph_soc
  reg [31:0]  keycode;
  wire [35:0] keyb_fifo_out;
  
+  logic  [7:0] core_lsu_rx_byte;
+logic [4:0] one_hot_data_addr;
+logic [31:0] one_hot_rdata[4:0];
+
     ps2 keyb_mouse(
       .clk(msoc_clk),
       .rst(irst),
@@ -126,14 +130,6 @@ module periph_soc
 // Core Instantiation
 //----------------------------------------------------------------------------//
 // signals from/to core
-logic         core_instr_req;
-logic         core_instr_gnt;
-logic         core_instr_rvalid;
-logic [31:0]  core_instr_addr;
-
-  logic [3:0] one_hot_data_addr;
-  logic [31:0] one_hot_rdata[3:0];
-
 always_comb
   begin:onehot
      integer i;
@@ -186,6 +182,13 @@ logic [6:0] sd_clk_daddr;
 logic       sd_clk_dclk, sd_clk_den, sd_clk_drdy, sd_clk_dwe, sd_clk_locked;
 logic [15:0] sd_clk_din, sd_clk_dout;
 logic [3:0] sd_irq_en_reg, sd_irq_stat_reg;
+   logic [133:0]    sd_cmd_response, sd_cmd_response_reg;
+   logic [31:0] 	sd_cmd_resp_sel, sd_status_reg;
+   logic [31:0] 	sd_status, sd_cmd_wait, sd_data_wait, sd_cmd_wait_reg, sd_data_wait_reg;
+   logic [6:0] 	    sd_cmd_crc_val;
+   logic [47:0] 	sd_cmd_packet, sd_cmd_packet_reg;
+   logic [15:0] 	sd_transf_cnt, sd_transf_cnt_reg;
+   logic            sd_detect_reg;
    
 assign sd_clk_dclk = msoc_clk;
 
@@ -292,7 +295,7 @@ always @(posedge sd_clk_o)
 
     genvar sd_dat_ix;
     generate for (sd_dat_ix = 0; sd_dat_ix < 4; sd_dat_ix=sd_dat_ix+1)
-        begin
+        begin:sd_dat_gen
          IOBUF #(
            .DRIVE(iodrv), // Specify the output drive strength
             .IBUF_LOW_PWR("FALSE"),  // Low Power - "TRUE", High Performance = "FALSE" 
@@ -312,21 +315,14 @@ always @(posedge sd_clk_o)
         
    endgenerate					
 
-   logic [133:0]    sd_cmd_response, sd_cmd_response_reg;
-   logic [31:0] 	sd_cmd_resp_sel, sd_status_reg;
-   logic [31:0] 	sd_status, sd_cmd_wait, sd_data_wait, sd_cmd_wait_reg, sd_data_wait_reg;
-   logic [6:0] 	    sd_cmd_crc_val;
-   logic [47:0] 	sd_cmd_packet, sd_cmd_packet_reg;
-   logic [15:0] 	sd_transf_cnt, sd_transf_cnt_reg;
-   logic            sd_detect_reg;
-
    RAMB16_S36_S36 RAMB16_S1_inst_sd (
                                    .CLKA(~sd_clk_o),             // Port A Clock
                                    .CLKB(~msoc_clk),             // Port A Clock
                                    .DOA(data_out_tx),            // Port A 32-bit Data Output
+                                   .DOPA(),                      // Port A parity unused
                                    .ADDRA(sd_xfr_addr),          // Port A 11-bit Address Input
                                    .DIA(data_in_rx),             // Port A 32-bit Data Input
-                                   .DIPA(1'b0),                  // Port A parity unused
+                                   .DIPA(4'b0),                  // Port A parity unused
                                    .SSRA(1'b0),                  // Port A Synchronous Set/Reset Input
                                    .ENA(tx_rd|rx_wr),            // Port A RAM Enable Input
                                    .WEA(rx_wr),                  // Port A Write Enable Input
@@ -338,7 +334,7 @@ always @(posedge sd_clk_o)
                                    .ENB(hid_en&one_hot_data_addr[3]),
 				                                 // Port B RAM Enable Input
                                    .SSRB(1'b0),                  // Port B Synchronous Set/Reset Input
-                                   .WEB(hid_we)                  // Port B Write Enable Input
+                                   .WEB(|hid_we)                  // Port B Write Enable Input
                                    );
 
    always @(posedge msoc_clk)
