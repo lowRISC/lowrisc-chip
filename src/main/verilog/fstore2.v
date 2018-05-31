@@ -13,34 +13,35 @@ specific language governing permissions and limitations under the License.
 // A simple monitor (LCD display) driver with glass TTY behaviour in text mode
 
 module fstore2(
-               input             pixel2_clk,
+               input wire             pixel2_clk,
                output reg [7:0]  red,
                output reg [7:0]  green,
                output reg [7:0]  blue,
 
-               output [11:0]     DVI_D,
-               output            DVI_DE,
-               output            DVI_H,
-               output            DVI_V,
-               output            DVI_XCLK_N,
-               output            DVI_XCLK_P,
+               output wire [11:0]     DVI_D,
+               output wire            DVI_DE,
+               output wire            DVI_H,
+               output wire            DVI_V,
+               output wire            DVI_XCLK_N,
+               output wire            DVI_XCLK_P,
 
-               output            vsyn,
+               output wire            vsyn,
                output reg        hsyn,
                output reg        blank,
 
-               output wire [7:0] doutb,
-               input wire [7:0]  dinb,
-               input wire [12:0] addrb,
-               input wire        web, enb,
+               output wire [63:0] doutb,
+               input wire  [63:0]  dinb,
+               input wire  [10:0] addrb,
+               input wire  [7:0] web,
+               input wire        enb,
                input wire        clk_data,
                input wire        irst,
 
-               input             GPIO_SW_C,
-               input             GPIO_SW_N,
-               input             GPIO_SW_S,
-               input             GPIO_SW_E,
-               input             GPIO_SW_W
+               input wire             GPIO_SW_C,
+               input wire             GPIO_SW_N,
+               input wire             GPIO_SW_S,
+               input wire             GPIO_SW_E,
+               input wire             GPIO_SW_W
                );
 
    wire                          clear = GPIO_SW_S & GPIO_SW_N; 
@@ -70,8 +71,9 @@ module fstore2(
    reg [4:1]                     vrow;
    reg [4:0]                     scroll;
    
-   wire [7:0]                    dout;
-   wire [12:0]                   addra = {offvreg[10:5],offhreg[12:6]};
+   wire [63:0]                   dout;
+   wire [13:0]                   addra = {offvreg[10:5],offhreg[12:6]};
+   wire [7:0]                    dout8 = dout >> {addra[2:0],3'b000};
    
    // 100 MHz / 2100 is 47.6kHz.  Divide by further 788 to get 60.4 Hz.
    // Aim for 1024x768 non interlaced at 60 Hz.  
@@ -81,11 +83,37 @@ module fstore2(
    reg                           bitmapped_pixel;
    
    wire [7:0]                    red_in, green_in, blue_in;
+
    assign dvi_mux = hreg[0];
 
    dualmem ram1(.clka(pixel2_clk),
-                .dina(addra[7:0]), .addra(addra), .wea(clear), .douta(dout), .ena(1'b1),
-                .clkb(clk_data), .dinb(dinb), .addrb(addrb), .web(web), .doutb(doutb), .enb(enb));
+                .dina({8{addra[7:0]}}), .addra(addra[13:3]), .wea({8{clear}}), .douta(dout), .ena(1'b1),
+                .clkb(~clk_data), .dinb(dinb), .addrb(addrb), .web(web), .doutb(doutb), .enb(enb));
+
+`ifdef LASTMSG
+   
+   parameter msgwid = 32;
+   
+   reg [msgwid*8-1:0]            last_msg;
+               
+   reg [7:0]                     crnt, msgi;
+                     
+   // This section generates a message in simulation, it gets trimmed in hardware.
+   always @(posedge clk_data)
+     if (irst)
+       last_msg = {msgwid{8'h20}};
+     else
+     begin
+        if (enb) for (msgi = 0; msgi < 8; msgi=msgi+1)
+          if (web[msgi])
+            begin
+               crnt = dinb >> msgi*8;
+               $write("%c", crnt);
+               if (crnt==10 || crnt==13) $fflush();
+               last_msg = {last_msg[msgwid*8-9:0],crnt};
+            end
+     end
+`endif
    
    always @(posedge pixel2_clk) // or posedge reset) // JRRK - does this need async ?
    if (irst)
@@ -146,7 +174,7 @@ module fstore2(
           begin
              if (hreg >= 128*3 && hreg < (128*3+256*6))
                begin
-                  if (&hreg[1:0])
+                  if (&hreg[0])
                     begin
                        if (offpixel == 5)
                          begin
@@ -192,83 +220,11 @@ module fstore2(
    assign vsyn = vstart;
    
    wire [7:0] pixels_out;
-   RAMB16_S9 #(
-               // The following INIT_xx declarations specify the initial contents of the character generator RAM
-               .INIT_00(256'h000000003E3E3E3E3E3E3E3E3E3E3E3E000000003E3E3E3E3E3E3E3E3E3E3E3E),
-               .INIT_01(256'h000000003E3E3E3E3E3E3E3E3E3E3E3E000000003E3E3E3E3E3E3E3E3E3E3E3E),
-               .INIT_02(256'h000000003E3E3E3E3E3E3E3E3E3E3E3E000000003E3E3E3E3E3E3E3E3E3E3E3E),
-               .INIT_03(256'h000000003E3E3E3E3E3E3E3E3E3E3E3E000000003E3E3E3E3E3E3E3E3E3E3E3E),
-               .INIT_04(256'h000000003E3E3E3E3E3E3E3E3E3E3E3E000000003E3E3E3E3E3E3E3E3E3E3E3E),
-               .INIT_05(256'h000000003E3E3E3E3E3E3E3E3E3E3E3E000000003E3E3E3E3E3E3E3E3E3E3E3E),
-               .INIT_06(256'h000000003E3E3E3E3E3E3E3E3E3E3E3E000000003E3E3E3E3E3E3E3E3E3E3E3E),
-               .INIT_07(256'h000000003E3E3E3E3E3E3E3E3E3E3E3E000000003E3E3E3E3E3E3E3E3E3E3E3E),
-               .INIT_08(256'h000000003E3E3E3E3E3E3E3E3E3E3E3E000000003E3E3E3E3E3E3E3E3E3E3E3E),
-               .INIT_09(256'h000000003E3E3E3E3E3E3E3E3E3E3E3E000000003E3E3E3E3E3E3E3E3E3E3E3E),
-               .INIT_0A(256'h000000003E3E3E3E3E3E3E3E3E3E3E3E000000003E3E3E3E3E3E3E3E3E3E3E3E),
-               .INIT_0B(256'h000000003E3E3E3E3E3E3E3E3E3E3E3E000000003E3E3E3E3E3E3E3E3E3E3E3E),
-               .INIT_0C(256'h000000003E3E3E3E3E3E3E3E3E3E3E3E000000003E3E3E3E3E3E3E3E3E3E3E3E),
-               .INIT_0D(256'h000000003E3E3E3E3E3E3E3E3E3E3E3E000000003E3E3E3E3E3E3E3E3E3E3E3E),
-               .INIT_0E(256'h000000003E3E3E3E3E3E3E3E3E3E3E3E000000003E3E3E3E3E3E3E3E3E3E3E3E),
-               .INIT_0F(256'h000000003E3E3E3E3E3E3E3E3E3E3E3E000000003E3E3E3E3E3E3E3E3E3E3E3E),
-               .INIT_10(256'h0000000000000000001000101010101000000000000000000000000000000000),
-               .INIT_11(256'h00000000000000000028287C287C282800000000000000000000000000002828),
-               .INIT_12(256'h000000000000000000044A241008245200000000000000001078141C70503C10),
-               .INIT_13(256'h0000000000000000000000000020181800000000000000000034485420504830),
-               .INIT_14(256'h0000000000000000002010080808102000000000000000000008102020201008),
-               .INIT_15(256'h00000000000000000010107C101000000000000000000000001054387C385410),
-               .INIT_16(256'h00000000000000000000007C0000000000000000000000002018180000000000),
-               .INIT_17(256'h0000000000000000004040201008040400000000000000001818000000000000),
-               .INIT_18(256'h00000000000000000038101010103010000000000000000000384464544C4438),
-               .INIT_19(256'h000000000000000000384404180444380000000000000000007C201008044438),
-               .INIT_1A(256'h0000000000000000003844044478407C00000000000000000008087C48281808),
-               .INIT_1B(256'h0000000000000000002020201008447C00000000000000000038444478402018),
-               .INIT_1C(256'h0000000000000000003008043C44443800000000000000000038444438444438),
-               .INIT_1D(256'h0000000000000000201818001818000000000000000000000018180018180000),
-               .INIT_1E(256'h000000000000000000007C007C00000000000000000000000008102010080000),
-               .INIT_1F(256'h0000000000000000002000203008483000000000000000000020100810200000),
-               .INIT_20(256'h0000000000000000004444447C4428100000000000000000001C204C544E221C),
-               .INIT_21(256'h0000000000000000003844404040443800000000000000000078242438242478),
-               .INIT_22(256'h0000000000000000007C40407840407C00000000000000000078242424242478),
-               .INIT_23(256'h0000000000000000003844445C4044380000000000000000004040407840407C),
-               .INIT_24(256'h000000000000000000381010101010380000000000000000004444447C444444),
-               .INIT_25(256'h000000000000000000444850605048440000000000000000003048080808081C),
-               .INIT_26(256'h00000000000000000044444454546C440000000000000000007C404040404040),
-               .INIT_27(256'h0000000000000000001028444444281000000000000000000044444C54644444),
-               .INIT_28(256'h0000000000000000003C4C444444443800000000000000000040404078444478),
-               .INIT_29(256'h0000000000000000003844043840443800000000000000000044485078444478),
-               .INIT_2A(256'h000000000000000000384444444444440000000000000000001010101010107C),
-               .INIT_2B(256'h000000000000000000446C545444444400000000000000000010102828444444),
-               .INIT_2C(256'h0000000000000000001010101028444400000000000000000044442810284444),
-               .INIT_2D(256'h000000000000000000382020202020380000000000000000007C40201008047C),
-               .INIT_2E(256'h0000000000000000001C04040404041C00000000000000000000040810204000),
-               .INIT_2F(256'h0000000000000000FFFF00000000000000000000000000000010101010543810),
-               .INIT_30(256'h000000000000003A443C04083000000000000000000000000000000810200000),
-               .INIT_31(256'h0000000000000038444044380000000000000000000000986444645840400000),
-               .INIT_32(256'h0000000000000038407844380000000000000000000000324C444C3404040000),
-               .INIT_33(256'h00000000384404344C4444380000000000000000000000202020207024180000),
-               .INIT_34(256'h0000000000000038101010300010000000000000000000444444645840400000),
-               .INIT_35(256'h0000000000000044487048444040000000000000003048080808081800080000),
-               .INIT_36(256'h0000000000000054545454380000000000000000000000381010101010300000),
-               .INIT_37(256'h0000000000000038444444380000000000000000000000444444645800000000),
-               .INIT_38(256'h00000000040604344C444C340000000000000000404040586444649800000000),
-               .INIT_39(256'h0000000000000038043840380000000000000000000000404040645800000000),
-               .INIT_3A(256'h00000000000000344C44444400000000000000000000000C1210103810100000),
-               .INIT_3B(256'h0000000000000038545454440000000000000000000000102844444400000000),
-               .INIT_3C(256'h0000000038440434444444440000000000000000000000442810284400000000),
-               .INIT_3D(256'h000000000000000C10106010100C0000000000000000007C2010087C00000000),
-               .INIT_3E(256'h000000000000006010100C101060000000000000000000101010001010100000),
-               .INIT_3F(256'h00000000000000007C7C7C7C000000000000000000000000000002027E000000)
-               ) RAMB16_S1_inst_0 (
-                                   .CLK(pixel2_clk),      // Port A Clock
-                                   .DO(pixels_out), // Port A 8-bit Data Output
-                                   .ADDR({dout[6:0],vrow}),    // Port A 11-bit Address Input
-                                   .DI(8'b0),  // Port A 8-bit Data Input
-                                   .EN(1'b1),        // Port A RAM Enable Input
-                                   .SSR(1'b0),      // Port A Synchronous Set/Reset Input
-                                   .WE(1'b0),        // Port A Write Enable Input
-                                   .DIP(1'b0),
-                                   .DOP()
-                                   );
+   chargen_7x5_rachel the_rachel(
+    .clk(pixel2_clk),
+    .ascii(dout8),
+    .row(vrow),
+    .pixels_out(pixels_out));
    
    wire       pixel = pixels_out[3'd7 ^ offpixel] && bitmapped_pixel;
 

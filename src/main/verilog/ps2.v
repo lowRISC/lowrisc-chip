@@ -64,6 +64,7 @@ module ps2(clk, rst, rx_ascii_read,
 
    wire             rx_released;
    wire [7:0]       rx_scan_code;
+   wire             rx_scan_read;
    wire             rx_scan_ready;
    reg [7:0]        tx_data;
    reg              tx_write;
@@ -118,26 +119,18 @@ module ps2(clk, rst, rx_ascii_read,
           end
      end
 
-   IOBUF #(
-           .DRIVE(12), // Specify the output drive strength
-           .IOSTANDARD("DEFAULT"), // Specify the I/O standard
-           .SLEW("SLOW") // Specify the output slew rate
-           ) IOBUF_k_clk (
-                          .O(ps2_k_clk_i),     // Buffer output
-                          .IO(PS2_K_CLK_IO),   // Buffer inout port (connect directly to top-level port)
-                          .I(ps2_k_clk_en_o_),     // Buffer input
-                          .T(ps2_k_clk_en_o_)      // 3-state enable input 
+   io_buffer_generic IOBUF_k_clk (
+                          .outg(ps2_k_clk_i),     // Buffer output
+                          .inoutg(PS2_K_CLK_IO),   // Buffer inout port (connect directly to top-level port)
+                          .ing(ps2_k_clk_en_o_),     // Buffer input
+                          .ctrl(ps2_k_clk_en_o_)      // 3-state enable input 
                           );
 
-   IOBUF #(
-           .DRIVE(12), // Specify the output drive strength
-           .IOSTANDARD("DEFAULT"), // Specify the I/O standard
-           .SLEW("SLOW") // Specify the output slew rate
-           ) IOBUF_k_data (
-                           .O(ps2_k_data_i),     // Buffer output
-                           .IO(PS2_K_DATA_IO),   // Buffer inout port (connect directly to top-level port)
-                           .I(ps2_k_data_en_o_),     // Buffer input
-                           .T(ps2_k_data_en_o_)      // 3-state enable input 
+   io_buffer_generic IOBUF_k_data (
+                           .outg(ps2_k_data_i),     // Buffer output
+                           .inoutg(PS2_K_DATA_IO),   // Buffer inout port (connect directly to top-level port)
+                           .ing(ps2_k_data_en_o_),     // Buffer input
+                           .ctrl(ps2_k_data_en_o_)      // 3-state enable input 
                            );
 
    ps2_keyboard key1(
@@ -183,26 +176,18 @@ module ps2(clk, rst, rx_ascii_read,
    wire ps2_m_clk_i ;
    wire ps2_m_data_i ;
 
-   IOBUF #(
-           .DRIVE(12), // Specify the output drive strength
-           .IOSTANDARD("DEFAULT"), // Specify the I/O standard
-           .SLEW("SLOW") // Specify the output slew rate
-           ) IOBUF_m_clk (
-                          .O(ps2_m_clk_i),     // Buffer output
-                          .IO(PS2_M_CLK_IO),   // Buffer inout port (connect directly to top-level port)
-                          .I(ps2_m_clk_en_o_),     // Buffer input
-                          .T(ps2_m_clk_en_o_)      // 3-state enable input 
+   io_buffer_generic IOBUF_m_clk (
+                          .outg(ps2_m_clk_i),     // Buffer output
+                          .inoutg(PS2_M_CLK_IO),   // Buffer inout port (connect directly to top-level port)
+                          .ing(ps2_m_clk_en_o_),     // Buffer input
+                          .ctrl(ps2_m_clk_en_o_)      // 3-state enable input 
                           );
 
-   IOBUF #(
-           .DRIVE(12), // Specify the output drive strength
-           .IOSTANDARD("DEFAULT"), // Specify the I/O standard
-           .SLEW("SLOW") // Specify the output slew rate
-           ) IOBUF_m_data (
-                           .O(ps2_m_data_i),     // Buffer output
-                           .IO(PS2_M_DATA_IO),   // Buffer inout port (connect directly to top-level port)
-                           .I(ps2_m_data_en_o_),     // Buffer input
-                           .T(ps2_m_data_en_o_)      // 3-state enable input 
+   io_buffer_generic IOBUF_m_data (
+                           .outg(ps2_m_data_i),     // Buffer output
+                           .inoutg(PS2_M_DATA_IO),   // Buffer inout port (connect directly to top-level port)
+                           .ing(ps2_m_data_en_o_),     // Buffer input
+                           .ctrl(ps2_m_data_en_o_)      // 3-state enable input 
                            );
 
 endmodule

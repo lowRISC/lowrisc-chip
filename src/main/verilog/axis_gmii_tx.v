@@ -115,7 +115,7 @@ assign gmii_txd = gmii_txd_reg;
 assign gmii_tx_en = gmii_tx_en_reg;
 assign gmii_tx_er = gmii_tx_er_reg;
 
-lfsr #(
+eth_lfsr #(
     .LFSR_WIDTH(32),
     .LFSR_POLY(32'h4c11db7),
     .LFSR_CONFIG("GALOIS"),

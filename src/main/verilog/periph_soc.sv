@@ -13,57 +13,64 @@
 
 module periph_soc
   (
- output wire 	   uart_tx,
- input wire 	   uart_rx,
+ output wire        uart_tx,
+ input wire         uart_rx,
  // clock and reset
- input wire        clk_200MHz,
- input wire        pxl_clk,
- input wire 	   msoc_clk,
- input wire 	   rstn,
- output reg [7:0]  to_led,
- input wire [15:0] from_dip,
- output wire 	   sd_sclk,
- input wire 	   sd_detect,
- inout wire [3:0]  sd_dat,
- inout wire 	   sd_cmd,
- output reg 	   sd_reset,
- output reg 	   sd_irq,
- input wire        hid_rst, hid_clk, hid_en,
- input wire [3:0]  hid_we,
- input wire [17:0] hid_addr,
- input wire [31:0] hid_wrdata,
- output reg [31:0] hid_rddata,
+ input wire         clk_200MHz,
+ input wire         pxl_clk,
+ input wire         msoc_clk,
+ input wire         rstn,
+ output reg [7:0]   to_led,
+ input wire [15:0]  from_dip,
+ output wire        sd_sclk,
+ input wire         sd_detect,
+ inout wire [3:0]   sd_dat,
+ inout wire         sd_cmd,
+ output reg         sd_reset,
+ output reg         sd_irq,
+ input wire         hid_en,
+ input wire [7:0]   hid_we,
+ input wire [17:0]  hid_addr,
+ input wire [63:0]  hid_wrdata,
+ output reg [63:0]  hid_rddata,
  // pusb button array
- input wire GPIO_SW_C,
- input wire GPIO_SW_W,
- input wire GPIO_SW_E,
- input wire GPIO_SW_N,
- input wire GPIO_SW_S,
+ input wire         GPIO_SW_C,
+ input wire         GPIO_SW_W,
+ input wire         GPIO_SW_E,
+ input wire         GPIO_SW_N,
+ input wire         GPIO_SW_S,
  //keyboard
- inout wire PS2_CLK,
- inout wire PS2_DATA,
+ inout wire         PS2_CLK,
+ inout wire         PS2_DATA,
  
    // display
- output wire          VGA_HS_O,
- output wire          VGA_VS_O,
- output wire [3:0]    VGA_RED_O,
- output wire [3:0]    VGA_BLUE_O,
- output wire [3:0]    VGA_GREEN_O,
+ output wire        VGA_HS_O,
+ output wire        VGA_VS_O,
+ output wire [3:0]  VGA_RED_O,
+ output wire [3:0]  VGA_BLUE_O,
+ output wire [3:0]  VGA_GREEN_O,
 // SMSC ethernet PHY to framing_top connections
-input wire clk_rmii,
-input wire locked,
-output wire eth_rstn,
-input wire eth_crsdv,
-output wire eth_refclk,
-output wire[1:0] eth_txd,
-output wire eth_txen,
-input wire[1:0] eth_rxd,
-input wire eth_rxerr,
-output wire eth_mdc,
-input wire phy_mdio_i,
-output wire phy_mdio_o,
-output wire phy_mdio_t,
-output wire eth_irq
+ input wire         clk_rmii,
+ input wire         locked,
+ output wire        eth_rstn,
+ input wire         eth_crsdv,
+ output wire        eth_refclk,
+ output wire [1:0]  eth_txd,
+ output wire        eth_txen,
+ input wire [1:0]   eth_rxd,
+ input wire         eth_rxerr,
+ output wire        eth_mdc,
+ input wire         phy_mdio_i,
+ output wire        phy_mdio_o,
+ output wire        phy_mdio_t,
+ output wire        eth_irq,
+ output wire        ram_clk,
+ output wire        ram_rst,
+ output wire        ram_en,
+ output wire [7:0]  ram_we,
+ output wire [15:0] ram_addr,
+ output wire [63:0] ram_wrdata,
+ input  wire [63:0] ram_rddata
  );
  
  wire [19:0] dummy;
@@ -73,9 +80,8 @@ output wire eth_irq
  reg [31:0]  keycode;
  wire [35:0] keyb_fifo_out;
  // signals from/to core
-  logic  [7:0] core_lsu_rx_byte;
-logic [4:0] one_hot_data_addr;
-logic [31:0] one_hot_rdata[4:0];
+logic [7:0] one_hot_data_addr;
+logic [63:0] one_hot_rdata[7:0];
 
     ps2 keyb_mouse(
       .clk(msoc_clk),
@@ -90,24 +96,18 @@ logic [31:0] one_hot_rdata[4:0];
       .rx_ascii_read(ascii_ready));
  
  my_fifo #(.width(36)) keyb_fifo (
-       .rd_clk(~msoc_clk),      // input wire read clk
-       .wr_clk(~msoc_clk),      // input wire write clk
+       .clk(~msoc_clk),      // input wire read clk
        .rst(~rstn),      // input wire rst
        .din({21'b0, readch[6:0], scancode}),      // input wire [31 : 0] din
        .wr_en(ascii_ready),  // input wire wr_en
-       .rd_en(hid_en&(|hid_we)&one_hot_data_addr[0]),  // input wire rd_en
+       .rd_en(hid_en&(|hid_we)&one_hot_data_addr[6]&~hid_addr[14]),  // input wire rd_en
        .dout(keyb_fifo_out),    // output wire [31 : 0] dout
        .rdcount(),         // 12-bit output: Read count
-       .rderr(),             // 1-bit output: Read error
        .wrcount(),         // 12-bit output: Write count
-       .wrerr(),             // 1-bit output: Write error
-       .almostfull(),   // output wire almost full
        .full(),    // output wire full
        .empty(keyb_empty)  // output wire empty
      );
 
-    assign one_hot_rdata[0] = {keyb_empty,keyb_fifo_out[15:0]};
-    
     wire [7:0] red,  green, blue;
  
     fstore2 the_fstore(
@@ -124,11 +124,11 @@ logic [31:0] one_hot_rdata[4:0];
       .red(red),
       .green(green),
       .blue(blue),
-      .web(hid_en & one_hot_data_addr[1] & (|hid_we)),
-      .enb(hid_en),
-      .addrb(hid_addr[14:2]),
-      .dinb(hid_wrdata[7:0]),
-      .doutb(fstore_data),
+      .web(hid_we),
+      .enb(hid_en & one_hot_data_addr[7]),
+      .addrb(hid_addr[13:3]),
+      .dinb(hid_wrdata),
+      .doutb(one_hot_rdata[7]),
       .irst(~rstn),
       .clk_data(msoc_clk),
       .GPIO_SW_C(GPIO_SW_C),
@@ -138,19 +138,72 @@ logic [31:0] one_hot_rdata[4:0];
       .GPIO_SW_W(GPIO_SW_W)              
      );
 
- assign one_hot_rdata[1] = {24'b0,fstore_data};
  assign VGA_RED_O = red[7:4];
  assign VGA_GREEN_O = green[7:4];
  assign VGA_BLUE_O = blue[7:4];
 
-reg u_trans;
-reg u_recv;
-reg [15:0] u_baud;
-wire received, recv_err, is_recv, is_trans, uart_maj;
-wire uart_almostfull, uart_full, uart_rderr, uart_wrerr, uart_empty;   
-wire [11:0] uart_wrcount, uart_rdcount;
-wire [8:0] uart_fifo_data_out;
-reg  [7:0] u_tx_byte;
+   reg         u_trans, u_recv, uart_rx_full, uart_rx_empty, uart_tx_empty, uart_tx_full;   
+   reg [15:0]  u_baud;
+   wire        received, recv_err, is_recv, is_trans, uart_maj;
+   wire [11:0] uart_rx_wrcount, uart_rx_rdcount, uart_tx_wrcount, uart_tx_rdcount;
+   wire [8:0]  uart_rx_fifo_data_out, uart_tx_fifo_data_out;
+   reg [7:0]   u_rx_byte, u_tx_byte;
+
+    assign one_hot_rdata[6] = hid_addr[14] ?
+                              (hid_addr[13] ?
+                               {4'b0,uart_tx_wrcount,
+                                4'b0,uart_tx_rdcount,
+                                4'b0,uart_rx_wrcount,
+                                4'b0,uart_rx_rdcount} : 
+                               {4'b0,uart_rx_full,uart_tx_full,uart_rx_empty,uart_rx_fifo_data_out}) :
+                              {keyb_empty,keyb_fifo_out[15:0]};
+
+typedef enum {UTX_IDLE, UTX_EMPTY, UTX_INUSE, UTX_POP, UTX_START} utx_t;
+
+   utx_t utxstate_d, utxstate_q;
+   
+always @(posedge msoc_clk)
+    if (~rstn)
+    begin
+    u_baud = 54;
+    u_recv = 0;
+    u_trans = 0;
+    u_tx_byte = 0;
+    utxstate_q = UTX_IDLE;
+    end
+  else
+    begin
+    u_recv = 0;
+    u_trans = 0;
+    utxstate_q = utxstate_d;
+    if (hid_en & (|hid_we) & one_hot_data_addr[6] & hid_addr[14])
+        casez (hid_addr[13:12])
+         2'b00: begin u_trans = 1; u_tx_byte = hid_wrdata[7:0]; $write("%c", u_tx_byte); $fflush(); end
+         2'b01: begin u_recv = 1; end
+         2'b10: begin u_baud = hid_wrdata; end
+         2'b11: begin end
+        endcase
+    end // else: !if(~rstn)
+
+always @*
+  begin
+     utxstate_d = utxstate_q;
+     casez(utxstate_q)
+       UTX_IDLE:
+         utxstate_d = UTX_EMPTY;
+       UTX_EMPTY:
+         if (~uart_tx_empty)
+           utxstate_d = UTX_POP;
+       UTX_INUSE:
+         if (~is_trans)
+           utxstate_d = UTX_IDLE;
+       UTX_POP:
+         utxstate_d = UTX_START;
+       UTX_START:
+         utxstate_d = UTX_INUSE;
+     endcase
+  end
+   
 //----------------------------------------------------------------------------//
 rx_delay uart_rx_dly(
 .clk(msoc_clk),
@@ -162,31 +215,57 @@ uart i_uart(
     .rst(~rstn), // Synchronous reset.
     .rx(uart_maj), // Incoming serial line
     .tx(uart_tx), // Outgoing serial line
-    .transmit(u_trans), // Signal to transmit
-    .tx_byte(u_tx_byte), // Byte to transmit
+    .transmit(utxstate_q==UTX_START), // Signal to transmit
+    .tx_byte(uart_tx_fifo_data_out[7:0]), // Byte to transmit
     .received(received), // Indicated that a byte has been received.
-    .rx_byte(core_lsu_rx_byte), // Byte received
+    .rx_byte(u_rx_byte), // Byte received
     .is_receiving(is_recv), // Low when receive line is idle.
     .is_transmitting(is_trans), // Low when transmit line is idle.
     .recv_error(recv_err), // Indicates error in receiving packet.
     .baud(u_baud),
-    .recv_ack(u_recv)
+    .recv_ack(received)
     );
+
+ my_fifo #(.width(9)) uart_rx_fifo (
+       .clk(msoc_clk),      // input wire read clk
+       .rst(~rstn),      // input wire rst
+       .din({recv_err,u_rx_byte}),      // input wire [8 : 0] din
+       .wr_en(received),  // input wire wr_en
+       .rd_en(u_recv),  // input wire rd_en
+       .dout(uart_rx_fifo_data_out),    // output wire [8 : 0] dout
+       .rdcount(uart_rx_rdcount),         // 12-bit output: Read count
+       .wrcount(uart_rx_wrcount),         // 12-bit output: Write count
+       .full(uart_rx_full),    // output wire full
+       .empty(uart_rx_empty)  // output wire empty
+     );
+
+ my_fifo #(.width(9)) uart_tx_fifo (
+       .clk(msoc_clk),      // input wire read clk
+       .rst(~rstn),      // input wire rst
+       .din({1'b0,u_tx_byte}),      // input wire [8 : 0] din
+       .wr_en(u_trans),  // input wire wr_en
+       .rd_en(utxstate_q==UTX_POP),  // input wire rd_en
+       .dout(uart_tx_fifo_data_out),    // output wire [8 : 0] dout
+       .rdcount(uart_tx_rdcount),         // 12-bit output: Read count
+       .wrcount(uart_tx_wrcount),         // 12-bit output: Write count
+       .full(uart_tx_full),    // output wire full
+       .empty(uart_tx_empty)  // output wire empty
+     );
+   
 //----------------------------------------------------------------------------//
 
 always_comb
   begin:onehot
      integer i;
-     hid_rddata = 32'b0;
-     for (i = 0; i < 5; i++)
+     hid_rddata = 64'b0;
+     for (i = 0; i < 8; i++)
        begin
 	   one_hot_data_addr[i] = hid_addr[17:15] == i;
-	   hid_rddata |= (one_hot_data_addr[i] ? one_hot_rdata[i] : 32'b0);
+	   hid_rddata |= (one_hot_data_addr[i] ? one_hot_rdata[i] : 64'b0);
        end
   end
 
-   wire    tx_rd;
-   wire    rx_wr;
+   wire    tx_rd, rx_wr_en;
    wire       sd_data_busy, data_crc_ok, sd_dat_oe;
    wire [3:0] sd_dat_to_mem, sd_dat_to_host, sd_dat_to_host_maj;
    wire       sd_cmd_to_mem, sd_cmd_to_host, sd_cmd_to_host_maj, sd_cmd_oe;
@@ -220,7 +299,7 @@ always_comb
    reg 	   sd_cmd_start, sd_cmd_rst, sd_data_rst, sd_clk_rst;
    reg [15:0] from_dip_reg;
 
-   wire [8:0] sd_xfr_addr;
+   wire [9:0] sd_xfr_addr;
    
 logic [6:0] sd_clk_daddr;
 logic       sd_clk_dclk, sd_clk_den, sd_clk_drdy, sd_clk_dwe, sd_clk_locked;
@@ -267,10 +346,8 @@ always @(posedge msoc_clk or negedge rstn)
         sd_irq_stat_reg <= {~sd_detect_reg,sd_detect_reg,sd_status[10],sd_status[8]};
         sd_irq <= |(sd_irq_en_reg & sd_irq_stat_reg);
         from_dip_reg <= from_dip;
-        u_trans <= 1'b0;
-        u_recv <= 1'b0;
-	if (hid_en&hid_we&one_hot_data_addr[2]&~hid_addr[14])
-	  case(hid_addr[5:2])
+	 if (hid_en&hid_we&one_hot_data_addr[2]&~hid_addr[14])
+	  case(hid_addr[6:3])
 	    0: sd_align_reg <= hid_wrdata;
 	    1: sd_clk_din <= hid_wrdata;
 	    2: sd_cmd_arg_reg <= hid_wrdata;
@@ -282,11 +359,7 @@ always @(posedge msoc_clk or negedge rstn)
 	    8: sd_blksize_reg <= hid_wrdata;
 	    9: sd_cmd_timeout_reg <= hid_wrdata;
 	   10: {sd_clk_dwe,sd_clk_den,sd_clk_daddr} <= hid_wrdata;
-           11: sd_irq_en_reg <= hid_wrdata;            
-           // temporarily hack UART in
-           12: u_recv <= 1'b1;
-           13: begin u_tx_byte <= hid_wrdata; u_trans <= 1'b1; end
-           14: u_baud <= hid_wrdata;            
+       11: sd_irq_en_reg <= hid_wrdata;            
 	   // Not strictly related, but can indicate SD-card activity and so on
 	   15: to_led <= hid_wrdata;
 	  endcase
@@ -309,20 +382,12 @@ always @(posedge sd_clk_o)
    //Rx SD data
    wire [31:0] data_out_tx;
    
-   parameter iostd = "LVTTL";
-   parameter slew = "FAST";
-   parameter iodrv = 24;
    // tri-state gate
-   IOBUF #(
-       .DRIVE(iodrv), // Specify the output drive strength
-       .IBUF_LOW_PWR("FALSE"),  // Low Power - "TRUE", High Performance = "FALSE" 
-       .IOSTANDARD(iostd), // Specify the I/O standard
-       .SLEW(slew) // Specify the output slew rate
-    ) IOBUF_cmd_inst (
-       .O(sd_cmd_to_host),     // Buffer output
-       .IO(sd_cmd),   // Buffer inout port (connect directly to top-level port)
-       .I(sd_cmd_to_mem),     // Buffer input
-       .T(~sd_cmd_oe)      // 3-state enable input, high=input, low=output
+   io_buffer_fast IOBUF_cmd_inst (
+       .outg(sd_cmd_to_host),     // Buffer output
+       .inoutg(sd_cmd),   // Buffer inout port (connect directly to top-level port)
+       .ing(sd_cmd_to_mem),     // Buffer input
+       .ctrl(~sd_cmd_oe)      // 3-state enable input, high=input, low=output
     );
 
     rx_delay cmd_rx_dly(
@@ -330,31 +395,21 @@ always @(posedge sd_clk_o)
         .in(sd_cmd_to_host),             
         .maj(sd_cmd_to_host_maj));
 
-   IOBUF #(
-        .DRIVE(iodrv), // Specify the output drive strength
-        .IBUF_LOW_PWR("FALSE"),  // Low Power - "TRUE", High Performance = "FALSE" 
-        .IOSTANDARD(iostd), // Specify the I/O standard
-        .SLEW(slew) // Specify the output slew rate
-     ) IOBUF_clk_inst (
-        .O(),     // Buffer output
-        .IO(sd_sclk),   // Buffer inout port (connect directly to top-level port)
-        .I(~sd_clk_o),     // Buffer input
-        .T(~sd_clk_rst)      // 3-state enable input, high=input, low=output
+   io_buffer_fast IOBUF_clk_inst (
+        .outg(),     // Buffer output
+        .inoutg(sd_sclk),   // Buffer inout port (connect directly to top-level port)
+        .ing(~sd_clk_o),     // Buffer input
+        .ctrl(~sd_clk_rst)      // 3-state enable input, high=input, low=output
    );
 
     genvar sd_dat_ix;
     generate for (sd_dat_ix = 0; sd_dat_ix < 4; sd_dat_ix=sd_dat_ix+1)
-        begin
-         IOBUF #(
-           .DRIVE(iodrv), // Specify the output drive strength
-            .IBUF_LOW_PWR("FALSE"),  // Low Power - "TRUE", High Performance = "FALSE" 
-            .IOSTANDARD(iostd), // Specify the I/O standard
-            .SLEW(slew) // Specify the output slew rate
-        ) IOBUF_dat_inst (
-            .O(sd_dat_to_host[sd_dat_ix]),     // Buffer output
-            .IO(sd_dat[sd_dat_ix]),   // Buffer inout port (connect directly to top-level port)
-            .I(sd_dat_to_mem[sd_dat_ix]),     // Buffer input
-            .T(~sd_dat_oe)      // 3-state enable input, high=input, low=output
+        begin:sd_dat_gen
+         io_buffer_fast IOBUF_dat_inst (
+            .outg(sd_dat_to_host[sd_dat_ix]),     // Buffer output
+            .inoutg(sd_dat[sd_dat_ix]),   // Buffer inout port (connect directly to top-level port)
+            .ing(sd_dat_to_mem[sd_dat_ix]),     // Buffer input
+            .ctrl(~sd_dat_oe)      // 3-state enable input, high=input, low=output
         );
         rx_delay dat_rx_dly(
             .clk(clk_200MHz),
@@ -364,27 +419,27 @@ always @(posedge sd_clk_o)
         
    endgenerate					
 
-   RAMB16_S36_S36 RAMB16_S1_inst_sd (
-                                   .CLKA(~sd_clk_o),             // Port A Clock
-                                   .CLKB(~msoc_clk),             // Port A Clock
-                                   .DOA(data_out_tx),            // Port A 32-bit Data Output
-                                   .DOPA(),                      // Port A parity unused
-                                   .ADDRA(sd_xfr_addr),          // Port A 11-bit Address Input
-                                   .DIA(data_in_rx),             // Port A 32-bit Data Input
-                                   .DIPA(4'b0),                  // Port A parity unused
-                                   .SSRA(1'b0),                  // Port A Synchronous Set/Reset Input
-                                   .ENA(tx_rd|rx_wr),            // Port A RAM Enable Input
-                                   .WEA(rx_wr),                  // Port A Write Enable Input
-                                   .DOB(one_hot_rdata[3]),       // Port B 32-bit Data Output
-                                   .DOPB(),                      // Port B parity unused
-                                   .ADDRB(hid_addr[10:2]),       // Port B 9-bit Address Input
-                                   .DIB(hid_wrdata),             // Port B 32-bit Data Input
-                                   .DIPB(4'b0),                  // Port B parity unused
-                                   .ENB(hid_en&one_hot_data_addr[3]),
-				                                 // Port B RAM Enable Input
-                                   .SSRB(1'b0),                  // Port B Synchronous Set/Reset Input
-                                   .WEB(|hid_we)                  // Port B Write Enable Input
-                                   );
+   logic [7:0] rx_wr = 8'hF << {sd_xfr_addr[0],2'b0};
+   logic [63:0] douta, doutb;
+   assign one_hot_rdata[3] = doutb;
+   assign data_out_tx = sd_xfr_addr[0] ? douta[63:32] : douta[31:0];
+   
+     dualmem_32K_64
+     RAMB16_S36_S36_inst_sd
+       (
+        .clka   ( ~sd_clk_o                   ),     // Port A Clock
+        .douta  ( douta                       ),     // Port A 1-bit Data Output
+        .addra  ( sd_xfr_addr[9:1]            ),     // Port A 9-bit Address Input
+        .dina   ( {data_in_rx,data_in_rx}     ),     // Port A 1-bit Data Input
+        .ena    ( tx_rd|rx_wr_en              ),     // Port A RAM Enable Input
+        .wea    ( rx_wr                       ),     // Port A Write Enable Input
+        .clkb   ( ~msoc_clk                   ),     // Port B Clock
+        .doutb  ( doutb                       ),     // Port B 1-bit Data Output
+        .addrb  ( hid_addr[11:3]              ),     // Port B 14-bit Address Input
+        .dinb   ( hid_wrdata                  ),     // Port B 1-bit Data Input
+        .enb    ( hid_en&one_hot_data_addr[3] ),     // Port B RAM Enable Input
+        .web    ( hid_we                      )      // Port B Write Enable Input
+        );
 
    always @(posedge msoc_clk)
      begin
@@ -396,7 +451,7 @@ always @(posedge sd_clk_o)
      sd_transf_cnt_reg <= sd_transf_cnt;
      sd_detect_reg <= sd_detect;
         
-     case(hid_addr[6:2])
+     case(hid_addr[7:3])
        0: sd_cmd_resp_sel = sd_cmd_response_reg[38:7];
        1: sd_cmd_resp_sel = sd_cmd_response_reg[70:39];
        2: sd_cmd_resp_sel = sd_cmd_response_reg[102:71];
@@ -425,17 +480,17 @@ always @(posedge sd_clk_o)
       25: sd_cmd_resp_sel = sd_cmd_timeout_reg;
       26: sd_cmd_resp_sel = {sd_clk_dwe,sd_clk_den,sd_clk_daddr};
       27: sd_cmd_resp_sel = sd_irq_en_reg;
-      // temporary UART address
-      30: sd_cmd_resp_sel = {is_recv,is_trans,recv_err,received,core_lsu_rx_byte};
       // not really related but we can decide if we want to autoboot, and so on.
       31: sd_cmd_resp_sel = from_dip_reg;
       default: sd_cmd_resp_sel = 32'HDEADBEEF;
-     endcase // case (hid_addr[6:2])
+     endcase // case (hid_addr[7:3])
      end
    
    assign sd_status[3:0] = 4'b0;
 
    assign one_hot_rdata[2] = sd_cmd_resp_sel;
+
+`ifdef FPGA_FULL
  
 clk_wiz_1 sd_clk_div
      (
@@ -455,6 +510,12 @@ clk_wiz_1 sd_clk_div
       .reset(~(sd_clk_rst&rstn)), // input reset
       .locked(sd_clk_locked));      // output locked
 
+`else // !`ifdef FPGA
+
+   assign sd_clk_o = msoc_clk;
+   
+`endif
+   
 sd_top sdtop(
     .sd_clk     (sd_clk_o),
     .cmd_rst    (~(sd_cmd_rst&rstn)),
@@ -488,7 +549,7 @@ sd_top sdtop(
     .crc_val_o(sd_cmd_crc_val),
     .crc_actual_o(sd_cmd_response[6:0]),
     .sd_rd_o(tx_rd),
-    .sd_we_o(rx_wr),
+    .sd_we_o(rx_wr_en),
     .sd_data_o(data_in_rx),    
     .sd_dat_to_mem(sd_dat_to_mem),
     .sd_cmd_to_mem(sd_cmd_to_mem),
@@ -502,7 +563,7 @@ framing_top open
    .rstn(locked),
    .msoc_clk(msoc_clk),
    .clk_rmii(clk_rmii),
-   .core_lsu_addr(hid_addr[12:0]),
+   .core_lsu_addr(hid_addr[13:0]),
    .core_lsu_wdata(hid_wrdata),
    .core_lsu_be(hid_we),
    .ce_d(hid_en),
@@ -522,6 +583,15 @@ framing_top open
    .o_edutrstn(eth_rstn),
    .eth_irq(eth_irq)
 );
+
+   assign one_hot_rdata[1] = one_hot_rdata[0];
+   assign one_hot_rdata[0] = ram_rddata;
+   assign ram_wrdata = hid_wrdata;
+   assign ram_addr = hid_addr[15:0];
+   assign ram_we = hid_we;
+   assign ram_en = hid_en&(one_hot_data_addr[1]|one_hot_data_addr[0]);
+   assign ram_clk = msoc_clk;
+   assign ram_rst = ~rstn;
    
 endmodule // chip_top
 `default_nettype wire
