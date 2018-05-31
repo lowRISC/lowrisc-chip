@@ -4,9 +4,9 @@
 [submodule "riscv-poky"]
 	path = riscv-poky
 	url = https://github.com/riscv/riscv-poky.git
-[submodule "rocket-chip"]
-	path = rocket-chip
-	url = https://github.com/lowRISC/rocket-chip
 [submodule "riscv-linux"]
 	path = riscv-linux
 	url = https://github.com/jrrk/riscv-linux.git
+[submodule "rocket-chip"]
+	path = rocket-chip
+	url = https://github.com/jrrk/rocket-chip
