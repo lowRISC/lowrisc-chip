@@ -260,14 +260,6 @@ module data_arrays_0_0_ext(
         );
    endgenerate
 
-  blk_mem_gen_128_512_32_mrw my_block_ram (
-  .clka(RW0_clk),    // input wire clka
-  .ena(RW0_en),      // input wire ena
-  .wea({RW0_wmask[3],RW0_wmask[3],RW0_wmask[3],RW0_wmask[3],RW0_wmask[2],RW0_wmask[2],RW0_wmask[2],RW0_wmask[2],RW0_wmask[1],RW0_wmask[1],RW0_wmask[1],RW0_wmask[1],RW0_wmask[0],RW0_wmask[0],RW0_wmask[0],RW0_wmask[0]}),   // input wire [15 : 0] wea
-  .addra(RW0_addr),  // input wire [8: 0] addra
-  .dina(RW0_wdata),  // input wire [127 : 0] dina
-  .douta(RW0_rdata)  // output wire [127 : 0] douta
-  );
   `else // not FPGA_FULL
   reg reg_RW0_ren;
   reg [8:0] reg_RW0_addr;
