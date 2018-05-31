@@ -22,7 +22,7 @@ module data_arrays_0_ext(
         .CLKA   ( RW0_clk                  ),     // Port A Clock
         .DOA    ( RW0_rdata[r*16 +: 8]     ),     // Port A 1-bit Data Output
         .DOPA   (                          ),
-        .ADDRA  ( {1'b0,RW0_addr}          ),     // Port A 14-bit Address input wire
+        .ADDRA  ( {2'b00,RW0_addr}          ),     // Port A 14-bit Address input wire
         .DIA    ( RW0_wdata[r*16 +: 8]     ),     // Port A 1-bit Data input wire
         .DIPA   ( 1'b0                     ),
         .ENA    ( RW0_en                   ),     // Port A RAM Enable input wire
@@ -31,7 +31,7 @@ module data_arrays_0_ext(
         .CLKB   ( RW0_clk                  ),     // Port B Clock
         .DOB    ( RW0_rdata[r*16+8 +: 8]   ),     // Port B 1-bit Data Output
         .DOPB   (                          ),
-        .ADDRB  ( {1'b1,RW0_addr}          ),     // Port B 14-bit Address input wire
+        .ADDRB  ( {2'b01,RW0_addr}          ),     // Port B 14-bit Address input wire
         .DIB    ( RW0_wdata[r*16+8 +: 8]   ),     // Port B 1-bit Data input wire
         .DIPB   ( 1'b0                     ),
         .ENB    ( RW0_en                   ),     // Port B RAM Enable input wire
@@ -235,28 +235,19 @@ module data_arrays_0_0_ext(
 
    genvar 	 r;
    
-   generate for (r = 0; r < 2; r=r+1)
-     RAMB16_S36_S36
-     RAMB16_S36_S36_inst
+   generate for (r = 0; r < 4; r=r+1)
+     RAMB16_S36
+     RAMB16_S36_inst
        (
-        .CLKA   ( RW0_clk                  ),     // Port A Clock
-        .DOA    ( RW0_rdata[r*64 +: 32]    ),     // Port A 1-bit Data Output
-        .DOPA   (                          ),
-        .ADDRA  ( {1'b0,RW0_addr}          ),     // Port A 14-bit Address input wire
-        .DIA    ( RW0_wdata[r*64 +: 32]    ),     // Port A 1-bit Data input wire
-        .DIPA   ( 1'b0                     ),
-        .ENA    ( RW0_en                   ),     // Port A RAM Enable input wire
-        .SSRA   ( 1'b0                     ),     // Port A Synchronous Set/Reset input wire
-        .WEA    ( RW0_wmask[r*2]           ),     // Port A Write Enable input wire
-        .CLKB   ( RW0_clk                  ),     // Port B Clock
-        .DOB    ( RW0_rdata[r*64+32 +: 32] ),     // Port B 1-bit Data Output
-        .DOPB   (                          ),
-        .ADDRB  ( {1'b1,RW0_addr}          ),     // Port B 14-bit Address input wire
-        .DIB    ( RW0_wdata[r*64+32 +: 32] ),     // Port B 1-bit Data input wire
-        .DIPB   ( 1'b0                     ),
-        .ENB    ( RW0_en                   ),     // Port B RAM Enable input wire
-        .SSRB   ( 1'b0                     ),     // Port B Synchronous Set/Reset input wire
-        .WEB    ( RW0_wmask[r*2+1]         )      // Port B Write Enable input wire
+        .CLK   ( RW0_clk                  ),     // Port A Clock
+        .DO    ( RW0_rdata[r*32 +: 32]    ),     // Port A 1-bit Data Output
+        .DOP   (                          ),
+        .ADDR  ( RW0_addr                 ),     // Port A 14-bit Address input wire
+        .DI    ( RW0_wdata[r*32 +: 32]    ),     // Port A 1-bit Data input wire
+        .DIP   ( 1'b0                     ),
+        .EN    ( RW0_en                   ),     // Port A RAM Enable input wire
+        .SSR   ( 1'b0                     ),     // Port A Synchronous Set/Reset input wire
+        .WE    ( RW0_wmask[r]             )      // Port A Write Enable input wire
         );
    endgenerate
 
