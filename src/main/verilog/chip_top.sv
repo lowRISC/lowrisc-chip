@@ -19,9 +19,9 @@ module chip_top
 `ifdef ADD_PHY_DDR
  `ifdef KC705
    // DDR3 RAM
-   inout [63:0]  ddr_dq,
-   inout [7:0]   ddr_dqs_n,
-   inout [7:0]   ddr_dqs_p,
+   inout wire [63:0]  ddr_dq,
+   inout wire [7:0]   ddr_dqs_n,
+   inout wire [7:0]   ddr_dqs_p,
    output [13:0] ddr_addr,
    output [2:0]  ddr_ba,
    output        ddr_ras_n,
@@ -36,9 +36,9 @@ module chip_top
    output        ddr_odt,
  `elsif NEXYS4_VIDEO
    // DDR3 RAM
-   inout [15:0]  ddr_dq,
-   inout [1:0]   ddr_dqs_n,
-   inout [1:0]   ddr_dqs_p,
+   inout wire [15:0]  ddr_dq,
+   inout wire [1:0]   ddr_dqs_n,
+   inout wire [1:0]   ddr_dqs_p,
    output [14:0] ddr_addr,
    output [2:0]  ddr_ba,
    output        ddr_ras_n,
@@ -52,9 +52,9 @@ module chip_top
    output        ddr_odt,
  `elsif NEXYS4
    // DDR2 RAM
-   inout [15:0]  ddr_dq,
-   inout [1:0]   ddr_dqs_n,
-   inout [1:0]   ddr_dqs_p,
+   inout wire [15:0]  ddr_dq,
+   inout wire [1:0]   ddr_dqs_n,
+   inout wire [1:0]   ddr_dqs_p,
    output [12:0] ddr_addr,
    output [2:0]  ddr_ba,
    output        ddr_ras_n,
@@ -76,7 +76,7 @@ module chip_top
    output        mem_nasti_dram_arlock,
    output  [2:0] mem_nasti_dram_arprot,
    output  [3:0] mem_nasti_dram_arqos,
-   input         mem_nasti_dram_arready,
+   input wire         mem_nasti_dram_arready,
    output  [2:0] mem_nasti_dram_arsize,
    output        mem_nasti_dram_arvalid,
    output  [3:0] mem_nasti_dram_arregion,
@@ -88,70 +88,70 @@ module chip_top
    output        mem_nasti_dram_awlock,
    output  [2:0] mem_nasti_dram_awprot,
    output  [3:0] mem_nasti_dram_awqos,
-   input         mem_nasti_dram_awready,
+   input wire         mem_nasti_dram_awready,
    output  [2:0] mem_nasti_dram_awsize,
    output  [2:0] mem_nasti_dram_awsize,
    output        mem_nasti_dram_awvalid,
    output  [3:0] mem_nasti_dram_awregion,
-   input   [5:0] mem_nasti_dram_bid,
+   input wire   [5:0] mem_nasti_dram_bid,
    output        mem_nasti_dram_bready,
-   input   [1:0] mem_nasti_dram_bresp,
-   input         mem_nasti_dram_bvalid,
-   input  [63:0] mem_nasti_dram_rdata,
-   input   [5:0] mem_nasti_dram_rid,
-   input         mem_nasti_dram_rlast,
+   input wire   [1:0] mem_nasti_dram_bresp,
+   input wire         mem_nasti_dram_bvalid,
+   input wire  [63:0] mem_nasti_dram_rdata,
+   input wire   [5:0] mem_nasti_dram_rid,
+   input wire         mem_nasti_dram_rlast,
    output        mem_nasti_dram_rready,
-   input   [1:0] mem_nasti_dram_rresp,
-   input         mem_nasti_dram_rvalid,
+   input wire   [1:0] mem_nasti_dram_rresp,
+   input wire         mem_nasti_dram_rvalid,
    output [63:0] mem_nasti_dram_wdata,
    output        mem_nasti_dram_wlast,
-   input         mem_nasti_dram_wready,
+   input wire         mem_nasti_dram_wready,
    output  [7:0] mem_nasti_dram_wstrb,
    output        mem_nasti_dram_wvalid,
  `endif
 `endif //  `ifdef ADD_DDR_IO
 
 `ifdef ADD_FLASH
-   inout         flash_ss,
-   inout [3:0]   flash_io,
+   inout wire         flash_ss,
+   inout wire [3:0]   flash_io,
 `endif
 
 `ifdef ADD_SPI
-   inout         spi_cs,
-   inout         spi_sclk,
-   inout         spi_mosi,
-   inout         spi_miso,
+   inout wire         spi_cs,
+   inout wire         spi_sclk,
+   inout wire         spi_mosi,
+   inout wire         spi_miso,
    output        sd_reset,
 `endif
 
 `ifdef ADD_HID
    // Simple UART interface
-   input         rxd,
+   input wire         rxd,
    output        txd,
    output        rts,
-   input         cts,
+   input wire         cts,
 
    // 4-bit full SD interface
    output        sd_sclk,
-   input         sd_detect,
-   inout [3:0]   sd_dat,
-   inout         sd_cmd,
+   input wire         sd_detect,
+   inout wire [3:0]   sd_dat,
+   inout wire         sd_cmd,
    output        sd_reset,
 
    // LED and DIP switch
    output [7:0]  o_led,
-   input  [15:0] i_dip,
+   input wire  [15:0] i_dip,
 
    // push button array
-   input         GPIO_SW_C,
-   input         GPIO_SW_W,
-   input         GPIO_SW_E,
-   input         GPIO_SW_N,
-   input         GPIO_SW_S,
+   input wire         GPIO_SW_C,
+   input wire         GPIO_SW_W,
+   input wire         GPIO_SW_E,
+   input wire         GPIO_SW_N,
+   input wire         GPIO_SW_S,
 
    //keyboard
-   inout         PS2_CLK,
-   inout         PS2_DATA,
+   inout wire         PS2_CLK,
+   inout wire         PS2_DATA,
 
   // display
    output        VGA_HS_O,
@@ -173,9 +173,9 @@ module chip_top
  output wire        o_erstn, // PHY reset active low
 `endif //  `ifdef ADD_HID
    // clock and reset
-   input         clk_p,
-   input         clk_n,
-   input         rst_top
+   input wire         clk_p,
+   input wire         clk_n,
+   input wire         rst_top
    );
 
    genvar        i;
@@ -186,7 +186,10 @@ module chip_top
 
    // Debug controlled reset of the Rocket system
    logic  sys_rst;
-
+   // Interrupts
+   logic spi_irq, sd_irq, eth_irq, uart_irq;
+   // Miscellaneous
+   logic TDO_driven;
    /////////////////////////////////////////////////////////////
    // NASTI/Lite on-chip interconnects
 
