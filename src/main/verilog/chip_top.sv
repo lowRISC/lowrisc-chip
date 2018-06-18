@@ -833,8 +833,6 @@ reg phy_emdio_i, io_emdio_o, io_emdio_t;
 
 `endif // !`ifdef ADD_HID
 
-   assign uart_irq = 1'b0;
-
    /////////////////////////////////////////////////////////////
    // Host for ISA regression
 

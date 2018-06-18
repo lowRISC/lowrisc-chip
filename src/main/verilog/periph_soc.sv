@@ -14,6 +14,7 @@
 module periph_soc
   (
  output wire        uart_tx,
+ output wire        uart_irq,
  input wire         uart_rx,
  // clock and reset
  input wire         clk_200MHz,
@@ -149,7 +150,9 @@ logic [63:0] one_hot_rdata[7:0];
    wire [8:0]  uart_rx_fifo_data_out, uart_tx_fifo_data_out;
    reg [7:0]   u_rx_byte, u_tx_byte;
 
-    assign one_hot_rdata[6] = hid_addr[14] ?
+   assign uart_irq = ~uart_rx_empty;
+
+   assign one_hot_rdata[6] = hid_addr[14] ?
                               (hid_addr[13] ?
                                {4'b0,uart_tx_wrcount,
                                 4'b0,uart_tx_rdcount,
