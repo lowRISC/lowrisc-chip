@@ -349,7 +349,7 @@ always @(posedge msoc_clk or negedge rstn)
         sd_irq_stat_reg <= {~sd_detect_reg,sd_detect_reg,sd_status[10],sd_status[8]};
         sd_irq <= |(sd_irq_en_reg & sd_irq_stat_reg);
         from_dip_reg <= from_dip;
-	 if (hid_en&hid_we&one_hot_data_addr[2]&~hid_addr[14])
+	 if (hid_en&(|hid_we)&one_hot_data_addr[2]&~hid_addr[14])
 	  case(hid_addr[6:3])
 	    0: sd_align_reg <= hid_wrdata;
 	    1: sd_clk_din <= hid_wrdata;
@@ -420,23 +420,30 @@ always @(posedge sd_clk_o)
             .maj(sd_dat_to_host_maj[sd_dat_ix]));
         end
         
-   endgenerate					
-
-   logic [7:0] rx_wr = 8'hF << {sd_xfr_addr[0],2'b0};
-   logic [63:0] douta, doutb;
-   assign one_hot_rdata[3] = doutb;
-   assign data_out_tx = sd_xfr_addr[0] ? douta[63:32] : douta[31:0];
+   endgenerate
    
-     dualmem_32K_64
-     RAMB16_S36_S36_inst_sd
+   logic [7:0] rx_wr = rx_wr_en ? (sd_xfr_addr[0] ? 8'hF0 : 8'hF) : 8'b0;
+   logic [63:0] douta, doutb;
+   logic sd_xfr_addr_prev;
+   logic [31:0] swapbein = {data_in_rx[7:0],data_in_rx[15:8],data_in_rx[23:16],data_in_rx[31:24]};
+   assign one_hot_rdata[3] = doutb;
+   assign data_out_tx = sd_xfr_addr_prev ? {douta[7:0],douta[15:8],douta[23:16],douta[31:24]} :
+                                           {douta[39:32],douta[47:40],douta[55:48],douta[63:56]};
+  
+   always @(negedge sd_clk_o)
+       begin
+       if (tx_rd) sd_xfr_addr_prev = sd_xfr_addr[0];
+       end            
+ 
+   dualmem_32K_64 RAMB16_S36_S36_inst_sd
        (
         .clka   ( ~sd_clk_o                   ),     // Port A Clock
         .douta  ( douta                       ),     // Port A 1-bit Data Output
         .addra  ( sd_xfr_addr[9:1]            ),     // Port A 9-bit Address Input
-        .dina   ( {data_in_rx,data_in_rx}     ),     // Port A 1-bit Data Input
+        .dina   ( {swapbein,swapbein}         ),     // Port A 1-bit Data Input
         .ena    ( tx_rd|rx_wr_en              ),     // Port A RAM Enable Input
         .wea    ( rx_wr                       ),     // Port A Write Enable Input
-        .clkb   ( ~msoc_clk                   ),     // Port B Clock
+        .clkb   ( msoc_clk                    ),     // Port B Clock
         .doutb  ( doutb                       ),     // Port B 1-bit Data Output
         .addrb  ( hid_addr[11:3]              ),     // Port B 14-bit Address Input
         .dinb   ( hid_wrdata                  ),     // Port B 1-bit Data Input
