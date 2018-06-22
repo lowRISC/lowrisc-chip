@@ -427,8 +427,8 @@ always @(posedge sd_clk_o)
    logic sd_xfr_addr_prev;
    logic [31:0] swapbein = {data_in_rx[7:0],data_in_rx[15:8],data_in_rx[23:16],data_in_rx[31:24]};
    assign one_hot_rdata[3] = doutb;
-   assign data_out_tx = sd_xfr_addr_prev ? {douta[7:0],douta[15:8],douta[23:16],douta[31:24]} :
-                                           {douta[39:32],douta[47:40],douta[55:48],douta[63:56]};
+   assign data_out_tx = sd_xfr_addr_prev ? {douta[39:32],douta[47:40],douta[55:48],douta[63:56]} :
+                                           {douta[7:0],douta[15:8],douta[23:16],douta[31:24]};
   
    always @(negedge sd_clk_o)
        begin
