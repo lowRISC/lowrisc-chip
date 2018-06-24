@@ -266,6 +266,12 @@ reg phy_emdio_i, io_emdio_o, io_emdio_t;
    logic mig_ui_clk, mig_ui_rst, mig_ui_rstn;
    assign mig_ui_rstn = !mig_ui_rst;
 
+`define ROCKET_50MHZ
+`ifdef ROCKET_50MHZ
+`define MEM_NASTI mem_mig_nasti
+`else
+`define MEM_NASTI mem_nasti
+
    // clock converter
    axi_clock_converter_0 clk_conv
      (
@@ -352,6 +358,8 @@ reg phy_emdio_i, io_emdio_o, io_emdio_t;
       .m_axi_rvalid         ( mem_mig_nasti.r_valid    ),
       .m_axi_rready         ( mem_mig_nasti.r_ready    )
       );
+
+`endif
 
  `ifdef NEXYS4_COMMON
    //clock generator
@@ -505,7 +513,7 @@ reg phy_emdio_i, io_emdio_o, io_emdio_t;
      (
       .clk           ( clk         ),
       .rstn          ( rstn        ),
-      .nasti         ( mem_nasti   )
+      .nasti         ( `MEM_NASTI   )
       );
 `endif // !`ifdef ADD_PHY_DDR
 
@@ -911,49 +919,49 @@ reg phy_emdio_i, io_emdio_o, io_emdio_t;
       .debug_systemjtag_mfr_id(11'h5AA),
       .debug_ndreset(ExampleRocketSystem_debug_ndreset),
       .debug_dmactive(ExampleRocketSystem_debug_dmactive),
-      .mem_axi4_0_aw_valid                ( mem_nasti.aw_valid                     ),
-      .mem_axi4_0_aw_ready                ( mem_nasti.aw_ready                     ),
-      .mem_axi4_0_aw_bits_id              ( mem_nasti.aw_id                        ),
-      .mem_axi4_0_aw_bits_addr            ( mem_nasti.aw_addr                      ),
-      .mem_axi4_0_aw_bits_len             ( mem_nasti.aw_len                       ),
-      .mem_axi4_0_aw_bits_size            ( mem_nasti.aw_size                      ),
-      .mem_axi4_0_aw_bits_burst           ( mem_nasti.aw_burst                     ),
-      .mem_axi4_0_aw_bits_lock            ( mem_nasti.aw_lock                      ),
-      .mem_axi4_0_aw_bits_cache           ( mem_nasti.aw_cache                     ),
-      .mem_axi4_0_aw_bits_prot            ( mem_nasti.aw_prot                      ),
-      .mem_axi4_0_aw_bits_qos             ( mem_nasti.aw_qos                       ),
-      .mem_axi4_0_w_valid                 ( mem_nasti.w_valid                      ),
-      .mem_axi4_0_w_ready                 ( mem_nasti.w_ready                      ),
-      .mem_axi4_0_w_bits_data             ( mem_nasti.w_data                       ),
-      .mem_axi4_0_w_bits_strb             ( mem_nasti.w_strb                       ),
-      .mem_axi4_0_w_bits_last             ( mem_nasti.w_last                       ),
-      .mem_axi4_0_b_valid                 ( mem_nasti.b_valid                      ),
-      .mem_axi4_0_b_ready                 ( mem_nasti.b_ready                      ),
-      .mem_axi4_0_b_bits_id               ( mem_nasti.b_id                         ),
-      .mem_axi4_0_b_bits_resp             ( mem_nasti.b_resp                       ),
-      .mem_axi4_0_ar_valid                ( mem_nasti.ar_valid                     ),
-      .mem_axi4_0_ar_ready                ( mem_nasti.ar_ready                     ),
-      .mem_axi4_0_ar_bits_id              ( mem_nasti.ar_id                        ),
-      .mem_axi4_0_ar_bits_addr            ( mem_nasti.ar_addr                      ),
-      .mem_axi4_0_ar_bits_len             ( mem_nasti.ar_len                       ),
-      .mem_axi4_0_ar_bits_size            ( mem_nasti.ar_size                      ),
-      .mem_axi4_0_ar_bits_burst           ( mem_nasti.ar_burst                     ),
-      .mem_axi4_0_ar_bits_lock            ( mem_nasti.ar_lock                      ),
-      .mem_axi4_0_ar_bits_cache           ( mem_nasti.ar_cache                     ),
-      .mem_axi4_0_ar_bits_prot            ( mem_nasti.ar_prot                      ),
-      .mem_axi4_0_ar_bits_qos             ( mem_nasti.ar_qos                       ),
-      .mem_axi4_0_r_valid                 ( mem_nasti.r_valid                      ),
-      .mem_axi4_0_r_ready                 ( mem_nasti.r_ready                      ),
-      .mem_axi4_0_r_bits_id               ( mem_nasti.r_id                         ),
-      .mem_axi4_0_r_bits_data             ( mem_nasti.r_data                       ),
-      .mem_axi4_0_r_bits_resp             ( mem_nasti.r_resp                       ),
-      .mem_axi4_0_r_bits_last             ( mem_nasti.r_last                       ),
+      .mem_axi4_0_aw_valid                ( `MEM_NASTI.aw_valid                     ),
+      .mem_axi4_0_aw_ready                ( `MEM_NASTI.aw_ready                     ),
+      .mem_axi4_0_aw_bits_id              ( `MEM_NASTI.aw_id                        ),
+      .mem_axi4_0_aw_bits_addr            ( `MEM_NASTI.aw_addr                      ),
+      .mem_axi4_0_aw_bits_len             ( `MEM_NASTI.aw_len                       ),
+      .mem_axi4_0_aw_bits_size            ( `MEM_NASTI.aw_size                      ),
+      .mem_axi4_0_aw_bits_burst           ( `MEM_NASTI.aw_burst                     ),
+      .mem_axi4_0_aw_bits_lock            ( `MEM_NASTI.aw_lock                      ),
+      .mem_axi4_0_aw_bits_cache           ( `MEM_NASTI.aw_cache                     ),
+      .mem_axi4_0_aw_bits_prot            ( `MEM_NASTI.aw_prot                      ),
+      .mem_axi4_0_aw_bits_qos             ( `MEM_NASTI.aw_qos                       ),
+      .mem_axi4_0_w_valid                 ( `MEM_NASTI.w_valid                      ),
+      .mem_axi4_0_w_ready                 ( `MEM_NASTI.w_ready                      ),
+      .mem_axi4_0_w_bits_data             ( `MEM_NASTI.w_data                       ),
+      .mem_axi4_0_w_bits_strb             ( `MEM_NASTI.w_strb                       ),
+      .mem_axi4_0_w_bits_last             ( `MEM_NASTI.w_last                       ),
+      .mem_axi4_0_b_valid                 ( `MEM_NASTI.b_valid                      ),
+      .mem_axi4_0_b_ready                 ( `MEM_NASTI.b_ready                      ),
+      .mem_axi4_0_b_bits_id               ( `MEM_NASTI.b_id                         ),
+      .mem_axi4_0_b_bits_resp             ( `MEM_NASTI.b_resp                       ),
+      .mem_axi4_0_ar_valid                ( `MEM_NASTI.ar_valid                     ),
+      .mem_axi4_0_ar_ready                ( `MEM_NASTI.ar_ready                     ),
+      .mem_axi4_0_ar_bits_id              ( `MEM_NASTI.ar_id                        ),
+      .mem_axi4_0_ar_bits_addr            ( `MEM_NASTI.ar_addr                      ),
+      .mem_axi4_0_ar_bits_len             ( `MEM_NASTI.ar_len                       ),
+      .mem_axi4_0_ar_bits_size            ( `MEM_NASTI.ar_size                      ),
+      .mem_axi4_0_ar_bits_burst           ( `MEM_NASTI.ar_burst                     ),
+      .mem_axi4_0_ar_bits_lock            ( `MEM_NASTI.ar_lock                      ),
+      .mem_axi4_0_ar_bits_cache           ( `MEM_NASTI.ar_cache                     ),
+      .mem_axi4_0_ar_bits_prot            ( `MEM_NASTI.ar_prot                      ),
+      .mem_axi4_0_ar_bits_qos             ( `MEM_NASTI.ar_qos                       ),
+      .mem_axi4_0_r_valid                 ( `MEM_NASTI.r_valid                      ),
+      .mem_axi4_0_r_ready                 ( `MEM_NASTI.r_ready                      ),
+      .mem_axi4_0_r_bits_id               ( `MEM_NASTI.r_id                         ),
+      .mem_axi4_0_r_bits_data             ( `MEM_NASTI.r_data                       ),
+      .mem_axi4_0_r_bits_resp             ( `MEM_NASTI.r_resp                       ),
+      .mem_axi4_0_r_bits_last             ( `MEM_NASTI.r_last                       ),
 `ifdef MEM_USER_WIDTH
-      .mem_axi4_0_aw_bits_user            ( mem_nasti.aw_user                      ),
-      .mem_axi4_0_w_bits_user             ( mem_nasti.w_user                       ),
-      .mem_axi4_0_b_bits_user             ( mem_nasti.b_user                       ),
-      .mem_axi4_0_ar_bits_user            ( mem_nasti.ar_user                      ),
-      .mem_axi4_0_r_bits_user             ( mem_nasti.r_user                       ),
+      .mem_axi4_0_aw_bits_user            ( `MEM_NASTI.aw_user                      ),
+      .mem_axi4_0_w_bits_user             ( `MEM_NASTI.w_user                       ),
+      .mem_axi4_0_b_bits_user             ( `MEM_NASTI.b_user                       ),
+      .mem_axi4_0_ar_bits_user            ( `MEM_NASTI.ar_user                      ),
+      .mem_axi4_0_r_bits_user             ( `MEM_NASTI.r_user                       ),
 `endif
       .mmio_axi4_0_aw_valid        ( mmio_master_nasti.aw_valid               ),
       .mmio_axi4_0_aw_ready        ( mmio_master_nasti.aw_ready               ),
