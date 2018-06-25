@@ -269,8 +269,10 @@ reg phy_emdio_i, io_emdio_o, io_emdio_t;
 `define ROCKET_50MHZ
 `ifdef ROCKET_50MHZ
 `define MEM_NASTI mem_mig_nasti
+`define UBAUD_DEFAULT 108
 `else
 `define MEM_NASTI mem_nasti
+`define UBAUD_DEFAULT 54
 
    // clock converter
    axi_clock_converter_0 clk_conv
@@ -798,7 +800,7 @@ reg phy_emdio_i, io_emdio_o, io_emdio_t;
         o_etx_en = eth_txen;
         end
 
-   periph_soc psoc
+   periph_soc #(.UBAUD_DEFAULT(`UBAUD_DEFAULT)) psoc
      (
       .msoc_clk   ( clk             ),
       .sd_sclk    ( sd_sclk         ),

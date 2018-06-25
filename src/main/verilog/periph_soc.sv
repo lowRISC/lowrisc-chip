@@ -11,7 +11,7 @@
 
 `default_nettype none
 
-module periph_soc
+module periph_soc #(UBAUD_DEFAULT=54)
   (
  output wire        uart_tx,
  output wire        uart_irq,
@@ -75,7 +75,7 @@ module periph_soc
  );
  
  wire [19:0] dummy;
- wire        ascii_ready;
+ wire        ascii_ready, scan_ready;
  wire [7:0]  readch, scancode, fstore_data;
  wire        keyb_empty;   
  reg [31:0]  keycode;
@@ -94,13 +94,14 @@ logic [63:0] one_hot_rdata[7:0];
       .ascii_code(readch[6:0]),
       .ascii_data_ready(ascii_ready),
       .rx_translated_scan_code(scancode),
-      .rx_ascii_read(ascii_ready));
+      .rx_ascii_read(ascii_ready),
+      .scan_code_ready(scan_ready));
  
  my_fifo #(.width(36)) keyb_fifo (
        .clk(~msoc_clk),      // input wire read clk
        .rst(~rstn),      // input wire rst
-       .din({21'b0, readch[6:0], scancode}),      // input wire [31 : 0] din
-       .wr_en(ascii_ready),  // input wire wr_en
+       .din({20'b0, ascii_ready, readch[6:0], scancode}),      // input wire [31 : 0] din
+       .wr_en(scan_ready),  // input wire wr_en
        .rd_en(hid_en&(|hid_we)&one_hot_data_addr[6]&~hid_addr[14]),  // input wire rd_en
        .dout(keyb_fifo_out),    // output wire [31 : 0] dout
        .rdcount(),         // 12-bit output: Read count
@@ -168,7 +169,7 @@ typedef enum {UTX_IDLE, UTX_EMPTY, UTX_INUSE, UTX_POP, UTX_START} utx_t;
 always @(posedge msoc_clk)
     if (~rstn)
     begin
-    u_baud = 54;
+    u_baud = UBAUD_DEFAULT;
     u_recv = 0;
     u_trans = 0;
     u_tx_byte = 0;

@@ -42,7 +42,7 @@
 
 module ps2(clk, rst, rx_ascii_read, 
            PS2_K_CLK_IO, PS2_K_DATA_IO, PS2_M_CLK_IO, PS2_M_DATA_IO,
-           ascii_code, ascii_data_ready, rx_translated_scan_code);
+           ascii_code, ascii_data_ready, rx_translated_scan_code, scan_code_ready);
 
    input clk, rst;
    input rx_ascii_read;
@@ -52,7 +52,7 @@ module ps2(clk, rst, rx_ascii_read,
    inout PS2_M_CLK_IO;
    inout PS2_M_DATA_IO;
 
-   output ascii_data_ready;
+   output ascii_data_ready, scan_code_ready;
    output [7:0] rx_translated_scan_code;
    output reg [6:0] ascii_code;
    reg [7:0]        kcode;
@@ -72,7 +72,7 @@ module ps2(clk, rst, rx_ascii_read,
    wire             tx_error_no_keyboard_ack;
    reg              translate, shift, ctrl ;
    wire [15:0]      divide_reg = 13000;
-   reg              ascii_data_ready, data_ready_dly;
+   reg              ascii_data_ready, data_ready_dly, scan_code_ready;
    wire [7:0]       rx_translated_scan_code, rx_ascii_code;
    wire             rx_translated_data_ready, rx_ascii_data_ready;
 
@@ -93,15 +93,20 @@ module ps2(clk, rst, rx_ascii_read,
         ascii_data_ready = 0;
         ascii_code = 0;
         data_ready_dly <= 0;
+        scan_code_ready = 0;
      end
    else
      begin
         data_ready_dly <= rx_translated_data_ready;
         if (rx_ascii_read)
-          ascii_data_ready = 0; 
+          begin
+          scan_code_ready = 0;
+          ascii_data_ready = 0;
+          end 
         if (rx_translated_data_ready & ~data_ready_dly)
           begin
              kcode = 0;
+             scan_code_ready = 1;
              case(rx_translated_scan_code[6:0])
                7'H2A, 7'H36: shift = ~rx_translated_scan_code[7];
                7'H1D: ctrl = ~rx_translated_scan_code[7];
