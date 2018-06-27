@@ -75,11 +75,12 @@ module periph_soc #(UBAUD_DEFAULT=54)
  );
  
  wire [19:0] dummy;
- wire        ascii_ready, scan_ready;
- wire [7:0]  readch, scancode, fstore_data;
- wire        keyb_empty;   
+ wire        scan_ready, scan_released;
+ wire [7:0]  scan_code, fstore_data;
+ wire        keyb_empty, tx_error_no_keyboard_ack;   
  reg [31:0]  keycode;
- wire [35:0] keyb_fifo_out;
+ reg scan_ready_dly;
+ wire [8:0] keyb_fifo_out;
  // signals from/to core
 logic [7:0] one_hot_data_addr;
 logic [63:0] one_hot_rdata[7:0];
@@ -91,17 +92,22 @@ logic [63:0] one_hot_rdata[7:0];
       .PS2_K_DATA_IO(PS2_DATA),
       .PS2_M_CLK_IO(),
       .PS2_M_DATA_IO(),
-      .ascii_code(readch[6:0]),
-      .ascii_data_ready(ascii_ready),
-      .rx_translated_scan_code(scancode),
-      .rx_ascii_read(ascii_ready),
-      .scan_code_ready(scan_ready));
+      .rx_released(scan_released),
+      .rx_scan_ready(scan_ready),
+      .rx_scan_code(scan_code),
+      .rx_scan_read(scan_ready),
+      .tx_error_no_keyboard_ack(tx_error_no_keyboard_ack));
  
- my_fifo #(.width(36)) keyb_fifo (
+ always @(negedge msoc_clk)
+    begin
+        scan_ready_dly <= scan_ready;
+    end
+    
+ my_fifo #(.width(9)) keyb_fifo (
        .clk(~msoc_clk),      // input wire read clk
        .rst(~rstn),      // input wire rst
-       .din({20'b0, ascii_ready, readch[6:0], scancode}),      // input wire [31 : 0] din
-       .wr_en(scan_ready),  // input wire wr_en
+       .din({scan_released, scan_code}),      // input wire [31 : 0] din
+       .wr_en(scan_ready & ~scan_ready_dly),  // input wire wr_en
        .rd_en(hid_en&(|hid_we)&one_hot_data_addr[6]&~hid_addr[14]),  // input wire rd_en
        .dout(keyb_fifo_out),    // output wire [31 : 0] dout
        .rdcount(),         // 12-bit output: Read count
@@ -160,7 +166,7 @@ logic [63:0] one_hot_rdata[7:0];
                                 4'b0,uart_rx_wrcount,
                                 4'b0,uart_rx_rdcount} : 
                                {4'b0,uart_rx_full,uart_tx_full,uart_rx_empty,uart_rx_fifo_data_out}) :
-                              {keyb_empty,keyb_fifo_out[15:0]};
+                              {tx_error_no_keyboard_ack,keyb_empty,keyb_fifo_out[8:0]};
 
 typedef enum {UTX_IDLE, UTX_EMPTY, UTX_INUSE, UTX_POP, UTX_START} utx_t;
 

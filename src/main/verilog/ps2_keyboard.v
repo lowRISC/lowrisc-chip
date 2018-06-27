@@ -171,7 +171,6 @@ module ps2_keyboard (
                      tx_write,
                      tx_write_ack_o,
                      tx_error_no_keyboard_ack,
-                     translate,
                      divide_reg_i
                      );
 
@@ -231,7 +230,6 @@ module ps2_keyboard (
    input        wire tx_write;
    output       wire tx_write_ack_o;
    output       reg tx_error_no_keyboard_ack;
-   input        wire translate ;
 
    input [15:0] divide_reg_i;
 
@@ -552,7 +550,7 @@ module ps2_keyboard (
 
    // Create the signals which indicate special scan codes received.
    // These are the "unlatched versions."
-   assign released = (q[8:1] == `RELEASE_CODE) && rx_shifting_done && translate ;
+   assign released = (q[8:1] == `RELEASE_CODE) && rx_shifting_done;
 
    // Store the special scan code status bits
    // Not the final output, but an intermediate storage place,

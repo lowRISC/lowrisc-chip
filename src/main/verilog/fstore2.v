@@ -72,8 +72,8 @@ module fstore2(
    reg [4:0]                     scroll;
    
    wire [63:0]                   dout;
-   wire [13:0]                   addra = {offvreg[10:5],offhreg[12:6]};
-   wire [7:0]                    dout8 = dout >> {addra[2:0],3'b000};
+   wire [12:0]                   addra = {offvreg[9:5],offhreg[12:6]};
+   wire [15:0]                   dout16 = dout >> {addra[1:0],4'b0000};
    
    // 100 MHz / 2100 is 47.6kHz.  Divide by further 788 to get 60.4 Hz.
    // Aim for 1024x768 non interlaced at 60 Hz.  
@@ -82,12 +82,12 @@ module fstore2(
 
    reg                           bitmapped_pixel;
    
-   wire [7:0]                    red_in, green_in, blue_in;
+   reg [7:0]                    red_in, green_in, blue_in;
 
    assign dvi_mux = hreg[0];
 
    dualmem ram1(.clka(pixel2_clk),
-                .dina({8{addra[7:0]}}), .addra(addra[13:3]), .wea({8{clear}}), .douta(dout), .ena(1'b1),
+                .dina({8{addra[7:0]}}), .addra(addra[12:2]), .wea({8{clear}}), .douta(dout), .ena(1'b1),
                 .clkb(~clk_data), .dinb(dinb), .addrb(addrb), .web(web), .doutb(doutb), .enb(enb));
 
 `ifdef LASTMSG
@@ -222,14 +222,30 @@ module fstore2(
    wire [7:0] pixels_out;
    chargen_7x5_rachel the_rachel(
     .clk(pixel2_clk),
-    .ascii(dout8),
+    .ascii(dout16[7:0]),
     .row(vrow),
     .pixels_out(pixels_out));
    
    wire       pixel = pixels_out[3'd7 ^ offpixel] && bitmapped_pixel;
 
-   assign red_in = (pixel ? 8'hff: 8'h00);
-   assign green_in = (pixel ? 8'hff: 8'h00);
-   assign blue_in   = 8'b0;
+   always @(dout16 or pixel)
+        case(pixel ? dout16[11:8]: dout16[14:12])
+            0: {red_in,green_in,blue_in} = 24'h000000;
+            1: {red_in,green_in,blue_in} = 24'h0000AA;
+            2: {red_in,green_in,blue_in} = 24'h00AA00;
+            3: {red_in,green_in,blue_in} = 24'h00AAAA;
+            4: {red_in,green_in,blue_in} = 24'hAA0000;
+            5: {red_in,green_in,blue_in} = 24'hAA00AA;
+            6: {red_in,green_in,blue_in} = 24'hAA5500;
+            7: {red_in,green_in,blue_in} = 24'hAAAAAA;
+            8: {red_in,green_in,blue_in} = 24'h555555;
+            9: {red_in,green_in,blue_in} = 24'h5555FF;
+           10: {red_in,green_in,blue_in} = 24'h55FF55;
+           11: {red_in,green_in,blue_in} = 24'h55FFFF;
+           12: {red_in,green_in,blue_in} = 24'hFF5555;
+           13: {red_in,green_in,blue_in} = 24'hFF55FF;
+           14: {red_in,green_in,blue_in} = 24'hFFFF55;
+           15: {red_in,green_in,blue_in} = 24'hFFFFFF;
+       endcase
    
 endmodule
