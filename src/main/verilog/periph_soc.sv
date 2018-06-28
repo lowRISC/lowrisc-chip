@@ -580,7 +580,7 @@ framing_top open
    .rstn(locked),
    .msoc_clk(msoc_clk),
    .clk_rmii(clk_rmii),
-   .core_lsu_addr(hid_addr[13:0]),
+   .core_lsu_addr(hid_addr[14:0]),
    .core_lsu_wdata(hid_wrdata),
    .core_lsu_be(hid_we),
    .ce_d(hid_en),
