@@ -139,7 +139,7 @@ module chip_top
    output        sd_reset,
 
    // LED and DIP switch
-   output [7:0]  o_led,
+   output [15:0]  o_led,
    input wire  [15:0] i_dip,
 
    // push button array
