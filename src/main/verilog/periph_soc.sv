@@ -23,7 +23,7 @@ module periph_soc #(UBAUD_DEFAULT=54)
  input wire         rstn,
  output reg [15:0]  to_led,
  input wire [15:0]  from_dip,
- output wire        sd_sclk,
+ inout wire         sd_sclk,
  input wire         sd_detect,
  inout wire [3:0]   sd_dat,
  inout wire         sd_cmd,
@@ -51,14 +51,21 @@ module periph_soc #(UBAUD_DEFAULT=54)
  output wire [3:0]  VGA_BLUE_O,
  output wire [3:0]  VGA_GREEN_O,
 // SMSC ethernet PHY to framing_top connections
- input wire         clk_rmii,
  input wire         locked,
  output wire        eth_rstn,
  input wire         eth_crsdv,
  output wire        eth_refclk,
+`ifdef KC705   
+ output wire [3:0]  eth_txd,
+ input wire [3:0]   eth_rxd,
+ input wire         clk_mii,
+ output wire        eth_txer,
+`else   
  output wire [1:0]  eth_txd,
- output wire        eth_txen,
  input wire [1:0]   eth_rxd,
+ input wire         clk_rmii,
+`endif   
+ output wire        eth_txen,
  input wire         eth_rxerr,
  output wire        eth_mdc,
  input wire         phy_mdio_i,
@@ -71,7 +78,7 @@ module periph_soc #(UBAUD_DEFAULT=54)
  output wire [7:0]  ram_we,
  output wire [15:0] ram_addr,
  output wire [63:0] ram_wrdata,
- input  wire [63:0] ram_rddata
+ input wire [63:0]  ram_rddata
  );
  
  wire [19:0] dummy;
@@ -575,11 +582,19 @@ sd_top sdtop(
     .sd_xfr_addr(sd_xfr_addr)
     );
 
+`ifdef KC705   
+framing_top_mii open
+  (
+   .clk_mii(clk_mii),
+   .o_etx_er(eth_txer),
+`else
 framing_top open
   (
+   .clk_rmii(clk_rmii),
+   .o_erefclk(eth_refclk),
+`endif  
    .rstn(locked),
    .msoc_clk(msoc_clk),
-   .clk_rmii(clk_rmii),
    .core_lsu_addr(hid_addr[14:0]),
    .core_lsu_wdata(hid_wrdata),
    .core_lsu_be(hid_we),
@@ -587,17 +602,16 @@ framing_top open
    .we_d(hid_en & one_hot_data_addr[4] & (|hid_we)),
    .framing_sel(hid_en),
    .framing_rdata(one_hot_rdata[4]),
-   .o_edutrefclk(eth_refclk),
-   .i_edutrxd(eth_rxd),
-   .i_edutrx_dv(eth_crsdv),
-   .i_edutrx_er(eth_rxerr),
-   .o_eduttxd(eth_txd),
-   .o_eduttx_en(eth_txen),
-   .o_edutmdc(eth_mdc),
-   .i_edutmdio(phy_mdio_i),
-   .o_edutmdio(phy_mdio_o),
-   .oe_edutmdio(phy_mdio_t),
-   .o_edutrstn(eth_rstn),
+   .i_erxd(eth_rxd),
+   .i_erx_dv(eth_crsdv),
+   .i_erx_er(eth_rxerr),
+   .o_etxd(eth_txd),
+   .o_etx_en(eth_txen),
+   .o_emdc(eth_mdc),
+   .i_emdio(phy_mdio_i),
+   .o_emdio(phy_mdio_o),
+   .oe_emdio(phy_mdio_t),
+   .o_erstn(eth_rstn),
    .eth_irq(eth_irq)
 );
 

@@ -22,92 +22,92 @@ module chip_top
    inout wire [63:0]  ddr_dq,
    inout wire [7:0]   ddr_dqs_n,
    inout wire [7:0]   ddr_dqs_p,
-   output [13:0] ddr_addr,
-   output [2:0]  ddr_ba,
-   output        ddr_ras_n,
-   output        ddr_cas_n,
-   output        ddr_we_n,
-   output        ddr_reset_n,
-   output        ddr_ck_n,
-   output        ddr_ck_p,
-   output        ddr_cke,
-   output        ddr_cs_n,
-   output [7:0]  ddr_dm,
-   output        ddr_odt,
+   output wire [13:0] ddr_addr,
+   output wire [2:0]  ddr_ba,
+   output wire        ddr_ras_n,
+   output wire        ddr_cas_n,
+   output wire        ddr_we_n,
+   output wire        ddr_reset_n,
+   output wire        ddr_ck_n,
+   output wire        ddr_ck_p,
+   output wire        ddr_cke,
+   output wire        ddr_cs_n,
+   output wire [7:0]  ddr_dm,
+   output wire        ddr_odt,
  `elsif NEXYS4_VIDEO
    // DDR3 RAM
    inout wire [15:0]  ddr_dq,
    inout wire [1:0]   ddr_dqs_n,
    inout wire [1:0]   ddr_dqs_p,
-   output [14:0] ddr_addr,
-   output [2:0]  ddr_ba,
-   output        ddr_ras_n,
-   output        ddr_cas_n,
-   output        ddr_we_n,
-   output        ddr_reset_n,
-   output        ddr_ck_n,
-   output        ddr_ck_p,
-   output        ddr_cke,
-   output [1:0]  ddr_dm,
-   output        ddr_odt,
+   output wire [14:0] ddr_addr,
+   output wire [2:0]  ddr_ba,
+   output wire        ddr_ras_n,
+   output wire        ddr_cas_n,
+   output wire        ddr_we_n,
+   output wire        ddr_reset_n,
+   output wire        ddr_ck_n,
+   output wire        ddr_ck_p,
+   output wire        ddr_cke,
+   output wire [1:0]  ddr_dm,
+   output wire        ddr_odt,
  `elsif NEXYS4
    // DDR2 RAM
    inout wire [15:0]  ddr_dq,
    inout wire [1:0]   ddr_dqs_n,
    inout wire [1:0]   ddr_dqs_p,
-   output [12:0] ddr_addr,
-   output [2:0]  ddr_ba,
-   output        ddr_ras_n,
-   output        ddr_cas_n,
-   output        ddr_we_n,
-   output        ddr_ck_n,
-   output        ddr_ck_p,
-   output        ddr_cke,
-   output        ddr_cs_n,
-   output [1:0]  ddr_dm,
-   output        ddr_odt,
+   output wire [12:0] ddr_addr,
+   output wire [2:0]  ddr_ba,
+   output wire        ddr_ras_n,
+   output wire        ddr_cas_n,
+   output wire        ddr_we_n,
+   output wire        ddr_ck_n,
+   output wire        ddr_ck_p,
+   output wire        ddr_cke,
+   output wire        ddr_cs_n,
+   output wire [1:0]  ddr_dm,
+   output wire        ddr_odt,
   `elsif ZED
    // RAM ACCESS THROUGH PS7's HP0 -> MEMCNT
-   output [31:0] mem_nasti_dram_araddr,
-   output  [1:0] mem_nasti_dram_arburst,
-   output  [3:0] mem_nasti_dram_arcache,
-   output  [5:0] mem_nasti_dram_arid,
-   output  [7:0] mem_nasti_dram_arlen,
-   output        mem_nasti_dram_arlock,
-   output  [2:0] mem_nasti_dram_arprot,
-   output  [3:0] mem_nasti_dram_arqos,
+   output wire [31:0] mem_nasti_dram_araddr,
+   output wire  [1:0] mem_nasti_dram_arburst,
+   output wire  [3:0] mem_nasti_dram_arcache,
+   output wire  [5:0] mem_nasti_dram_arid,
+   output wire  [7:0] mem_nasti_dram_arlen,
+   output wire        mem_nasti_dram_arlock,
+   output wire  [2:0] mem_nasti_dram_arprot,
+   output wire  [3:0] mem_nasti_dram_arqos,
    input wire         mem_nasti_dram_arready,
-   output  [2:0] mem_nasti_dram_arsize,
-   output        mem_nasti_dram_arvalid,
-   output  [3:0] mem_nasti_dram_arregion,
-   output [31:0] mem_nasti_dram_awaddr,
-   output  [1:0] mem_nasti_dram_awburst,
-   output  [3:0] mem_nasti_dram_awcache,
-   output  [5:0] mem_nasti_dram_awid,
-   output  [7:0] mem_nasti_dram_awlen,
-   output        mem_nasti_dram_awlock,
-   output  [2:0] mem_nasti_dram_awprot,
-   output  [3:0] mem_nasti_dram_awqos,
+   output wire  [2:0] mem_nasti_dram_arsize,
+   output wire        mem_nasti_dram_arvalid,
+   output wire  [3:0] mem_nasti_dram_arregion,
+   output wire [31:0] mem_nasti_dram_awaddr,
+   output wire  [1:0] mem_nasti_dram_awburst,
+   output wire  [3:0] mem_nasti_dram_awcache,
+   output wire  [5:0] mem_nasti_dram_awid,
+   output wire  [7:0] mem_nasti_dram_awlen,
+   output wire        mem_nasti_dram_awlock,
+   output wire  [2:0] mem_nasti_dram_awprot,
+   output wire  [3:0] mem_nasti_dram_awqos,
    input wire         mem_nasti_dram_awready,
-   output  [2:0] mem_nasti_dram_awsize,
-   output  [2:0] mem_nasti_dram_awsize,
-   output        mem_nasti_dram_awvalid,
-   output  [3:0] mem_nasti_dram_awregion,
+   output wire  [2:0] mem_nasti_dram_awsize,
+   output wire  [2:0] mem_nasti_dram_awsize,
+   output wire        mem_nasti_dram_awvalid,
+   output wire  [3:0] mem_nasti_dram_awregion,
    input wire   [5:0] mem_nasti_dram_bid,
-   output        mem_nasti_dram_bready,
+   output wire        mem_nasti_dram_bready,
    input wire   [1:0] mem_nasti_dram_bresp,
    input wire         mem_nasti_dram_bvalid,
    input wire  [63:0] mem_nasti_dram_rdata,
    input wire   [5:0] mem_nasti_dram_rid,
    input wire         mem_nasti_dram_rlast,
-   output        mem_nasti_dram_rready,
+   output wire        mem_nasti_dram_rready,
    input wire   [1:0] mem_nasti_dram_rresp,
    input wire         mem_nasti_dram_rvalid,
-   output [63:0] mem_nasti_dram_wdata,
-   output        mem_nasti_dram_wlast,
+   output wire [63:0] mem_nasti_dram_wdata,
+   output wire        mem_nasti_dram_wlast,
    input wire         mem_nasti_dram_wready,
-   output  [7:0] mem_nasti_dram_wstrb,
-   output        mem_nasti_dram_wvalid,
+   output wire  [7:0] mem_nasti_dram_wstrb,
+   output wire        mem_nasti_dram_wvalid,
  `endif
 `endif //  `ifdef ADD_DDR_IO
 
@@ -121,62 +121,85 @@ module chip_top
    inout wire         spi_sclk,
    inout wire         spi_mosi,
    inout wire         spi_miso,
-   output        sd_reset,
+   output wire        sd_reset,
 `endif
 
 `ifdef ADD_HID
    // Simple UART interface
    input wire         rxd,
-   output        txd,
-   output        rts,
+   output wire        txd,
+   output wire        rts,
    input wire         cts,
 
    // 4-bit full SD interface
-   output        sd_sclk,
+   inout wire         sd_sclk,
    input wire         sd_detect,
    inout wire [3:0]   sd_dat,
    inout wire         sd_cmd,
-   output        sd_reset,
+   output wire        sd_reset,
 
    // LED and DIP switch
-   output [15:0]  o_led,
+ `ifdef NEXYS4_COMMON
+   output wire [15:0] o_led,
    input wire  [15:0] i_dip,
-
+  // display
+   output wire        VGA_HS_O,
+   output wire        VGA_VS_O,
+   output wire [3:0]  VGA_RED_O,
+   output wire [3:0]  VGA_BLUE_O,
+   output wire [3:0]  VGA_GREEN_O,
+ `else
+   output wire [7:0]  o_led,
+   input wire  [3:0]  i_dip,
+ `endif
    // push button array
    input wire         GPIO_SW_C,
    input wire         GPIO_SW_W,
    input wire         GPIO_SW_E,
    input wire         GPIO_SW_N,
    input wire         GPIO_SW_S,
-
    //keyboard
    inout wire         PS2_CLK,
    inout wire         PS2_DATA,
 
-  // display
-   output        VGA_HS_O,
-   output        VGA_VS_O,
-   output [3:0]  VGA_RED_O,
-   output [3:0]  VGA_BLUE_O,
-   output [3:0]  VGA_GREEN_O,
-
  //! Ethernet MAC PHY interface signals
- input wire [1:0]   i_erxd, // RMII receive data
  input wire         i_erx_dv, // PHY data valid
  input wire         i_erx_er, // PHY coding error
  input wire         i_emdint, // PHY interrupt in active low
  output reg         o_erefclk, // RMII clock out
- output reg [1:0]   o_etxd, // RMII transmit data
  output reg         o_etx_en, // RMII transmit enable
+`ifdef KC705   
+ input wire [3:0]   i_erxd, // RMII receive data
+ output reg [3:0]   o_etxd, // RMII transmit data
+ output reg         o_etx_er, // RMII transmit enable
+ input wire         i_gmiiclk_p,
+ input wire         i_gmiiclk_n,
+`else
+ input wire [1:0]   i_erxd, // RMII receive data
+ output reg [1:0]   o_etxd, // RMII transmit data
+`endif   
  output wire        o_emdc, // MDIO clock
  inout wire         io_emdio, // MDIO inout
  output wire        o_erstn, // PHY reset active low
-`endif //  `ifdef ADD_HID
+`endif
    // clock and reset
    input wire         clk_p,
    input wire         clk_n,
    input wire         rst_top
    );
+
+   wire               clk_locked;
+              
+`ifdef KC705
+   wire        VGA_HS_O;
+   wire        VGA_VS_O;
+   wire [3:0]  VGA_RED_O;
+   wire [3:0]  VGA_BLUE_O;
+   wire [3:0]  VGA_GREEN_O;
+   wire clk_mii, clk_mii_quad;
+`else
+   wire clk_rmii, clk_rmii_quad;
+`endif
 
    genvar        i;
 
@@ -200,7 +223,7 @@ module chip_top
        .ADDR_WIDTH  ( `MEM_ADDR_WIDTH ),
        .DATA_WIDTH  ( `MEM_DATA_WIDTH ))
    mem_nasti();
-wire io_emdio_i, phy_emdio_o, phy_emdio_t, clk_rmii, clk_rmii_quad, clk_locked, clk_locked_wiz;
+wire io_emdio_i, phy_emdio_o, phy_emdio_t, clk_locked_wiz;
 reg phy_emdio_i, io_emdio_o, io_emdio_t;
 
 `ifdef ADD_PHY_DDR
@@ -260,19 +283,17 @@ reg phy_emdio_i, io_emdio_o, io_emdio_t;
    assign mem_nasti_dram_wstrb        = mem_nasti.w_strb       ;
    assign mem_nasti_dram_wvalid       = mem_nasti.w_valid      ;
 
- `else // !`ifdef ZED
+ `else // !`ifndef ZED
 
    // MIG clock
    logic mig_ui_clk, mig_ui_rst, mig_ui_rstn;
    assign mig_ui_rstn = !mig_ui_rst;
 
-`define ROCKET_50MHZ
-`ifdef ROCKET_50MHZ
+`ifdef NEXYS4DDR
 `define MEM_NASTI mem_mig_nasti
-`define UBAUD_DEFAULT 108
+assign clk = mig_ui_clk;
 `else
 `define MEM_NASTI mem_nasti
-`define UBAUD_DEFAULT 54
 
    // clock converter
    axi_clock_converter_0 clk_conv
@@ -363,27 +384,33 @@ reg phy_emdio_i, io_emdio_o, io_emdio_t;
 
 `endif
 
- `ifdef NEXYS4_COMMON
    //clock generator
    logic mig_sys_clk, clk_pixel;
-   logic clk_io_uart; // UART IO clock for debug
 
    clk_wiz_0 clk_gen
      (
+ `ifdef NEXYS4_COMMON
+ `define LOCKED clk_locked_wiz & rst_top
       .clk_in1       ( clk_p         ), // 100 MHz onboard
-      .clk_out1      ( mig_sys_clk   ), // 200 MHz
-      .clk_io_uart   ( clk_io_uart   ), // 60 MHz
-      .clk_rmii      ( clk_rmii      ), // 50 MHz rmii
-      .clk_rmii_quad ( clk_rmii_quad ), // 50 MHz rmii quad
-      .clk_pixel     ( clk_pixel     ), // 120 MHz
       .resetn        ( rst_top       ),
+      .clk_rmii      ( clk_rmii      ), // 50 MHz RMII
+      .clk_rmii_quad ( clk_rmii_quad ), // 50 MHz RMII quad
+      .clk_io_uart   (               ), // 60 MHz (not used)
+ `else
+ `define LOCKED clk_locked_wiz & !rst_top
+      .clk_in1       ( mig_ui_clk    ), // 100 MHz from MIG
+      .reset         ( rst_top       ),
+      .clk_mii       ( clk_mii       ), // 25 MHz MII
+      .clk_mii_quad  ( clk_mii_quad  ), // 25 MHz MII quad
+      .clk_cpu       ( clk           ), // 50 MHz
+ `endif
+      .clk_out1      ( mig_sys_clk   ), // 200 MHz
+      .clk_pixel     ( clk_pixel     ), // 120 MHz
       .locked        ( clk_locked_wiz )
       );
-   assign clk_locked = clk_locked_wiz & rst_top;
+   assign clk_locked = `LOCKED;
    assign sys_rst = ~rstn;
-      
- `endif //  `ifdef NEXYS4_COMMON
-
+     
    // DRAM controller
    mig_7series_0 dram_ctl
      (
@@ -391,7 +418,6 @@ reg phy_emdio_i, io_emdio_o, io_emdio_t;
       .sys_clk_p            ( clk_p                  ),
       .sys_clk_n            ( clk_n                  ),
       .sys_rst              ( rst_top                ),
-      .ui_addn_clk_0        ( clk                    ),
       .ddr3_dq              ( ddr_dq                 ),
       .ddr3_dqs_n           ( ddr_dqs_n              ),
       .ddr3_dqs_p           ( ddr_dqs_p              ),
@@ -410,7 +436,6 @@ reg phy_emdio_i, io_emdio_o, io_emdio_t;
  `elsif NEXYS4_VIDEO
       .sys_clk_i            ( mig_sys_clk            ),
       .sys_rst              ( clk_locked             ),
-      .ui_addn_clk_0        ( clk                    ),
       .ddr3_addr            ( ddr_addr               ),
       .ddr3_ba              ( ddr_ba                 ),
       .ddr3_cas_n           ( ddr_cas_n              ),
@@ -428,7 +453,6 @@ reg phy_emdio_i, io_emdio_o, io_emdio_t;
  `elsif NEXYS4
       .sys_clk_i            ( mig_sys_clk            ),
       .sys_rst              ( clk_locked             ),
-      .ui_addn_clk_0        ( clk                    ),
       .device_temp_i        ( 0                      ),
       .ddr2_dq              ( ddr_dq                 ),
       .ddr2_dqs_n           ( ddr_dqs_n              ),
@@ -494,6 +518,8 @@ reg phy_emdio_i, io_emdio_o, io_emdio_t;
   `endif // !`ifdef ZED
 `else // !`ifdef ADD_PHY_DDR
 
+`define MEM_NASTI mem_mig_nasti
+   
    assign clk = clk_p;
    assign clk_rmii = clk_p;
    assign clk_rmii_quad = clk_p;
@@ -708,7 +734,7 @@ reg phy_emdio_i, io_emdio_o, io_emdio_t;
    wire [63:0]                 hid_wrdata,  hid_rddata;
    logic [30:0]                hid_ar_addr, hid_aw_addr;
    logic [1:0] eth_txd;
-   logic eth_rstn, eth_refclk, eth_txen;
+   logic eth_rstn, eth_refclk, eth_txen, eth_txer;
    assign o_erstn = eth_rstn & clk_locked_wiz;
 
    axi_bram_ctrl_dummy BramCtl
@@ -759,7 +785,11 @@ reg phy_emdio_i, io_emdio_o, io_emdio_t;
       .bram_rddata_a   ( hid_rddata                )
       );
   
+`ifdef KC705    
+   always @(posedge clk_mii)
+`else      
    always @(posedge clk_rmii)
+`endif      
      begin
         phy_emdio_i <= io_emdio_i;
         io_emdio_o <= phy_emdio_o;
@@ -793,14 +823,19 @@ reg phy_emdio_i, io_emdio_o, io_emdio_t;
         .Q(o_erefclk),
         .R(1'b0),
         .S( ));
-    
+
+`ifdef KC705    
+    always @(posedge clk_mii_quad)
+`else      
     always @(posedge clk_rmii_quad)
+`endif      
         begin
         o_etxd = eth_txd;
         o_etx_en = eth_txen;
+        o_etx_er = eth_txer;
         end
 
-   periph_soc #(.UBAUD_DEFAULT(`UBAUD_DEFAULT)) psoc
+   periph_soc #(.UBAUD_DEFAULT(108)) psoc
      (
       .msoc_clk   ( clk             ),
       .sd_sclk    ( sd_sclk         ),
@@ -815,7 +850,11 @@ reg phy_emdio_i, io_emdio_o, io_emdio_t;
       .pxl_clk    ( clk_pixel       ),
       .uart_rx    ( rxd             ),
       .uart_tx    ( txd             ),
+`ifdef KC705   
+      .clk_mii    ( clk_mii         ),
+`else
       .clk_rmii   ( clk_rmii        ),
+`endif
       .locked     ( clk_locked      ),
     // SMSC ethernet PHY connections
       .eth_rstn   ( eth_rstn        ),
@@ -823,6 +862,7 @@ reg phy_emdio_i, io_emdio_o, io_emdio_t;
       .eth_refclk ( eth_refclk      ),
       .eth_txd    ( eth_txd         ),
       .eth_txen   ( eth_txen        ),
+      .eth_txer   ( eth_txer        ),
       .eth_rxd    ( i_erxd          ),
       .eth_rxerr  ( i_erx_er        ),
       .eth_mdc    ( o_emdc          ),
