@@ -41,7 +41,6 @@ logic [63:0] framing_rdata_pkt, framing_wdata_pkt;
 logic [3:0] tx_enable_dly, firstbuf, nextbuf, lastbuf;
 
 reg [12:0] nxt_addr;
-reg [23:0] rx_byte, rx_nxt;
 reg        sync, irq_en, tx_busy;
 
    wire [7:0] m_enb = (we_d ? core_lsu_be : 8'hFF);
@@ -87,7 +86,7 @@ reg        sync, irq_en, tx_busy;
        end
      else
        begin
-	  {gmii_rx_er,gmii_rx_dv,gmii_rxd} <= loopback ? {1'b0,o_etx_en,o_etxd} : {i_erx_er,i_erx_dv,i_erxd};
+	  {gmii_rx_er,gmii_rx_dv,gmii_rxd} <= loopback ? {1'b0,o_etx_en,o_etxd,o_etxd} : {i_erx_er,i_erx_dv,i_erxd,i_erxd};
        end
 
    always @(posedge clk_mii)
@@ -287,7 +286,7 @@ always @(posedge clk_mii)
        .rst(~rstn),
        .mii_select(1'b1),
        .clk_enable(1'b1),
-       .gmii_rxd(rx_byte),
+       .gmii_rxd(gmii_rxd),
        .gmii_rx_dv(gmii_rx_dv),
        .gmii_rx_er(gmii_rx_er),
        .output_axis_tdata(rx_axis_tdata),
