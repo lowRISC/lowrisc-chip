@@ -177,7 +177,7 @@ always @(posedge msoc_clk)
          // check broadcast/multicast address
 	     sync <= (rx_dest_mac[47:24]==24'h01005E) | (&rx_dest_mac) | (mac_address == rx_dest_mac) | promiscuous;
          end
-       else if (sync & ~gmii_rx_dv)
+       else if (sync & rx_axis_tlast & ~gmii_rx_dv)
          begin
          nextbuf <= nextbuf + 1'b1;
          sync <= 1'b0;
@@ -263,6 +263,8 @@ always @(posedge clk_mii)
        end
      else
        begin
+	  tx_axis_tvalid_dly <= tx_axis_tvalid;
+	  tx_axis_tvalid <= tx_enable_i;
 	  if (tx_axis_tready)
 	    begin
 	       tx_frame_addr <= tx_frame_addr + 1;
