@@ -144,7 +144,7 @@ framing_top_mii open
 	      end
 	    4:
 	      begin
-		 hid_en <= 'b0;	  
+		 hid_en <= 'b1;	  
 		 hid_we <= 'b0;
 		 hid_wrdata <= 'b0;
 		 hid_cnt <= 5;
@@ -196,7 +196,7 @@ framing_top_mii open
 	      end
 	    11:
 	      begin
-		 hid_en <= 'b0;	  
+		 hid_en <= 'b1;	  
 		 hid_we <= 'b0;
 		 hid_addr <= `RSR_OFFSET;
 		 hid_wrdata <= 'b0;
