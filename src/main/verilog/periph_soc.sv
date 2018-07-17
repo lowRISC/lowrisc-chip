@@ -591,8 +591,8 @@ framing_top_mii open
 framing_top open
   (
    .clk_rmii(clk_rmii),
-   .o_erefclk(eth_refclk),
 `endif  
+   .o_erefclk(eth_refclk),
    .rstn(locked),
    .msoc_clk(msoc_clk),
    .core_lsu_addr(hid_addr[14:0]),

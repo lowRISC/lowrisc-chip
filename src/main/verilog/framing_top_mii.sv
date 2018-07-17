@@ -3,7 +3,7 @@
 
 module framing_top_mii
   (
-  input wire rstn, msoc_clk,
+  input wire rstn, msoc_clk, clk_mii,
   input wire [14:0] core_lsu_addr,
   input wire [63:0] core_lsu_wdata,
   input wire [7:0] core_lsu_be,
@@ -13,7 +13,7 @@ module framing_top_mii
   output logic [63:0] framing_rdata,
 
   //! Ethernet MAC PHY interface signals
-input wire   clk_mii     , // GMII clock in
+output wire   o_erefclk     , // MII clock out
 input wire [3:0] i_erxd    ,
 input wire  i_erx_dv       ,
 input wire  i_erx_er       ,
@@ -44,7 +44,7 @@ reg [12:0] nxt_addr;
 reg        sync, irq_en, tx_busy;
 
    wire [7:0] m_enb = (we_d ? core_lsu_be : 8'hFF);
-   logic emdio, o_emdclk, o_erst, cooked, tx_enable_old, loopback, promiscuous;
+   logic emdio, o_emdclk, o_erst, cooked, loopback, promiscuous;
    logic [3:0] spare;   
    logic [10:0] rx_addr_axis;
    
@@ -78,32 +78,46 @@ reg        sync, irq_en, tx_busy;
          wire        axis_error_bad_frame;
          wire        axis_error_bad_fcs;
          wire [31:0] tx_fcs_reg_rev, rx_fcs_reg_rev;
+
+   logic  [15:0] douta;
+   wire [3:0]   tx_padding;   
+   
+   logic  [15:0] dina;
+   logic  [12:0] addra;
+   logic   [1:0] wea;
+   logic         ena;
    
    always @(posedge clk_mii)
      if (rstn == 1'b0)
        begin
 	  {gmii_rx_er,gmii_rx_dv,gmii_rxd} <= 10'b0;
+          ena <= 1'b0;
        end
      else
        begin
 	  {gmii_rx_er,gmii_rx_dv,gmii_rxd} <= loopback ? {1'b0,o_etx_en,o_etxd,o_etxd} : {i_erx_er,i_erx_dv,i_erxd,i_erxd};
+          if (rx_axis_tvalid)
+            begin
+               addra <= {nextbuf[2:0],rx_addr_axis[10:3],rx_addr_axis[1:0]};
+               dina <= {rx_axis_tdata,rx_axis_tdata};
+               wea <= 2'b01 << rx_addr_axis[2];
+               ena <= 1'b1;
+            end
+          else
+               ena <= 1'b0;
+            
        end
 
-   always @(posedge clk_mii)
-       tx_enable_old <= tx_enable_i;
-
-   logic [1:0] rx_wr = rx_axis_tvalid << rx_addr_axis[2];
-   logic [15:0] douta;
    assign tx_axis_tdata = douta >> {tx_frame_addr[2],3'b000};
-   
+
    dualmem_widen8 RAMB16_inst_rx (
-                                    .clka(clk_mii),              // Port A Clock
+                                    .clka(~msoc_clk),             // Port A Clock
                                     .clkb(msoc_clk),              // Port A Clock
                                     .douta(),                     // Port A 8-bit Data Output
-                                    .addra({nextbuf[2:0],rx_addr_axis[10:3],rx_addr_axis[1:0]}),    // Port A 11-bit Address Input
-                                    .dina({rx_axis_tdata,rx_axis_tdata}), // Port A 8-bit Data Input
-                                    .ena(rx_axis_tvalid),         // Port A RAM Enable Input
-                                    .wea(rx_wr),                  // Port A Write Enable Input
+                                    .addra(addra),    // Port A 11-bit Address Input
+                                    .dina(dina), // Port A 8-bit Data Input
+                                    .ena(ena),         // Port A RAM Enable Input
+                                    .wea(wea),                  // Port A Write Enable Input
                                     .doutb(framing_rdata_pkt),    // Port B 32-bit Data Output
                                     .addrb(core_lsu_addr[13:3]),  // Port B 9-bit Address Input
                                     .dinb(core_lsu_wdata),        // Port B 32-bit Data Input
@@ -129,6 +143,7 @@ reg        sync, irq_en, tx_busy;
                                    );
 
 assign o_emdc = o_emdclk;
+assign o_erefclk = clk_mii;
 
 always @(posedge msoc_clk)
   if (!rstn)
@@ -179,8 +194,8 @@ always @(posedge msoc_clk)
          end
        else if (sync & rx_axis_tlast & ~gmii_rx_dv)
          begin
-         nextbuf <= nextbuf + 1'b1;
-         sync <= 1'b0;
+            nextbuf <= nextbuf + 1'b1;
+            sync <= 1'b0;
          end
        if (o_etx_en && tx_axis_tlast)
          begin
@@ -278,8 +293,9 @@ always @(posedge clk_mii)
             end
 	  if (rx_axis_tlast)
             begin
-	        rx_length_axis[nextbuf[2:0]] <= rx_addr_axis + 1;
-	        rx_addr_axis <= 'b0;
+	       rx_length_axis[nextbuf[2:0]] <= rx_addr_axis + 1;
+	       rx_addr_axis <= 'b0;
+               rx_dest_mac <= 'b0;
             end
       end
  
@@ -314,7 +330,7 @@ always @(posedge clk_mii)
        .input_axis_tready(tx_axis_tready),
        .input_axis_tlast(tx_axis_tlast),
        .input_axis_tuser(tx_axis_tuser),
-       .gmii_txd(o_etxd),
+       .gmii_txd({tx_padding,o_etxd}),
        .gmii_tx_en(o_etx_en),
        .gmii_tx_er(o_etx_er),
        .ifg_delay(8'd12),

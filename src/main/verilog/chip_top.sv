@@ -733,7 +733,6 @@ assign clk = mig_ui_clk;
    wire [17:0]                 hid_addr;
    wire [63:0]                 hid_wrdata,  hid_rddata;
    logic [30:0]                hid_ar_addr, hid_aw_addr;
-   logic [1:0] eth_txd;
    logic eth_rstn, eth_refclk, eth_txen, eth_txer;
    assign o_erstn = eth_rstn & clk_locked_wiz;
 
@@ -825,8 +824,10 @@ assign clk = mig_ui_clk;
         .S( ));
 
 `ifdef KC705    
+   logic [3:0] eth_txd;
     always @(posedge clk_mii_quad)
 `else      
+   logic [1:0] eth_txd;
     always @(posedge clk_rmii_quad)
 `endif      
         begin

@@ -13,17 +13,17 @@ module framing_top
   output logic [63:0] framing_rdata,
 
   //! Ethernet MAC PHY interface signals
-output wire   o_edutrefclk     , // RMII clock out
-input wire [1:0] i_edutrxd    ,
-input wire  i_edutrx_dv       ,
-input wire  i_edutrx_er       ,
-output wire [1:0] o_eduttxd   ,
-output wire o_eduttx_en      ,
-output wire   o_edutmdc        ,
-input wire i_edutmdio ,
-output reg  o_edutmdio   ,
-output reg  oe_edutmdio   ,
-output wire   o_edutrstn    ,   
+output wire   o_erefclk     , // RMII clock out
+input wire [1:0] i_erxd    ,
+input wire  i_erx_dv       ,
+input wire  i_erx_er       ,
+output wire [1:0] o_etxd   ,
+output wire o_etx_en      ,
+output wire   o_emdc        ,
+input wire i_emdio ,
+output reg  o_emdio   ,
+output reg  oe_emdio   ,
+output wire   o_erstn    ,   
 
 output reg eth_irq
    );
@@ -45,7 +45,7 @@ reg  [2:0] rx_pair;
 reg        mii_rx_byte_received_i, full, byte_sync, sync, irq_en, mii_rx_frame_i, tx_busy;
 
    wire [7:0] m_enb = (we_d ? core_lsu_be : 8'hFF);
-   logic edutmdio, o_edutmdclk, o_edutrst, cooked, tx_enable_old, loopback, promiscuous;
+   logic emdio, o_emdclk, o_erst, cooked, tx_enable_old, loopback, promiscuous;
    logic [3:0] spare;   
    logic [10:0] rx_addr_axis;
    
@@ -70,7 +70,7 @@ reg        mii_rx_byte_received_i, full, byte_sync, sync, irq_en, mii_rx_frame_i
        /*
         * GMII interface
         */
-        wire        gmii_rx_er = loopback ? 1'b0 : i_edutrx_er;
+        wire        gmii_rx_er = loopback ? 1'b0 : i_erx_er;
         wire [7:0]  gmii_txd;
         wire        gmii_tx_en;
         wire        gmii_tx_er;
@@ -91,7 +91,7 @@ reg        mii_rx_byte_received_i, full, byte_sync, sync, irq_en, mii_rx_frame_i
      else
        begin
 	  mii_rx_byte_received_i <= 0;
-	  rx_pair <= loopback ? {o_eduttx_en,o_eduttxd} : {i_edutrx_dv,i_edutrxd[1:0]};
+	  rx_pair <= loopback ? {o_etx_en,o_etxd} : {i_erx_dv,i_erxd[1:0]};
 	  full = &addr_tap;
 	  rx_nxt = {rx_pair,rx_byte[23:3]};
 	  rx_byte <= rx_nxt;
@@ -162,8 +162,8 @@ reg        mii_rx_byte_received_i, full, byte_sync, sync, irq_en, mii_rx_frame_i
                                    .web(we_d ? {(|core_lsu_be[7:4]),(|core_lsu_be[3:0])} : 2'b0) // Port B Write Enable Input
                                    );
 
-assign o_edutmdc = o_edutmdclk;
-assign o_edutrefclk = clk_rmii; // was i_clk50_quad;
+assign o_emdc = o_emdclk;
+assign o_erefclk = clk_rmii; // was i_clk50_quad;
 
 always @(posedge msoc_clk)
   if (!rstn)
@@ -176,10 +176,10 @@ always @(posedge msoc_clk)
     loopback <= 1'b0;
     spare <= 4'b0;
     promiscuous <= 1'b0;
-    oe_edutmdio <= 1'b0;
-    o_edutmdio <= 1'b0;
-    o_edutmdclk <= 1'b0;
-    o_edutrst <= 1'b0;
+    oe_emdio <= 1'b0;
+    o_emdio <= 1'b0;
+    o_emdclk <= 1'b0;
+    o_erst <= 1'b0;
     sync <= 1'b0;
     firstbuf <= 4'b0;
     lastbuf <= 4'b0;
@@ -193,7 +193,7 @@ always @(posedge msoc_clk)
   else
     begin
     core_lsu_addr_dly <= core_lsu_addr;
-    edutmdio <= i_edutmdio;
+    emdio <= i_emdio;
     ce_d_dly <= ce_d;
     avail = nextbuf != firstbuf;
     eth_irq <= avail & irq_en; // make eth_irq go away immediately if irq_en is low
@@ -203,7 +203,7 @@ always @(posedge msoc_clk)
         1: {irq_en,promiscuous,spare,loopback,cooked,mac_address[47:32]} <= core_lsu_wdata;
         2: begin tx_enable_dly <= 10; tx_packet_length <= core_lsu_wdata; end /* tx payload size */
         3: begin tx_enable_dly <= 0; tx_packet_length <= 0; end
-        4: begin {o_edutrst,oe_edutmdio,o_edutmdio,o_edutmdclk} <= core_lsu_wdata; end
+        4: begin {o_erst,oe_emdio,o_emdio,o_emdclk} <= core_lsu_wdata; end
         5: begin lastbuf <= core_lsu_wdata[3:0]; end
         6: begin firstbuf <= core_lsu_wdata[3:0]; end
       endcase
@@ -250,7 +250,7 @@ always @(posedge clk_rmii)
     13'b10001????0001 : framing_rdata = {irq_en, promiscuous, spare, loopback, cooked, mac_address[47:32]};
     13'b1000?????0010 : framing_rdata = {tx_busy, 4'b0, tx_frame_addr, 5'b0, tx_packet_length};
     13'b10001????0011 : framing_rdata = tx_fcs_reg_rev;
-    13'b10001????0100 : framing_rdata = {i_edutmdio,oe_edutmdio,o_edutmdio,o_edutmdclk};
+    13'b10001????0100 : framing_rdata = {i_emdio,oe_emdio,o_emdio,o_emdclk};
     13'b10001????0101 : framing_rdata = rx_fcs_reg_rev;
     13'b10001????0110 : framing_rdata = {eth_irq, avail, lastbuf, nextbuf, firstbuf};
     13'b10001????1??? : framing_rdata = rx_length_axis[core_lsu_addr_dly[5:3]];
@@ -259,12 +259,12 @@ always @(posedge clk_rmii)
     default: framing_rdata = 'h0;
     endcase
 
-   assign o_edutrstn = ~o_edutrst;
+   assign o_erstn = ~o_erst;
   
    parameter dly = 0;
    
-   reg [1:0] 	    axis_eduttxd ;
-   reg 		    axis_eduttx_en;
+   reg [1:0] 	    axis_etxd ;
+   reg 		    axis_etx_en;
    reg [31:0] 	    tx_fcs_reg, rx_fcs_reg;
    assign 	    tx_fcs_reg_rev = {tx_fcs_reg[0],tx_fcs_reg[1],tx_fcs_reg[2],tx_fcs_reg[3],
                                           tx_fcs_reg[4],tx_fcs_reg[5],tx_fcs_reg[6],tx_fcs_reg[7],
@@ -290,8 +290,8 @@ always @(posedge clk_rmii)
           rx_addr_axis <= 'b0;
           tx_axis_tvalid <= 'b0;
 	  axis_tx_frame_size <= 0;
-	  axis_eduttxd <= 'b0;
-	  axis_eduttx_en <= 'b0;
+	  axis_etxd <= 'b0;
+	  axis_etx_en <= 'b0;
 	  tx_axis_tvalid_dly <= 'b0;
 	  tx_frame_addr <= 'b0;
 	  tx_axis_tlast <= 'b0;
@@ -299,7 +299,7 @@ always @(posedge clk_rmii)
        end
      else
        begin
-	  axis_eduttx_en <= gmii_tx_en;
+	  axis_etx_en <= gmii_tx_en;
 	  if (tx_enable_i & (tx_enable_old == 0))
 	    begin
 	       axis_tx_frame_size <= 'b0;
@@ -308,7 +308,7 @@ always @(posedge clk_rmii)
 	  else if (1'b0 == &axis_tx_frame_size)
             begin
                axis_tx_frame_size <= axis_tx_frame_size + 1;
-	       axis_eduttxd <= gmii_txd >> {axis_tx_frame_size[1:0],1'b0};
+	       axis_etxd <= gmii_txd >> {axis_tx_frame_size[1:0],1'b0};
             end
 	  if (tx_axis_tready)
 	    begin
@@ -374,8 +374,8 @@ always @(posedge clk_rmii)
        .fcs_reg(tx_fcs_reg)
    );
 
-   assign o_eduttxd = axis_eduttxd;
-   assign o_eduttx_en = axis_eduttx_en;
+   assign o_etxd = axis_etxd;
+   assign o_etx_en = axis_etx_en;
    
 endmodule // framing_top
 `default_nettype wire

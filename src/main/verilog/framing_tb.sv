@@ -36,7 +36,7 @@ module eth_dut (
  logic         hid_we;
  logic [7:0]   hid_be;
  logic [14:0]  hid_addr;
- logic [63:0]  hid_wrdata;
+ wire [63:0]  hid_wrdata;
  logic [7:0]   hid_cnt;
  logic [14:0]  pkt_len, pkt_idx;
  wire [63:0]  hid_rddata;
@@ -65,7 +65,12 @@ module eth_dut (
  reg scan_ready_dly;
  wire [8:0] keyb_fifo_out;
  // signals from/to core
-
+ reg [63:0] hid_wrdata_static;
+ reg        hid_wrdata_sel;
+ integer  log;
+   
+ assign hid_wrdata = hid_wrdata_sel ? hid_rddata : hid_wrdata_static;
+   
 framing_top_mii open
   (
    .clk_mii(clk_mii),
@@ -101,6 +106,13 @@ framing_top_mii open
    assign eth_rxd = loopback ? eth_txd : phy_tx_data;
    assign eth_rxerr = 1'b0;
 
+   initial
+     begin
+        log = $fopen("eth.log", "w");
+//        $dumpfile("test.vcd");
+//        $dumpvars(0, axi_ethernetlite_0_exdes_tb);
+     end
+   
    always @(posedge clk_mii)
      if (reset) hid_cnt <= 0;
      else case(hid_cnt)
@@ -108,7 +120,8 @@ framing_top_mii open
 	      begin
 		 loopback <= 0;
 		 hid_addr <= `RSR_OFFSET;
-		 hid_wrdata <= 'b0;
+		 hid_wrdata_static <= 'b0;
+		 hid_wrdata_sel <= 'b0;
 		 hid_we <= 'b0;
 		 hid_en <= 'b1;
 		 hid_be <= 'h00;
@@ -120,16 +133,18 @@ framing_top_mii open
 		   begin
 		      hid_addr <= `RPLR_OFFSET;
 		      if (loopback)
-			hid_cnt <= 12;
+                        pkt_idx <= 'H800;
 		      else
-			hid_cnt <= 2;
+                        pkt_idx <= 0;
+		      hid_cnt <= 2;
 		      loopback <= 1;
 		   end
 	      end
 	    2:
 	      begin
 		 hid_addr <= `RSR_OFFSET;
-		 hid_wrdata <= 1;
+		 hid_wrdata_static <= 'b1;
+                 hid_wrdata_sel <= 'b0;
 		 hid_we <= 'b0;
 		 hid_en <= 'b1;	  
 		 hid_be <= 'hFF;
@@ -140,29 +155,28 @@ framing_top_mii open
 		 pkt_len <= hid_rddata;
 		 hid_we <= 'b1;
 		 hid_cnt <= 4;
-		 pkt_idx <= 0;
 	      end
 	    4:
 	      begin
 		 hid_en <= 'b1;	  
 		 hid_we <= 'b0;
-		 hid_wrdata <= 'b0;
 		 hid_cnt <= 5;
 	      end
 	    5:
 	      begin
 		 hid_cnt <= 6;
-		 pkt_idx <= 0;
 	      end
 	    6:
 	      begin
 		 hid_addr <= `RXBUFF_OFFSET + pkt_idx;
+		 hid_we <= 'b0;
+		 hid_wrdata_sel <= 1;
 		 hid_cnt <= 7;		 
 	      end
 	    7:
 	      begin
+                 $fdisplay(log, "hid_addr = %X, hid_rddata = %X", hid_addr, hid_rddata);
 		 hid_addr <= `TXBUFF_OFFSET + pkt_idx;
-		 hid_wrdata <= hid_rddata;
 		 hid_we <= 'b1;
 		 hid_be <= 'hFF;
 		 hid_cnt <= 8;
@@ -171,26 +185,32 @@ framing_top_mii open
 	    8:
 	      begin
 		 hid_addr <= `RXBUFF_OFFSET + pkt_idx;
-		 hid_wrdata <= hid_rddata;
-		 hid_we <= 'b1;
-		 hid_be <= 'hFF;
-		 if (pkt_idx < pkt_len+8)
+		 hid_we <= 'b0;
+		 if ((pkt_idx&'H7FF) < pkt_len+8)
 		   hid_cnt <= 7;		 
+		 else if (pkt_idx&'H800)
+		   hid_cnt <= 12;
 		 else
 		   hid_cnt <= 9;
 	      end
 	    9:
 	      begin
 		 hid_addr <= `TPLR_OFFSET;
-		 hid_wrdata <= pkt_len;
-		 hid_we <= 'b0;
+		 hid_wrdata_static <= pkt_len;
+		 hid_wrdata_sel <= 0;
+		 hid_we <= 'b1;
 		 hid_en <= 'b1;	  
 		 hid_be <= 'hFF;
 		 hid_cnt <= 10;
 	      end
 	    10:
 	      begin
+		 hid_addr <= `MACHI_OFFSET;
+		 hid_wrdata_static <= `MACHI_ALLPKTS_MASK;
+		 hid_wrdata_sel <= 0;
 		 hid_we <= 'b1;
+		 hid_en <= 'b1;	  
+		 hid_be <= 'hFF;
 		 hid_cnt <= 11;
 		 pkt_idx <= 0;
 	      end
@@ -199,13 +219,20 @@ framing_top_mii open
 		 hid_en <= 'b1;	  
 		 hid_we <= 'b0;
 		 hid_addr <= `RSR_OFFSET;
-		 hid_wrdata <= 'b0;
+		 hid_wrdata_static <= 'b0;
 		 pkt_idx <= pkt_idx + 1;
 		 if (pkt_idx >= 16)
 		   hid_cnt <= 1;
 	      end
 	    12:
-	      hid_addr = 'b0;
+              begin
+		 hid_en <= 'b0;	  
+		 hid_we <= 'b0;
+	         hid_addr = 'b0;
+		 hid_cnt <= 13;
+		 pkt_idx <= 0;
+                 $fclose(log);
+              end
 	    default:
 	      begin
 	      end
