@@ -37,7 +37,7 @@ module eth_dut (
  logic [7:0]   hid_be;
  logic [14:0]  hid_addr;
  wire [63:0]  hid_wrdata;
- logic [7:0]   hid_cnt;
+ logic [7:0]   hid_cnt, hid_dly;
  logic [14:0]  pkt_len, pkt_idx;
  wire [63:0]  hid_rddata;
 // SMSC ethernet PHY to framing_top connections
@@ -133,7 +133,7 @@ framing_top_mii open
 		   begin
 		      hid_addr <= `RPLR_OFFSET;
 		      if (loopback)
-                        pkt_idx <= 'H800;
+                        pkt_idx <= (pkt_idx | 'H7FF) + 1'b1;
 		      else
                         pkt_idx <= 0;
 		      hid_cnt <= 2;
@@ -143,7 +143,7 @@ framing_top_mii open
 	    2:
 	      begin
 		 hid_addr <= `RSR_OFFSET;
-		 hid_wrdata_static <= 'b1;
+		 hid_wrdata_static <= (hid_rddata & `RSR_RECV_FIRST_MASK) + 'b1;
                  hid_wrdata_sel <= 'b0;
 		 hid_we <= 'b0;
 		 hid_en <= 'b1;	  
@@ -188,7 +188,7 @@ framing_top_mii open
 		 hid_we <= 'b0;
 		 if ((pkt_idx&'H7FF) < pkt_len+8)
 		   hid_cnt <= 7;		 
-		 else if (pkt_idx&'H800)
+		 else if (pkt_idx&'H2000)
 		   hid_cnt <= 12;
 		 else
 		   hid_cnt <= 9;
@@ -212,7 +212,7 @@ framing_top_mii open
 		 hid_en <= 'b1;	  
 		 hid_be <= 'hFF;
 		 hid_cnt <= 11;
-		 pkt_idx <= 0;
+		 hid_dly <= 0;
 	      end
 	    11:
 	      begin
@@ -220,8 +220,8 @@ framing_top_mii open
 		 hid_we <= 'b0;
 		 hid_addr <= `RSR_OFFSET;
 		 hid_wrdata_static <= 'b0;
-		 pkt_idx <= pkt_idx + 1;
-		 if (pkt_idx >= 16)
+		 hid_dly <= hid_dly + 1;
+		 if (hid_dly >= 16)
 		   hid_cnt <= 1;
 	      end
 	    12:
@@ -230,7 +230,6 @@ framing_top_mii open
 		 hid_we <= 'b0;
 	         hid_addr = 'b0;
 		 hid_cnt <= 13;
-		 pkt_idx <= 0;
                  $fclose(log);
               end
 	    default:

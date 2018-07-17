@@ -35,7 +35,6 @@ logic tx_enable_i;
 logic [47:0] mac_address, rx_dest_mac;
 logic  [7:0] mii_rx_data_i;
 logic [10:0] tx_frame_addr, rx_length_axis[0:7], tx_packet_length;
-logic [12:0] axis_tx_frame_size;
 logic        ce_d_dly, avail;
 logic [63:0] framing_rdata_pkt, framing_wdata_pkt;
 logic [3:0] tx_enable_dly, firstbuf, nextbuf, lastbuf;
@@ -181,7 +180,7 @@ always @(posedge msoc_clk)
       case(core_lsu_addr[6:3])
         0: mac_address[31:0] <= core_lsu_wdata;
         1: {irq_en,promiscuous,spare,loopback,cooked,mac_address[47:32]} <= core_lsu_wdata;
-        2: begin tx_enable_dly <= 10; tx_packet_length <= core_lsu_wdata; end /* tx payload size */
+        2: begin tx_enable_dly <= 8; tx_packet_length <= core_lsu_wdata; end /* tx payload size */
         3: begin tx_enable_dly <= 0; tx_packet_length <= 0; end
         4: begin {o_erst,oe_emdio,o_emdio,o_emdclk} <= core_lsu_wdata; end
         5: begin lastbuf <= core_lsu_wdata[3:0]; end
@@ -207,7 +206,7 @@ always @(posedge msoc_clk)
          tx_enable_dly <= tx_enable_dly + 1'b1;
          end
        else if (~o_etx_en)
-         tx_busy <= 1'b0;         
+         tx_busy <= tx_enable_i;         
     end
 
 always @(posedge clk_mii)
@@ -243,8 +242,6 @@ always @(posedge clk_mii)
   
    parameter dly = 0;
    
-   reg [1:0] 	    axis_etxd ;
-   reg 		    axis_etx_en;
    reg [31:0] 	    tx_fcs_reg, rx_fcs_reg;
    assign 	    tx_fcs_reg_rev = {tx_fcs_reg[0],tx_fcs_reg[1],tx_fcs_reg[2],tx_fcs_reg[3],
                                           tx_fcs_reg[4],tx_fcs_reg[5],tx_fcs_reg[6],tx_fcs_reg[7],
@@ -268,9 +265,6 @@ always @(posedge clk_mii)
        begin
           rx_addr_axis <= 'b0;
           tx_axis_tvalid <= 'b0;
-	  axis_tx_frame_size <= 0;
-	  axis_etxd <= 'b0;
-	  axis_etx_en <= 'b0;
 	  tx_axis_tvalid_dly <= 'b0;
 	  tx_frame_addr <= 'b0;
 	  tx_axis_tlast <= 'b0;
@@ -284,6 +278,10 @@ always @(posedge clk_mii)
 	    begin
 	       tx_frame_addr <= tx_frame_addr + 1;
 	       tx_axis_tlast <= (tx_frame_addr == tx_packet_length-2) & tx_axis_tvalid_dly;
+	    end
+	  if (!tx_busy)
+	    begin
+	       tx_frame_addr <= 'b0;
 	    end
 	  if (rx_axis_tvalid)
             begin
