@@ -37,10 +37,10 @@ logic  [7:0] mii_rx_data_i;
 logic [10:0] tx_frame_addr, rx_length_axis[0:7], tx_packet_length;
 logic        ce_d_dly, avail;
 logic [63:0] framing_rdata_pkt, framing_wdata_pkt;
-logic [3:0] tx_enable_dly, firstbuf, nextbuf, lastbuf;
+logic [3:0] tx_enable_dly, firstbuf, nextbuf, lastbuf, oldbuf;
 
 reg [12:0] nxt_addr;
-reg        sync, irq_en, tx_busy;
+reg        sync, irq_en, tx_busy, oldsync;
 
    wire [7:0] m_enb = (we_d ? core_lsu_be : 8'hFF);
    logic emdio, o_emdclk, o_erst, cooked, loopback, promiscuous;
@@ -186,16 +186,20 @@ always @(posedge msoc_clk)
         5: begin lastbuf <= core_lsu_wdata[3:0]; end
         6: begin firstbuf <= core_lsu_wdata[3:0]; end
       endcase
-       if ((~gmii_rx_dv) & ~sync)
+       if ((rx_addr_axis >= 64) & (~gmii_rx_dv) & ~sync)
          begin
          // check broadcast/multicast address
 	     sync <= (rx_dest_mac[47:24]==24'h01005E) | (&rx_dest_mac) | (mac_address == rx_dest_mac) | promiscuous;
          end
        else if (sync & rx_axis_tlast & ~gmii_rx_dv)
          begin
+            oldbuf <= nextbuf;
             nextbuf <= nextbuf + 1'b1;
+            oldsync <= 1'b1;
             sync <= 1'b0;
          end
+       else if (!rx_addr_axis)
+         oldsync <= 1'b0;
        if (o_etx_en && tx_axis_tlast)
          begin
             tx_enable_dly <= 0;
@@ -289,9 +293,9 @@ always @(posedge clk_mii)
             if (rx_addr_axis < 6)
               rx_dest_mac <= {rx_dest_mac[39:0],rx_axis_tdata};
             end
-	  if (rx_axis_tlast)
+	  if (oldsync)
             begin
-	       rx_length_axis[nextbuf[2:0]] <= rx_addr_axis + 1;
+	       rx_length_axis[oldbuf[2:0]] <= rx_addr_axis + 1;
 	       rx_addr_axis <= 'b0;
                rx_dest_mac <= 'b0;
             end
