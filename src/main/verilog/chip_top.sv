@@ -909,8 +909,12 @@ reg phy_emdio_i, io_emdio_o, io_emdio_t;
           2'b11: io_reset_vector = 32'h80200000;
         endcase // casez ()
      end
-   
+ 
+ `ifdef ARIANE_WRAPPER  
+   ExampleArianeSystem Ariane
+ `else
    ExampleRocketSystem Rocket
+ `endif
      (
       .debug_systemjtag_jtag_TCK(TCK),
       .debug_systemjtag_jtag_TMS(TMS),

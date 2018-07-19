@@ -53,6 +53,8 @@
    `define NEXYS4_COMMON
   `endif
 
+  `define ARIANE_WRAPPER  
+
   //`define ADD_MINION_SD
 
  `endif //  `ifdef FPGA
