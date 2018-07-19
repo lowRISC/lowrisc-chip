@@ -286,18 +286,18 @@ axi_crossbar_0 crossbar (
   .s_axi_awcache({output_if.aw_cache,input_if.aw_cache,bypass_if.aw_cache,data_if.aw_cache,instr_if.aw_cache}),    // input wire wire [11 : 0] s_axi_awcache
   .s_axi_awprot({output_if.aw_prot,input_if.aw_prot,bypass_if.aw_prot,data_if.aw_prot,instr_if.aw_prot}),      // input wire wire [8 : 0] s_axi_awprot
   .s_axi_awqos({output_if.aw_qos,input_if.aw_qos,bypass_if.aw_qos,data_if.aw_qos,instr_if.aw_qos}),        // input wire wire [11 : 0] s_axi_awqos
-  .s_axi_awuser({output_if.aw_user,input_if.aw_user,bypass_if.aw_user,data_if.aw_user,instr_if.aw_user}),      // input wire wire [2 : 0] s_axi_awuser
+//  .s_axi_awuser({output_if.aw_user,input_if.aw_user,bypass_if.aw_user,data_if.aw_user,instr_if.aw_user}),      // input wire wire [2 : 0] s_axi_awuser
   .s_axi_awvalid({output_if.aw_valid,input_if.aw_valid,bypass_if.aw_valid,data_if.aw_valid,instr_if.aw_valid}),    // input wire wire [2 : 0] s_axi_awvalid
   .s_axi_awready({output_if.aw_ready,input_if.aw_ready,bypass_if.aw_ready,data_if.aw_ready,instr_if.aw_ready}),    // output wire wire [2 : 0] s_axi_awready
   .s_axi_wdata({output_if.w_data,input_if.w_data,bypass_if.w_data,data_if.w_data,instr_if.w_data}),        // input wire wire [191 : 0] s_axi_wdata
   .s_axi_wstrb({output_if.w_strb,input_if.w_strb,bypass_if.w_strb,data_if.w_strb,instr_if.w_strb}),        // input wire wire [23 : 0] s_axi_wstrb
   .s_axi_wlast({output_if.w_last,input_if.w_last,bypass_if.w_last,data_if.w_last,instr_if.w_last}),        // input wire wire [2 : 0] s_axi_wlast
-  .s_axi_wuser({output_if.w_user,input_if.w_user,bypass_if.w_user,data_if.w_user,instr_if.w_user}),        // input wire wire [2 : 0] s_axi_wuser
+//  .s_axi_wuser({output_if.w_user,input_if.w_user,bypass_if.w_user,data_if.w_user,instr_if.w_user}),        // input wire wire [2 : 0] s_axi_wuser
   .s_axi_wvalid({output_if.w_valid,input_if.w_valid,bypass_if.w_valid,data_if.w_valid,instr_if.w_valid}),      // input wire wire [2 : 0] s_axi_wvalid
   .s_axi_wready({output_if.w_ready,input_if.w_ready,bypass_if.w_ready,data_if.w_ready,instr_if.w_ready}),      // output wire wire [2 : 0] s_axi_wready
   .s_axi_bid({output_if.b_id,input_if.b_id,bypass_if.b_id,data_if.b_id,instr_if.b_id}),            // output wire wire [29 : 0] s_axi_bid
   .s_axi_bresp({output_if.b_resp,input_if.b_resp,bypass_if.b_resp,data_if.b_resp,instr_if.b_resp}),        // output wire wire [5 : 0] s_axi_bresp
-  .s_axi_buser({output_if.b_user,input_if.b_user,bypass_if.b_user,data_if.b_user,instr_if.b_user}),        // output wire wire [2 : 0] s_axi_buser
+//  .s_axi_buser({output_if.b_user,input_if.b_user,bypass_if.b_user,data_if.b_user,instr_if.b_user}),        // output wire wire [2 : 0] s_axi_buser
   .s_axi_bvalid({output_if.b_valid,input_if.b_valid,bypass_if.b_valid,data_if.b_valid,instr_if.b_valid}),      // output wire wire [2 : 0] s_axi_bvalid
   .s_axi_bready({output_if.b_ready,input_if.b_ready,bypass_if.b_ready,data_if.b_ready,instr_if.b_ready}),      // input wire wire [2 : 0] s_axi_bready
   .s_axi_arid({output_if.ar_id,input_if.ar_id,bypass_if.ar_id,data_if.ar_id,instr_if.ar_id}),          // input wire wire [29 : 0] s_axi_arid
@@ -309,14 +309,14 @@ axi_crossbar_0 crossbar (
   .s_axi_arcache({output_if.ar_cache,input_if.ar_cache,bypass_if.ar_cache,data_if.ar_cache,instr_if.ar_cache}),    // input wire wire [11 : 0] s_axi_arcache
   .s_axi_arprot({output_if.ar_prot,input_if.ar_prot,bypass_if.ar_prot,data_if.ar_prot,instr_if.ar_prot}),      // input wire wire [8 : 0] s_axi_arprot
   .s_axi_arqos({output_if.ar_qos,input_if.ar_qos,bypass_if.ar_qos,data_if.ar_qos,instr_if.ar_qos}),        // input wire wire [11 : 0] s_axi_arqos
-  .s_axi_aruser({output_if.ar_user,input_if.ar_user,bypass_if.ar_user,data_if.ar_user,instr_if.ar_user}),      // input wire wire [2 : 0] s_axi_aruser
+//  .s_axi_aruser({output_if.ar_user,input_if.ar_user,bypass_if.ar_user,data_if.ar_user,instr_if.ar_user}),      // input wire wire [2 : 0] s_axi_aruser
   .s_axi_arvalid({output_if.ar_valid,input_if.ar_valid,bypass_if.ar_valid,data_if.ar_valid,instr_if.ar_valid}),    // input wire wire [2 : 0] s_axi_arvalid
   .s_axi_arready({output_if.ar_ready,input_if.ar_ready,bypass_if.ar_ready,data_if.ar_ready,instr_if.ar_ready}),    // output wire wire [2 : 0] s_axi_arready
   .s_axi_rid({output_if.r_id,input_if.r_id,bypass_if.r_id,data_if.r_id,instr_if.r_id}),            // output wire wire [29 : 0] s_axi_rid
   .s_axi_rdata({output_if.r_data,input_if.r_data,bypass_if.r_data,data_if.r_data,instr_if.r_data}),        // output wire wire [191 : 0] s_axi_rdata
   .s_axi_rresp({output_if.r_resp,input_if.r_resp,bypass_if.r_resp,data_if.r_resp,instr_if.r_resp}),        // output wire wire [5 : 0] s_axi_rresp
   .s_axi_rlast({output_if.r_last,input_if.r_last,bypass_if.r_last,data_if.r_last,instr_if.r_last}),        // output wire wire [2 : 0] s_axi_rlast
-  .s_axi_ruser({output_if.r_user,input_if.r_user,bypass_if.r_user,data_if.r_user,instr_if.r_user}),        // output wire wire [2 : 0] s_axi_ruser
+//  .s_axi_ruser({output_if.r_user,input_if.r_user,bypass_if.r_user,data_if.r_user,instr_if.r_user}),        // output wire wire [2 : 0] s_axi_ruser
   .s_axi_rvalid({output_if.r_valid,input_if.r_valid,bypass_if.r_valid,data_if.r_valid,instr_if.r_valid}),      // output wire wire [2 : 0] s_axi_rvalid
   .s_axi_rready({output_if.r_ready,input_if.r_ready,bypass_if.r_ready,data_if.r_ready,instr_if.r_ready}),      // input wire wire [2 : 0] s_axi_rready
   .m_axi_awid({mmio_axi4_0_aw_bits_id,mem_axi4_0_aw_bits_id}),          // input wire wire [29 : 0] s_axi_awid
@@ -328,19 +328,19 @@ axi_crossbar_0 crossbar (
   .m_axi_awcache({mmio_axi4_0_aw_bits_cache,mem_axi4_0_aw_bits_cache}),    // input wire wire [11 : 0] s_axi_awcache
   .m_axi_awprot({mmio_axi4_0_aw_bits_prot,mem_axi4_0_aw_bits_prot}),      // input wire wire [8 : 0] s_axi_awprot
   .m_axi_awqos({mmio_axi4_0_aw_bits_qos,mem_axi4_0_aw_bits_qos}),        // input wire wire [11 : 0] s_axi_awqos
-  .m_axi_awuser({mmio_axi4_0_aw_user,mem_axi4_0_aw_user}),      // input wire wire [2 : 0] s_axi_awuser
+//  .m_axi_awuser({mmio_axi4_0_aw_user,mem_axi4_0_aw_user}),      // input wire wire [2 : 0] s_axi_awuser
   .m_axi_awvalid({mmio_axi4_0_aw_valid,mem_axi4_0_aw_valid}),    // input wire wire [2 : 0] s_axi_awvalid
   .m_axi_awready({mmio_axi4_0_aw_ready,mem_axi4_0_aw_ready}),    // output wire wire [2 : 0] s_axi_awready
   .m_axi_awregion({mmio_axi4_0_aw_region,mem_axi4_0_aw_region}),    // output wire s_axi_awregion
   .m_axi_wdata({mmio_axi4_0_w_bits_data,mem_axi4_0_w_bits_data}),        // input wire wire [191 : 0] s_axi_wdata
   .m_axi_wstrb({mmio_axi4_0_w_bits_strb,mem_axi4_0_w_bits_strb}),        // input wire wire [23 : 0] s_axi_wstrb
   .m_axi_wlast({mmio_axi4_0_w_bits_last,mem_axi4_0_w_bits_last}),        // input wire wire [2 : 0] s_axi_wlast
-  .m_axi_wuser({mmio_axi4_0_w_user,mem_axi4_0_w_user}),        // input wire wire [2 : 0] s_axi_wuser
+//  .m_axi_wuser({mmio_axi4_0_w_user,mem_axi4_0_w_user}),        // input wire wire [2 : 0] s_axi_wuser
   .m_axi_wvalid({mmio_axi4_0_w_valid,mem_axi4_0_w_valid}),      // input wire wire [2 : 0] s_axi_wvalid
   .m_axi_wready({mmio_axi4_0_w_ready,mem_axi4_0_w_ready}),      // output wire wire [2 : 0] s_axi_wready
   .m_axi_bid({mmio_axi4_0_b_bits_id,mem_axi4_0_b_bits_id}),            // output wire wire [29 : 0] s_axi_bid
   .m_axi_bresp({mmio_axi4_0_b_bits_resp,mem_axi4_0_b_bits_resp}),        // output wire wire [5 : 0] s_axi_bresp
-  .m_axi_buser({mmio_axi4_0_b_user,mem_axi4_0_b_user}),        // output wire wire [2 : 0] s_axi_buser
+//  .m_axi_buser({mmio_axi4_0_b_user,mem_axi4_0_b_user}),        // output wire wire [2 : 0] s_axi_buser
   .m_axi_bvalid({mmio_axi4_0_b_valid,mem_axi4_0_b_valid}),      // output wire wire [2 : 0] s_axi_bvalid
   .m_axi_bready({mmio_axi4_0_b_ready,mem_axi4_0_b_ready}),      // input wire wire [2 : 0] s_axi_bready
   .m_axi_arid({mmio_axi4_0_ar_bits_id,mem_axi4_0_ar_bits_id}),          // input wire wire [29 : 0] s_axi_arid
@@ -352,7 +352,7 @@ axi_crossbar_0 crossbar (
   .m_axi_arcache({mmio_axi4_0_ar_bits_cache,mem_axi4_0_ar_bits_cache}),    // input wire wire [11 : 0] s_axi_arcache
   .m_axi_arprot({mmio_axi4_0_ar_bits_prot,mem_axi4_0_ar_bits_prot}),      // input wire wire [8 : 0] s_axi_arprot
   .m_axi_arqos({mmio_axi4_0_ar_bits_qos,mem_axi4_0_ar_bits_qos}),        // input wire wire [11 : 0] s_axi_arqos
-  .m_axi_aruser({mmio_axi4_0_ar_user,mem_axi4_0_ar_user}),      // input wire wire [2 : 0] s_axi_aruser
+//  .m_axi_aruser({mmio_axi4_0_ar_user,mem_axi4_0_ar_user}),      // input wire wire [2 : 0] s_axi_aruser
   .m_axi_arvalid({mmio_axi4_0_ar_valid,mem_axi4_0_ar_valid}),    // input wire wire [2 : 0] s_axi_arvalid
   .m_axi_arready({mmio_axi4_0_ar_ready,mem_axi4_0_ar_ready}),    // output wire wire [2 : 0] s_axi_arready
   .m_axi_arregion({mmio_axi4_0_ar_region,mem_axi4_0_ar_region}),    // output wire s_axi_arregion
@@ -360,7 +360,7 @@ axi_crossbar_0 crossbar (
   .m_axi_rdata({mmio_axi4_0_r_bits_data,mem_axi4_0_r_bits_data}),        // output wire wire [191 : 0] s_axi_rdata
   .m_axi_rresp({mmio_axi4_0_r_bits_resp,mem_axi4_0_r_bits_resp}),        // output wire wire [5 : 0] s_axi_rresp
   .m_axi_rlast({mmio_axi4_0_r_bits_last,mem_axi4_0_r_bits_last}),        // output wire wire [2 : 0] s_axi_rlast
-  .m_axi_ruser({mmio_axi4_0_r_user,mem_axi4_0_r_user}),        // output wire wire [2 : 0] s_axi_ruser
+//  .m_axi_ruser({mmio_axi4_0_r_user,mem_axi4_0_r_user}),        // output wire wire [2 : 0] s_axi_ruser
   .m_axi_rvalid({mmio_axi4_0_r_valid,mem_axi4_0_r_valid}),      // output wire wire [2 : 0] s_axi_rvalid
   .m_axi_rready({mmio_axi4_0_r_ready,mem_axi4_0_r_ready})      // input wire wire [2 : 0] s_axi_rready
 );
