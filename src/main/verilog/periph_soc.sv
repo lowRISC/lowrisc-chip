@@ -10,6 +10,7 @@
 // See LICENSE for license details.
 
 `default_nettype none
+`include "config.vh"
 
 module periph_soc #(UBAUD_DEFAULT=54)
   (
@@ -55,7 +56,7 @@ module periph_soc #(UBAUD_DEFAULT=54)
  output wire        eth_rstn,
  input wire         eth_crsdv,
  output wire        eth_refclk,
-`ifdef KC705   
+`ifdef MII   
  output wire [3:0]  eth_txd,
  input wire [3:0]   eth_rxd,
  input wire         clk_mii,
@@ -582,7 +583,7 @@ sd_top sdtop(
     .sd_xfr_addr(sd_xfr_addr)
     );
 
-`ifdef KC705   
+`ifdef MII  
 framing_top_mii open
   (
    .clk_mii(clk_mii),

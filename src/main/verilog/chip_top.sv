@@ -3,17 +3,6 @@
 `include "consts.vh"
 `include "config.vh"
 
-// Allow ISA regression test to use proper FPGA configuration
-`ifdef ADD_HOST
-`ifndef FPGA
-`undef ADD_BRAM
-`undef ADD_UART
-`undef ADD_FLASH
-`undef ADD_SPI
-`undef ADD_ETH
-`endif
-`endif
-
 module chip_top
   (
 `ifdef ADD_PHY_DDR
@@ -34,12 +23,16 @@ module chip_top
    output wire        ddr_cs_n,
    output wire [7:0]  ddr_dm,
    output wire        ddr_odt,
- `elsif NEXYS4_VIDEO
+ `elsif DDR3
    // DDR3 RAM
    inout wire [15:0]  ddr_dq,
    inout wire [1:0]   ddr_dqs_n,
    inout wire [1:0]   ddr_dqs_p,
+ `ifdef ARTYA7
+   output wire [13:0] ddr_addr,
+ `else
    output wire [14:0] ddr_addr,
+ `endif
    output wire [2:0]  ddr_ba,
    output wire        ddr_ras_n,
    output wire        ddr_cas_n,
@@ -128,8 +121,6 @@ module chip_top
    // Simple UART interface
    input wire         rxd,
    output wire        txd,
-   output wire        rts,
-   input wire         cts,
 
    // 4-bit full SD interface
    inout wire         sd_sclk,
@@ -149,11 +140,14 @@ module chip_top
    output wire [3:0]  VGA_BLUE_O,
    output wire [3:0]  VGA_GREEN_O,
  `else
+ `ifdef ARTYA7
+   output wire [3:0]  o_led,
+ `else
    output wire [7:0]  o_led,
+ `endif
    input wire  [3:0]  i_dip,
  `endif
    // push button array
-   input wire         GPIO_SW_C,
    input wire         GPIO_SW_W,
    input wire         GPIO_SW_E,
    input wire         GPIO_SW_N,
@@ -168,10 +162,12 @@ module chip_top
  input wire         i_emdint, // PHY interrupt in active low
  output reg         o_erefclk, // RMII clock out
  output reg         o_etx_en, // RMII transmit enable
-`ifdef KC705   
+`ifdef MII   
  input wire [3:0]   i_erxd, // RMII receive data
  output reg [3:0]   o_etxd, // RMII transmit data
+`ifndef ARTYA7
  output reg         o_etx_er, // RMII transmit enable
+`endif
  input wire         i_gmiiclk_p,
  input wire         i_gmiiclk_n,
 `else
@@ -182,11 +178,30 @@ module chip_top
  inout wire         io_emdio, // MDIO inout
  output wire        o_erstn, // PHY reset active low
 `endif
-   // clock and reset
-   input wire         clk_p,
-   input wire         clk_n,
-   input wire         rst_top
-   );
+`ifndef ARTYA7
+ input wire         GPIO_SW_C,
+ output wire        rts,
+ input wire         cts,
+ // clock and reset
+ input wire         rst_top,
+`endif
+ input wire         clk_p,
+ input wire         clk_n
+ );
+
+`ifdef ARTYA7
+ wire        GPIO_SW_C = 1'b0;
+ wire        rst_top = 1'b1;
+ wire        VGA_HS_O;
+ wire        VGA_VS_O;
+ wire [3:0]  VGA_RED_O;
+ wire [3:0]  VGA_BLUE_O;
+ wire [3:0]  VGA_GREEN_O;
+ reg         o_etx_er;
+ wire        mig_ref_clk;
+`else
+   assign rts = cts;
+`endif
 
    wire               clk_locked;
               
@@ -196,6 +211,8 @@ module chip_top
    wire [3:0]  VGA_RED_O;
    wire [3:0]  VGA_BLUE_O;
    wire [3:0]  VGA_GREEN_O;
+ `endif
+ `ifdef MII
    wire clk_mii, clk_mii_quad;
 `else
    wire clk_rmii, clk_rmii_quad;
@@ -396,16 +413,24 @@ assign clk = mig_ui_clk;
       .clk_rmii      ( clk_rmii      ), // 50 MHz RMII
       .clk_rmii_quad ( clk_rmii_quad ), // 50 MHz RMII quad
       .clk_io_uart   (               ), // 60 MHz (not used)
- `else
+      .clk_out1      ( mig_sys_clk   ), // 200 MHz
+      .clk_pixel     ( clk_pixel     ), // 120 MHz
+`else
+ `ifdef ARTYA7
+ `define LOCKED clk_locked_wiz
+      .clk_in1       ( clk_p         ), // 100 MHz from MIG
+      .clk_ref       ( mig_ref_clk   ), // 200 MHz
+      .clk_sys       ( mig_sys_clk   ), // 166.667 MHz
+`else
  `define LOCKED clk_locked_wiz & !rst_top
       .clk_in1       ( mig_ui_clk    ), // 100 MHz from MIG
       .reset         ( rst_top       ),
+      .clk_sys       ( mig_sys_clk   ), // 166.667 MHz
+`endif
       .clk_mii       ( clk_mii       ), // 25 MHz MII
       .clk_mii_quad  ( clk_mii_quad  ), // 25 MHz MII quad
       .clk_cpu       ( clk           ), // 50 MHz
  `endif
-      .clk_out1      ( mig_sys_clk   ), // 200 MHz
-      .clk_pixel     ( clk_pixel     ), // 120 MHz
       .locked        ( clk_locked_wiz )
       );
    assign clk_locked = `LOCKED;
@@ -433,7 +458,10 @@ assign clk = mig_ui_clk;
       .ddr3_cs_n            ( ddr_cs_n               ),
       .ddr3_dm              ( ddr_dm                 ),
       .ddr3_odt             ( ddr_odt                ),
- `elsif NEXYS4_VIDEO
+ `elsif DDR3
+ `ifdef ARTYA7
+      .clk_ref_i            ( mig_ref_clk            ),
+ `endif
       .sys_clk_i            ( mig_sys_clk            ),
       .sys_rst              ( clk_locked             ),
       .ddr3_addr            ( ddr_addr               ),
@@ -784,7 +812,7 @@ assign clk = mig_ui_clk;
       .bram_rddata_a   ( hid_rddata                )
       );
   
-`ifdef KC705    
+`ifdef MII    
    always @(posedge clk_mii)
 `else      
    always @(posedge clk_rmii)
@@ -823,11 +851,12 @@ assign clk = mig_ui_clk;
         .R(1'b0),
         .S( ));
 
-`ifdef KC705    
+`ifdef MII    
    logic [3:0] eth_txd;
     always @(posedge clk_mii_quad)
 `else      
    logic [1:0] eth_txd;
+   logic o_etx_er;
     always @(posedge clk_rmii_quad)
 `endif      
         begin
@@ -847,12 +876,17 @@ assign clk = mig_ui_clk;
       .from_dip   ( i_dip           ),
       .to_led     ( o_led           ),
       .rstn       ( clk_locked      ),
+  `ifdef ARTYA7
+      .clk_200MHz ( mig_ref_clk     ),
+  `else
       .clk_200MHz ( mig_sys_clk     ),
+  `endif
       .pxl_clk    ( clk_pixel       ),
       .uart_rx    ( rxd             ),
       .uart_tx    ( txd             ),
-`ifdef KC705   
+`ifdef MII   
       .clk_mii    ( clk_mii         ),
+      .eth_txer   ( eth_txer        ),
 `else
       .clk_rmii   ( clk_rmii        ),
 `endif
@@ -863,7 +897,6 @@ assign clk = mig_ui_clk;
       .eth_refclk ( eth_refclk      ),
       .eth_txd    ( eth_txd         ),
       .eth_txen   ( eth_txen        ),
-      .eth_txer   ( eth_txer        ),
       .eth_rxd    ( i_erxd          ),
       .eth_rxerr  ( i_erx_er        ),
       .eth_mdc    ( o_emdc          ),
@@ -874,8 +907,6 @@ assign clk = mig_ui_clk;
       .*
       );
 
-   assign rts = cts;
-   
 `else // !`ifdef ADD_HID
 
    assign hid_irq = 1'b0;

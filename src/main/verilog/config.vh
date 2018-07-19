@@ -46,12 +46,23 @@
   `endif
 
   `ifdef NEXYS4_VIDEO
+   `define DDR3
    `define NEXYS4_COMMON
   `endif
 
   `ifdef NEXYS4
    `define NEXYS4_COMMON
   `endif
+
+  `ifdef KC705
+   `define MII
+  `endif
+    
+  `ifdef ARTYA7
+    `define MII
+    `define DDR3
+  `endif
+    
 
   //`define ADD_MINION_SD
 
