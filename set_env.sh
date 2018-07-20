@@ -46,7 +46,7 @@ fi
 # choose the FPGA board (Nexys4-DDR in default)
 if [ -z $FPGA_BOARD ]; then
     echo "\$FPGA_BOARD is not defined. Set the target FPGA board to nexys4_ddr."
-    export FPGA_BOARD=nexys4_ddr
+    export FPGA_BOARD=artya7
 fi
 
 echo "============================"

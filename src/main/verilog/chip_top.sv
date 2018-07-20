@@ -145,7 +145,7 @@ module chip_top
  `else
    output wire [7:0]  o_led,
  `endif
-   input wire  [3:0]  i_dip,
+   input wire  [15:12]  i_dip,
  `endif
    // push button array
    input wire         GPIO_SW_W,
@@ -182,16 +182,15 @@ module chip_top
  input wire         GPIO_SW_C,
  output wire        rts,
  input wire         cts,
+`endif
  // clock and reset
  input wire         rst_top,
-`endif
  input wire         clk_p,
  input wire         clk_n
  );
 
 `ifdef ARTYA7
  wire        GPIO_SW_C = 1'b0;
- wire        rst_top = 1'b1;
  wire        VGA_HS_O;
  wire        VGA_VS_O;
  wire [3:0]  VGA_RED_O;
@@ -417,8 +416,9 @@ assign clk = mig_ui_clk;
       .clk_pixel     ( clk_pixel     ), // 120 MHz
 `else
  `ifdef ARTYA7
- `define LOCKED clk_locked_wiz
+ `define LOCKED clk_locked_wiz & rst_top
       .clk_in1       ( clk_p         ), // 100 MHz from MIG
+      .resetn        ( rst_top       ),
       .clk_ref       ( mig_ref_clk   ), // 200 MHz
       .clk_sys       ( mig_sys_clk   ), // 166.667 MHz
 `else
@@ -873,13 +873,14 @@ assign clk = mig_ui_clk;
       .sd_dat     ( sd_dat          ),
       .sd_cmd     ( sd_cmd          ),
       .sd_irq     ( sd_irq          ),
-      .from_dip   ( i_dip           ),
       .to_led     ( o_led           ),
       .rstn       ( clk_locked      ),
   `ifdef ARTYA7
       .clk_200MHz ( mig_ref_clk     ),
+      .from_dip   ( i_dip<<12       ),
   `else
       .clk_200MHz ( mig_sys_clk     ),
+      .from_dip   ( i_dip           ),
   `endif
       .pxl_clk    ( clk_pixel       ),
       .uart_rx    ( rxd             ),
@@ -971,8 +972,9 @@ assign clk = mig_ui_clk;
   /* DMI interface tie-off */
   wire  ExampleRocketSystem_debug_ndreset;
   wire  ExampleRocketSystem_debug_dmactive;
-  reg [31:0] io_reset_vector;
+  logic [31:0] io_reset_vector;
 
+`ifdef NEXYS4_COMMON
    always @*
      begin
         casez (i_dip[1:0])
@@ -981,6 +983,9 @@ assign clk = mig_ui_clk;
           2'b11: io_reset_vector = 32'h80200000;
         endcase // casez ()
      end
+`else
+   assign io_reset_vector = 32'h40000000;
+`endif
    
    ExampleRocketSystem Rocket
      (
