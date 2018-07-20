@@ -520,7 +520,7 @@ class Nexys4Config extends
     Config(new WithEthConfig ++ new With128MRamConfig ++ new FPGAConfig)
 
 class Nexys4DebugConfig extends
-    Config(new With128MRamConfig ++ new FPGADebugConfig)
+    Config(new WithEthConfig ++ new With128MRamConfig ++ new FPGADebugConfig)
 
 class Nexys4EthConfig extends
     Config(new With128MRamConfig ++ new FPGAEthConfig)

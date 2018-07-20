@@ -1,5 +1,7 @@
 # See LICENSE for license details.
 
+.SUFFIXES:
+
 # check Verilator environment variable
 ifndef VERILATOR_ROOT
 $(error Please set environment for the Verilator simulator)
@@ -267,7 +269,7 @@ $(addprefix $(output_dir)/, $(addsuffix .riscv, $(asm_p_tests) $(asm_v_tests))):
 
 $(addprefix $(output_dir)/, $(addsuffix .riscv, $(bmarks_tests))):
 	mkdir -p $(output_dir)
-	$(MAKE) -C $(riscv_test_bmarks_dir) $(basename $(notdir $@))
+	$(MAKE) -C $(riscv_test_bmarks_dir) $(basename $(notdir $@)).riscv
 	ln -fs ../$(riscv_test_bmarks_dir)/$(basename $(notdir $@)) $@
 
 $(addprefix $(output_dir)/, $(addsuffix .riscv, $(tag_tests))):
