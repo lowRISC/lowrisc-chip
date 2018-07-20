@@ -494,6 +494,8 @@ reg phy_emdio_i, io_emdio_o, io_emdio_t;
   `endif // !`ifdef ZED
 `else // !`ifdef ADD_PHY_DDR
 
+`define MEM_NASTI mem_mig_nasti
+`define UBAUD_DEFAULT 8
    assign clk = clk_p;
    assign clk_rmii = clk_p;
    assign clk_rmii_quad = clk_p;
