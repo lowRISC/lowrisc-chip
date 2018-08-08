@@ -254,9 +254,11 @@ sd_verilator_model sdflash1 (
 
    // LED and DIP switch
    wire [7:0]   o_led;
-   wire [15:0]   i_dip;
-
-   assign i_dip = 16'h0;
+`ifdef KC705   
+   wire [3:0]   i_dip = 4'hE;
+`else   
+   wire [15:0]   i_dip = 16'hE;
+`endif
 
    // push button array
    wire         GPIO_SW_C;
@@ -340,16 +342,23 @@ sd_verilator_model sdflash1 (
 
 `ifdef ADD_HID
   wire         o_erefclk; // RMII clock out
+`ifdef KC705   
+  wire [3:0]   i_erxd ;
+  wire [3:0]   o_etxd ;
+`else   
   wire [1:0]   i_erxd ;
+  wire [1:0]   o_etxd ;
+`endif   
   wire         i_erx_dv ;
   wire         i_erx_er ;
   wire         i_emdint ;
-  wire [1:0]   o_etxd ;
   wire         o_etx_en ;
+  wire         o_etx_er ;
   wire         o_emdc ;
   wire         io_emdio ;
   wire         o_erstn ;
-
+  wire        i_gmiiclk_p, i_gmiiclk_n;
+   
    assign i_emdint = 1'b1;
    assign i_erx_dv = o_etx_en;
    assign i_erxd = o_etxd;

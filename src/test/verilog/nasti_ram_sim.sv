@@ -20,6 +20,8 @@ module nasti_ram_sim
 
   // Read input arguments and initialize
 
+`ifdef READMEM_NASTI_RAM_SIM
+   
   initial
     begin
     // JRRK hacks
@@ -42,6 +44,7 @@ module nasti_ram_sim
                  {mem[i+7],mem[i+6],mem[i+5],mem[i+4],mem[i+3],mem[i+2],mem[i+1],mem[i+0]};
           end
     end // initial begin
+`endif
    
    function bit memory_load_mem (input string filename);
 

@@ -196,8 +196,12 @@ module chip_top
    wire [3:0]  VGA_RED_O;
    wire [3:0]  VGA_BLUE_O;
    wire [3:0]  VGA_GREEN_O;
-   wire clk_mii, clk_mii_quad;
+   logic [3:0]  eth_rxd;
+   logic clk_mii, clk_mii_quad;
+   logic [7:0] unused_led;
 `else
+   logic [1:0]  eth_rxd;
+ // RMII receive data
    wire clk_rmii, clk_rmii_quad;
 `endif
 
@@ -518,11 +522,25 @@ assign clk = mig_ui_clk;
   `endif // !`ifdef ZED
 `else // !`ifdef ADD_PHY_DDR
 
-`define MEM_NASTI mem_mig_nasti
+`define MEM_NASTI mem_nasti
    
    assign clk = clk_p;
+`ifdef KC705   
+   always
+     begin
+        @(posedge clk_p)
+          clk_mii = 1'b0;
+        @(negedge clk_p)
+          clk_mii_quad = 1'b0;
+        @(posedge clk_p)
+          clk_mii = 1'b1;
+        @(negedge clk_p)
+          clk_mii_quad = 1'b1;
+     end
+`else
    assign clk_rmii = clk_p;
    assign clk_rmii_quad = clk_p;
+`endif
    assign rstn = !rst_top;
    assign clk_locked = !rst_top;
    assign clk_locked_wiz = !rst_top;
@@ -733,7 +751,7 @@ assign clk = mig_ui_clk;
    wire [17:0]                 hid_addr;
    wire [63:0]                 hid_wrdata,  hid_rddata;
    logic [30:0]                hid_ar_addr, hid_aw_addr;
-   logic eth_rstn, eth_refclk, eth_txen, eth_txer;
+   logic eth_rstn, eth_refclk, eth_txen, eth_txer, eth_rxerr;
    assign o_erstn = eth_rstn & clk_locked_wiz;
 
    axi_bram_ctrl_dummy BramCtl
@@ -830,7 +848,9 @@ assign clk = mig_ui_clk;
    logic [1:0] eth_txd;
     always @(posedge clk_rmii_quad)
 `endif      
-        begin
+      begin
+        eth_rxd = i_erxd;
+        eth_rxerr = i_erx_er;
         o_etxd = eth_txd;
         o_etx_en = eth_txen;
         o_etx_er = eth_txer;
@@ -844,8 +864,13 @@ assign clk = mig_ui_clk;
       .sd_dat     ( sd_dat          ),
       .sd_cmd     ( sd_cmd          ),
       .sd_irq     ( sd_irq          ),
+`ifdef KC705
+      .from_dip   ( {12'b0,i_dip}    ),
+      .to_led     ( {unused_led,o_led} ),
+`else
       .from_dip   ( i_dip           ),
       .to_led     ( o_led           ),
+`endif
       .rstn       ( clk_locked      ),
       .clk_200MHz ( mig_sys_clk     ),
       .pxl_clk    ( clk_pixel       ),
@@ -864,8 +889,8 @@ assign clk = mig_ui_clk;
       .eth_txd    ( eth_txd         ),
       .eth_txen   ( eth_txen        ),
       .eth_txer   ( eth_txer        ),
-      .eth_rxd    ( i_erxd          ),
-      .eth_rxerr  ( i_erx_er        ),
+      .eth_rxd    ( eth_rxd         ),
+      .eth_rxerr  ( eth_rxerr       ),
       .eth_mdc    ( o_emdc          ),
       .phy_mdio_i ( phy_emdio_i     ),
       .phy_mdio_o ( phy_emdio_o     ),
