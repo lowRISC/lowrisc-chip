@@ -174,6 +174,8 @@ module chip_top
  output reg         o_etx_er, // RMII transmit enable
  input wire         i_gmiiclk_p,
  input wire         i_gmiiclk_n,
+ input wire         i_erx_clk,
+ input wire         i_etx_clk,
 `else
  input wire [1:0]   i_erxd, // RMII receive data
  output reg [1:0]   o_etxd, // RMII transmit data
@@ -189,6 +191,7 @@ module chip_top
    );
 
    wire               clk_locked;
+   logic clk_mii, clk_mii_quad;
               
 `ifdef KC705
    wire        VGA_HS_O;
@@ -197,7 +200,6 @@ module chip_top
    wire [3:0]  VGA_BLUE_O;
    wire [3:0]  VGA_GREEN_O;
    logic [3:0]  eth_rxd;
-   logic clk_mii, clk_mii_quad;
    logic [7:0] unused_led;
 `else
    logic [1:0]  eth_rxd;
@@ -803,7 +805,7 @@ assign clk = mig_ui_clk;
       );
   
 `ifdef KC705    
-   always @(posedge clk_mii)
+   always @(posedge i_etx_clk)
 `else      
    always @(posedge clk_rmii)
 `endif      
@@ -842,15 +844,23 @@ assign clk = mig_ui_clk;
         .S( ));
 
 `ifdef KC705    
+    always @(posedge i_erx_clk)
+`else      
+    always @(posedge clk_rmii_quad)
+`endif      
+      begin
+        eth_rxd = i_erxd;
+        eth_rxerr = i_erx_er;         
+      end
+   
+`ifdef KC705    
    logic [3:0] eth_txd;
-    always @(posedge clk_mii_quad)
+    always @(posedge i_etx_clk)
 `else      
    logic [1:0] eth_txd;
     always @(posedge clk_rmii_quad)
 `endif      
       begin
-        eth_rxd = i_erxd;
-        eth_rxerr = i_erx_er;
         o_etxd = eth_txd;
         o_etx_en = eth_txen;
         o_etx_er = eth_txer;
@@ -877,7 +887,8 @@ assign clk = mig_ui_clk;
       .uart_rx    ( rxd             ),
       .uart_tx    ( txd             ),
 `ifdef KC705   
-      .clk_mii    ( clk_mii         ),
+      .i_erx_clk  ( i_erx_clk       ),
+      .i_etx_clk  ( i_etx_clk       ),
 `else
       .clk_rmii   ( clk_rmii        ),
 `endif

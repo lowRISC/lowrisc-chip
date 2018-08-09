@@ -3,30 +3,33 @@
 
 module framing_top_mii
   (
-  input wire rstn, msoc_clk, clk_mii,
-  input wire [14:0] core_lsu_addr,
-  input wire [63:0] core_lsu_wdata,
-  input wire [7:0] core_lsu_be,
-  input wire       ce_d,
-  input wire   we_d,
-  input wire framing_sel,
+  input wire          i_erx_clk,
+  input wire          i_etx_clk,
+   
+  input wire          rstn, msoc_clk,
+  input wire [14:0]   core_lsu_addr,
+  input wire [63:0]   core_lsu_wdata,
+  input wire [7:0]    core_lsu_be,
+  input wire          ce_d,
+  input wire          we_d,
+  input wire          framing_sel,
   output logic [63:0] framing_rdata,
 
   //! Ethernet MAC PHY interface signals
-output wire   o_erefclk     , // MII clock out
-input wire [3:0] i_erxd    ,
-input wire  i_erx_dv       ,
-input wire  i_erx_er       ,
-output wire [3:0] o_etxd   ,
-output wire o_etx_en      ,
-output wire o_etx_er      ,
-output wire   o_emdc        ,
-input wire i_emdio ,
-output reg  o_emdio   ,
-output reg  oe_emdio   ,
-output wire   o_erstn    ,   
+  output wire         o_erefclk , // MII clock out
+  input wire [3:0]    i_erxd ,
+  input wire          i_erx_dv ,
+  input wire          i_erx_er ,
+  output wire [3:0]   o_etxd ,
+  output wire         o_etx_en ,
+  output wire         o_etx_er ,
+  output wire         o_emdc ,
+  input wire          i_emdio ,
+  output reg          o_emdio ,
+  output reg          oe_emdio ,
+  output wire         o_erstn , 
 
-output reg eth_irq
+  output reg          eth_irq
    );
 
 logic [14:0] core_lsu_addr_dly;   
@@ -87,7 +90,7 @@ reg        sync, irq_en, tx_busy, oldsync;
    logic         ena;
    logic         full;
 
-   always @(posedge clk_mii)
+   always @(posedge i_erx_clk)
      if (rstn == 1'b0)
        begin
 	  {gmii_rx_er,gmii_rx_dv,gmii_rxd} <= 10'b0;
@@ -127,7 +130,7 @@ reg        sync, irq_en, tx_busy, oldsync;
                                     );
 
     dualmem_widen RAMB16_inst_tx (
-                                   .clka(~clk_mii),             // Port A Clock
+                                   .clka(~i_erx_clk),            // Port A Clock
                                    .clkb(msoc_clk),              // Port A Clock
                                    .douta(douta),                // Port A 8-bit Data Output
                                    .addra({1'b0,tx_frame_addr[10:3],tx_frame_addr[1:0]}),  // Port A 11-bit Address Input
@@ -143,8 +146,13 @@ reg        sync, irq_en, tx_busy, oldsync;
                                    );
 
 assign o_emdc = o_emdclk;
-assign o_erefclk = clk_mii;
+assign o_erefclk = i_etx_clk;
 
+logic [31:0] rx_clk_cnt, tx_clk_cnt,
+             rx_clk_div, tx_clk_div,
+             rx_clk_prev, tx_clk_prev,
+             rx_clk_frq, tx_clk_frq;
+   
 always @(posedge msoc_clk)
   if (!rstn)
     begin
@@ -171,9 +179,25 @@ always @(posedge msoc_clk)
     tx_busy <= 1'b0;
     avail = 1'b0;         
     full <= 1'b0;
+    rx_clk_cnt = 0;
+    tx_clk_cnt = 0;       
     end
   else
     begin
+    rx_clk_cnt = rx_clk_cnt + 1;       
+    tx_clk_cnt = tx_clk_cnt + 1;
+    if (rx_clk_cnt == 5000000)
+      begin
+         rx_clk_cnt <= 0;
+         rx_clk_frq <= rx_clk_div - rx_clk_prev;
+         rx_clk_prev <= rx_clk_div;
+      end
+    if (tx_clk_cnt == 5000000)
+      begin
+         tx_clk_cnt <= 0;
+         tx_clk_frq <= tx_clk_div - tx_clk_prev;
+         tx_clk_prev <= tx_clk_div;
+      end
     core_lsu_addr_dly <= core_lsu_addr;
     emdio <= i_emdio;
     ce_d_dly <= ce_d;
@@ -225,7 +249,7 @@ always @(posedge msoc_clk)
          tx_busy <= tx_enable_i;         
     end
 
-always @(posedge clk_mii)
+always @(posedge i_etx_clk)
   if (!rstn)
     begin
     tx_enable_i <= 1'b0;
@@ -248,6 +272,7 @@ always @(posedge clk_mii)
     13'b10001????0100 : framing_rdata = {i_emdio,oe_emdio,o_emdio,o_emdclk};
     13'b10001????0101 : framing_rdata = rx_fcs_reg_rev;
     13'b10001????0110 : framing_rdata = {full, eth_irq, avail, ~firstbuf[3], firstbuf[2:0], nextbuf, firstbuf};
+    13'b10001????0111 : framing_rdata = {tx_clk_frq,rx_clk_frq};
     13'b10001????1??? : framing_rdata = rx_length_axis[core_lsu_addr_dly[5:3]];
     13'b10010???????? : framing_rdata = framing_wdata_pkt;
     13'b11??????????? : framing_rdata = framing_rdata_pkt;
@@ -276,18 +301,18 @@ always @(posedge clk_mii)
                                           rx_fcs_reg[24],rx_fcs_reg[25],rx_fcs_reg[26],rx_fcs_reg[27],
                                           rx_fcs_reg[28],rx_fcs_reg[29],rx_fcs_reg[30],rx_fcs_reg[31]};
    
-   always @(posedge clk_mii)
+   always @(posedge i_etx_clk)
      if (~rstn)
        begin
-          rx_addr_axis <= 'b0;
           tx_axis_tvalid <= 'b0;
 	  tx_axis_tvalid_dly <= 'b0;
 	  tx_frame_addr <= 'b0;
 	  tx_axis_tlast <= 'b0;
-          rx_dest_mac <= 'b0;
+          tx_clk_div <= 'b0;
        end
      else
        begin
+          tx_clk_div <= tx_clk_div + 1;
 	  tx_axis_tvalid_dly <= tx_axis_tvalid;
 	  tx_axis_tvalid <= tx_enable_i;
 	  if (tx_axis_tready)
@@ -299,6 +324,18 @@ always @(posedge clk_mii)
 	    begin
 	       tx_frame_addr <= 'b0;
 	    end
+       end
+          
+   always @(posedge i_erx_clk)
+     if (~rstn)
+       begin
+          rx_addr_axis <= 'b0;
+          rx_dest_mac <= 'b0;
+          rx_clk_div <= 0;
+       end
+     else
+       begin
+          rx_clk_div <= rx_clk_div + 1;
 	  if (rx_axis_tvalid)
             begin
             rx_addr_axis <= rx_addr_axis + 1;
@@ -314,7 +351,7 @@ always @(posedge clk_mii)
       end
  
    axis_gmii_rx gmii_rx_inst (
-       .clk(clk_mii),
+       .clk(i_erx_clk),
        .rst(~rstn),
        .mii_select(1'b1),
        .clk_enable(1'b1),
@@ -335,7 +372,7 @@ always @(posedge clk_mii)
        .MIN_FRAME_LENGTH(64)
    )
    gmii_tx_inst (
-       .clk(clk_mii),
+       .clk(i_etx_clk),
        .rst(~rstn),
        .mii_select(1'b1),
        .clk_enable(1'b1),

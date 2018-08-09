@@ -58,7 +58,8 @@ module periph_soc #(UBAUD_DEFAULT=54)
 `ifdef KC705   
  output wire [3:0]  eth_txd,
  input wire [3:0]   eth_rxd,
- input wire         clk_mii,
+ input wire         i_erx_clk,
+ input wire         i_etx_clk,
  output wire        eth_txer,
 `else   
  output wire [1:0]  eth_txd,
@@ -585,7 +586,8 @@ sd_top sdtop(
 `ifdef KC705   
 framing_top_mii open
   (
-   .clk_mii(clk_mii),
+   .i_erx_clk(i_erx_clk),
+   .i_etx_clk(i_etx_clk),
    .o_etx_er(eth_txer),
 `else
 framing_top open
