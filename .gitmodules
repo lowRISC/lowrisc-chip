@@ -4,9 +4,6 @@
 [submodule "rocket-chip"]
 	path = rocket-chip
 	url = https://github.com/jrrk/rocket-chip
-[submodule "debian-riscv64"]
-	path = debian-riscv64
-	url = https://github.com/jrrk/debian-riscv64.git
 [submodule "qemu"]
 	path = qemu
 	url = https://git.qemu.org/git/qemu.git
