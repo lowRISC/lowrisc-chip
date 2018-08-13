@@ -10,3 +10,6 @@
 [submodule "riscv-linux"]
 	path = riscv-linux
 	url = https://github.com/lowRISC/riscv-linux.git
+[submodule "debian-riscv64"]
+	path = debian-riscv64
+	url = https://github.com/lowRISC/debian-riscv64.git
