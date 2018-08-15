@@ -4,6 +4,12 @@ pipeline {
     agent any
 
     stages {
+        stage('Clean') {
+            steps {
+                echo 'Clean..'
+                sh 'make -C jenkins Clean'
+            }
+        }
         stage('Checkout') {
             steps {
                 echo 'Checkout..'

@@ -10,3 +10,7 @@ Test:
 
 Deploy:
 	echo Deploy
+
+Clean:
+	echo Clean
+	rm -rf lowrisc-chip-refresh-v0.6
