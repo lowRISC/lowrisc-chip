@@ -4,34 +4,28 @@ pipeline {
     agent any
 
     stages {
-        stage('Clean') {
-            steps {
-                echo 'Clean..'
-                sh 'make -C jenkins Clean'
-            }
-        }
         stage('Checkout') {
             steps {
                 echo 'Checkout..'
-                sh 'make -C jenkins Checkout'
+                sh 'make -f jenkins/Makefile Checkout'
             }
         }
         stage('Build') {
             steps {
                 echo 'Building..'
-                sh 'make -C jenkins Build'
+                sh 'make -f jenkins/Makefile Build'
             }
         }
         stage('Test') {
             steps {
                 echo 'Testing..'
-                sh 'make -C jenkins Test'
+                sh 'make -f jenkins/Makefile Test'
             }
         }
         stage('Deploy') {
             steps {
                 echo 'Deploying....'
-                sh 'make -C jenkins Deploy'
+                sh 'make -f jenkins/Makefile Deploy'
             }
         }
     }
