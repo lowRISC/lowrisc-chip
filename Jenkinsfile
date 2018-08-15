@@ -1,3 +1,5 @@
+#!/usr/bin/env groovy
+
 pipeline {
     agent any
 
@@ -5,7 +7,12 @@ pipeline {
         stage('Checkout') {
             steps {
                 echo 'Checkout..'
-                git clone -b refresh-v0.6 --recursive https://github.com/lowrisc/lowrisc-chip.git lowrisc-chip-refresh-v0.6
+                def sout = new StringBuilder(), serr = new StringBuilder()
+                def proc = 'git clone -b refresh-v0.6 --recursive https://github.com/lowrisc/lowrisc-chip.git lowrisc-chip-refresh-v0.6'.execute()
+                proc.consumeProcessOutput(sout, serr)
+                proc.waitForOrKill(1000)
+                println "out> $sout err> $serr"
+                
             }
         }
         stage('Build') {
