@@ -18,8 +18,12 @@ pipeline {
         stage('Build') {
             steps {
                 echo 'Building..'
-                cd lowrisc-chip-refresh-v0.6/rocket-chip/riscv-tools/
-                bash ./build.sh
+                def sout = new StringBuilder(), serr = new StringBuilder()
+                def proc = 'cd lowrisc-chip-refresh-v0.6/rocket-chip/riscv-tools; bash ./build.sh'.execute()
+                proc.consumeProcessOutput(sout, serr)
+                proc.waitForOrKill(1000)
+                println "out> $sout err> $serr"
+                
                 
             }
         }
