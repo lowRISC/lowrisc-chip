@@ -1,4 +1,4 @@
-#!/usr/bin/env groovy
+// Perform various regression runs after a checkin
 
 pipeline {
     agent any
@@ -6,22 +6,26 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                sh 'git clone -b refresh-v0.6 --recursive https://github.com/lowrisc/lowrisc-chip.git lowrisc-chip-refresh-v0.6'                
+                echo 'Checkout..'
+                sh 'make -C jenkins Checkout'
             }
         }
         stage('Build') {
             steps {
                 echo 'Building..'
+                sh 'make -C jenkins Build'
             }
         }
         stage('Test') {
             steps {
                 echo 'Testing..'
+                sh 'make -C jenkins Test'
             }
         }
         stage('Deploy') {
             steps {
                 echo 'Deploying....'
+                sh 'make -C jenkins Deploy'
             }
         }
     }
