@@ -224,8 +224,8 @@ always @(posedge msoc_clk)
             if (newbuf != {~firstbuf[3], firstbuf[2:0]})
               begin
                  full <= 1'b0;
-                 nextbuf <= nextbuf + 1;            
-                 oldsync <= 1'b1;
+                 oldsync = (rx_fcs_reg_rev == 32'hc704dd7b);
+                 nextbuf <= nextbuf + oldsync;            
               end
             else
               full <= 1'b1;
