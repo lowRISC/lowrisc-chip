@@ -8,8 +8,7 @@ export JAVA_HOME=/usr/lib/jvm/java-8-oracle
 Checkout:
 	git submodule update --init --recursive
 
-Build:
-	cd rocket-chip/riscv-tools; bash ./build.sh
+Build: $(RISCV)/bin/spike
 	make -C fpga/board/nexys4_ddr bitstream
 
 Test:
@@ -17,3 +16,7 @@ Test:
 
 Deploy:
 	echo Deploy
+	rsync fpga/board/nexys4_ddr/lowrisc-chip-imp/lowrisc-chip-imp.runs/impl_1/chip_top.bit brexit:lowrisc-chip-refresh-v0.6/lowrisc-fpga/common/script
+
+$(RISCV)/bin/spike: rocket-chip/riscv-tools/build.sh
+	cd rocket-chip/riscv-tools; bash ./build.sh
