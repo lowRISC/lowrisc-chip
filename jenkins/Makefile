@@ -1,5 +1,5 @@
 #This should be customized per site
-export XILINXD_LICENSE_FILE=27020@lmserv-xilinx.cl.cam.ac.uk
+export XILINXD_LICENSE_FILE=/local/scratch/jenkins/Xilinx.lic
 export XILINX_PATH=/opt/Xilinx
 export XILINX_VER=2018.1
 export XILINX_VIVADO=$(XILINX_PATH)/Vivado/$(XILINX_VER)
