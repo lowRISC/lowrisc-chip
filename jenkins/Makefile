@@ -23,7 +23,7 @@ Test:
 
 Deploy:
 	echo Deploy
-	rsync fpga/board/$(FPGA_BOARD)/lowrisc-chip-imp/lowrisc-chip-imp.runs/impl_1/chip_top.bit brexit:(BRANCH)/lowrisc-fpga/common/script
+	rsync fpga/board/$(FPGA_BOARD)/lowrisc-chip-imp/lowrisc-chip-imp.runs/impl_1/chip_top.bit brexit:lowrisc-chip-$(BRANCH)/lowrisc-fpga/common/script
 
 Debug:
 	echo Debug
