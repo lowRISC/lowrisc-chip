@@ -18,5 +18,9 @@ Deploy:
 	echo Deploy
 	rsync fpga/board/nexys4_ddr/lowrisc-chip-imp/lowrisc-chip-imp.runs/impl_1/chip_top.bit brexit:lowrisc-chip-refresh-v0.6/lowrisc-fpga/common/script
 
+Debug:
+	echo Debug
+	bash -i
+
 $(RISCV)/bin/spike: rocket-chip/riscv-tools/build.sh
 	cd rocket-chip/riscv-tools; bash ./build.sh
