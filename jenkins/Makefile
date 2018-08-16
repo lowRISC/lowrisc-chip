@@ -1,10 +1,16 @@
+#This should be customized per site
+export XILINXD_LICENSE_FILE=27020@lmserv-xilinx.cl.cam.ac.uk
+export XILINX_PATH=/opt/Xilinx
+export XILINX_VER=2018.1
+export XILINX_VIVADO=$(XILINX_PATH)/Vivado/$(XILINX_VER)
+#This should be customised per branch
+export BRANCH=kc705_mii
+export FPGA_BOARD=kc705
+#This should be OK as is
 export TOP=$(PWD)
 export RISCV=$(TOP)/riscv
-export PATH=/opt/Xilinx/SDK/2018.1/bin:/opt/Xilinx/Vivado/2018.1/bin:/opt/Xilinx/DocNav:/usr/local/bin:/usr/bin:/bin:$(RISCV)/bin
-export FPGA_BOARD=kc705
-export XILINX_VIVADO=/opt/Xilinx/Vivado/2018.1
+export PATH=$(XILINX_PATH)/SDK/$(XILINX_VER)/bin:$(XILINX_VIVADO)/bin:$(XILINX_PATH)/DocNav:/usr/local/bin:/usr/bin:/bin:$(RISCV)/bin
 export JAVA_HOME=/usr/lib/jvm/java-8-oracle
-export BRANCH=kc705_mii
 
 Checkout:
 	git submodule update --init --recursive
