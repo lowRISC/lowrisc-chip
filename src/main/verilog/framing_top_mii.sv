@@ -5,35 +5,38 @@ module framing_top_mii
   (
   input wire          i_erx_clk,
   input wire          i_etx_clk,
-   
-  input wire          rstn, msoc_clk,
-  input wire [14:0]   core_lsu_addr,
-  input wire [63:0]   core_lsu_wdata,
-  input wire [7:0]    core_lsu_be,
-  input wire          ce_d,
-  input wire          we_d,
-  input wire          framing_sel,
+  input wire rstn, msoc_clk, clk_mii,
+  input wire [14:0] core_lsu_addr,
+  input wire [63:0] core_lsu_wdata,
+  input wire [7:0] core_lsu_be,
+  input wire       ce_d,
+  input wire   we_d,
+  input wire framing_sel,
   output logic [63:0] framing_rdata,
 
   //! Ethernet MAC PHY interface signals
-  output wire         o_erefclk , // MII clock out
-  input wire [3:0]    i_erxd ,
-  input wire          i_erx_dv ,
-  input wire          i_erx_er ,
-  output wire [3:0]   o_etxd ,
-  output wire         o_etx_en ,
-  output wire         o_etx_er ,
-  output wire         o_emdc ,
-  input wire          i_emdio ,
-  output reg          o_emdio ,
-  output reg          oe_emdio ,
-  output wire         o_erstn , 
+output wire   o_erefclk     , // MII clock out
+input wire [3:0] i_erxd    ,
+input wire  i_erx_dv       ,
+input wire  i_erx_er       ,
+output wire [3:0] o_etxd   ,
+output wire o_etx_en      ,
+output wire o_etx_er      ,
+output wire   o_emdc        ,
+input wire i_emdio ,
+output reg  o_emdio   ,
+output reg  oe_emdio   ,
+output wire   o_erstn    ,   
 
-  output reg          eth_irq
+output reg eth_irq
    );
 
+logic [3:0] etxd;
+logic etx_en, etx_wren, erx_wren;
+logic etx_er;
 logic [14:0] core_lsu_addr_dly;   
-
+logic [25:0] rdummy26, tdummy26;
+   
 logic tx_enable_i;
 logic [47:0] mac_address, rx_dest_mac;
 logic  [7:0] mii_rx_data_i;
@@ -71,7 +74,7 @@ reg        sync, irq_en, tx_busy, oldsync;
        /*
         * GMII interface
         */
-        reg [7:0]   gmii_rxd;
+        reg [3:0]   gmii_rxd;
         reg         gmii_rx_er;
         reg         gmii_rx_dv;
       /*
@@ -89,16 +92,55 @@ reg        sync, irq_en, tx_busy, oldsync;
    logic   [1:0] wea;
    logic         ena;
    logic         full;
+   logic         rx_empty, rx_almost_empty, rx_rd_en;
+   
+     FIFO18E1 #(
+                .ALMOST_EMPTY_OFFSET(13'h5),       // Sets the almost empty threshold
+                .ALMOST_FULL_OFFSET(13'h0080),     // Sets almost full threshold
+                .DATA_WIDTH(9),                    // Sets data width to 4-36
+                .DO_REG(1),                        // Enable output register (1-0) Must be 1 if EN_SYN = FALSE
+                .EN_SYN("FALSE"),                  // Specifies FIFO as dual-clock (FALSE) or Synchronous (TRUE)
+                .FIFO_MODE("FIFO18"),              // Sets mode to FIFO18 or FIFO18_36
+                .FIRST_WORD_FALL_THROUGH("FALSE"), // Sets the FIFO FWFT to FALSE, TRUE
+                .INIT(36'h000000000),              // Initial values on output port
+                .SIM_DEVICE("7SERIES"),            // Must be set to "7SERIES" for simulation behavior
+                .SRVAL(36'h000000000)              // Set/Reset value for output port
+                )
+      rx_fifo (
+                        // Read Data: 32-bit (each) output: Read output data
+                        .DO({rdummy26,gmii_rx_er,gmii_rx_dv,gmii_rxd}), // 32-bit output: Data output
+                        // Status: 1-bit (each) output: Flags and other FIFO status outputs
+                        .ALMOSTEMPTY(rx_almost_empty),// 1-bit output: Almost empty flag
+                        .EMPTY(rx_empty),          // 1-bit output: Empty flag
+                        // Read Control Signals: 1-bit (each) input: Read clock, enable and reset input signals
+                        .RDCLK(clk_mii),           // 1-bit input: Read clock
+                        .RDEN(rx_rd_en),           // 1-bit input: Read enable
+                        .REGCE(1'b1),              // 1-bit input: Clock enable
+                        .RST(!rstn),               // 1-bit input: Asynchronous Reset
+                        .RSTREG(1'b0),             // 1-bit input: Output register set/reset
+                        // Write Control Signals: 1-bit (each) input: Write clock and enable input signals
+                        .WRCLK(i_erx_clk),         // 1-bit input: Write clock
+                        .WREN(erx_wren),           // 1-bit input: Write enable
+                        // Write Data: 32-bit (each) input: Write input data
+                        .DI(loopback ? {26'b0,o_etx_er,o_etx_en,o_etxd} : {26'b0,i_erx_er,i_erx_dv,i_erxd}),                   // 32-bit input: Data input
+                        .DIP(4'b0)                 // 4-bit input: Parity input
+                        );
 
-   always @(posedge i_erx_clk)
+   always @(posedge clk_mii)
      if (rstn == 1'b0)
        begin
-	  {gmii_rx_er,gmii_rx_dv,gmii_rxd} <= 10'b0;
           ena <= 1'b0;
+          wea <= 2'b00;
+          dina <= 'b0;
+          addra <= 'b0;
+          rx_rd_en <= 1'b0;
        end
      else
        begin
-	  {gmii_rx_er,gmii_rx_dv,gmii_rxd} <= loopback ? {1'b0,o_etx_en,o_etxd,o_etxd} : {i_erx_er,i_erx_dv,i_erxd,i_erxd};
+          if (rx_empty)
+              rx_rd_en <= 1'b0;
+          else if (!rx_almost_empty)
+              rx_rd_en <= 1'b1;
           if (rx_axis_tvalid)
             begin
                addra <= {nextbuf[2:0],rx_addr_axis[10:3],rx_addr_axis[1:0]};
@@ -130,7 +172,7 @@ reg        sync, irq_en, tx_busy, oldsync;
                                     );
 
     dualmem_widen RAMB16_inst_tx (
-                                   .clka(~i_erx_clk),            // Port A Clock
+                                   .clka(~clk_mii),             // Port A Clock
                                    .clkb(msoc_clk),              // Port A Clock
                                    .douta(douta),                // Port A 8-bit Data Output
                                    .addra({1'b0,tx_frame_addr[10:3],tx_frame_addr[1:0]}),  // Port A 11-bit Address Input
@@ -146,13 +188,13 @@ reg        sync, irq_en, tx_busy, oldsync;
                                    );
 
 assign o_emdc = o_emdclk;
-assign o_erefclk = i_etx_clk;
+assign o_erefclk = clk_mii;
 
 logic [31:0] rx_clk_cnt, tx_clk_cnt,
              rx_clk_div, tx_clk_div,
              rx_clk_prev, tx_clk_prev,
              rx_clk_frq, tx_clk_frq;
-   
+
 always @(posedge msoc_clk)
   if (!rstn)
     begin
@@ -179,8 +221,12 @@ always @(posedge msoc_clk)
     tx_busy <= 1'b0;
     avail = 1'b0;         
     full <= 1'b0;
-    rx_clk_cnt = 0;
-    tx_clk_cnt = 0;       
+    rx_clk_cnt <= 0;
+    tx_clk_cnt <= 0;       
+    rx_clk_frq <= 0;
+    tx_clk_frq <= 0;       
+    rx_clk_prev <= 0;
+    tx_clk_prev <= 0;       
     end
   else
     begin
@@ -188,13 +234,13 @@ always @(posedge msoc_clk)
     tx_clk_cnt = tx_clk_cnt + 1;
     if (rx_clk_cnt == 5000000)
       begin
-         rx_clk_cnt <= 0;
+         rx_clk_cnt = 0;
          rx_clk_frq <= rx_clk_div - rx_clk_prev;
          rx_clk_prev <= rx_clk_div;
       end
     if (tx_clk_cnt == 5000000)
       begin
-         tx_clk_cnt <= 0;
+         tx_clk_cnt = 0;
          tx_clk_frq <= tx_clk_div - tx_clk_prev;
          tx_clk_prev <= tx_clk_div;
       end
@@ -224,8 +270,8 @@ always @(posedge msoc_clk)
             if (newbuf != {~firstbuf[3], firstbuf[2:0]})
               begin
                  full <= 1'b0;
-                 oldsync = (rx_fcs_reg_rev == 32'hc704dd7b);
-                 nextbuf <= nextbuf + oldsync;            
+                 nextbuf <= nextbuf + 1;            
+                 oldsync <= 1'b1;
               end
             else
               full <= 1'b1;
@@ -235,7 +281,7 @@ always @(posedge msoc_clk)
          begin
          oldsync <= 1'b0;
          end
-       if (o_etx_en && tx_axis_tlast)
+       if (etx_en && tx_axis_tlast)
          begin
             tx_enable_dly <= 0;
          end
@@ -245,22 +291,24 @@ always @(posedge msoc_clk)
             if (1'b0 == &tx_enable_dly)
               tx_enable_dly <= tx_enable_dly + 1'b1;
          end
-       else if (~o_etx_en)
+       else if (~etx_en)
          tx_busy <= tx_enable_i;         
     end
 
-always @(posedge i_etx_clk)
+always @(posedge clk_mii)
   if (!rstn)
     begin
-    tx_enable_i <= 1'b0;
+       etx_wren <= 1'b0;
+       tx_enable_i <= 1'b0;
     end
   else
     begin
-    if (o_etx_en && tx_axis_tlast)
-       begin
-       tx_enable_i <= 1'b0;
-       end
-    else if (1'b1 == &tx_enable_dly)
+       etx_wren <= etx_en | tx_busy;
+       if (etx_en && tx_axis_tlast)
+         begin
+            tx_enable_i <= 1'b0;
+         end
+       else if (1'b1 == &tx_enable_dly)
          tx_enable_i <= 1'b1;
     end
 
@@ -301,18 +349,18 @@ always @(posedge i_etx_clk)
                                           rx_fcs_reg[24],rx_fcs_reg[25],rx_fcs_reg[26],rx_fcs_reg[27],
                                           rx_fcs_reg[28],rx_fcs_reg[29],rx_fcs_reg[30],rx_fcs_reg[31]};
    
-   always @(posedge i_etx_clk)
+   always @(posedge clk_mii)
      if (~rstn)
        begin
+          rx_addr_axis <= 'b0;
           tx_axis_tvalid <= 'b0;
 	  tx_axis_tvalid_dly <= 'b0;
 	  tx_frame_addr <= 'b0;
 	  tx_axis_tlast <= 'b0;
-          tx_clk_div <= 'b0;
+          rx_dest_mac <= 'b0;
        end
      else
        begin
-          tx_clk_div <= tx_clk_div + 1;
 	  tx_axis_tvalid_dly <= tx_axis_tvalid;
 	  tx_axis_tvalid <= tx_enable_i;
 	  if (tx_axis_tready)
@@ -324,18 +372,6 @@ always @(posedge i_etx_clk)
 	    begin
 	       tx_frame_addr <= 'b0;
 	    end
-       end
-          
-   always @(posedge i_erx_clk)
-     if (~rstn)
-       begin
-          rx_addr_axis <= 'b0;
-          rx_dest_mac <= 'b0;
-          rx_clk_div <= 0;
-       end
-     else
-       begin
-          rx_clk_div <= rx_clk_div + 1;
 	  if (rx_axis_tvalid)
             begin
             rx_addr_axis <= rx_addr_axis + 1;
@@ -349,13 +385,74 @@ always @(posedge i_etx_clk)
                rx_dest_mac <= 'b0;
             end
       end
- 
+
+   always @(posedge i_erx_clk)
+     if (~rstn)
+       begin
+          rx_clk_div <= 0;
+          erx_wren <= 1'b0;
+       end
+     else
+       begin
+          rx_clk_div <= rx_clk_div + 1;
+          erx_wren <= loopback ? o_etx_en : i_erx_dv;
+       end
+
+   logic         tx_empty, tx_almost_empty, tx_rd_en;
+   
+     FIFO18E1 #(
+                .ALMOST_EMPTY_OFFSET(13'h5),       // Sets the almost empty threshold
+                .ALMOST_FULL_OFFSET(13'h0080),     // Sets almost full threshold
+                .DATA_WIDTH(9),                    // Sets data width to 4-36
+                .DO_REG(1),                        // Enable output register (1-0) Must be 1 if EN_SYN = FALSE
+                .EN_SYN("FALSE"),                  // Specifies FIFO as dual-clock (FALSE) or Synchronous (TRUE)
+                .FIFO_MODE("FIFO18"),              // Sets mode to FIFO18 or FIFO18_36
+                .FIRST_WORD_FALL_THROUGH("FALSE"), // Sets the FIFO FWFT to FALSE, TRUE
+                .INIT(36'h000000000),              // Initial values on output port
+                .SIM_DEVICE("7SERIES"),            // Must be set to "7SERIES" for simulation behavior
+                .SRVAL(36'h000000000)              // Set/Reset value for output port
+                )
+      tx_fifo (
+                        // Read Data: 32-bit (each) output: Read output data
+                        .DO({tdummy26,o_etx_er,o_etx_en,o_etxd}), // 32-bit output: Data output
+                        // Status: 1-bit (each) output: Flags and other FIFO status outputs
+                        .ALMOSTEMPTY(tx_almost_empty),// 1-bit output: Almost empty flag
+                        .EMPTY(tx_empty),          // 1-bit output: Empty flag
+                        // Read Control Signals: 1-bit (each) input: Read clock, enable and reset input signals
+                        .RDCLK(i_etx_clk),           // 1-bit input: Read clock
+                        .RDEN(tx_rd_en),           // 1-bit input: Read enable
+                        .REGCE(1'b1),              // 1-bit input: Clock enable
+                        .RST(!rstn),               // 1-bit input: Asynchronous Reset
+                        .RSTREG(1'b0),             // 1-bit input: Output register set/reset
+                        // Write Control Signals: 1-bit (each) input: Write clock and enable input signals
+                        .WRCLK(clk_mii),         // 1-bit input: Write clock
+                        .WREN(etx_wren),           // 1-bit input: Write enable
+                        // Write Data: 32-bit (each) input: Write input data
+                        .DI({26'b0,etx_er,etx_en,etxd}),                   // 32-bit input: Data input
+                        .DIP(4'b0)                 // 4-bit input: Parity input
+                        );
+   
+   always @(posedge i_etx_clk)
+     if (~rstn)
+       begin
+          tx_clk_div <= 'b0;
+          tx_rd_en <= 1'b0;
+       end
+     else
+       begin
+          if (tx_empty)
+            tx_rd_en <= 1'b0;
+          else if (!tx_almost_empty)
+            tx_rd_en <= 1'b1;            
+          tx_clk_div <= tx_clk_div + 1;
+       end
+
    axis_gmii_rx gmii_rx_inst (
-       .clk(i_erx_clk),
+       .clk(clk_mii),
        .rst(~rstn),
        .mii_select(1'b1),
        .clk_enable(1'b1),
-       .gmii_rxd(gmii_rxd),
+       .gmii_rxd({4'b0,gmii_rxd}),
        .gmii_rx_dv(gmii_rx_dv),
        .gmii_rx_er(gmii_rx_er),
        .output_axis_tdata(rx_axis_tdata),
@@ -372,7 +469,7 @@ always @(posedge i_etx_clk)
        .MIN_FRAME_LENGTH(64)
    )
    gmii_tx_inst (
-       .clk(i_etx_clk),
+       .clk(clk_mii),
        .rst(~rstn),
        .mii_select(1'b1),
        .clk_enable(1'b1),
@@ -381,9 +478,9 @@ always @(posedge i_etx_clk)
        .input_axis_tready(tx_axis_tready),
        .input_axis_tlast(tx_axis_tlast),
        .input_axis_tuser(tx_axis_tuser),
-       .gmii_txd({tx_padding,o_etxd}),
-       .gmii_tx_en(o_etx_en),
-       .gmii_tx_er(o_etx_er),
+       .gmii_txd({tx_padding,etxd}),
+       .gmii_tx_en(etx_en),
+       .gmii_tx_er(etx_er),
        .ifg_delay(8'd12),
        .fcs_reg(tx_fcs_reg)
    );

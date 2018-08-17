@@ -170,7 +170,7 @@ module chip_top
  output reg         o_etx_en, // RMII transmit enable
 `ifdef KC705   
  input wire [3:0]   i_erxd, // RMII receive data
- output reg [3:0]   o_etxd, // RMII transmit data
+ output reg [7:0]   o_etxd, // RMII transmit data
  output reg         o_etx_er, // RMII transmit enable
  input wire         i_gmiiclk_p,
  input wire         i_gmiiclk_n,
@@ -889,6 +889,7 @@ assign clk = mig_ui_clk;
 `ifdef KC705   
       .i_erx_clk  ( i_erx_clk       ),
       .i_etx_clk  ( i_etx_clk       ),
+      .clk_mii    ( clk_mii         ), // 25 MHz MII
 `else
       .clk_rmii   ( clk_rmii        ),
 `endif

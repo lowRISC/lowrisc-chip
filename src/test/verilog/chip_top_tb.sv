@@ -29,18 +29,30 @@ module tb;
 
    initial begin
       rst = 1;
-      #130;
+      #10000;
       rst = 0;
    end
 
-   initial begin
-      clk = 0;
   `ifdef KC705
-      forever clk = #2.5 !clk;
+   logic i_erx_clk, i_etx_clk;
+   initial
+     begin
+        clk = 0;
+        i_erx_clk = 0;
+        i_etx_clk = 0;
+     end
+   
+   always clk = #2.5 !clk;
+   always i_erx_clk = #20.001 !i_erx_clk;
+   always i_etx_clk = #19.999 !i_etx_clk;
+
   `else
-      forever clk = #5 !clk;
+   initial
+     begin
+        clk = 0;
+        forever clk = #5 !clk;
+     end // initial begin
   `endif
-   end // initial begin
 
 `ifdef ADD_PHY_DDR
  `ifdef KC705
@@ -344,7 +356,7 @@ sd_verilator_model sdflash1 (
   wire         o_erefclk; // RMII clock out
 `ifdef KC705   
   wire [3:0]   i_erxd ;
-  wire [3:0]   o_etxd ;
+  wire [7:0]   o_etxd ;
 `else   
   wire [1:0]   i_erxd ;
   wire [1:0]   o_etxd ;
@@ -357,8 +369,8 @@ sd_verilator_model sdflash1 (
   wire         o_emdc ;
   wire         io_emdio ;
   wire         o_erstn ;
-  wire        i_gmiiclk_p, i_gmiiclk_n;
-   
+  wire         i_gmiiclk_p, i_gmiiclk_n;
+               
    assign i_emdint = 1'b1;
    assign i_erx_dv = o_etx_en;
    assign i_erxd = o_etxd;

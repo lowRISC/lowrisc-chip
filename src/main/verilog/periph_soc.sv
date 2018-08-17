@@ -60,6 +60,7 @@ module periph_soc #(UBAUD_DEFAULT=54)
  input wire [3:0]   eth_rxd,
  input wire         i_erx_clk,
  input wire         i_etx_clk,
+ input wire         clk_mii,
  output wire        eth_txer,
 `else   
  output wire [1:0]  eth_txd,
@@ -588,6 +589,7 @@ framing_top_mii open
   (
    .i_erx_clk(i_erx_clk),
    .i_etx_clk(i_etx_clk),
+   .clk_mii(clk_mii),
    .o_etx_er(eth_txer),
 `else
 framing_top open
