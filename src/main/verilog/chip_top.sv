@@ -2,6 +2,7 @@
 
 `include "consts.vh"
 `include "config.vh"
+`include "defs.vh"
 
 // Allow ISA regression test to use proper FPGA configuration
 `ifdef ADD_HOST
@@ -111,10 +112,8 @@ module chip_top
  `endif
 `endif //  `ifdef ADD_DDR_IO
 
-`ifdef ADD_FLASH
    inout wire         flash_ss,
    inout wire [3:0]   flash_io,
-`endif
 
 `ifdef ADD_SPI
    inout wire         spi_cs,
@@ -598,102 +597,6 @@ reg phy_emdio_i, io_emdio_o, io_emdio_t;
    initial $readmemh("boot.mem", ram);
 
 `endif //  `ifdef ADD_BRAM
-
-   /////////////////////////////////////////////////////////////
-   // XIP SPI Flash
-
-`ifdef ADD_FLASH
-
-   wire       flash_ss_i,  flash_ss_o,  flash_ss_t;
-   wire [3:0] flash_io_i,  flash_io_o,  flash_io_t;
-
-   axi_quad_spi_1 flash_i
-     (
-      .ext_spi_clk      ( clk                           ),
-      .s_axi_aclk       ( clk                           ),
-      .s_axi_aresetn    ( rstn                          ),
-      .s_axi4_aclk      ( clk                           ),
-      .s_axi4_aresetn   ( rstn                          ),
-      .s_axi_araddr     ( 7'b0                          ),
-      .s_axi_arready    (                               ),
-      .s_axi_arvalid    ( 1'b0                          ),
-      .s_axi_awaddr     ( 7'b0                          ),
-      .s_axi_awready    (                               ),
-      .s_axi_awvalid    ( 1'b0                          ),
-      .s_axi_bready     ( 1'b0                          ),
-      .s_axi_bresp      (                               ),
-      .s_axi_bvalid     (                               ),
-      .s_axi_rdata      (                               ),
-      .s_axi_rready     ( 1'b0                          ),
-      .s_axi_rresp      (                               ),
-      .s_axi_rvalid     (                               ),
-      .s_axi_wdata      ( 0                             ),
-      .s_axi_wready     (                               ),
-      .s_axi_wstrb      ( 4'b0                          ),
-      .s_axi_wvalid     ( 1'b0                          ),
-      .s_axi4_awid      ( local_flash_nasti.aw_id       ),
-      .s_axi4_awaddr    ( local_flash_nasti.aw_addr     ),
-      .s_axi4_awlen     ( local_flash_nasti.aw_len      ),
-      .s_axi4_awsize    ( local_flash_nasti.aw_size     ),
-      .s_axi4_awburst   ( local_flash_nasti.aw_burst    ),
-      .s_axi4_awlock    ( local_flash_nasti.aw_lock     ),
-      .s_axi4_awcache   ( local_flash_nasti.aw_cache    ),
-      .s_axi4_awprot    ( local_flash_nasti.aw_prot     ),
-      .s_axi4_awvalid   ( local_flash_nasti.aw_valid    ),
-      .s_axi4_awready   ( local_flash_nasti.aw_ready    ),
-      .s_axi4_wdata     ( local_flash_nasti.w_data      ),
-      .s_axi4_wstrb     ( local_flash_nasti.w_strb      ),
-      .s_axi4_wlast     ( local_flash_nasti.w_last      ),
-      .s_axi4_wvalid    ( local_flash_nasti.w_valid     ),
-      .s_axi4_wready    ( local_flash_nasti.w_ready     ),
-      .s_axi4_bid       ( local_flash_nasti.b_id        ),
-      .s_axi4_bresp     ( local_flash_nasti.b_resp      ),
-      .s_axi4_bvalid    ( local_flash_nasti.b_valid     ),
-      .s_axi4_bready    ( local_flash_nasti.b_ready     ),
-      .s_axi4_arid      ( local_flash_nasti.ar_id       ),
-      .s_axi4_araddr    ( local_flash_nasti.ar_addr     ),
-      .s_axi4_arlen     ( local_flash_nasti.ar_len      ),
-      .s_axi4_arsize    ( local_flash_nasti.ar_size     ),
-      .s_axi4_arburst   ( local_flash_nasti.ar_burst    ),
-      .s_axi4_arlock    ( local_flash_nasti.ar_lock     ),
-      .s_axi4_arcache   ( local_flash_nasti.ar_cache    ),
-      .s_axi4_arprot    ( local_flash_nasti.ar_prot     ),
-      .s_axi4_arvalid   ( local_flash_nasti.ar_valid    ),
-      .s_axi4_arready   ( local_flash_nasti.ar_ready    ),
-      .s_axi4_rid       ( local_flash_nasti.r_id        ),
-      .s_axi4_rdata     ( local_flash_nasti.r_data      ),
-      .s_axi4_rresp     ( local_flash_nasti.r_resp      ),
-      .s_axi4_rlast     ( local_flash_nasti.r_last      ),
-      .s_axi4_rvalid    ( local_flash_nasti.r_valid     ),
-      .s_axi4_rready    ( local_flash_nasti.r_ready     ),
-      .io0_i            ( flash_io_i[0]                 ),
-      .io0_o            ( flash_io_o[0]                 ),
-      .io0_t            ( flash_io_t[0]                 ),
-      .io1_i            ( flash_io_i[1]                 ),
-      .io1_o            ( flash_io_o[1]                 ),
-      .io1_t            ( flash_io_t[1]                 ),
-      .io2_i            ( flash_io_i[2]                 ),
-      .io2_o            ( flash_io_o[2]                 ),
-      .io2_t            ( flash_io_t[2]                 ),
-      .io3_i            ( flash_io_i[3]                 ),
-      .io3_o            ( flash_io_o[3]                 ),
-      .io3_t            ( flash_io_t[3]                 ),
-      .ss_i             ( flash_ss_i                    ),
-      .ss_o             ( flash_ss_o                    ),
-      .ss_t             ( flash_ss_t                    )
-      );
-
-   // tri-state gates
-   generate for(i=0; i<4; i++) begin
-      assign flash_io[i] = !flash_io_t[i] ? flash_io_o[i] : 1'bz;
-      assign flash_io_i[i] = flash_io[i];
-   end
-   endgenerate
-
-   assign flash_ss = !flash_ss_t ? flash_ss_o : 1'bz;
-   assign flash_ss_i = flash_ss;
-
-`endif //  `ifdef ADD_FLASH
 
    assign spi_irq = 1'b0;
 

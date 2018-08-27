@@ -71,7 +71,9 @@ module periph_soc #(UBAUD_DEFAULT=54)
  output wire [7:0]  ram_we,
  output wire [15:0] ram_addr,
  output wire [63:0] ram_wrdata,
- input  wire [63:0] ram_rddata
+ input  wire [63:0] ram_rddata,
+ inout wire [3:0]   flash_io,
+ inout wire         flash_ss
  );
  
  wire [19:0] dummy;
@@ -609,6 +611,68 @@ framing_top open
    assign ram_en = hid_en&(one_hot_data_addr[1]|one_hot_data_addr[0]);
    assign ram_clk = msoc_clk;
    assign ram_rst = ~rstn;
+    wire clk_to_mem, clk;
+    wire EOS;
+    wire [63:0] readout;
+    wire busy;
+    wire error;
+    reg trigger;
+    reg quad;
+    reg [7:0] cmd;
+    reg [(3+256)*8-1:0] data_send;
+    
+    STARTUPE2 #(
+       .PROG_USR("FALSE"),  // Activate program event security feature. Requires encrypted bitstreams.
+       .SIM_CCLK_FREQ(10.0)  // Set the Configuration Clock Frequency(ns) for simulation.
+    )
+    STARTUPE2_inst (
+        .CFGCLK(),              // 1-bit output: Configuration main clock output
+        .CFGMCLK(),             // 1-bit output: Configuration internal oscillator clock output
+        .EOS(EOS),              // 1-bit output: Active high output signal indicating the End Of Startup.
+        .PREQ(),                // 1-bit output: PROGRAM request to fabric output
+        .CLK(1'b0),             // 1-bit input: User start-up clock input
+        .GSR(1'b0),             // 1-bit input: Global Set/Reset input (GSR cannot be used for the port name)
+        .GTS(1'b0),             // 1-bit input: Global 3-state input (GTS cannot be used for the port name)
+        .KEYCLEARB(1'b0),       // 1-bit input: Clear AES Decrypter Key input from Battery-Backed RAM (BBRAM)
+        .PACK(1'b0),            // 1-bit input: PROGRAM acknowledge input
+        .USRCCLKO(!clk),        // 1-bit input: User CCLK input
+        .USRCCLKTS(1'b0),       // 1-bit input: User CCLK 3-state enable input
+        .USRDONEO(1'b1),        // 1-bit input: User DONE pin output control
+        .USRDONETS(1'b1)        // 1-bit input: User DONE 3-state enable output
+    );
+ 
+        qspi_mem_controller mc(
+        .clk(msoc_clk), 
+        .reset(~rstn),
+        .S(flash_ss), 
+        .DQio(flash_io),
+        .trigger(trigger),
+        .quad(quad),
+        .cmd(cmd),
+        .data_send(data_send),
+        .readout(readout),
+        .busy(busy),
+        .error(error));
+
+   assign one_hot_rdata[5] = hid_addr[3] ? {error,busy} : readout;
    
-endmodule // chip_top
+always @(posedge msoc_clk)
+    if (~rstn)
+    begin
+            trigger <= 0;
+            quad <= 0;
+    end
+  else
+    begin
+    trigger <= 0;
+    if (hid_en & (|hid_we) & one_hot_data_addr[5])
+        casez (hid_addr[4:3])
+         2'b00: begin trigger <= 1'b1; end
+         2'b01: begin cmd <= hid_wrdata[7:0]; end
+         2'b10: begin data_send <= {data_send[(3+256)*8-65:0],hid_wrdata}; end
+         2'b11: begin quad <= hid_wrdata[0]; end
+        endcase
+    end
+   
+endmodule
 `default_nettype wire
