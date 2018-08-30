@@ -17,18 +17,19 @@
 
 
 module qspi_mem_controller(
-        input clk,
-        input reset,
-        input trigger,
-        input quad,
-        input [7:0] cmd,
+        input 		      clk,
+        input 		      reset,
+        input 		      trigger,
+        input 		      quad,
+        input [7:0] 	      cmd,
         input [(3+256)*8-1:0] data_send, //max: 256B page data + 3B address
-        output reg [63:0] readout,
-        output reg busy,
-        output reg error,
+        output reg [63:0]     readout,
+        output reg 	      busy,
+        output reg 	      error,
 
-        inout [3:0] DQio,
-        output S
+	output                clk_div,
+        inout [3:0] 	      DQio,
+        output 		      S
     );
     
     reg spi_trigger;
@@ -43,7 +44,7 @@ module qspi_mem_controller(
     
     spi_cmd sc(.clk(clk), .reset(reset), .trigger(spi_trigger), .busy(spi_busy), .quad(quad),
         .data_in_count(data_in_count), .data_out_count(data_out_count), .data_in(data_in), .data_out(data_out),
-        .DQio(DQio[3:0]), .S(S));
+        .DQio(DQio[3:0]), .S(S), .clk_div(clk_div));
     
     
     reg [5:0] state;

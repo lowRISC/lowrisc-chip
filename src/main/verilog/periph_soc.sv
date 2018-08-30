@@ -612,15 +612,18 @@ framing_top open
    assign ram_clk = msoc_clk;
    assign ram_rst = ~rstn;
     wire clk_to_mem, clk;
-    wire EOS;
+    wire EOS, PREQ;
     wire [63:0] readout;
     wire busy;
     wire error;
+    wire clk_div;
     reg trigger;
     reg quad;
     reg [7:0] cmd;
     reg [(3+256)*8-1:0] data_send;
-    
+
+`ifdef NEXYS4_COMMON
+   
     STARTUPE2 #(
        .PROG_USR("FALSE"),  // Activate program event security feature. Requires encrypted bitstreams.
        .SIM_CCLK_FREQ(10.0)  // Set the Configuration Clock Frequency(ns) for simulation.
@@ -629,21 +632,24 @@ framing_top open
         .CFGCLK(),              // 1-bit output: Configuration main clock output
         .CFGMCLK(),             // 1-bit output: Configuration internal oscillator clock output
         .EOS(EOS),              // 1-bit output: Active high output signal indicating the End Of Startup.
-        .PREQ(),                // 1-bit output: PROGRAM request to fabric output
+        .PREQ(PREQ),            // 1-bit output: PROGRAM request to fabric output
         .CLK(1'b0),             // 1-bit input: User start-up clock input
         .GSR(1'b0),             // 1-bit input: Global Set/Reset input (GSR cannot be used for the port name)
         .GTS(1'b0),             // 1-bit input: Global 3-state input (GTS cannot be used for the port name)
-        .KEYCLEARB(1'b0),       // 1-bit input: Clear AES Decrypter Key input from Battery-Backed RAM (BBRAM)
-        .PACK(1'b0),            // 1-bit input: PROGRAM acknowledge input
-        .USRCCLKO(!clk),        // 1-bit input: User CCLK input
+        .KEYCLEARB(1'b1),       // 1-bit input: Clear AES Decrypter Key input from Battery-Backed RAM (BBRAM)
+        .PACK(PREQ),            // 1-bit input: PROGRAM acknowledge input
+        .USRCCLKO(!clk_div),    // 1-bit input: User CCLK input
         .USRCCLKTS(1'b0),       // 1-bit input: User CCLK 3-state enable input
         .USRDONEO(1'b1),        // 1-bit input: User DONE pin output control
-        .USRDONETS(1'b1)        // 1-bit input: User DONE 3-state enable output
+        .USRDONETS(1'b0)        // 1-bit input: User DONE 3-state enable output
     );
+
+`endif
  
         qspi_mem_controller mc(
         .clk(msoc_clk), 
         .reset(~rstn),
+        .clk_div(clk_div), 
         .S(flash_ss), 
         .DQio(flash_io),
         .trigger(trigger),

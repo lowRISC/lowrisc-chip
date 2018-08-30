@@ -18,18 +18,20 @@ module spi_cmd(
         input quad,
         
         //SPI interface
+        output reg clk_div, 
         inout [3:0] DQio,
         output reg S 
     );
   
-    wire [3:0] DQi;
+   wire [3:0] 	   DQi;
   
-    wire [2:0] width = quad?4:1;
+   wire [2:0] 	   width = quad?4:1;
     
-    reg [11:0] bit_cntr;
+   reg [11:0] 	   bit_cntr;
 
-    reg [3:0] DQ = 4'b1111;
-    reg oe;
+   reg [3:0] 	   DQ;
+   reg 		   oe;
+   reg [1:0] 	   state;        
     
     genvar n;
     generate for (n = 0; n < 4; n=n+1)
@@ -41,14 +43,12 @@ module spi_cmd(
      ) IOBUF_inst (
         .O(DQi[n]),     // Buffer output
         .IO(DQio[n]),   // Buffer inout port (connect directly to top-level port)
-        .I(n==3 && !quad ? 1'b1 :DQ[n]),     // Buffer input
+        .I(n==3 && !quad ? 1'b1 : DQ[n]),     // Buffer input
         .T(n==3 && !quad ? 1'b0 : !oe)      // 3-state enable input, high=input, low=output
      );
     endgenerate
     
     //during single IO operation, but in quad mode behaves as other IOs
-    
-    reg [1:0] state;    
     
      always @(posedge clk) begin
         if(reset) begin
@@ -56,9 +56,22 @@ module spi_cmd(
             oe <= 0;
             S <= 1;
             busy <= 1;
+            clk_div <= 0;
+            data_out <= 0;
+	    DQ = 4'b1111;
         end else begin
-            
-            case(state)
+            clk_div <= !clk_div;
+	    if (clk_div)
+	      begin
+		 if(state==`STATE_READ) begin
+                    if(quad)
+                      data_out <= {data_out[3:0], DQi[3:0]};
+                    else
+                      data_out <= {data_out[6:0], DQi[1]};
+		 end
+	      end
+	    else
+              case(state)
                 `STATE_IDLE: begin
                     if(trigger && !busy) begin
                         state<=`STATE_SEND;
@@ -67,6 +80,7 @@ module spi_cmd(
                      end else begin
                         S <= 1;
                         busy <= 0;
+                        clk_div <= 0;
                      end
                  end
 
@@ -109,21 +123,8 @@ module spi_cmd(
                 default: begin
               
                 end
-            endcase
+              endcase
         end
     end 
-   
-    always @(negedge clk) begin
-        if(reset)
-            data_out <= 0;
-        else
-            if(state==`STATE_READ) begin
-                if(quad)
-                    data_out <= {data_out[3:0], DQi[3:0]};
-                else
-                    data_out <= {data_out[6:0], DQi[1]};
-            end
-    end
-
-    
+       
 endmodule
