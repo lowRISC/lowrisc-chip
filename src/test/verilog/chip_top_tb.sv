@@ -172,7 +172,6 @@ module tb;
  `endif // !`elsif NEXYS4
 `endif //  `ifdef ADD_PHY_DDR
 
-`ifdef ADD_HID
    wire         rxd;
    wire         txd;
    wire         rts;
@@ -208,30 +207,11 @@ uart i_uart(
     .recv_ack(received)
     );
 
-`endif
-
-`ifdef ADD_FLASH
    wire         flash_ss;
    wire [3:0]   flash_io;
 
    assign flash_ss = 'bz;
    assign flash_io = 'bzzzz;
-`endif
-
-`ifdef ADD_SPI
-   wire         spi_cs;
-   wire         spi_sclk;
-   wire         spi_mosi;
-   wire         spi_miso;
-   wire         sd_reset;
-
-   assign spi_cs = 'bz;
-   assign spi_sclk = 'bz;
-   assign spi_mosi = 'bz;
-   assign spi_miso = 'bz;
-`endif //  `ifdef ADD_SPI
-
-`ifdef ADD_HID
 
    // 4-bit full SD interface
    wire         sd_sclk;
@@ -285,8 +265,6 @@ sd_verilator_model sdflash1 (
    wire [3:0]  VGA_BLUE_O;
    wire [3:0]  VGA_GREEN_O;
 
-`endif //  `ifdef FPGA
-
 `ifndef VERILATOR
    // handle all run-time arguments
    string     memfile = "";
@@ -327,18 +305,6 @@ sd_verilator_model sdflash1 (
    end
 `endif
 
-`ifdef ADD_HOST
-   int rv;
-   always @(posedge clk) begin
-      rv = DUT.host.check_exit();
-      if(rv > 0)
-        $fatal(rv);
-      else if(rv == 0)
-        $finish();
-   end
-`endif
-
-`ifdef ADD_HID
   wire         o_erefclk; // RMII clock out
   wire [1:0]   i_erxd ;
   wire         i_erx_dv ;
@@ -354,7 +320,6 @@ sd_verilator_model sdflash1 (
    assign i_erx_dv = o_etx_en;
    assign i_erxd = o_etxd;
    assign i_erx_er = 1'b0;
-`endif //  `ifdef ADD_HID
 
    initial
      begin

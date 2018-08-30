@@ -19,29 +19,6 @@ module nasti_ram_sim
   reg [7:0] mem[32'h0:32'h1000000];
 
   // Read input arguments and initialize
-
-  initial
-    begin
-    // JRRK hacks
-        $readmemh("cnvmem.mem", mem);
-        for (i = base; (i < base+32'h1000000) && (1'bx === ^mem[i-base]); i=i+8)
-          ;
-        first = i;
-        for (i = base+32'h1000000; (i >= base) && (1'bx === ^mem[i-base]); i=i-8)
-          ;
-        last = (i+16);
-        for (i = i+1; i < last; i=i+1)
-          mem[i-base] = 0;
-        $display("First = %X, Last = %X", first, last-1);
-        for (i = first; i < last; i=i+1)
-          if (1'bx === ^mem[i-base]) mem[i-base] = 0;
-        #1
-        for (i = first-base; i < last-base; i=i+8)
-          begin
-             SimAXIMem.AXI4RAM.mem.mem_ext.ram[(i+base-32'h80000000)/8] =
-                 {mem[i+7],mem[i+6],mem[i+5],mem[i+4],mem[i+3],mem[i+2],mem[i+1],mem[i+0]};
-          end
-    end // initial begin
    
    function bit memory_load_mem (input string filename);
 
