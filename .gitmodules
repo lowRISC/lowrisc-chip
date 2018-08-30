@@ -10,3 +10,6 @@
 [submodule "debian-riscv64"]
 	path = debian-riscv64
 	url = https://github.com/lowRISC/debian-riscv64.git
+[submodule "qemu"]
+	path = qemu
+	url = https://github.com/lowrisc/qemu.git
