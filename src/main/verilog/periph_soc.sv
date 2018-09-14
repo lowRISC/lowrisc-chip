@@ -672,11 +672,43 @@ always @(posedge msoc_clk)
     begin
     trigger <= 0;
     if (hid_en & (|hid_we) & one_hot_data_addr[5])
-        casez (hid_addr[4:3])
-         2'b00: begin trigger <= 1'b1; end
-         2'b01: begin cmd <= hid_wrdata[7:0]; end
-         2'b10: begin data_send <= {data_send[(3+256)*8-65:0],hid_wrdata}; end
-         2'b11: begin quad <= hid_wrdata[0]; end
+        casez (hid_addr[8:3])
+         6'h00: begin data_send[63:0] <= hid_wrdata; end
+         6'h01: begin data_send[127:64] <= hid_wrdata; end
+         6'h02: begin data_send[191:128] <= hid_wrdata; end
+         6'h03: begin data_send[255:192] <= hid_wrdata; end
+         6'h04: begin data_send[319:256] <= hid_wrdata; end
+         6'h05: begin data_send[383:320] <= hid_wrdata; end
+         6'h06: begin data_send[447:384] <= hid_wrdata; end
+         6'h07: begin data_send[511:448] <= hid_wrdata; end
+         6'h08: begin data_send[575:512] <= hid_wrdata; end
+         6'h09: begin data_send[639:576] <= hid_wrdata; end
+         6'h0a: begin data_send[703:640] <= hid_wrdata; end
+         6'h0b: begin data_send[767:704] <= hid_wrdata; end
+         6'h0c: begin data_send[831:768] <= hid_wrdata; end
+         6'h0d: begin data_send[895:832] <= hid_wrdata; end
+         6'h0e: begin data_send[959:896] <= hid_wrdata; end
+         6'h0f: begin data_send[1023:960] <= hid_wrdata; end
+         6'h10: begin data_send[1087:1024] <= hid_wrdata; end
+         6'h11: begin data_send[1151:1088] <= hid_wrdata; end
+         6'h12: begin data_send[1215:1152] <= hid_wrdata; end
+         6'h13: begin data_send[1279:1216] <= hid_wrdata; end
+         6'h14: begin data_send[1343:1280] <= hid_wrdata; end
+         6'h15: begin data_send[1407:1344] <= hid_wrdata; end
+         6'h16: begin data_send[1471:1408] <= hid_wrdata; end
+         6'h17: begin data_send[1535:1472] <= hid_wrdata; end
+         6'h18: begin data_send[1599:1536] <= hid_wrdata; end
+         6'h19: begin data_send[1663:1600] <= hid_wrdata; end
+         6'h1a: begin data_send[1727:1664] <= hid_wrdata; end
+         6'h1b: begin data_send[1791:1728] <= hid_wrdata; end
+         6'h1c: begin data_send[1855:1792] <= hid_wrdata; end
+         6'h1d: begin data_send[1919:1856] <= hid_wrdata; end
+         6'h1e: begin data_send[1983:1920] <= hid_wrdata; end
+         6'h1f: begin data_send[2047:1984] <= hid_wrdata; end
+         6'h20: begin data_send[2071:2048] <= hid_wrdata; end
+         6'h21: begin trigger <= 1'b1; end
+         6'h22: begin cmd <= hid_wrdata[7:0]; end
+         6'h23: begin quad <= hid_wrdata[0]; end
         endcase
     end
    
