@@ -73,13 +73,13 @@ infer_dpram #(.RAM_SIZE(11), .BYTE_WIDTH(8)) ram1 // RAM_SIZE is in words
 .ram_clk_a(clka),
 .ram_en_a(|ena),
 .ram_we_a({wea[1],wea[1],wea[1],wea[1],wea[0],wea[0],wea[0],wea[0]}),
-.ram_addr_a(addra),
+.ram_addr_a(addra[10:0]),
 .ram_wrdata_a({dina,dina,dina,dina}),
-.ram_rddata_a({dout,douta}),
+.ram_rddata_a(dout0),
 .ram_clk_b(clkb),
 .ram_en_b(|enb),
 .ram_we_b({web[1],web[1],web[1],web[1],web[0],web[0],web[0],web[0]}),
-.ram_addr_b({2'b0,addrb}),
+.ram_addr_b({2'b0,addrb[8:0]}),
 .ram_wrdata_b(dinb),
 .ram_rddata_b(doutb)
  );

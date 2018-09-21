@@ -13,3 +13,6 @@
 [submodule "qemu"]
 	path = qemu
 	url = https://github.com/lowrisc/qemu.git
+[submodule "buildroot"]
+	path = buildroot
+	url = https://github.com/lowRISC/buildroot.git

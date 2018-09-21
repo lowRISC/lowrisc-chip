@@ -301,10 +301,12 @@ initial begin
                     lfsr_mask_data[j] = lfsr_mask_data[j] ^ data_val;
                 end
             end
-        end
+        end // for (i = DATA_WIDTH-1; i >= 0; i = i - 1)
+// synopsys translate_off       
     end else begin
         $error("Error: unknown configuration setting!");
         $finish;
+// synopsys translate_on       
     end
 
     // reverse bits if selected
@@ -435,12 +437,12 @@ end else if (STYLE_INT == "LOOP") begin:loop
     end
 
 end else begin:other
-
+// synopsys translate_off       
     initial begin
         $error("Error: unknown style setting!");
         $finish;
     end
-
+// synopsys translate_on
 end
 
 endgenerate
