@@ -21,7 +21,7 @@ module periph_soc #(UBAUD_DEFAULT=54)
  input wire         pxl_clk,
  input wire         msoc_clk,
  input wire         rstn,
- output reg [15:0]  to_led,
+ output reg [21:0]  to_led,
  input wire [15:0]  from_dip,
  output wire        sd_sclk,
  input wire         sd_detect,
