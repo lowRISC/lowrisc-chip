@@ -62,11 +62,14 @@ module fstore2(
    reg [11:5]                    offvreg,scrollv;
    reg [4:1]                     vrow;
    reg [4:0]                     scroll;
-   reg [6:0]                     xcursor, ycursor;
+   reg [6:0]                     xcursor, ycursor, cursorvreg;
+   reg [11:0]                    hstartreg, hsynreg, hstopreg, vstartreg,
+                                 vstopreg, vblankstopreg, vblankstartreg, vpixstartreg,
+                                 vpixstopreg, hpixstartreg, hpixstopreg, hpixreg, vpixreg;
    wire [63:0]                   dout;
    wire [12:0]                   addra = {offvreg[9:5],offhreg[12:6]};
    wire [15:0]                   dout16 = dout >> {addra[1:0],4'b0000};
-   wire                          cursor = (offvreg[9:5] == ycursor[4:0]) && (offhreg[12:6] == xcursor[6:0]) && (vrow==11);
+   wire                          cursor = (offvreg[9:5] == ycursor[6:0]) && (offhreg[12:6] == xcursor[6:0]) && (vrow==cursorvreg);
    
    // 100 MHz / 2100 is 47.6kHz.  Divide by further 788 to get 60.4 Hz.
    // Aim for 1024x768 non interlaced at 60 Hz.  
@@ -84,12 +87,47 @@ module fstore2(
                 .clkb(~clk_data), .dinb(dinb), .addrb(addrb[10:0]), .web(web), .doutb(doutb), .enb(enb&~addrb[11]));
 
    always @(posedge clk_data)
+   if (irst)
+     begin
+        scrollv <= 0;
+        cursorvreg <= 11;
+        xcursor <= 0;
+        ycursor <= 32;
+        hstartreg <= 2048;
+        hsynreg <= 2048+20;
+        hstopreg <= 2100-1;
+        vstartreg <= 768;
+        vstopreg <= 768+19;
+        vblankstopreg <= 32;
+        vblankstartreg <= 768+32;
+        vpixstartreg <= 32;
+        vpixstopreg <= 32+768;
+        hpixstartreg <= 128*3;
+        hpixstopreg <= 128*3+256*6;
+        hpixreg <= 5;
+        vpixreg <= 11;
+     end
+   else
      begin
         if (web && enb && addrb[11])
-          casez (addrb[1:0])
-            2'b00: scrollv <= dinb[6:0];
-            2'b10: xcursor <= dinb[6:0];
-            2'b11: ycursor <= dinb[6:0];
+          casez (addrb[4:0])
+            5'd0: scrollv <= dinb[6:0];
+            5'd1: cursorvreg <= dinb[6:0];
+            5'd2: xcursor <= dinb[6:0];
+            5'd3: ycursor <= dinb[6:0];
+            5'd4: hstartreg <= dinb[11:0];
+            5'd5: hsynreg <= dinb[11:0];
+            5'd6: hstopreg <= dinb[11:0];
+            5'd7: vstartreg <= dinb[11:0];
+            5'd8: vstopreg <= dinb[11:0];
+            5'd9: vblankstopreg <= dinb[11:0];
+            5'd10: vblankstartreg <= dinb[11:0];
+            5'd11: vpixstartreg <= dinb[11:0];
+            5'd12: vpixstopreg <= dinb[11:0];
+            5'd13: hpixstartreg <= dinb[11:0];
+            5'd14: hpixstopreg <= dinb[11:0];
+            5'd15: hpixreg <= dinb[11:0];
+            5'd16: vpixreg <= dinb[11:0];
           endcase
      end
 
@@ -144,9 +182,9 @@ module fstore2(
    else
      begin
         hreg <= (hstop) ? 0: hreg + 1;
-        hstart <= hreg == 2048;      
-        if (hstart) hsyn <= 1; else if (hreg == (2048+20)) hsyn <= 0;
-        hstop <= hreg == (2100-1);
+        hstart <= hreg == hstartreg;      
+        if (hstart) hsyn <= 1; else if (hreg == hsynreg) hsyn <= 0;
+        hstop <= hreg == hstopreg;
         if (hstop) begin
            if (vstop)
              begin
@@ -154,11 +192,11 @@ module fstore2(
              end
            else
              vreg <= vreg + 1;
-           vstart <= vreg == 768;
-           vstop <= vreg == 768+19;
+           vstart <= vreg == vstartreg;
+           vstop <= vreg == vstopreg;
         end
 
-        vblank <= vreg < 10 || vreg >= 768+10; 
+        vblank <= vreg < vblankstopreg || vreg >= vblankstartreg; 
         
         if (dvi_mux) begin
            red <= red_in;         
@@ -166,13 +204,13 @@ module fstore2(
            green <= green_in;
         end
 
-        if (vreg >= 32 && vreg < 32+768)
+        if (vreg >= vpixstartreg && vreg < vpixstopreg)
           begin
-             if (hreg >= 128*3 && hreg < (128*3+256*6))
+             if (hreg >= hpixstartreg && hreg < hpixstopreg)
                begin
                   if (&hreg[0])
                     begin
-                       if (offpixel == 5)
+                       if (offpixel == hpixreg)
                          begin
                             offpixel <= 0;
                             offhreg <= offhreg+1;
@@ -188,7 +226,7 @@ module fstore2(
                   offhreg <= 0;
                   if (hstop & vreg[0])
                     begin
-                       if (vrow == 11)
+                       if (vrow == vpixreg)
                          begin
                             vrow <= 0;
                             offvreg <= offvreg+1;
@@ -207,9 +245,8 @@ module fstore2(
              offvreg <= scrollv;
              bitmapped_pixel <= 0;
           end
-        
-        
-        blank<= hsyn | vsyn | vblank;
+
+        blank <= hsyn | vsyn | vblank;
         
      end
 
@@ -222,10 +259,10 @@ module fstore2(
     .row(vrow),
     .pixels_out(pixels_out));
    
-   wire       pixel = pixels_out[3'd7 ^ offpixel] && bitmapped_pixel;
+   wire       pixel = (pixels_out[3'd7 ^ offpixel] || cursor) && bitmapped_pixel;
 
    always @(dout16 or pixel)
-        case(pixel || cursor ? dout16[11:8]: dout16[14:12])
+        case(pixel ? dout16[11:8]: dout16[14:12])
             0: {red_in,green_in,blue_in} = 24'h000000;
             1: {red_in,green_in,blue_in} = 24'h0000AA;
             2: {red_in,green_in,blue_in} = 24'h00AA00;
