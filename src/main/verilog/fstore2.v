@@ -31,21 +31,13 @@ module fstore2(
 
                output wire [63:0] doutb,
                input wire  [63:0]  dinb,
-               input wire  [10:0] addrb,
+               input wire  [11:0] addrb,
                input wire  [7:0] web,
                input wire        enb,
                input wire        clk_data,
-               input wire        irst,
-
-               input wire             GPIO_SW_C,
-               input wire             GPIO_SW_N,
-               input wire             GPIO_SW_S,
-               input wire             GPIO_SW_E,
-               input wire             GPIO_SW_W
+               input wire        irst
                );
 
-   wire                          clear = GPIO_SW_S & GPIO_SW_N; 
-   
    parameter rwidth = 14;
 
    wire                          m0 = 1'b0;
@@ -65,15 +57,16 @@ module fstore2(
    reg                           vblank;
 
    reg                           hstart, hstop, vstart, vstop;
-   reg [12:6]                    offhreg,scrollh;
+   reg [12:6]                    offhreg;
    reg [5:3]                     offpixel;
    reg [11:5]                    offvreg,scrollv;
    reg [4:1]                     vrow;
    reg [4:0]                     scroll;
-   
+   reg [6:0]                     xcursor, ycursor;
    wire [63:0]                   dout;
    wire [12:0]                   addra = {offvreg[9:5],offhreg[12:6]};
    wire [15:0]                   dout16 = dout >> {addra[1:0],4'b0000};
+   wire                          cursor = (offvreg[9:5] == ycursor[4:0]) && (offhreg[12:6] == xcursor[6:0]) && (vrow==11);
    
    // 100 MHz / 2100 is 47.6kHz.  Divide by further 788 to get 60.4 Hz.
    // Aim for 1024x768 non interlaced at 60 Hz.  
@@ -87,8 +80,18 @@ module fstore2(
    assign dvi_mux = hreg[0];
 
    dualmem ram1(.clka(pixel2_clk),
-                .dina({8{addra[7:0]}}), .addra(addra[12:2]), .wea({8{clear}}), .douta(dout), .ena(1'b1),
-                .clkb(~clk_data), .dinb(dinb), .addrb(addrb), .web(web), .doutb(doutb), .enb(enb));
+                .dina(8'b0), .addra(addra[12:2]), .wea(8'b0), .douta(dout), .ena(1'b1),
+                .clkb(~clk_data), .dinb(dinb), .addrb(addrb[10:0]), .web(web), .doutb(doutb), .enb(enb&~addrb[11]));
+
+   always @(posedge clk_data)
+     begin
+        if (web && enb && addrb[11])
+          casez (addrb[1:0])
+            2'b00: scrollv <= dinb[6:0];
+            2'b10: xcursor <= dinb[6:0];
+            2'b11: ycursor <= dinb[6:0];
+          endcase
+     end
 
 `ifdef LASTMSG
    
@@ -136,7 +139,6 @@ module fstore2(
         offpixel <= 0;
         vrow <= 0;
         scroll <= 0;
-        scrollh <= 0;
         scrollv <= 0;
      end
    else
@@ -149,12 +151,6 @@ module fstore2(
            if (vstop)
              begin
                 vreg <= 0;
-                scroll <= {GPIO_SW_N,GPIO_SW_S,GPIO_SW_E,GPIO_SW_W,GPIO_SW_C};
-                if ((scrollv>0) && GPIO_SW_N & ~scroll[4]) scrollv <= scrollv - 4;
-                if ((scrollv<32) && GPIO_SW_S & ~scroll[3]) scrollv <= scrollv + 4;
-                if ((scrollh<96) && GPIO_SW_E & ~scroll[2]) scrollh <= scrollh + 4;
-                if ((scrollh>0) && GPIO_SW_W & ~scroll[1]) scrollh <= scrollh - 4;
-                if (GPIO_SW_C & ~scroll[0]) begin scrollh <= 0; scrollv <= 0; end
              end
            else
              vreg <= vreg + 1;
@@ -189,7 +185,7 @@ module fstore2(
              else
                begin
                   offpixel <= 0;
-                  offhreg <= scrollh;
+                  offhreg <= 0;
                   if (hstop & vreg[0])
                     begin
                        if (vrow == 11)
@@ -229,7 +225,7 @@ module fstore2(
    wire       pixel = pixels_out[3'd7 ^ offpixel] && bitmapped_pixel;
 
    always @(dout16 or pixel)
-        case(pixel ? dout16[11:8]: dout16[14:12])
+        case(pixel || cursor ? dout16[11:8]: dout16[14:12])
             0: {red_in,green_in,blue_in} = 24'h000000;
             1: {red_in,green_in,blue_in} = 24'h0000AA;
             2: {red_in,green_in,blue_in} = 24'h00AA00;

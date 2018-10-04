@@ -34,12 +34,6 @@ module periph_soc #(UBAUD_DEFAULT=54)
  input wire [17:0]  hid_addr,
  input wire [63:0]  hid_wrdata,
  output reg [63:0]  hid_rddata,
- // pusb button array
- input wire         GPIO_SW_C,
- input wire         GPIO_SW_W,
- input wire         GPIO_SW_E,
- input wire         GPIO_SW_N,
- input wire         GPIO_SW_S,
  //keyboard
  inout wire         PS2_CLK,
  inout wire         PS2_DATA,
@@ -134,16 +128,11 @@ logic [63:0] one_hot_rdata[7:0];
       .blue(blue),
       .web(hid_we),
       .enb(hid_en & one_hot_data_addr[7]),
-      .addrb(hid_addr[13:3]),
+      .addrb(hid_addr[14:3]),
       .dinb(hid_wrdata),
       .doutb(one_hot_rdata[7]),
       .irst(~rstn),
-      .clk_data(msoc_clk),
-      .GPIO_SW_C(GPIO_SW_C),
-      .GPIO_SW_N(GPIO_SW_N),
-      .GPIO_SW_S(GPIO_SW_S),
-      .GPIO_SW_E(GPIO_SW_E),
-      .GPIO_SW_W(GPIO_SW_W)              
+      .clk_data(msoc_clk)
      );
 
  assign VGA_RED_O = red[7:4];
