@@ -62,7 +62,7 @@ module fstore2(
    reg [11:5]                    offvreg,scrollv;
    reg [4:1]                     vrow;
    reg [4:0]                     scroll;
-   reg [6:0]                     xcursor, ycursor, cursorvreg;
+   reg [6:0]                     xcursor, ycursor, xcursor0, ycursor0, cursorvreg;
    reg [11:0]                    hstartreg, hsynreg, hstopreg, vstartreg,
                                  vstopreg, vblankstopreg, vblankstartreg, vpixstartreg,
                                  vpixstopreg, hpixstartreg, hpixstopreg, hpixreg, vpixreg;
@@ -90,18 +90,18 @@ module fstore2(
    if (irst)
      begin
         scrollv <= 0;
-        cursorvreg <= 11;
-        xcursor <= 0;
-        ycursor <= 32;
+        cursorvreg <= 10;
+        xcursor0 <= 0;
+        ycursor0 <= 32;
         hstartreg <= 2048;
         hsynreg <= 2048+20;
         hstopreg <= 2100-1;
         vstartreg <= 768;
         vstopreg <= 768+19;
-        vblankstopreg <= 32;
-        vblankstartreg <= 768+32;
-        vpixstartreg <= 32;
-        vpixstopreg <= 32+768;
+        vblankstopreg <= 16;
+        vblankstartreg <= 768+16;
+        vpixstartreg <= 16;
+        vpixstopreg <= 16+768;
         hpixstartreg <= 128*3;
         hpixstopreg <= 128*3+256*6;
         hpixreg <= 5;
@@ -112,22 +112,22 @@ module fstore2(
         if (web && enb && addrb[11])
           casez (addrb[4:0])
             5'd0: scrollv <= dinb[6:0];
-            5'd1: cursorvreg <= dinb[6:0];
-            5'd2: xcursor <= dinb[6:0];
-            5'd3: ycursor <= dinb[6:0];
-            5'd4: hstartreg <= dinb[11:0];
-            5'd5: hsynreg <= dinb[11:0];
-            5'd6: hstopreg <= dinb[11:0];
-            5'd7: vstartreg <= dinb[11:0];
-            5'd8: vstopreg <= dinb[11:0];
-            5'd9: vblankstopreg <= dinb[11:0];
-            5'd10: vblankstartreg <= dinb[11:0];
-            5'd11: vpixstartreg <= dinb[11:0];
-            5'd12: vpixstopreg <= dinb[11:0];
-            5'd13: hpixstartreg <= dinb[11:0];
-            5'd14: hpixstopreg <= dinb[11:0];
-            5'd15: hpixreg <= dinb[11:0];
-            5'd16: vpixreg <= dinb[11:0];
+//            5'd1: cursorvreg <= dinb[6:0];
+            5'd2: xcursor0 <= dinb[6:0];
+            5'd3: ycursor0 <= dinb[6:0];
+//            5'd4: hstartreg <= dinb[11:0];
+//            5'd5: hsynreg <= dinb[11:0];
+//            5'd6: hstopreg <= dinb[11:0];
+//            5'd7: vstartreg <= dinb[11:0];
+//            5'd8: vstopreg <= dinb[11:0];
+//            5'd9: vblankstopreg <= dinb[11:0];
+//            5'd10: vblankstartreg <= dinb[11:0];
+//            5'd11: vpixstartreg <= dinb[11:0];
+//            5'd12: vpixstopreg <= dinb[11:0];
+//            5'd13: hpixstartreg <= dinb[11:0];
+//            5'd14: hpixstopreg <= dinb[11:0];
+//            5'd15: hpixreg <= dinb[11:0];
+//            5'd16: vpixreg <= dinb[11:0];
           endcase
      end
 
@@ -181,6 +181,8 @@ module fstore2(
      end
    else
      begin
+	xcursor <= xcursor0;
+	ycursor <= ycursor0;	
         hreg <= (hstop) ? 0: hreg + 1;
         hstart <= hreg == hstartreg;      
         if (hstart) hsyn <= 1; else if (hreg == hsynreg) hsyn <= 0;
