@@ -114,13 +114,6 @@ logic [63:0] one_hot_rdata[7:0];
  
     fstore2 the_fstore(
       .pixel2_clk(pxl_clk),
-      .blank(),
-      .DVI_D(),
-      .DVI_XCLK_P(),
-      .DVI_XCLK_N(),
-      .DVI_H(),
-      .DVI_V(),
-      .DVI_DE(),
       .vsyn(VGA_VS_O),
       .hsyn(VGA_HS_O),
       .red(red),
@@ -128,7 +121,7 @@ logic [63:0] one_hot_rdata[7:0];
       .blue(blue),
       .web(hid_we),
       .enb(hid_en & one_hot_data_addr[7]),
-      .addrb(hid_addr[14:3]),
+      .addrb(hid_addr[14:0]),
       .dinb(hid_wrdata),
       .doutb(one_hot_rdata[7]),
       .irst(~rstn),

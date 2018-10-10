@@ -13,121 +13,125 @@ specific language governing permissions and limitations under the License.
 // A simple monitor (LCD display) driver with glass TTY behaviour in text mode
 
 module fstore2(
-               input wire             pixel2_clk,
-               output reg [7:0]  red,
-               output reg [7:0]  green,
-               output reg [7:0]  blue,
+               input wire         pixel2_clk,
+               output reg [7:0]   red,
+               output reg [7:0]   green,
+               output reg [7:0]   blue,
 
-               output wire [11:0]     DVI_D,
-               output wire            DVI_DE,
-               output wire            DVI_H,
-               output wire            DVI_V,
-               output wire            DVI_XCLK_N,
-               output wire            DVI_XCLK_P,
-
-               output wire            vsyn,
-               output reg        hsyn,
-               output reg        blank,
+               output wire        vsyn,
+               output reg         hsyn,
 
                output wire [63:0] doutb,
-               input wire  [63:0]  dinb,
-               input wire  [11:0] addrb,
-               input wire  [7:0] web,
-               input wire        enb,
-               input wire        clk_data,
-               input wire        irst
+               input wire  [63:0] dinb,
+               input wire  [14:0] addrb,
+               input wire  [7:0]  web,
+               input wire         enb,
+               input wire         clk_data,
+               input wire         irst
                );
 
    parameter rwidth = 14;
 
+   integer                       i;
+   
    wire                          m0 = 1'b0;
-   wire                          dvi_mux;
-   assign DVI_XCLK_P = !dvi_mux;  // Chrontel defaults to clock doubling mode
-   assign DVI_XCLK_N = dvi_mux;   // where both edges of this mark a 12-bit word.
-   //assign DVI_RESET_B = !dvi_reset;
-
-   assign DVI_D[11:8] = (m0 || blank) ? 4'h0 : (dvi_mux) ? red[7:4]: green[3:0];
-   assign DVI_D[7:4]  = (m0 || blank) ? 4'h0 : (dvi_mux) ? red[3:0]: blue[7:4];
-   assign DVI_D[3:0]  = (m0 || blank) ? 4'h0 : (dvi_mux) ? green[7:4]: blue[3:0];
-   assign DVI_H = hsyn;      
-   assign DVI_V = vsyn;
-
-   assign DVI_DE = !blank;
    
    reg                           vblank;
 
    reg                           hstart, hstop, vstart, vstop;
    reg [12:6]                    offhreg;
    reg [5:3]                     offpixel;
-   reg [11:5]                    offvreg,scrollv;
+   reg [11:5]                    offvreg,scrollv,scrollv0;
    reg [4:1]                     vrow;
-   reg [4:0]                     scroll;
-   reg [6:0]                     xcursor, ycursor, xcursor0, ycursor0, cursorvreg;
+   reg [4:0]                     scroll, divreg, divreg0, hdiv;
+   reg [6:0]                     xcursor, ycursor, xcursor0, ycursor0, cursorvreg, cursorvreg0;
    reg [11:0]                    hstartreg, hsynreg, hstopreg, vstartreg,
                                  vstopreg, vblankstopreg, vblankstartreg, vpixstartreg,
-                                 vpixstopreg, hpixstartreg, hpixstopreg, hpixreg, vpixreg;
-   wire [63:0]                   dout;
-   wire [12:0]                   addra = {offvreg[9:5],offhreg[12:6]};
-   wire [15:0]                   dout16 = dout >> {addra[1:0],4'b0000};
-   wire                          cursor = (offvreg[9:5] == ycursor[6:0]) && (offhreg[12:6] == xcursor[6:0]) && (vrow==cursorvreg);
+                                 vpixstopreg, hpixstartreg, hpixstopreg, hpixreg, vpixreg,
+                                 hstartreg0, hsynreg0, hstopreg0, vstartreg0,
+                                 vstopreg0, vblankstopreg0, vblankstartreg0, vpixstartreg0,
+                                 vpixstopreg0, hpixstartreg0, hpixstopreg0, hpixreg0, vpixreg0;
+   wire [63:0]                   dout, dout0;
+   wire [15:0]                   dout16 = dout >> {offhreg[7:6],4'b0000};
+   wire                          cursor = (offvreg[10:5] == ycursor[6:0]) && (offhreg[12:6] == xcursor[6:0]) && (vrow==cursorvreg);
    
    // 100 MHz / 2100 is 47.6kHz.  Divide by further 788 to get 60.4 Hz.
    // Aim for 1024x768 non interlaced at 60 Hz.  
    
    reg [11:0]                    hreg, vreg;
 
-   reg                           bitmapped_pixel;
+   reg                           bitmapped_pixel, addrb14;
    
-   reg [7:0]                    red_in, green_in, blue_in;
+   reg [7:0]                     red_in, green_in, blue_in;
 
-   assign dvi_mux = hreg[0];
-
+   reg [23:0]                    pallette0[0:15], pallette[0:15];
+                  
    dualmem ram1(.clka(pixel2_clk),
-                .dina(8'b0), .addra(addra[12:2]), .wea(8'b0), .douta(dout), .ena(1'b1),
-                .clkb(~clk_data), .dinb(dinb), .addrb(addrb[10:0]), .web(web), .doutb(doutb), .enb(enb&~addrb[11]));
+                .dina(8'b0), .addra({offvreg[10:5],offhreg[12:8]}), .wea(8'b0), .douta(dout), .ena(1'b1),
+                .clkb(~clk_data), .dinb(dinb), .addrb(addrb[13:3]), .web(web), .doutb(dout0), .enb(enb&~addrb[14]));
 
    always @(posedge clk_data)
    if (irst)
      begin
-        scrollv <= 0;
-        cursorvreg <= 10;
+        scrollv0 <= 0;
+        cursorvreg0 <= 10;
         xcursor0 <= 0;
         ycursor0 <= 32;
-        hstartreg <= 2048;
-        hsynreg <= 2048+20;
-        hstopreg <= 2100-1;
-        vstartreg <= 768;
-        vstopreg <= 768+19;
-        vblankstopreg <= 16;
-        vblankstartreg <= 768+16;
-        vpixstartreg <= 16;
-        vpixstopreg <= 16+768;
-        hpixstartreg <= 128*3;
-        hpixstopreg <= 128*3+256*6;
-        hpixreg <= 5;
-        vpixreg <= 11;
+        hstartreg0 <= 2048;
+        hsynreg0 <= 2048+20;
+        hstopreg0 <= 2100-1;
+        vstartreg0 <= 768;
+        vstopreg0 <= 768+19;
+        vblankstopreg0 <= 16;
+        vblankstartreg0 <= 768+16;
+        vpixstartreg0 <= 16;
+        vpixstopreg0 <= 16+768;
+        hpixstartreg0 <= 128*3;
+        hpixstopreg0 <= 128*3+256*6;
+        hpixreg0 <= 5;
+        vpixreg0 <= 11;
+        divreg0 <= 1;
+        pallette0[    0] = 24'h000000;
+        pallette0[    1] = 24'h0000AA;
+        pallette0[    2] = 24'h00AA00;
+        pallette0[    3] = 24'h00AAAA;
+        pallette0[    4] = 24'hAA0000;
+        pallette0[    5] = 24'hAA00AA;
+        pallette0[    6] = 24'hAA5500;
+        pallette0[    7] = 24'hAAAAAA;
+        pallette0[    8] = 24'h555555;
+        pallette0[    9] = 24'h5555FF;
+        pallette0[   10] = 24'h55FF55;
+        pallette0[   11] = 24'h55FFFF;
+        pallette0[   12] = 24'hFF5555;
+        pallette0[   13] = 24'hFF55FF;
+        pallette0[   14] = 24'hFFFF55;
+        pallette0[   15] = 24'hFFFFFF;
      end
    else
      begin
-        if (web && enb && addrb[11])
-          casez (addrb[4:0])
-            5'd0: scrollv <= dinb[6:0];
-//            5'd1: cursorvreg <= dinb[6:0];
-            5'd2: xcursor0 <= dinb[6:0];
-            5'd3: ycursor0 <= dinb[6:0];
-//            5'd4: hstartreg <= dinb[11:0];
-//            5'd5: hsynreg <= dinb[11:0];
-//            5'd6: hstopreg <= dinb[11:0];
-//            5'd7: vstartreg <= dinb[11:0];
-//            5'd8: vstopreg <= dinb[11:0];
-//            5'd9: vblankstopreg <= dinb[11:0];
-//            5'd10: vblankstartreg <= dinb[11:0];
-//            5'd11: vpixstartreg <= dinb[11:0];
-//            5'd12: vpixstopreg <= dinb[11:0];
-//            5'd13: hpixstartreg <= dinb[11:0];
-//            5'd14: hpixstopreg <= dinb[11:0];
-//            5'd15: hpixreg <= dinb[11:0];
-//            5'd16: vpixreg <= dinb[11:0];
+        addrb14 <= addrb[14];
+        if (web && enb && addrb[14] && ~addrb[13])
+          casez (addrb[8:3])
+            6'd0: scrollv0 <= dinb[6:0];
+            6'd1: cursorvreg0 <= dinb[6:0];
+            6'd2: xcursor0 <= dinb[6:0];
+            6'd3: ycursor0 <= dinb[6:0];
+            6'd4: hstartreg0 <= dinb[11:0];
+            6'd5: hsynreg0 <= dinb[11:0];
+            6'd6: hstopreg0 <= dinb[11:0];
+            6'd7: vstartreg0 <= dinb[11:0];
+            6'd8: vstopreg0 <= dinb[11:0];
+            6'd9: vblankstopreg0 <= dinb[11:0];
+            6'd10: vblankstartreg0 <= dinb[11:0];
+            6'd11: vpixstartreg0 <= dinb[11:0];
+            6'd12: vpixstopreg0 <= dinb[11:0];
+            6'd13: hpixstartreg0 <= dinb[11:0];
+            6'd14: hpixstopreg0 <= dinb[11:0];
+            6'd15: hpixreg0 <= dinb[11:0];
+            6'd16: vpixreg0 <= dinb[11:0];
+            6'd17: divreg0 <= dinb[3:0];
+            6'b10????: pallette0[addrb[6:3]] <= dinb[23:0];
           endcase
      end
 
@@ -171,18 +175,34 @@ module fstore2(
         green <= 0;
         blue <= 0;
         bitmapped_pixel <= 0;
-        blank <= 0;
         offhreg <= 0;
         offvreg <= 0;
         offpixel <= 0;
         vrow <= 0;
         scroll <= 0;
-        scrollv <= 0;
      end
    else
      begin
+        scrollv <= scrollv0;
+        cursorvreg <= cursorvreg0;
 	xcursor <= xcursor0;
-	ycursor <= ycursor0;	
+	ycursor <= ycursor0;
+        hstartreg <= hstartreg0;
+        hsynreg <= hsynreg0;
+        hstopreg <= hstopreg0;
+        vstartreg <= vstartreg0;
+        vstopreg <= vstopreg0;
+        vblankstopreg <= vblankstopreg0;
+        vblankstartreg <= vblankstartreg0;
+        vpixstartreg <= vpixstartreg0;
+        vpixstopreg <= vpixstopreg0;
+        hpixstartreg <= hpixstartreg0;
+        hpixstopreg <= hpixstopreg0;
+        hpixreg <= hpixreg0;
+        vpixreg <= vpixreg0;
+        divreg <= divreg0;
+        for (i = 0; i < 16; i=i+1)
+          pallette[i] = pallette0[i];
         hreg <= (hstop) ? 0: hreg + 1;
         hstart <= hreg == hstartreg;      
         if (hstart) hsyn <= 1; else if (hreg == hsynreg) hsyn <= 0;
@@ -200,17 +220,15 @@ module fstore2(
 
         vblank <= vreg < vblankstopreg || vreg >= vblankstartreg; 
         
-        if (dvi_mux) begin
-           red <= red_in;         
-           blue <= blue_in;
-           green <= green_in;
-        end
+        red <= red_in;         
+        blue <= blue_in;
+        green <= green_in;
 
         if (vreg >= vpixstartreg && vreg < vpixstopreg)
           begin
              if (hreg >= hpixstartreg && hreg < hpixstopreg)
                begin
-                  if (&hreg[0])
+                  if (hdiv == divreg)
                     begin
                        if (offpixel == hpixreg)
                          begin
@@ -219,11 +237,15 @@ module fstore2(
                          end
                        else
                          offpixel <= offpixel+1;
+                       hdiv <= 0;
                     end
+                  else
+                    hdiv = hdiv + 1;
                   bitmapped_pixel <= 1;
                end
              else
                begin
+                  hdiv <= 0;
                   offpixel <= 0;
                   offhreg <= 0;
                   if (hstop & vreg[0])
@@ -248,39 +270,43 @@ module fstore2(
              bitmapped_pixel <= 0;
           end
 
-        blank <= hsyn | vsyn | vblank;
-        
      end
 
    assign vsyn = vstart;
+
+   wire [7:0] pixels_out, fout;
+   reg [3:0]  faddr;
+
+   always @(web)
+     case(web)
+       8'h01: faddr = 0;
+       8'h02: faddr = 1;
+       8'h04: faddr = 2;
+       8'h08: faddr = 3;
+       8'h10: faddr = 4;
+       8'h20: faddr = 5;
+       8'h40: faddr = 6;
+       8'h80: faddr = 7;
+       default: faddr = 8;
+   endcase // case (web)
    
-   wire [7:0] pixels_out;
+   assign doutb = addrb14 ? {fout,fout,fout,fout,fout,fout,fout,fout} : dout0;
+                  
    chargen_7x5_rachel the_rachel(
     .clk(pixel2_clk),
     .ascii(dout16[7:0]),
     .row(vrow),
-    .pixels_out(pixels_out));
+    .pixels_out(pixels_out),
+    .font_clk(~clk_data),
+    .font_out(fout),
+    .font_addr({addrb[11:3],faddr[2:0]}),
+    .font_in(dinb >> {faddr[2:0],3'b000}),
+    .font_en(enb & addrb[14] & addrb[13]),
+    .font_we(~faddr[3]));
    
    wire       pixel = (pixels_out[3'd7 ^ offpixel] || cursor) && bitmapped_pixel;
 
    always @(dout16 or pixel)
-        case(pixel ? dout16[11:8]: dout16[14:12])
-            0: {red_in,green_in,blue_in} = 24'h000000;
-            1: {red_in,green_in,blue_in} = 24'h0000AA;
-            2: {red_in,green_in,blue_in} = 24'h00AA00;
-            3: {red_in,green_in,blue_in} = 24'h00AAAA;
-            4: {red_in,green_in,blue_in} = 24'hAA0000;
-            5: {red_in,green_in,blue_in} = 24'hAA00AA;
-            6: {red_in,green_in,blue_in} = 24'hAA5500;
-            7: {red_in,green_in,blue_in} = 24'hAAAAAA;
-            8: {red_in,green_in,blue_in} = 24'h555555;
-            9: {red_in,green_in,blue_in} = 24'h5555FF;
-           10: {red_in,green_in,blue_in} = 24'h55FF55;
-           11: {red_in,green_in,blue_in} = 24'h55FFFF;
-           12: {red_in,green_in,blue_in} = 24'hFF5555;
-           13: {red_in,green_in,blue_in} = 24'hFF55FF;
-           14: {red_in,green_in,blue_in} = 24'hFFFF55;
-           15: {red_in,green_in,blue_in} = 24'hFFFFFF;
-       endcase
+     {red_in,green_in,blue_in} = pallette[pixel ? dout16[11:8]: dout16[14:12]];
    
 endmodule

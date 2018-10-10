@@ -12,7 +12,9 @@ specific language governing permissions and limitations under the License.
 
 // ASCII character set ROM (like the good old RO-3-2513)
 
-module chargen_7x5_rachel(input clk, input [7:0] ascii, input[3:0] row, output [7:0] pixels_out);
+module chargen_7x5_rachel(input clk, input [7:0] ascii, input[3:0] row, output [7:0] pixels_out,
+                          input font_clk, output[7:0] font_out, input [11:0] font_addr, input [7:0] font_in,
+                          input font_en, input font_we);
 `ifndef FPGA
 
    reg[7:0] lower [0:32*12-1];
@@ -941,7 +943,7 @@ module chargen_7x5_rachel(input clk, input [7:0] ascii, input[3:0] row, output [
    end
 `else
 
-   RAMB16_S9 #(
+   RAMB16_S9_S9 #(
       // The following INIT_xx declarations specify the initial contents of the RAM
       .INIT_00(256'h000000003E3E3E3E3E3E3E3E3E3E3E3E000000003E3E3E3E3E3E3E3E3E3E3E3E),
       .INIT_01(256'h000000003E3E3E3E3E3E3E3E3E3E3E3E000000003E3E3E3E3E3E3E3E3E3E3E3E),
@@ -1008,15 +1010,24 @@ module chargen_7x5_rachel(input clk, input [7:0] ascii, input[3:0] row, output [
       .INIT_3E(256'h000000000000006010100C101060000000000000000000101010001010100000),
       .INIT_3F(256'h00000000000000007C7C7C7C000000000000000000000000000002027E000000)
      ) RAMB16_S1_inst_0 (
-      .CLK(clk),      // Port A Clock
-      .DO(pixels_out), // Port A 8-bit Data Output
-      .ADDR({ascii[6:0],row}),    // Port A 11-bit Address Input
-      .DI(8'b0),  // Port A 8-bit Data Input
-      .EN(1'b1),        // Port A RAM Enable Input
-      .SSR(1'b0),      // Port A Synchronous Set/Reset Input
-      .WE(1'b0),        // Port A Write Enable Input
-      .DIP(1'b0),
-      .DOP()
+      .CLKA(clk),      // Port A Clock
+      .DOA(pixels_out), // Port A 8-bit Data Output
+      .ADDRA({ascii[6:0],row}),    // Port A 11-bit Address Input
+      .DIA(8'b0),  // Port A 8-bit Data Input
+      .ENA(1'b1),        // Port A RAM Enable Input
+      .SSRA(1'b0),      // Port A Synchronous Set/Reset Input
+      .WEA(1'b0),        // Port A Write Enable Input
+      .DIPA(1'b0),
+      .DOPA(),
+      .CLKB(font_clk),      // Port A Clock
+      .DOB(font_out), // Port A 8-bit Data Output
+      .ADDRB(font_addr),    // Port A 11-bit Address Input
+      .DIB(font_in),  // Port A 8-bit Data Input
+      .ENB(font_en),        // Port A RAM Enable Input
+      .SSRB(1'b0),      // Port A Synchronous Set/Reset Input
+      .WEB(font_we),        // Port A Write Enable Input
+      .DIPB(1'b0),
+      .DOPB()
    );
 
 `endif

@@ -132,7 +132,7 @@ module chip_top
    input wire         cts,
 
    // 4-bit full SD interface
-   output wire        sd_sclk,
+   inout wire         sd_sclk,
    input wire         sd_detect,
    inout wire [3:0]   sd_dat,
    inout wire         sd_cmd,
