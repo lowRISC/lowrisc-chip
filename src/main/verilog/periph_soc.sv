@@ -193,6 +193,7 @@ always @*
          utxstate_d = UTX_START;
        UTX_START:
          utxstate_d = UTX_INUSE;
+       default:;
      endcase
   end
    
@@ -354,6 +355,7 @@ always @(posedge msoc_clk or negedge rstn)
        11: sd_irq_en_reg <= hid_wrdata;            
 	   // Not strictly related, but can indicate SD-card activity and so on
 	   15: to_led <= hid_wrdata;
+	   default:;
 	  endcase
     end
 

@@ -36,23 +36,22 @@ module fstore2(
    
    wire                          m0 = 1'b0;
    
-   reg                           vblank;
-
    reg                           hstart, hstop, vstart, vstop;
-   reg [12:6]                    offhreg;
-   reg [5:3]                     offpixel;
-   reg [11:5]                    offvreg,scrollv,scrollv0;
+   reg [12:6]                    offhreg, offhreg1;
+   reg [5:3]                     offpixel, offpixel1;
+   reg [11:5]                    offvreg;
    reg [4:1]                     vrow;
-   reg [4:0]                     scroll, divreg, divreg0, hdiv;
+   reg [4:0]                     divreg, divreg0, hdiv;
    reg [6:0]                     xcursor, ycursor, xcursor0, ycursor0, cursorvreg, cursorvreg0;
    reg [11:0]                    hstartreg, hsynreg, hstopreg, vstartreg,
-                                 vstopreg, vblankstopreg, vblankstartreg, vpixstartreg,
+                                 vstopreg, vpixstartreg,
                                  vpixstopreg, hpixstartreg, hpixstopreg, hpixreg, vpixreg,
                                  hstartreg0, hsynreg0, hstopreg0, vstartreg0,
-                                 vstopreg0, vblankstopreg0, vblankstartreg0, vpixstartreg0,
+                                 vstopreg0, vpixstartreg0,
                                  vpixstopreg0, hpixstartreg0, hpixstopreg0, hpixreg0, vpixreg0;
    wire [63:0]                   dout, dout0;
-   wire [15:0]                   dout16 = dout >> {offhreg[7:6],4'b0000};
+   wire [15:0]                   dout16 = dout >> {offhreg1[7:6],4'b0000};
+   reg [15:0]                    dout16_1;
    wire                          cursor = (offvreg[10:5] == ycursor[6:0]) && (offhreg[12:6] == xcursor[6:0]) && (vrow==cursorvreg);
    
    // 100 MHz / 2100 is 47.6kHz.  Divide by further 788 to get 60.4 Hz.
@@ -60,11 +59,11 @@ module fstore2(
    
    reg [11:0]                    hreg, vreg;
 
-   reg                           bitmapped_pixel, addrb14;
+   reg                           bitmapped_pixel, bitmapped_pixel1, addrb14;
    
    reg [7:0]                     red_in, green_in, blue_in;
 
-   reg [23:0]                    pallette0[0:15], pallette[0:15];
+   reg [23:0]                    palette0[0:15], palette[0:15];
                   
    dualmem ram1(.clka(pixel2_clk),
                 .dina(8'b0), .addra({offvreg[10:5],offhreg[12:8]}), .wea(8'b0), .douta(dout), .ena(1'b1),
@@ -73,7 +72,6 @@ module fstore2(
    always @(posedge clk_data)
    if (irst)
      begin
-        scrollv0 <= 0;
         cursorvreg0 <= 10;
         xcursor0 <= 0;
         ycursor0 <= 32;
@@ -82,8 +80,6 @@ module fstore2(
         hstopreg0 <= 2100-1;
         vstartreg0 <= 768;
         vstopreg0 <= 768+19;
-        vblankstopreg0 <= 16;
-        vblankstartreg0 <= 768+16;
         vpixstartreg0 <= 16;
         vpixstopreg0 <= 16+768;
         hpixstartreg0 <= 128*3;
@@ -91,29 +87,12 @@ module fstore2(
         hpixreg0 <= 5;
         vpixreg0 <= 11;
         divreg0 <= 1;
-        pallette0[    0] = 24'h000000;
-        pallette0[    1] = 24'h0000AA;
-        pallette0[    2] = 24'h00AA00;
-        pallette0[    3] = 24'h00AAAA;
-        pallette0[    4] = 24'hAA0000;
-        pallette0[    5] = 24'hAA00AA;
-        pallette0[    6] = 24'hAA5500;
-        pallette0[    7] = 24'hAAAAAA;
-        pallette0[    8] = 24'h555555;
-        pallette0[    9] = 24'h5555FF;
-        pallette0[   10] = 24'h55FF55;
-        pallette0[   11] = 24'h55FFFF;
-        pallette0[   12] = 24'hFF5555;
-        pallette0[   13] = 24'hFF55FF;
-        pallette0[   14] = 24'hFFFF55;
-        pallette0[   15] = 24'hFFFFFF;
      end
    else
      begin
         addrb14 <= addrb[14];
         if (web && enb && addrb[14] && ~addrb[13])
           casez (addrb[8:3])
-            6'd0: scrollv0 <= dinb[6:0];
             6'd1: cursorvreg0 <= dinb[6:0];
             6'd2: xcursor0 <= dinb[6:0];
             6'd3: ycursor0 <= dinb[6:0];
@@ -122,8 +101,6 @@ module fstore2(
             6'd6: hstopreg0 <= dinb[11:0];
             6'd7: vstartreg0 <= dinb[11:0];
             6'd8: vstopreg0 <= dinb[11:0];
-            6'd9: vblankstopreg0 <= dinb[11:0];
-            6'd10: vblankstartreg0 <= dinb[11:0];
             6'd11: vpixstartreg0 <= dinb[11:0];
             6'd12: vpixstopreg0 <= dinb[11:0];
             6'd13: hpixstartreg0 <= dinb[11:0];
@@ -131,8 +108,10 @@ module fstore2(
             6'd15: hpixreg0 <= dinb[11:0];
             6'd16: vpixreg0 <= dinb[11:0];
             6'd17: divreg0 <= dinb[3:0];
-            6'b10????: pallette0[addrb[6:3]] <= dinb[23:0];
+            default:;
           endcase
+        if (web && enb && addrb[14] && ~addrb[13] && addrb[8])
+            palette0[addrb[6:3]] <= dinb[23:0];
      end
 
 `ifdef LASTMSG
@@ -170,7 +149,6 @@ module fstore2(
         vreg <= 0;
         vstart <= 0;
         vstop <= 0;
-        vblank <= 0;
         red <= 0;
         green <= 0;
         blue <= 0;
@@ -179,11 +157,13 @@ module fstore2(
         offvreg <= 0;
         offpixel <= 0;
         vrow <= 0;
-        scroll <= 0;
      end
    else
      begin
-        scrollv <= scrollv0;
+        offhreg1 <= offhreg;
+        offpixel1 <= offpixel;
+        dout16_1 <= dout16;
+        bitmapped_pixel1 <= bitmapped_pixel;
         cursorvreg <= cursorvreg0;
 	xcursor <= xcursor0;
 	ycursor <= ycursor0;
@@ -192,8 +172,6 @@ module fstore2(
         hstopreg <= hstopreg0;
         vstartreg <= vstartreg0;
         vstopreg <= vstopreg0;
-        vblankstopreg <= vblankstopreg0;
-        vblankstartreg <= vblankstartreg0;
         vpixstartreg <= vpixstartreg0;
         vpixstopreg <= vpixstopreg0;
         hpixstartreg <= hpixstartreg0;
@@ -202,7 +180,7 @@ module fstore2(
         vpixreg <= vpixreg0;
         divreg <= divreg0;
         for (i = 0; i < 16; i=i+1)
-          pallette[i] = pallette0[i];
+          palette[i] = palette0[i];
         hreg <= (hstop) ? 0: hreg + 1;
         hstart <= hreg == hstartreg;      
         if (hstart) hsyn <= 1; else if (hreg == hsynreg) hsyn <= 0;
@@ -218,8 +196,6 @@ module fstore2(
            vstop <= vreg == vstopreg;
         end
 
-        vblank <= vreg < vblankstopreg || vreg >= vblankstartreg; 
-        
         red <= red_in;         
         blue <= blue_in;
         green <= green_in;
@@ -266,7 +242,7 @@ module fstore2(
         else
           begin
              vrow <= 0;
-             offvreg <= scrollv;
+             offvreg <= 0;
              bitmapped_pixel <= 0;
           end
 
@@ -291,6 +267,7 @@ module fstore2(
    endcase // case (web)
    
    assign doutb = addrb14 ? {fout,fout,fout,fout,fout,fout,fout,fout} : dout0;
+   wire [7:0] font_in = dinb >> {faddr[2:0],3'b000};
                   
    chargen_7x5_rachel the_rachel(
     .clk(pixel2_clk),
@@ -299,14 +276,14 @@ module fstore2(
     .pixels_out(pixels_out),
     .font_clk(~clk_data),
     .font_out(fout),
-    .font_addr({addrb[11:3],faddr[2:0]}),
-    .font_in(dinb >> {faddr[2:0],3'b000}),
+    .font_addr({addrb[10:3],faddr[2:0]}),
+    .font_in(font_in),
     .font_en(enb & addrb[14] & addrb[13]),
     .font_we(~faddr[3]));
    
-   wire       pixel = (pixels_out[3'd7 ^ offpixel] || cursor) && bitmapped_pixel;
+   wire       pixel = pixels_out[3'd7 ^ offpixel1] || cursor;
 
-   always @(dout16 or pixel)
-     {red_in,green_in,blue_in} = pallette[pixel ? dout16[11:8]: dout16[14:12]];
+   always @(dout16_1 or pixel or bitmapped_pixel1)
+     {red_in,green_in,blue_in} = bitmapped_pixel1 ? palette[pixel ? dout16_1[11:8]: dout16_1[14:12]] : 24'b0;
    
 endmodule

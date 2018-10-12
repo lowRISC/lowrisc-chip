@@ -183,6 +183,7 @@ module uart(
            rx_byte = rx_data;
            recv_state = RX_IDLE;
         end
+        default:;
       endcase
       
       // Transmit state machine
@@ -222,6 +223,7 @@ module uart(
            // "stop bit" delay.
            tx_state = tx_countdown ? TX_DELAY_RESTART : TX_IDLE;
         end
+        default:;
       endcase
    end
 

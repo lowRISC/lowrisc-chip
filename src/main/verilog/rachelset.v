@@ -13,7 +13,7 @@ specific language governing permissions and limitations under the License.
 // ASCII character set ROM (like the good old RO-3-2513)
 
 module chargen_7x5_rachel(input clk, input [7:0] ascii, input[3:0] row, output [7:0] pixels_out,
-                          input font_clk, output[7:0] font_out, input [11:0] font_addr, input [7:0] font_in,
+                          input font_clk, output[7:0] font_out, input [10:0] font_addr, input [7:0] font_in,
                           input font_en, input font_we);
 `ifndef FPGA
 

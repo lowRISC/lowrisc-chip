@@ -206,6 +206,7 @@ always @(posedge msoc_clk)
         4: begin {o_edutrst,oe_edutmdio,o_edutmdio,o_edutmdclk} <= core_lsu_wdata; end
         5: begin lastbuf <= core_lsu_wdata[3:0]; end
         6: begin firstbuf <= core_lsu_wdata[3:0]; end
+        default:;
       endcase
        if (byte_sync & (~rx_pair[2]) & ~sync)
          begin

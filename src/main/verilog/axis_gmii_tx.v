@@ -292,6 +292,7 @@ always @* begin
                     2'd1: gmii_txd_next = ~crc_state[15:8];
                     2'd2: gmii_txd_next = ~crc_state[23:16];
                     2'd3: gmii_txd_next = ~crc_state[31:24];
+                    default:;
                 endcase
                 gmii_tx_en_next = 1'b1;
 
