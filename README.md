@@ -1,3 +1,5 @@
+# See LICENSE.Cambridge for license details.
+
 lowRISC chip
 ==============================================
 
@@ -10,7 +12,7 @@ demos.
 
 [dev] status: [![dev build status](https://travis-ci.org/lowRISC/lowrisc-chip.svg?branch=dev)](https://travis-ci.org/lowRISC/lowrisc-chip)
 
-Current version: Release version 0.6 (10-2018) --- RV64GC lowRISC with run/step debugging via JTAG and GDB
+Current version: Release version 0.6 (10-2018) --- lowRISC technical refresh with RV64GC, Debian+FreeBSD capable
 
 To download the repo:
 
@@ -22,12 +24,12 @@ For the previous release:
 
 ~~~shell
 ################
-# Version 0.5: lowRISC with with 100MHz Ethernet and Network filing system access
+# Version 0.5: lowRISC with 100MHz Ethernet and Network filing system access (01-2018)
 ################
 git clone -b ethernet-v0.5 --recursive https://github.com/lowrisc/lowrisc-chip.git
 
 ################
-# Version 0.4: lowRISC with tagged memory and minion core (05-2017)
+# Version 0.4: lowRISC with with tagged memory and minion core (06-2017)
 ################
 git clone -b minion-v0.4 --recursive https://github.com/lowrisc/lowrisc-chip.git
 
