@@ -31,7 +31,7 @@ module periph_soc #(UBAUD_DEFAULT=54)
  output reg         sd_irq,
  input wire         hid_en,
  input wire [7:0]   hid_we,
- input wire [17:0]  hid_addr,
+ input wire [18:0]  hid_addr,
  input wire [63:0]  hid_wrdata,
  output reg [63:0]  hid_rddata,
  //keyboard
@@ -77,7 +77,8 @@ module periph_soc #(UBAUD_DEFAULT=54)
  wire [8:0] keyb_fifo_out;
  // signals from/to core
 logic [7:0] one_hot_data_addr;
-logic [63:0] one_hot_rdata[7:0];
+logic [63:0] doutg, one_hot_rdata[7:0];
+logic haddr18;
 
     ps2 keyb_mouse(
       .clk(msoc_clk),
@@ -119,11 +120,12 @@ logic [63:0] one_hot_rdata[7:0];
       .red(red),
       .green(green),
       .blue(blue),
-      .web(hid_we),
+      .web(hid_en ? hid_we : 8'b0),
       .enb(hid_en & one_hot_data_addr[7]),
-      .addrb(hid_addr[14:0]),
+      .addrb(hid_addr[18:0]),
       .dinb(hid_wrdata),
       .doutb(one_hot_rdata[7]),
+      .doutg(doutg),
       .irst(~rstn),
       .clk_data(msoc_clk)
      );
@@ -247,13 +249,18 @@ uart i_uart(
    
 //----------------------------------------------------------------------------//
 
+   always @(posedge msoc_clk)
+     begin
+        haddr18 <= hid_addr[18];
+     end
+   
 always_comb
   begin:onehot
      integer i;
-     hid_rddata = 64'b0;
+     hid_rddata = haddr18 ? doutg : 64'b0;
      for (i = 0; i < 8; i++)
        begin
-	   one_hot_data_addr[i] = hid_addr[17:15] == i;
+	   one_hot_data_addr[i] = hid_addr[18:15] == i;
 	   hid_rddata |= (one_hot_data_addr[i] ? one_hot_rdata[i] : 64'b0);
        end
   end

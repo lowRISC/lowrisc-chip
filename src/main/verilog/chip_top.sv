@@ -706,7 +706,7 @@ logic mig_sys_clk, clk_pixel;
    
    wire                        hid_rst, hid_clk, hid_en;
    wire [7:0]                  hid_we;
-   wire [17:0]                 hid_addr;
+   wire [18:0]                 hid_addr;
    wire [63:0]                 hid_wrdata,  hid_rddata;
    logic [30:0]                hid_ar_addr, hid_aw_addr;
    logic [1:0] eth_txd;
@@ -718,7 +718,7 @@ logic mig_sys_clk, clk_pixel;
       .s_axi_aclk      ( clk                        ),
       .s_axi_aresetn   ( rstn                       ),
       .s_axi_arid      ( mmio_master_nasti.ar_id    ),
-      .s_axi_araddr    ( bram_ar_addr[17:0]         ),
+      .s_axi_araddr    ( bram_ar_addr[18:0]         ),
       .s_axi_arlen     ( mmio_master_nasti.ar_len   ),
       .s_axi_arsize    ( mmio_master_nasti.ar_size  ),
       .s_axi_arburst   ( mmio_master_nasti.ar_burst ),
@@ -734,7 +734,7 @@ logic mig_sys_clk, clk_pixel;
       .s_axi_rready    ( mmio_master_nasti.r_ready  ),
       .s_axi_rvalid    ( mmio_master_nasti.r_valid  ),
       .s_axi_awid      ( mmio_master_nasti.aw_id    ),
-      .s_axi_awaddr    ( bram_aw_addr[17:0]         ),
+      .s_axi_awaddr    ( bram_aw_addr[18:0]         ),
       .s_axi_awlen     ( mmio_master_nasti.aw_len   ),
       .s_axi_awsize    ( mmio_master_nasti.aw_size  ),
       .s_axi_awburst   ( mmio_master_nasti.aw_burst ),

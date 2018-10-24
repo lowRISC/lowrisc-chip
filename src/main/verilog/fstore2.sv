@@ -21,9 +21,10 @@ module fstore2(
                output wire        vsyn,
                output reg         hsyn,
 
+               output reg  [63:0] doutg,
                output wire [63:0] doutb,
                input wire  [63:0] dinb,
-               input wire  [14:0] addrb,
+               input wire  [18:0] addrb,
                input wire  [7:0]  web,
                input wire         enb,
                input wire         clk_data,
@@ -40,15 +41,17 @@ module fstore2(
    reg [12:6]                    offhreg, offhreg1;
    reg [5:3]                     offpixel, offpixel1;
    reg [11:5]                    offvreg;
+   reg [11:0]                    offgpixel, offgpixel_1, offgreg, offgreg_1;
    reg [4:1]                     vrow;
    reg [4:0]                     divreg, divreg0, hdiv;
-   reg [6:0]                     xcursor, ycursor, xcursor0, ycursor0, cursorvreg, cursorvreg0;
+   reg [6:0]                     xcursor, ycursor, xcursor0, ycursor0, cursorvreg, cursorvreg0, modereg, modereg0;
    reg [11:0]                    hstartreg, hsynreg, hstopreg, vstartreg,
                                  vstopreg, vpixstartreg,
                                  vpixstopreg, hpixstartreg, hpixstopreg, hpixreg, vpixreg,
                                  hstartreg0, hsynreg0, hstopreg0, vstartreg0,
                                  vstopreg0, vpixstartreg0,
                                  vpixstopreg0, hpixstartreg0, hpixstopreg0, hpixreg0, vpixreg0;
+   reg [18:0]                    addrb_1;
    wire [63:0]                   dout, dout0;
    wire [15:0]                   dout16 = dout >> {offhreg1[7:6],4'b0000};
    reg [15:0]                    dout16_1;
@@ -59,19 +62,42 @@ module fstore2(
    
    reg [11:0]                    hreg, vreg;
 
-   reg                           bitmapped_pixel, bitmapped_pixel1, addrb14;
+   reg                           bitmapped_pixel, bitmapped_pixel1;
    
    reg [7:0]                     red_in, green_in, blue_in;
 
    reg [23:0]                    palette0[0:15], palette[0:15];
-                  
+
    dualmem ram1(.clka(pixel2_clk),
                 .dina(8'b0), .addra({offvreg[10:5],offhreg[12:8]}), .wea(8'b0), .douta(dout), .ena(1'b1),
                 .clkb(~clk_data), .dinb(dinb), .addrb(addrb[13:3]), .web(web), .doutb(dout0), .enb(enb&~addrb[14]));
 
+   genvar                        r;
+   logic [5:0]                   fstore_rdata, dout1;
+   logic [63:0]                  fstore_rddata, dout6[5:0], doutpix[5:0];
+   logic                         doutpix1;
+   
+   always_comb
+     begin:onehot
+        integer i;
+        doutg = 64'b0;
+        fstore_rddata = 64'b0;
+        for (i = 0; i < 6; i++)
+          begin
+	     doutg |= (addrb_1[16:14]==r ? dout6[i] : 64'b0);
+	     fstore_rddata |= (offgreg_1[9:7] == i ? doutpix[i] : 64'b0);
+          end
+     end
+   generate for (r = 0; r < 6; r=r+1)
+     dualmem ram1(.clka(pixel2_clk),
+                .dina(8'b0), .addra({offgreg[6:0],offgpixel[9:6]}), .wea(8'b0), .douta(doutpix[r]), .ena(offgreg[9:7]==r),
+   .clkb(clk_data), .dinb(dinb), .addrb(addrb[13:3]), .web(web), .doutb(dout6[r]), .enb((addrb[16:14]==r) && addrb[18]));
+   endgenerate
+
    always @(posedge clk_data)
    if (irst)
      begin
+        modereg0 <= 0;
         cursorvreg0 <= 10;
         xcursor0 <= 0;
         ycursor0 <= 32;
@@ -90,9 +116,10 @@ module fstore2(
      end
    else
      begin
-        addrb14 <= addrb[14];
+        addrb_1 <= addrb;
         if (web && enb && addrb[14] && ~addrb[13])
           casez (addrb[8:3])
+            6'd0: modereg0 <= dinb[6:0];
             6'd1: cursorvreg0 <= dinb[6:0];
             6'd2: xcursor0 <= dinb[6:0];
             6'd3: ycursor0 <= dinb[6:0];
@@ -142,6 +169,7 @@ module fstore2(
    always @(posedge pixel2_clk) // or posedge reset) // JRRK - does this need async ?
    if (irst)
      begin
+        modereg <= 0;
         hreg <= 0;
         hstart <= 0;
         hsyn <= 0;
@@ -160,7 +188,11 @@ module fstore2(
      end
    else
      begin
+        doutpix1 <= fstore_rddata[offgpixel_1[5:0]];
+        modereg <= modereg0;
         offhreg1 <= offhreg;
+        offgpixel_1 <= offgpixel;
+        offgreg_1 <= offgreg;
         offpixel1 <= offpixel;
         dout16_1 <= dout16;
         bitmapped_pixel1 <= bitmapped_pixel;
@@ -206,6 +238,7 @@ module fstore2(
                begin
                   if (hdiv == divreg)
                     begin
+                       offgpixel <= offgpixel+1;
                        if (offpixel == hpixreg)
                          begin
                             offpixel <= 0;
@@ -223,17 +256,22 @@ module fstore2(
                begin
                   hdiv <= 0;
                   offpixel <= 0;
+                  offgpixel <= 0;
                   offhreg <= 0;
-                  if (hstop & vreg[0])
+                  if (hstop)
                     begin
-                       if (vrow == vpixreg)
+                       offgreg <= offgreg+1;
+                       if (vreg[0])
                          begin
-                            vrow <= 0;
-                            offvreg <= offvreg+1;
-                         end
-                       else
-                         begin
-                            vrow <= vrow + 1;
+                            if (vrow == vpixreg)
+                              begin
+                                 vrow <= 0;
+                                 offvreg <= offvreg+1;
+                              end
+                            else
+                              begin
+                                 vrow <= vrow + 1;
+                              end
                          end
                     end
                   bitmapped_pixel <= 0;
@@ -243,6 +281,7 @@ module fstore2(
           begin
              vrow <= 0;
              offvreg <= 0;
+             offgreg <= 0;
              bitmapped_pixel <= 0;
           end
 
@@ -266,7 +305,7 @@ module fstore2(
        default: faddr = 8;
    endcase // case (web)
    
-   assign doutb = addrb14 ? {fout,fout,fout,fout,fout,fout,fout,fout} : dout0;
+   assign doutb = addrb_1[14] ? {fout,fout,fout,fout,fout,fout,fout,fout} : dout0;
    wire [7:0] font_in = dinb >> {faddr[2:0],3'b000};
                   
    chargen_7x5_rachel the_rachel(
@@ -281,9 +320,9 @@ module fstore2(
     .font_en(enb & addrb[14] & addrb[13]),
     .font_we(~faddr[3]));
    
-   wire       pixel = pixels_out[3'd7 ^ offpixel1] || cursor;
+   wire       pixel = (modereg[0] && dout16_1[15]) | modereg[1] ? doutpix1 : (pixels_out[3'd7 ^ offpixel1] || cursor);
 
    always @(dout16_1 or pixel or bitmapped_pixel1)
-     {red_in,green_in,blue_in} = bitmapped_pixel1 ? palette[pixel ? dout16_1[11:8]: dout16_1[14:12]] : 24'b0;
+     {red_in,green_in,blue_in} = bitmapped_pixel1 ? (modereg[2] ? {24{pixel}} : (palette[pixel ? dout16_1[11:8]: dout16_1[14:12]])) : 24'b0;
    
 endmodule
