@@ -72,26 +72,36 @@ module fstore2(
                 .dina(8'b0), .addra({offvreg[10:5],offhreg[12:8]}), .wea(8'b0), .douta(dout), .ena(1'b1),
                 .clkb(~clk_data), .dinb(dinb), .addrb(addrb[13:3]), .web(web), .doutb(dout0), .enb(enb&~addrb[14]));
 
+   parameter graphmax = 12;
+   
    genvar                        r;
-   logic [5:0]                   fstore_rdata, dout1;
-   logic [63:0]                  fstore_rddata, dout6[5:0], doutpix[5:0];
-   logic                         doutpix1;
+   logic [63:0]                  fstore_rddata, doutfb[graphmax-1:0], doutpix[graphmax-1:0];
+   logic [3:0]                   doutpix4;
    
    always_comb
      begin:onehot
         integer i;
         doutg = 64'b0;
         fstore_rddata = 64'b0;
-        for (i = 0; i < 6; i++)
+        for (i = 0; i < graphmax; i++)
           begin
-	     doutg |= (addrb_1[16:14]==r ? dout6[i] : 64'b0);
-	     fstore_rddata |= (offgreg_1[9:7] == i ? doutpix[i] : 64'b0);
+	     doutg |= addrb_1[17:14] == r ? doutfb[i] : 64'b0;
+	     fstore_rddata |= (offgreg_1[11:6] == i) && !offgpixel[11:9] ? doutpix[i] : 64'b0;
           end
      end
-   generate for (r = 0; r < 6; r=r+1)
+   generate for (r = 0; r < graphmax; r=r+1)
      dualmem ram1(.clka(pixel2_clk),
-                .dina(8'b0), .addra({offgreg[6:0],offgpixel[9:6]}), .wea(8'b0), .douta(doutpix[r]), .ena(offgreg[9:7]==r),
-   .clkb(clk_data), .dinb(dinb), .addrb(addrb[13:3]), .web(web), .doutb(dout6[r]), .enb((addrb[16:14]==r) && addrb[18]));
+                  .dina(8'b0),
+                  .addra({offgreg[5:0],offgpixel[8:4]}),
+                  .wea(8'b0),
+                  .douta(doutpix[r]),
+                  .ena((offgreg[11:6]==r)),
+                  .clkb(clk_data),
+                  .dinb(dinb),
+                  .addrb(addrb[13:3]),
+                  .web(web),
+                  .doutb(doutfb[r]),
+                  .enb((addrb[17:14]==r) && addrb[18]));
    endgenerate
 
    always @(posedge clk_data)
@@ -188,7 +198,7 @@ module fstore2(
      end
    else
      begin
-        doutpix1 <= fstore_rddata[offgpixel_1[5:0]];
+        doutpix4 <= fstore_rddata >> {offgpixel_1[3:0],2'b00};
         modereg <= modereg0;
         offhreg1 <= offhreg;
         offgpixel_1 <= offgpixel;
@@ -320,9 +330,11 @@ module fstore2(
     .font_en(enb & addrb[14] & addrb[13]),
     .font_we(~faddr[3]));
    
-   wire       pixel = (modereg[0] && dout16_1[15]) | modereg[1] ? doutpix1 : (pixels_out[3'd7 ^ offpixel1] || cursor);
-
-   always @(dout16_1 or pixel or bitmapped_pixel1)
-     {red_in,green_in,blue_in} = bitmapped_pixel1 ? (modereg[2] ? {24{pixel}} : (palette[pixel ? dout16_1[11:8]: dout16_1[14:12]])) : 24'b0;
+     wire pixel = pixels_out[3'd7 ^ offpixel1] || cursor;
+     wire [3:0] colour = pixel ? dout16_1[11:8]: dout16_1[14:12];
+     wire graph = (modereg[0] && dout16_1[15]) | modereg[1];
+     
+     assign
+       {red_in,green_in,blue_in} = bitmapped_pixel1 ? palette[graph ? doutpix4 : colour] : 24'b0;
    
 endmodule
