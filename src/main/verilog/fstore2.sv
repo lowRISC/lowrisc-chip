@@ -41,7 +41,8 @@ module fstore2(
    reg [12:6]                    offhreg, offhreg1;
    reg [5:3]                     offpixel, offpixel1;
    reg [11:5]                    offvreg;
-   reg [11:0]                    offgpixel, offgpixel_1, offgreg, offgreg_1;
+   reg [11:0]                    offgpixel, offgpixel_1;
+   reg [18:4]                    offgreg, offgreg_1;
    reg [4:1]                     vrow;
    reg [4:0]                     divreg, divreg0, hdiv;
    reg [6:0]                     xcursor, ycursor, xcursor0, ycursor0, cursorvreg, cursorvreg0, modereg, modereg0;
@@ -51,6 +52,7 @@ module fstore2(
                                  hstartreg0, hsynreg0, hstopreg0, vstartreg0,
                                  vstopreg0, vpixstartreg0,
                                  vpixstopreg0, hpixstartreg0, hpixstopreg0, hpixreg0, vpixreg0;
+   reg [7:0]                     ghlimit, ghlimit0;
    reg [18:0]                    addrb_1;
    wire [63:0]                   dout, dout0;
    wire [15:0]                   dout16 = dout >> {offhreg1[7:6],4'b0000};
@@ -77,7 +79,8 @@ module fstore2(
    genvar                        r;
    logic [63:0]                  fstore_rddata, doutfb[graphmax-1:0], doutpix[graphmax-1:0];
    logic [3:0]                   doutpix4;
-   
+   logic [18:4]                  gaddra_1, gaddra = offgreg[18:4]+offgpixel[11:4];
+                 
    always_comb
      begin:onehot
         integer i;
@@ -86,16 +89,16 @@ module fstore2(
         for (i = 0; i < graphmax; i++)
           begin
 	     doutg |= addrb_1[17:14] == r ? doutfb[i] : 64'b0;
-	     fstore_rddata |= (offgreg_1[11:6] == i) && !offgpixel[11:9] ? doutpix[i] : 64'b0;
+	     fstore_rddata |= (gaddra_1[18:15] == i) && (offgpixel_1[11:4] < ghlimit) ? doutpix[i] : 64'b0;
           end
      end
    generate for (r = 0; r < graphmax; r=r+1)
      dualmem ram1(.clka(pixel2_clk),
                   .dina(8'b0),
-                  .addra({offgreg[5:0],offgpixel[8:4]}),
+                  .addra(gaddra[14:4]),
                   .wea(8'b0),
                   .douta(doutpix[r]),
-                  .ena((offgreg[11:6]==r)),
+                  .ena(gaddra[18:15]==r),
                   .clkb(clk_data),
                   .dinb(dinb),
                   .addrb(addrb[13:3]),
@@ -107,6 +110,7 @@ module fstore2(
    always @(posedge clk_data)
    if (irst)
      begin
+        ghlimit0 <= 32;
         modereg0 <= 0;
         cursorvreg0 <= 10;
         xcursor0 <= 0;
@@ -145,6 +149,7 @@ module fstore2(
             6'd15: hpixreg0 <= dinb[11:0];
             6'd16: vpixreg0 <= dinb[11:0];
             6'd17: divreg0 <= dinb[3:0];
+            6'd18: ghlimit0 <= dinb[7:0];
             default:;
           endcase
         if (web && enb && addrb[14] && ~addrb[13] && addrb[8])
@@ -202,7 +207,7 @@ module fstore2(
         modereg <= modereg0;
         offhreg1 <= offhreg;
         offgpixel_1 <= offgpixel;
-        offgreg_1 <= offgreg;
+        gaddra_1 <= gaddra;
         offpixel1 <= offpixel;
         dout16_1 <= dout16;
         bitmapped_pixel1 <= bitmapped_pixel;
@@ -221,6 +226,7 @@ module fstore2(
         hpixreg <= hpixreg0;
         vpixreg <= vpixreg0;
         divreg <= divreg0;
+        ghlimit <= ghlimit0;
         for (i = 0; i < 16; i=i+1)
           palette[i] = palette0[i];
         hreg <= (hstop) ? 0: hreg + 1;
@@ -270,7 +276,7 @@ module fstore2(
                   offhreg <= 0;
                   if (hstop)
                     begin
-                       offgreg <= offgreg+1;
+                       offgreg <= offgreg + ghlimit;
                        if (vreg[0])
                          begin
                             if (vrow == vpixreg)
