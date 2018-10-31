@@ -988,7 +988,7 @@ assign clk = mig_ui_clk;
         endcase // casez ()
      end
    
-   ExampleRocketSystem Rocket
+   ExampleBoomSystem Rocket
      (
       .debug_systemjtag_jtag_TCK(TCK),
       .debug_systemjtag_jtag_TMS(TMS),
@@ -1132,7 +1132,7 @@ assign clk = mig_ui_clk;
       .l2_frontend_bus_axi4_0_r_bits_user      ( io_salve_nasti.r_user                  ),
 `endif
       .interrupts                    ( {sd_irq, eth_irq, spi_irq, uart_irq} ),
-      .io_reset_vector               ( io_reset_vector                      ),
+//      .io_reset_vector               ( io_reset_vector                      ),
       .clock                         ( clk                                  ),
       .reset                         ( sys_rst                              )
       );
