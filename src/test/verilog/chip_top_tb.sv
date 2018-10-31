@@ -253,7 +253,7 @@ sd_verilator_model sdflash1 (
 );
 
    // LED and DIP switch
-   wire [7:0]   o_led;
+   wire [15:0]   o_led;
    wire [15:0]   i_dip;
 
    assign i_dip = 16'h0;

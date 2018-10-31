@@ -150,186 +150,408 @@ module ExampleArianeSystem #(
   output wire        l2_frontend_bus_axi4_0_r_bits_last
 );
 
-   wire mem_axi4_0_aw_region;
-   wire mem_axi4_0_ar_region;
-   wire mmio_axi4_0_aw_region;
-   wire mmio_axi4_0_ar_region;
-  
-  // Tracing
-   tracer_t tracer;
-   
-   logic             test_en_i = 'b1; // enable all clock gates for testing
-   // Core ID; Cluster ID and boot address are considered more or less static
-   logic [ 3:0]      core_id_i = 'b0;
-   logic [ 5:0]      cluster_id_i = 'b0;
-   logic             sec_lvl_o; // current privilege level oot
-   // Timer facilities
-   logic [63:0]      time_i, mtimecmp; // global time (most probably coming from an RTC)
-   logic             time_irq_i; // timer interrupt in
-   
-   genvar        i;
+    // disable test-enable
+    logic        test_en;
+    logic        ndmreset;
+    logic        ndmreset_n;
+    logic        debug_req_core;
 
-   // internal clock and reset signals
-   wire aresetn = !reset;
+    logic        init_done;
 
-always @(posedge clock)
-    begin
-    if (!aresetn)
-        time_i = 'b0;
-    else
-        time_i = time_i + 1'b1;
-        time_irq_i = time_i >= mtimecmp;
-    end
-    
-   // the NASTI bus for off-FPGA DRAM, converted to High frequency
-   nasti_channel   
-     #(
-       .ID_WIDTH    ( 10 ),
-       .ADDR_WIDTH  ( 32 ),
-       .DATA_WIDTH  ( 64 ))
-   mem_mig_nasti();
+    logic        jtag_TCK;
+    logic        jtag_TMS;
+    logic        jtag_TDI;
+    logic        jtag_TRSTn;
+    logic        jtag_TDO_data;
+    logic        jtag_TDO_driven;
+
+    logic        debug_req_ready;
+    logic [1:0]  debug_resp_bits_resp;
+    logic [31:0] debug_resp_bits_data;
+
+    logic        jtag_req_valid;
+    logic [6:0]  jtag_req_bits_addr;
+    logic [1:0]  jtag_req_bits_op;
+    logic [31:0] jtag_req_bits_data;
+    logic        jtag_resp_ready;
+    logic        jtag_resp_valid;
+
+    logic [6:0]  dmi_req_bits_addr;
+    logic [1:0]  dmi_req_bits_op;
+    logic [31:0] dmi_req_bits_data;
+
+    logic rtc_i;
+    assign rtc_i = 1'b0;
+
+    assign test_en = 1'b0;
+    assign ndmreset_n = ~ndmreset ;
+    assign debug_ndreset = ndmreset_n;
+   
+    localparam NB_SLAVE = 4;
+    localparam NB_MASTER = 5;
+
+    localparam AXI_ID_WIDTH_SLAVES = AXI_ID_WIDTH + $clog2(NB_SLAVE);
 
     AXI_BUS #(
-              .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH ),
-              .AXI_DATA_WIDTH ( AXI_DATA_WIDTH    ),
-              .AXI_ID_WIDTH   ( AXI_ID_WIDTH      ),
-              .AXI_USER_WIDTH ( AXI_USER_WIDTH    )
-              ) instr_if(), data_if(), bypass_if();
+        .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH ),
+        .AXI_DATA_WIDTH ( AXI_DATA_WIDTH    ),
+        .AXI_ID_WIDTH   ( AXI_ID_WIDTH      ),
+        .AXI_USER_WIDTH ( AXI_USER_WIDTH    )
+    ) slave[NB_SLAVE-1:0]();
 
-   // interrupt lines from peripherals
-   wire [63:0]                 minten, sinten;
-   wire [INTERRUPT_COUNT-1:0]                  minterrupt = interrupts & minten;
-   wire [INTERRUPT_COUNT-1:0]                  sinterrupt = interrupts & sinten;
-   // Ariane nterrupts in
-   wire [1:0]                  irq_i = {|minterrupt,|sinterrupt}; // level sensitive IR lines; meip & seip
-   logic                       ipi_i = 'b0; // inter-processor interrupts
+    AXI_BUS #(
+        .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH   ),
+        .AXI_DATA_WIDTH ( AXI_DATA_WIDTH      ),
+        .AXI_ID_WIDTH   ( AXI_ID_WIDTH_SLAVES ),
+        .AXI_USER_WIDTH ( AXI_USER_WIDTH      )
+    ) master[NB_MASTER-1:0]();
 
-    logic        flush_dcache_ack_o, flush_dcache_i = 1'b0;
-    
+    // ---------------
+    // Debug
+    // ---------------
+    assign init_done = ~reset;
+
+    dm::dmi_req_t  jtag_dmi_req;
+
+    dm::dmi_resp_t debug_resp;
+
+    dmi_jtag i_dmi_jtag (
+        .clk_i            ( clock           ),
+        .rst_ni           ( ~reset          ),
+        .testmode_i       ( test_en         ),
+        .dmi_req_o        ( jtag_dmi_req    ),
+        .dmi_req_valid_o  ( jtag_req_valid  ),
+        .dmi_req_ready_i  ( debug_req_ready ),
+        .dmi_resp_i       ( debug_resp      ),
+        .dmi_resp_ready_o ( jtag_resp_ready ),
+        .dmi_resp_valid_i ( jtag_resp_valid ),
+        .dmi_rst_no       (                 ), // not connected
+        .tck_i            ( debug_systemjtag_jtag_TCK        ),
+        .tms_i            ( debug_systemjtag_jtag_TMS        ),
+        .trst_ni          ( ~debug_systemjtag_reset          ),
+        .td_i             ( debug_systemjtag_jtag_TDI        ),
+        .td_o             ( debug_systemjtag_jtag_TDO_data   ),
+        .tdo_oe_o         ( debug_systemjtag_jtag_TDO_driven )
+    );
+
+    // debug module
+    dm_top #(
+        // current implementation only supports 1 hart
+        .NrHarts              ( 1                    ),
+        .AxiIdWidth           ( AXI_ID_WIDTH_SLAVES  ),
+        .AxiAddrWidth         ( AXI_ADDRESS_WIDTH    ),
+        .AxiDataWidth         ( AXI_DATA_WIDTH       ),
+        .AxiUserWidth         ( AXI_USER_WIDTH       )
+    ) i_dm_top (
+        .clk_i                ( clock                ),
+        .rst_ni               ( ~reset               ), // PoR
+        .testmode_i           ( test_en              ),
+        .ndmreset_o           ( ndmreset             ),
+        .dmactive_o           ( debug_dmactive       ), // active debug session
+        .debug_req_o          ( debug_req_core       ),
+        .unavailable_i        ( '0                   ),
+        .axi_master           ( slave[3]             ),
+        .axi_slave            ( master[4]            ),
+        .dmi_rst_ni           ( ~reset               ),
+        .dmi_req_valid_i      ( jtag_req_valid       ),
+        .dmi_req_ready_o      ( debug_req_ready      ),
+        .dmi_req_i            ( jtag_dmi_req         ),
+        .dmi_resp_valid_o     ( jtag_resp_valid      ),
+        .dmi_resp_ready_i     ( jtag_resp_ready      ),
+        .dmi_resp_o           ( debug_resp           )
+    );
+
+    // ---------------
+    // ROM
+    // ---------------
+    logic                         rom_req;
+    logic [AXI_ADDRESS_WIDTH-1:0] rom_addr;
+    logic [AXI_DATA_WIDTH-1:0]    rom_rdata;
+
+    axi2mem #(
+        .AXI_ID_WIDTH   ( AXI_ID_WIDTH_SLAVES ),
+        .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH   ),
+        .AXI_DATA_WIDTH ( AXI_DATA_WIDTH      ),
+        .AXI_USER_WIDTH ( AXI_USER_WIDTH      )
+    ) i_axi2rom (
+        .clk_i  ( clock      ),
+        .rst_ni ( ndmreset_n ),
+        .slave  ( master[3]  ),
+        .req_o  ( rom_req    ),
+        .we_o   (            ),
+        .addr_o ( rom_addr   ),
+        .be_o   (            ),
+        .data_o (            ),
+        .data_i ( rom_rdata  )
+    );
+
+    bootrom i_bootrom (
+        .clk_i      ( clock     ),
+        .req_i      ( rom_req   ),
+        .addr_i     ( rom_addr  ),
+        .rdata_o    ( rom_rdata )
+    );
+
+   
+
+    // ---------------
+    // AXI Xbar
+    // ---------------
+    axi_node_intf_wrap #(
+        // three ports from Ariane (instruction, data and bypass)
+        .NB_SLAVE       ( NB_SLAVE          ),
+        .NB_MASTER      ( NB_MASTER         ), // debug unit, memory unit
+        .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH ),
+        .AXI_DATA_WIDTH ( AXI_DATA_WIDTH    ),
+        .AXI_USER_WIDTH ( AXI_USER_WIDTH    ),
+        .AXI_ID_WIDTH   ( AXI_ID_WIDTH      )
+    ) i_axi_xbar (
+        .clk          ( clock                                                       ),
+        .rst_n        ( ndmreset_n                                                  ),
+        .test_en_i    ( test_en                                                     ),
+        .slave        ( slave                                                       ),
+        .master       ( master                                                      ),
+        .start_addr_i ( {64'h0,   64'h10000, 64'h2000000, 64'h40000000, 64'h80000000} ),
+        .end_addr_i   ( {64'hFFF, 64'h1FFFF, 64'h2FFFFFF, 64'h41000000, 64'h88000000} )
+    );
+
+    // ---------------
+    // CLINT
+    // ---------------
+    logic ipi;
+    logic timer_irq;
+
+    clint #(
+        .AXI_ADDR_WIDTH ( AXI_ADDRESS_WIDTH   ),
+        .AXI_DATA_WIDTH ( AXI_DATA_WIDTH      ),
+        .AXI_ID_WIDTH   ( AXI_ID_WIDTH_SLAVES ),
+        .NR_CORES       ( 1                   )
+    ) i_clint (
+        .clk_i       ( clock     ),
+        .rst_ni      ( ~reset    ),
+        .testmode_i  ( test_en   ),
+        .slave       ( master[2] ),
+        .rtc_i       ( rtc_i     ),
+        .timer_irq_o ( timer_irq ),
+        .ipi_o       ( ipi       )
+    );
+
+    // ---------------
+    // Core
+    // ---------------
     ariane #(
+        .CACHE_START_ADDR ( 64'h80000000     ),
         .AXI_ID_WIDTH     ( AXI_ID_WIDTH     ),
         .AXI_USER_WIDTH   ( AXI_USER_WIDTH   )
     ) i_ariane (
-        .*,
-        .clk_i                  ( clock                ),
-        .tracer                 ( tracer               ),
-        .rst_ni                 ( aresetn              ),
-        .flush_dcache_i         ( flush_dcache_i       ),
-        .flush_dcache_ack_o     ( flush_dcache_ack_o   ),
-        .data_if                ( data_if              ),
-        .bypass_if              ( bypass_if            ),
-        .instr_if               ( instr_if             ),
-        .boot_addr_i            ( 64'h40000000         ),
-        .mtimecmp_o             ( mtimecmp             ),
-        .minten_o               ( minten               ),
-        .sinten_o               ( sinten               )
+        .clk_i                ( clock            ),
+        .rst_ni               ( ndmreset_n       ),
+        .boot_addr_i          ( io_reset_vector  ), // start fetching from ROM
+        .core_id_i            ( '0               ),
+        .cluster_id_i         ( '0               ),
+        .irq_i                ( interrupts       ),
+        .ipi_i                ( ipi              ),
+        .time_irq_i           ( timer_irq        ),
+        .debug_req_i          ( debug_req_core   ),
+        .data_if              ( slave[2]         ),
+        .bypass_if            ( slave[1]         ),
+        .instr_if             ( slave[0]         )
+    );
+
+slave_adapter
+  #(
+    .ID_WIDTH(AXI_ID_WIDTH_SLAVES),                 // id width
+    .ADDR_WIDTH(AXI_ADDRESS_WIDTH),             // address width
+    .DATA_WIDTH(AXI_DATA_WIDTH),             // width of data
+    .USER_WIDTH(AXI_USER_WIDTH)              // width of user field, must > 0, let synthesizer trim it if not in use
+    )
+ sadapt_mem (
+  .s_axi_awid(master[0].aw_id),
+  .s_axi_awaddr(master[0].aw_addr),
+  .s_axi_awlen(master[0].aw_len),
+  .s_axi_awsize(master[0].aw_size),
+  .s_axi_awburst(master[0].aw_burst),
+  .s_axi_awlock(master[0].aw_lock),
+  .s_axi_awcache(master[0].aw_cache),
+  .s_axi_awprot(master[0].aw_prot),
+  .s_axi_awregion(master[0].aw_region),
+  .s_axi_awqos(master[0].aw_qos),
+  .s_axi_awuser(master[0].aw_user),
+  .s_axi_awvalid(master[0].aw_valid),
+  .s_axi_awready(master[0].aw_ready),
+  .s_axi_wdata(master[0].w_data),
+  .s_axi_wstrb(master[0].w_strb),
+  .s_axi_wlast(master[0].w_last),
+  .s_axi_wuser(master[0].w_user),
+  .s_axi_wvalid(master[0].w_valid),
+  .s_axi_wready(master[0].w_ready),
+  .s_axi_bid(master[0].b_id),
+  .s_axi_bresp(master[0].b_resp),
+  .s_axi_buser(master[0].b_user),
+  .s_axi_bvalid(master[0].b_valid),
+  .s_axi_bready(master[0].b_ready),
+  .s_axi_arid(master[0].ar_id),
+  .s_axi_araddr(master[0].ar_addr),
+  .s_axi_arlen(master[0].ar_len),
+  .s_axi_arsize(master[0].ar_size),
+  .s_axi_arburst(master[0].ar_burst),
+  .s_axi_arlock(master[0].ar_lock),
+  .s_axi_arcache(master[0].ar_cache),
+  .s_axi_arprot(master[0].ar_prot),
+  .s_axi_arregion(master[0].ar_region),
+  .s_axi_arqos(master[0].ar_qos),
+  .s_axi_aruser(master[0].ar_user),
+  .s_axi_arvalid(master[0].ar_valid),
+  .s_axi_arready(master[0].ar_ready),
+  .s_axi_rid(master[0].r_id),
+  .s_axi_rdata(master[0].r_data),
+  .s_axi_rresp(master[0].r_resp),
+  .s_axi_rlast(master[0].r_last),
+  .s_axi_ruser(master[0].r_user),
+  .s_axi_rvalid(master[0].r_valid),
+  .s_axi_rready(master[0].r_ready),
+      .m_axi_awid           ( mem_axi4_0_aw_bits_id      ),
+      .m_axi_awaddr         ( mem_axi4_0_aw_bits_addr    ),
+      .m_axi_awlen          ( mem_axi4_0_aw_bits_len     ),
+      .m_axi_awsize         ( mem_axi4_0_aw_bits_size    ),
+      .m_axi_awburst        ( mem_axi4_0_aw_bits_burst   ),
+      .m_axi_awlock         ( mem_axi4_0_aw_bits_lock    ),
+      .m_axi_awcache        ( mem_axi4_0_aw_bits_cache   ),
+      .m_axi_awprot         ( mem_axi4_0_aw_bits_prot    ),
+      .m_axi_awqos          ( mem_axi4_0_aw_bits_qos     ),
+      .m_axi_awuser         ( /*mem_axi4_0_aw_user*/    ),
+      .m_axi_awregion       ( /*mem_axi4_0_aw_region*/  ),
+      .m_axi_awvalid        ( mem_axi4_0_aw_valid   ),
+      .m_axi_awready        ( mem_axi4_0_aw_ready   ),
+      .m_axi_wdata          ( mem_axi4_0_w_bits_data     ),
+      .m_axi_wstrb          ( mem_axi4_0_w_bits_strb     ),
+      .m_axi_wlast          ( mem_axi4_0_w_bits_last     ),
+      .m_axi_wuser          ( /*mem_axi4_0_w_user*/     ),
+      .m_axi_wvalid         ( mem_axi4_0_w_valid    ),
+      .m_axi_wready         ( mem_axi4_0_w_ready    ),
+      .m_axi_bid            ( mem_axi4_0_b_bits_id       ),
+      .m_axi_bresp          ( mem_axi4_0_b_bits_resp     ),
+      .m_axi_buser          ( /*mem_axi4_0_b_user*/     ),
+      .m_axi_bvalid         ( mem_axi4_0_b_valid    ),
+      .m_axi_bready         ( mem_axi4_0_b_ready    ),
+      .m_axi_arid           ( mem_axi4_0_ar_bits_id      ),
+      .m_axi_araddr         ( mem_axi4_0_ar_bits_addr    ),
+      .m_axi_arlen          ( mem_axi4_0_ar_bits_len     ),
+      .m_axi_arsize         ( mem_axi4_0_ar_bits_size    ),
+      .m_axi_arburst        ( mem_axi4_0_ar_bits_burst   ),
+      .m_axi_arlock         ( mem_axi4_0_ar_bits_lock    ),
+      .m_axi_arcache        ( mem_axi4_0_ar_bits_cache   ),
+      .m_axi_arprot         ( mem_axi4_0_ar_bits_prot    ),
+      .m_axi_arqos          ( mem_axi4_0_ar_bits_qos     ),
+      .m_axi_aruser         ( /*mem_axi4_0_ar_user*/    ),
+      .m_axi_arregion       ( /*mem_axi4_0_ar_region*/  ),
+      .m_axi_arvalid        ( mem_axi4_0_ar_valid   ),
+      .m_axi_arready        ( mem_axi4_0_ar_ready   ),
+      .m_axi_rid            ( mem_axi4_0_r_bits_id       ),
+      .m_axi_rdata          ( mem_axi4_0_r_bits_data     ),
+      .m_axi_rresp          ( mem_axi4_0_r_bits_resp     ),
+      .m_axi_rlast          ( mem_axi4_0_r_bits_last     ),
+      .m_axi_ruser          ( /*mem_axi4_0_r_user*/     ),
+      .m_axi_rvalid         ( mem_axi4_0_r_valid    ),
+      .m_axi_rready         ( mem_axi4_0_r_ready    )
         );
 
-        // Debug Interface
-   logic                                 debug_gnt_o;
-   logic                                 debug_halt_i = 'b0;
-   logic                                 debug_resume_i = 'b0;
-   logic                                 debug_rvalid_o;
-   logic [15:0]                          debug_addr_i = 'b0;
-   logic                                 debug_we_i = 'b0;
-   logic [63:0]                          debug_wdata_i = 'b0;
-   logic [63:0]                          debug_rdata_o;
-   logic                                 debug_halted_o;
-   logic                                 debug_req_i = 'b0;
-         
-   // CPU Control Signals
-   logic                                 fetch_enable_i = 'b1; 
- 
- //  crossbar_socip
-axi_crossbar_0 crossbar (
-  .aclk(clock),                      // input wire wire aclk
-  .aresetn(aresetn),                // input wire wire aresetn
-  .s_axi_awid({bypass_if.aw_id,data_if.aw_id,instr_if.aw_id}),          // input wire wire [29 : 0] s_axi_awid
-  .s_axi_awaddr({bypass_if.aw_addr,data_if.aw_addr,instr_if.aw_addr}),      // input wire wire [191 : 0] s_axi_awaddr
-  .s_axi_awlen({bypass_if.aw_len,data_if.aw_len,instr_if.aw_len}),        // input wire wire [23 : 0] s_axi_awlen
-  .s_axi_awsize({bypass_if.aw_size,data_if.aw_size,instr_if.aw_size}),      // input wire wire [8 : 0] s_axi_awsize
-  .s_axi_awburst({bypass_if.aw_burst,data_if.aw_burst,instr_if.aw_burst}),    // input wire wire [5 : 0] s_axi_awburst
-  .s_axi_awlock({bypass_if.aw_lock,data_if.aw_lock,instr_if.aw_lock}),      // input wire wire [2 : 0] s_axi_awlock
-  .s_axi_awcache({bypass_if.aw_cache,data_if.aw_cache,instr_if.aw_cache}),    // input wire wire [11 : 0] s_axi_awcache
-  .s_axi_awprot({bypass_if.aw_prot,data_if.aw_prot,instr_if.aw_prot}),      // input wire wire [8 : 0] s_axi_awprot
-  .s_axi_awqos({bypass_if.aw_qos,data_if.aw_qos,instr_if.aw_qos}),        // input wire wire [11 : 0] s_axi_awqos
-//  .s_axi_awuser({bypass_if.aw_user,data_if.aw_user,instr_if.aw_user}),      // input wire wire [2 : 0] s_axi_awuser
-  .s_axi_awvalid({bypass_if.aw_valid,data_if.aw_valid,instr_if.aw_valid}),    // input wire wire [2 : 0] s_axi_awvalid
-  .s_axi_awready({bypass_if.aw_ready,data_if.aw_ready,instr_if.aw_ready}),    // output wire wire [2 : 0] s_axi_awready
-  .s_axi_wdata({bypass_if.w_data,data_if.w_data,instr_if.w_data}),        // input wire wire [191 : 0] s_axi_wdata
-  .s_axi_wstrb({bypass_if.w_strb,data_if.w_strb,instr_if.w_strb}),        // input wire wire [23 : 0] s_axi_wstrb
-  .s_axi_wlast({bypass_if.w_last,data_if.w_last,instr_if.w_last}),        // input wire wire [2 : 0] s_axi_wlast
-//  .s_axi_wuser({bypass_if.w_user,data_if.w_user,instr_if.w_user}),        // input wire wire [2 : 0] s_axi_wuser
-  .s_axi_wvalid({bypass_if.w_valid,data_if.w_valid,instr_if.w_valid}),      // input wire wire [2 : 0] s_axi_wvalid
-  .s_axi_wready({bypass_if.w_ready,data_if.w_ready,instr_if.w_ready}),      // output wire wire [2 : 0] s_axi_wready
-  .s_axi_bid({bypass_if.b_id,data_if.b_id,instr_if.b_id}),            // output wire wire [29 : 0] s_axi_bid
-  .s_axi_bresp({bypass_if.b_resp,data_if.b_resp,instr_if.b_resp}),        // output wire wire [5 : 0] s_axi_bresp
-//  .s_axi_buser({bypass_if.b_user,data_if.b_user,instr_if.b_user}),        // output wire wire [2 : 0] s_axi_buser
-  .s_axi_bvalid({bypass_if.b_valid,data_if.b_valid,instr_if.b_valid}),      // output wire wire [2 : 0] s_axi_bvalid
-  .s_axi_bready({bypass_if.b_ready,data_if.b_ready,instr_if.b_ready}),      // input wire wire [2 : 0] s_axi_bready
-  .s_axi_arid({bypass_if.ar_id,data_if.ar_id,instr_if.ar_id}),          // input wire wire [29 : 0] s_axi_arid
-  .s_axi_araddr({bypass_if.ar_addr,data_if.ar_addr,instr_if.ar_addr}),      // input wire wire [191 : 0] s_axi_araddr
-  .s_axi_arlen({bypass_if.ar_len,data_if.ar_len,instr_if.ar_len}),        // input wire wire [23 : 0] s_axi_arlen
-  .s_axi_arsize({bypass_if.ar_size,data_if.ar_size,instr_if.ar_size}),      // input wire wire [8 : 0] s_axi_arsize
-  .s_axi_arburst({bypass_if.ar_burst,data_if.ar_burst,instr_if.ar_burst}),    // input wire wire [5 : 0] s_axi_arburst
-  .s_axi_arlock({bypass_if.ar_lock,data_if.ar_lock,instr_if.ar_lock}),      // input wire wire [2 : 0] s_axi_arlock
-  .s_axi_arcache({bypass_if.ar_cache,data_if.ar_cache,instr_if.ar_cache}),    // input wire wire [11 : 0] s_axi_arcache
-  .s_axi_arprot({bypass_if.ar_prot,data_if.ar_prot,instr_if.ar_prot}),      // input wire wire [8 : 0] s_axi_arprot
-  .s_axi_arqos({bypass_if.ar_qos,data_if.ar_qos,instr_if.ar_qos}),        // input wire wire [11 : 0] s_axi_arqos
-//  .s_axi_aruser({bypass_if.ar_user,data_if.ar_user,instr_if.ar_user}),      // input wire wire [2 : 0] s_axi_aruser
-  .s_axi_arvalid({bypass_if.ar_valid,data_if.ar_valid,instr_if.ar_valid}),    // input wire wire [2 : 0] s_axi_arvalid
-  .s_axi_arready({bypass_if.ar_ready,data_if.ar_ready,instr_if.ar_ready}),    // output wire wire [2 : 0] s_axi_arready
-  .s_axi_rid({bypass_if.r_id,data_if.r_id,instr_if.r_id}),            // output wire wire [29 : 0] s_axi_rid
-  .s_axi_rdata({bypass_if.r_data,data_if.r_data,instr_if.r_data}),        // output wire wire [191 : 0] s_axi_rdata
-  .s_axi_rresp({bypass_if.r_resp,data_if.r_resp,instr_if.r_resp}),        // output wire wire [5 : 0] s_axi_rresp
-  .s_axi_rlast({bypass_if.r_last,data_if.r_last,instr_if.r_last}),        // output wire wire [2 : 0] s_axi_rlast
-//  .s_axi_ruser({bypass_if.r_user,data_if.r_user,instr_if.r_user}),        // output wire wire [2 : 0] s_axi_ruser
-  .s_axi_rvalid({bypass_if.r_valid,data_if.r_valid,instr_if.r_valid}),      // output wire wire [2 : 0] s_axi_rvalid
-  .s_axi_rready({bypass_if.r_ready,data_if.r_ready,instr_if.r_ready}),      // input wire wire [2 : 0] s_axi_rready
-  .m_axi_awid({mmio_axi4_0_aw_bits_id,mem_axi4_0_aw_bits_id}),          // input wire wire [29 : 0] s_axi_awid
-  .m_axi_awaddr({mmio_axi4_0_aw_bits_addr,mem_axi4_0_aw_bits_addr}),      // input wire wire [191 : 0] s_axi_awaddr
-  .m_axi_awlen({mmio_axi4_0_aw_bits_len,mem_axi4_0_aw_bits_len}),        // input wire wire [23 : 0] s_axi_awlen
-  .m_axi_awsize({mmio_axi4_0_aw_bits_size,mem_axi4_0_aw_bits_size}),      // input wire wire [8 : 0] s_axi_awsize
-  .m_axi_awburst({mmio_axi4_0_aw_bits_burst,mem_axi4_0_aw_bits_burst}),    // input wire wire [5 : 0] s_axi_awburst
-  .m_axi_awlock({mmio_axi4_0_aw_bits_lock,mem_axi4_0_aw_bits_lock}),      // input wire wire [2 : 0] s_axi_awlock
-  .m_axi_awcache({mmio_axi4_0_aw_bits_cache,mem_axi4_0_aw_bits_cache}),    // input wire wire [11 : 0] s_axi_awcache
-  .m_axi_awprot({mmio_axi4_0_aw_bits_prot,mem_axi4_0_aw_bits_prot}),      // input wire wire [8 : 0] s_axi_awprot
-  .m_axi_awqos({mmio_axi4_0_aw_bits_qos,mem_axi4_0_aw_bits_qos}),        // input wire wire [11 : 0] s_axi_awqos
-//  .m_axi_awuser({mmio_axi4_0_aw_user,mem_axi4_0_aw_user}),      // input wire wire [2 : 0] s_axi_awuser
-  .m_axi_awvalid({mmio_axi4_0_aw_valid,mem_axi4_0_aw_valid}),    // input wire wire [2 : 0] s_axi_awvalid
-  .m_axi_awready({mmio_axi4_0_aw_ready,mem_axi4_0_aw_ready}),    // output wire wire [2 : 0] s_axi_awready
-  .m_axi_awregion({mmio_axi4_0_aw_region,mem_axi4_0_aw_region}),    // output wire s_axi_awregion
-  .m_axi_wdata({mmio_axi4_0_w_bits_data,mem_axi4_0_w_bits_data}),        // input wire wire [191 : 0] s_axi_wdata
-  .m_axi_wstrb({mmio_axi4_0_w_bits_strb,mem_axi4_0_w_bits_strb}),        // input wire wire [23 : 0] s_axi_wstrb
-  .m_axi_wlast({mmio_axi4_0_w_bits_last,mem_axi4_0_w_bits_last}),        // input wire wire [2 : 0] s_axi_wlast
-//  .m_axi_wuser({mmio_axi4_0_w_user,mem_axi4_0_w_user}),        // input wire wire [2 : 0] s_axi_wuser
-  .m_axi_wvalid({mmio_axi4_0_w_valid,mem_axi4_0_w_valid}),      // input wire wire [2 : 0] s_axi_wvalid
-  .m_axi_wready({mmio_axi4_0_w_ready,mem_axi4_0_w_ready}),      // output wire wire [2 : 0] s_axi_wready
-  .m_axi_bid({mmio_axi4_0_b_bits_id,mem_axi4_0_b_bits_id}),            // output wire wire [29 : 0] s_axi_bid
-  .m_axi_bresp({mmio_axi4_0_b_bits_resp,mem_axi4_0_b_bits_resp}),        // output wire wire [5 : 0] s_axi_bresp
-//  .m_axi_buser({mmio_axi4_0_b_user,mem_axi4_0_b_user}),        // output wire wire [2 : 0] s_axi_buser
-  .m_axi_bvalid({mmio_axi4_0_b_valid,mem_axi4_0_b_valid}),      // output wire wire [2 : 0] s_axi_bvalid
-  .m_axi_bready({mmio_axi4_0_b_ready,mem_axi4_0_b_ready}),      // input wire wire [2 : 0] s_axi_bready
-  .m_axi_arid({mmio_axi4_0_ar_bits_id,mem_axi4_0_ar_bits_id}),          // input wire wire [29 : 0] s_axi_arid
-  .m_axi_araddr({mmio_axi4_0_ar_bits_addr,mem_axi4_0_ar_bits_addr}),      // input wire wire [191 : 0] s_axi_araddr
-  .m_axi_arlen({mmio_axi4_0_ar_bits_len,mem_axi4_0_ar_bits_len}),        // input wire wire [23 : 0] s_axi_arlen
-  .m_axi_arsize({mmio_axi4_0_ar_bits_size,mem_axi4_0_ar_bits_size}),      // input wire wire [8 : 0] s_axi_arsize
-  .m_axi_arburst({mmio_axi4_0_ar_bits_burst,mem_axi4_0_ar_bits_burst}),    // input wire wire [5 : 0] s_axi_arburst
-  .m_axi_arlock({mmio_axi4_0_ar_bits_lock,mem_axi4_0_ar_bits_lock}),      // input wire wire [2 : 0] s_axi_arlock
-  .m_axi_arcache({mmio_axi4_0_ar_bits_cache,mem_axi4_0_ar_bits_cache}),    // input wire wire [11 : 0] s_axi_arcache
-  .m_axi_arprot({mmio_axi4_0_ar_bits_prot,mem_axi4_0_ar_bits_prot}),      // input wire wire [8 : 0] s_axi_arprot
-  .m_axi_arqos({mmio_axi4_0_ar_bits_qos,mem_axi4_0_ar_bits_qos}),        // input wire wire [11 : 0] s_axi_arqos
-//  .m_axi_aruser({mmio_axi4_0_ar_user,mem_axi4_0_ar_user}),      // input wire wire [2 : 0] s_axi_aruser
-  .m_axi_arvalid({mmio_axi4_0_ar_valid,mem_axi4_0_ar_valid}),    // input wire wire [2 : 0] s_axi_arvalid
-  .m_axi_arready({mmio_axi4_0_ar_ready,mem_axi4_0_ar_ready}),    // output wire wire [2 : 0] s_axi_arready
-  .m_axi_arregion({mmio_axi4_0_ar_region,mem_axi4_0_ar_region}),    // output wire s_axi_arregion
-  .m_axi_rid({mmio_axi4_0_r_bits_id,mem_axi4_0_r_bits_id}),            // output wire wire [29 : 0] s_axi_rid
-  .m_axi_rdata({mmio_axi4_0_r_bits_data,mem_axi4_0_r_bits_data}),        // output wire wire [191 : 0] s_axi_rdata
-  .m_axi_rresp({mmio_axi4_0_r_bits_resp,mem_axi4_0_r_bits_resp}),        // output wire wire [5 : 0] s_axi_rresp
-  .m_axi_rlast({mmio_axi4_0_r_bits_last,mem_axi4_0_r_bits_last}),        // output wire wire [2 : 0] s_axi_rlast
-//  .m_axi_ruser({mmio_axi4_0_r_user,mem_axi4_0_r_user}),        // output wire wire [2 : 0] s_axi_ruser
-  .m_axi_rvalid({mmio_axi4_0_r_valid,mem_axi4_0_r_valid}),      // output wire wire [2 : 0] s_axi_rvalid
-  .m_axi_rready({mmio_axi4_0_r_ready,mem_axi4_0_r_ready})      // input wire wire [2 : 0] s_axi_rready
-);
+slave_adapter
+  #(
+    .ID_WIDTH(AXI_ID_WIDTH_SLAVES),                 // id width
+    .ADDR_WIDTH(AXI_ADDRESS_WIDTH),             // address width
+    .DATA_WIDTH(AXI_DATA_WIDTH),             // width of data
+    .USER_WIDTH(AXI_USER_WIDTH)              // width of user field, must > 0, let synthesizer trim it if not in use
+    )
+ sadapt_mmio (
+  .s_axi_awid(master[1].aw_id),
+  .s_axi_awaddr(master[1].aw_addr),
+  .s_axi_awlen(master[1].aw_len),
+  .s_axi_awsize(master[1].aw_size),
+  .s_axi_awburst(master[1].aw_burst),
+  .s_axi_awlock(master[1].aw_lock),
+  .s_axi_awcache(master[1].aw_cache),
+  .s_axi_awprot(master[1].aw_prot),
+  .s_axi_awregion(master[1].aw_region),
+  .s_axi_awqos(master[1].aw_qos),
+  .s_axi_awuser(master[1].aw_user),
+  .s_axi_awvalid(master[1].aw_valid),
+  .s_axi_awready(master[1].aw_ready),
+  .s_axi_wdata(master[1].w_data),
+  .s_axi_wstrb(master[1].w_strb),
+  .s_axi_wlast(master[1].w_last),
+  .s_axi_wuser(master[1].w_user),
+  .s_axi_wvalid(master[1].w_valid),
+  .s_axi_wready(master[1].w_ready),
+  .s_axi_bid(master[1].b_id),
+  .s_axi_bresp(master[1].b_resp),
+  .s_axi_buser(master[1].b_user),
+  .s_axi_bvalid(master[1].b_valid),
+  .s_axi_bready(master[1].b_ready),
+  .s_axi_arid(master[1].ar_id),
+  .s_axi_araddr(master[1].ar_addr),
+  .s_axi_arlen(master[1].ar_len),
+  .s_axi_arsize(master[1].ar_size),
+  .s_axi_arburst(master[1].ar_burst),
+  .s_axi_arlock(master[1].ar_lock),
+  .s_axi_arcache(master[1].ar_cache),
+  .s_axi_arprot(master[1].ar_prot),
+  .s_axi_arregion(master[1].ar_region),
+  .s_axi_arqos(master[1].ar_qos),
+  .s_axi_aruser(master[1].ar_user),
+  .s_axi_arvalid(master[1].ar_valid),
+  .s_axi_arready(master[1].ar_ready),
+  .s_axi_rid(master[1].r_id),
+  .s_axi_rdata(master[1].r_data),
+  .s_axi_rresp(master[1].r_resp),
+  .s_axi_rlast(master[1].r_last),
+  .s_axi_ruser(master[1].r_user),
+  .s_axi_rvalid(master[1].r_valid),
+  .s_axi_rready(master[1].r_ready),
+      .m_axi_awid           ( mmio_axi4_0_aw_bits_id      ),
+      .m_axi_awaddr         ( mmio_axi4_0_aw_bits_addr    ),
+      .m_axi_awlen          ( mmio_axi4_0_aw_bits_len     ),
+      .m_axi_awsize         ( mmio_axi4_0_aw_bits_size    ),
+      .m_axi_awburst        ( mmio_axi4_0_aw_bits_burst   ),
+      .m_axi_awlock         ( mmio_axi4_0_aw_bits_lock    ),
+      .m_axi_awcache        ( mmio_axi4_0_aw_bits_cache   ),
+      .m_axi_awprot         ( mmio_axi4_0_aw_bits_prot    ),
+      .m_axi_awqos          ( mmio_axi4_0_aw_bits_qos     ),
+      .m_axi_awuser         ( /*mmio_axi4_0_aw_user*/    ),
+      .m_axi_awregion       ( /*mmio_axi4_0_aw_region*/  ),
+      .m_axi_awvalid        ( mmio_axi4_0_aw_valid   ),
+      .m_axi_awready        ( mmio_axi4_0_aw_ready   ),
+      .m_axi_wdata          ( mmio_axi4_0_w_bits_data     ),
+      .m_axi_wstrb          ( mmio_axi4_0_w_bits_strb     ),
+      .m_axi_wlast          ( mmio_axi4_0_w_bits_last     ),
+      .m_axi_wuser          ( /*mmio_axi4_0_w_user*/     ),
+      .m_axi_wvalid         ( mmio_axi4_0_w_valid    ),
+      .m_axi_wready         ( mmio_axi4_0_w_ready    ),
+      .m_axi_bid            ( mmio_axi4_0_b_bits_id       ),
+      .m_axi_bresp          ( mmio_axi4_0_b_bits_resp     ),
+      .m_axi_buser          ( /*mmio_axi4_0_b_user*/     ),
+      .m_axi_bvalid         ( mmio_axi4_0_b_valid    ),
+      .m_axi_bready         ( mmio_axi4_0_b_ready    ),
+      .m_axi_arid           ( mmio_axi4_0_ar_bits_id      ),
+      .m_axi_araddr         ( mmio_axi4_0_ar_bits_addr    ),
+      .m_axi_arlen          ( mmio_axi4_0_ar_bits_len     ),
+      .m_axi_arsize         ( mmio_axi4_0_ar_bits_size    ),
+      .m_axi_arburst        ( mmio_axi4_0_ar_bits_burst   ),
+      .m_axi_arlock         ( mmio_axi4_0_ar_bits_lock    ),
+      .m_axi_arcache        ( mmio_axi4_0_ar_bits_cache   ),
+      .m_axi_arprot         ( mmio_axi4_0_ar_bits_prot    ),
+      .m_axi_arqos          ( mmio_axi4_0_ar_bits_qos     ),
+      .m_axi_aruser         ( /*mmio_axi4_0_ar_user*/    ),
+      .m_axi_arregion       ( /*mmio_axi4_0_ar_region*/  ),
+      .m_axi_arvalid        ( mmio_axi4_0_ar_valid   ),
+      .m_axi_arready        ( mmio_axi4_0_ar_ready   ),
+      .m_axi_rid            ( mmio_axi4_0_r_bits_id       ),
+      .m_axi_rdata          ( mmio_axi4_0_r_bits_data     ),
+      .m_axi_rresp          ( mmio_axi4_0_r_bits_resp     ),
+      .m_axi_rlast          ( mmio_axi4_0_r_bits_last     ),
+      .m_axi_ruser          ( /*mmio_axi4_0_r_user*/     ),
+      .m_axi_rvalid         ( mmio_axi4_0_r_valid    ),
+      .m_axi_rready         ( mmio_axi4_0_r_ready    )
+        );
    
 endmodule
