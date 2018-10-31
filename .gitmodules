@@ -4,12 +4,12 @@
 [submodule "riscv-linux"]
 	path = riscv-linux
 	url = https://github.com/jrrk/riscv-linux.git
-[submodule "rocket-chip"]
-	path = rocket-chip
-	url = https://github.com/jrrk/rocket-chip
 [submodule "debian-riscv64"]
 	path = debian-riscv64
 	url = https://github.com/jrrk/debian-riscv64.git
 [submodule "u-boot-riscv"]
 	path = u-boot-riscv
 	url = https://github.com/jrrk/u-boot-riscv.git
+[submodule "boom-template"]
+	path = boom-template
+	url = https://github.com/jrrk/boom-template.git
