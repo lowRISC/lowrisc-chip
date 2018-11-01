@@ -1,9 +1,6 @@
 [submodule "fpga"]
         path = fpga
         url = https://github.com/lowrisc/lowrisc-fpga.git
-[submodule "debian-riscv64"]
-	path = debian-riscv64
-	url = https://github.com/jrrk/debian-riscv64.git
 [submodule "u-boot-riscv"]
 	path = u-boot-riscv
 	url = https://github.com/jrrk/u-boot-riscv.git
@@ -13,3 +10,6 @@
 [submodule "riscv-linux"]
 	path = riscv-linux
 	url = https://github.com/lowRISC/riscv-linux.git
+[submodule "buildroot"]
+	path = buildroot
+	url = https://github.com/lowRISC/buildroot.git
