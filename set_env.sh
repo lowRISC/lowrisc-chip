@@ -15,7 +15,7 @@ if [ -z $RISCV ]; then
     export RISCV=$TOP/riscv
 fi
 
-export PATH=$PATH:$RISCV/bin
+export PATH=$RISCV/bin:$PATH
 
 # Variables for Open SoC Debug
 if [ -z $OSD_ROOT ]; then
@@ -45,7 +45,7 @@ fi
 
 # choose the FPGA board (Nexys4-DDR in default)
 if [ -z $FPGA_BOARD ]; then
-    echo "\$FPGA_BOARD is not defined. Set the target FPGA board to nexys4_ddr."
+    echo "\$FPGA_BOARD is not defined. Set the target FPGA board to kc705."
     export FPGA_BOARD=kc705
 fi
 
