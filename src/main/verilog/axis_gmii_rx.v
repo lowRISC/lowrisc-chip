@@ -31,7 +31,7 @@ Modified by the lowrisc team (Jonathan Kimmitt) to extract CRC bytes
 
 // Language: Verilog 2001
 
-`timescale 1ns / 1ps
+//`timescale 1ns / 1ps
 
 /*
  * AXI4-Stream GMII frame receiver (GMII in, AXI out)

@@ -253,7 +253,7 @@ sd_verilator_model sdflash1 (
 );
 
    // LED and DIP switch
-   wire [7:0]   o_led;
+   wire [21:0]   o_led;
    wire [15:0]   i_dip;
 
    assign i_dip = 16'h0;
@@ -303,22 +303,22 @@ sd_verilator_model sdflash1 (
 `endif
 
    initial begin
-      $value$plusargs("max-cycles=%d", max_cycle);
+        $value$plusargs("max-cycles=%d", max_cycle);
    end // initial begin
 
    // vcd
    initial begin
-//      if($test$plusargs("vcd"))
+        //      if($test$plusargs("vcd"))
         vcd_name = "test.vcd";
-
-      $value$plusargs("vcd_name=%s", vcd_name);
-
+        
+        $value$plusargs("vcd_name=%s", vcd_name);
+        
       if(vcd_name != "") begin
-         $dumpfile(vcd_name);
+             $dumpfile(vcd_name);
          $dumpvars(0, DUT);
-         $dumpon;
-      end
-   end // initial begin
+             $dumpon;
+          end
+     end // initial begin
 
    always @(posedge clk) begin
       cycle_cnt = cycle_cnt + 1;

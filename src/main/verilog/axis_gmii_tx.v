@@ -31,7 +31,7 @@ Modified by the LowRISC team (Jonathan Kimmitt) to extract CRC and correct packe
 
 // Language: Verilog 2001
 
-`timescale 1ns / 1ps
+//`timescale 1ns / 1ps
 
 /*
  * AXI4-Stream GMII frame transmitter (AXI in, GMII out)
