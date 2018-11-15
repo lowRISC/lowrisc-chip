@@ -6,6 +6,8 @@ lowRISC chip
 The root git repo for lowRISC development and FPGA
 demos.
 
+See the [documentation](https://www.lowrisc.org/docs/) for build instructions.
+
 [master] status: [![master build status](https://travis-ci.org/lowRISC/lowrisc-chip.svg?branch=master)](https://travis-ci.org/lowRISC/lowrisc-chip)
 
 [update] status: [![update build status](https://travis-ci.org/lowRISC/lowrisc-chip.svg?branch=update)](https://travis-ci.org/lowRISC/lowrisc-chip)
