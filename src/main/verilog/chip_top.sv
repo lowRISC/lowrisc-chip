@@ -258,7 +258,7 @@ reg phy_emdio_i, io_emdio_o, io_emdio_t;
    logic mig_ui_clk, mig_ui_rst, mig_ui_rstn;
    assign mig_ui_rstn = !mig_ui_rst;
 
-`define ROCKET_50MHZ
+//`define ROCKET_50MHZ
 `ifdef ROCKET_50MHZ
 `define MEM_NASTI mem_mig_nasti
 `define UBAUD_DEFAULT 108
@@ -894,19 +894,9 @@ reg phy_emdio_i, io_emdio_o, io_emdio_t;
   /* DMI interface tie-off */
   wire  ExampleRocketSystem_debug_ndreset;
   wire  ExampleRocketSystem_debug_dmactive;
-  reg [31:0] io_reset_vector;
 
-   always @*
-     begin
-        casez (i_dip[1:0])
-          2'b?0: io_reset_vector = 32'h40000000;
-          2'b01: io_reset_vector = 32'h80000000;
-          2'b11: io_reset_vector = 32'h80200000;
-        endcase // casez ()
-     end
- 
  `ifdef ARIANE_WRAPPER  
-   ExampleArianeSystem Rocket
+   ExampleArianeSystem #(.RESET_VECTOR(64'h40000000)) Rocket
  `else
    ExampleRocketSystem Rocket
  `endif
@@ -1053,7 +1043,6 @@ reg phy_emdio_i, io_emdio_o, io_emdio_t;
       .l2_frontend_bus_axi4_0_r_bits_user      ( io_salve_nasti.r_user                  ),
 `endif
       .interrupts                    ( {sd_irq, eth_irq, spi_irq, uart_irq} ),
-      .io_reset_vector               ( io_reset_vector                      ),
       .clock                         ( clk                                  ),
       .reset                         ( sys_rst                              )
       );
