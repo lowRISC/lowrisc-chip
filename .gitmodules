@@ -10,9 +10,9 @@
 [submodule "debian-riscv64"]
 	path = debian-riscv64
 	url = https://github.com/jrrk/debian-riscv64.git
-[submodule "ariane"]
-	path = ariane
-	url = https://github.com/lowRISC/ariane.git
 [submodule "cfmath"]
 	path = cfmath
 	url = https://github.com/pulp-platform/cfmath
+[submodule "ariane"]
+	path = ariane
+	url = https://github.com/jrrk/ariane.git
