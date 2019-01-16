@@ -18,7 +18,7 @@ Current version: Release version 0.6 (10-2018) --- lowRISC technical refresh wit
 To download the repo:
 
 ~~~shell
-git clone -b refresh-v0.6 --recursive https://github.com/lowrisc/lowrisc-chip.git
+git clone -b genesys2 --recursive https://github.com/lowrisc/lowrisc-chip.git
 ~~~
 
 For the previous release:
