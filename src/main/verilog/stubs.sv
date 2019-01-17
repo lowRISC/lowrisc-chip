@@ -44,7 +44,7 @@ module io_buffer_fast(inout wire inoutg, output wire outg, input wire ing, input
 `ifdef FPGA
    
    IOBUF #(
-      .DRIVE(24), // Specify the output drive strength
+      .DRIVE(12), // Specify the output drive strength
       .IBUF_LOW_PWR("FALSE"),  // Low Power - "TRUE", High Performance = "FALSE" 
       .IOSTANDARD("LVTTL"), // Specify the I/O standard
       .SLEW("FAST") // Specify the output slew rate

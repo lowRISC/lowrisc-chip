@@ -3,25 +3,12 @@
 `include "consts.vh"
 `include "config.vh"
 
-// Allow ISA regression test to use proper FPGA configuration
-`ifdef ADD_HOST
-`ifndef FPGA
-`undef ADD_BRAM
-`undef ADD_UART
-`undef ADD_FLASH
-`undef ADD_SPI
-`undef ADD_ETH
-`endif
-`endif
-
 module chip_top
   (
-`ifdef ADD_PHY_DDR
- `ifdef KC705
    // DDR3 RAM
-   inout wire [63:0]  ddr_dq,
-   inout wire [7:0]   ddr_dqs_n,
-   inout wire [7:0]   ddr_dqs_p,
+   inout wire [31:0]  ddr_dq,
+   inout wire [3:0]   ddr_dqs_n,
+   inout wire [3:0]   ddr_dqs_p,
    output [13:0] ddr_addr,
    output [2:0]  ddr_ba,
    output        ddr_ras_n,
@@ -32,104 +19,12 @@ module chip_top
    output        ddr_ck_p,
    output        ddr_cke,
    output        ddr_cs_n,
-   output [7:0]  ddr_dm,
+   output [3:0]  ddr_dm,
    output        ddr_odt,
- `elsif NEXYS4_VIDEO
-   // DDR3 RAM
-   inout wire [15:0]  ddr_dq,
-   inout wire [1:0]   ddr_dqs_n,
-   inout wire [1:0]   ddr_dqs_p,
-   output [14:0] ddr_addr,
-   output [2:0]  ddr_ba,
-   output        ddr_ras_n,
-   output        ddr_cas_n,
-   output        ddr_we_n,
-   output        ddr_reset_n,
-   output        ddr_ck_n,
-   output        ddr_ck_p,
-   output        ddr_cke,
-   output [1:0]  ddr_dm,
-   output        ddr_odt,
- `elsif NEXYS4
-   // DDR2 RAM
-   inout wire [15:0]  ddr_dq,
-   inout wire [1:0]   ddr_dqs_n,
-   inout wire [1:0]   ddr_dqs_p,
-   output [12:0] ddr_addr,
-   output [2:0]  ddr_ba,
-   output        ddr_ras_n,
-   output        ddr_cas_n,
-   output        ddr_we_n,
-   output        ddr_ck_n,
-   output        ddr_ck_p,
-   output        ddr_cke,
-   output        ddr_cs_n,
-   output [1:0]  ddr_dm,
-   output        ddr_odt,
-  `elsif ZED
-   // RAM ACCESS THROUGH PS7's HP0 -> MEMCNT
-   output [31:0] mem_nasti_dram_araddr,
-   output  [1:0] mem_nasti_dram_arburst,
-   output  [3:0] mem_nasti_dram_arcache,
-   output  [5:0] mem_nasti_dram_arid,
-   output  [7:0] mem_nasti_dram_arlen,
-   output        mem_nasti_dram_arlock,
-   output  [2:0] mem_nasti_dram_arprot,
-   output  [3:0] mem_nasti_dram_arqos,
-   input wire         mem_nasti_dram_arready,
-   output  [2:0] mem_nasti_dram_arsize,
-   output        mem_nasti_dram_arvalid,
-   output  [3:0] mem_nasti_dram_arregion,
-   output [31:0] mem_nasti_dram_awaddr,
-   output  [1:0] mem_nasti_dram_awburst,
-   output  [3:0] mem_nasti_dram_awcache,
-   output  [5:0] mem_nasti_dram_awid,
-   output  [7:0] mem_nasti_dram_awlen,
-   output        mem_nasti_dram_awlock,
-   output  [2:0] mem_nasti_dram_awprot,
-   output  [3:0] mem_nasti_dram_awqos,
-   input wire         mem_nasti_dram_awready,
-   output  [2:0] mem_nasti_dram_awsize,
-   output  [2:0] mem_nasti_dram_awsize,
-   output        mem_nasti_dram_awvalid,
-   output  [3:0] mem_nasti_dram_awregion,
-   input wire   [5:0] mem_nasti_dram_bid,
-   output        mem_nasti_dram_bready,
-   input wire   [1:0] mem_nasti_dram_bresp,
-   input wire         mem_nasti_dram_bvalid,
-   input wire  [63:0] mem_nasti_dram_rdata,
-   input wire   [5:0] mem_nasti_dram_rid,
-   input wire         mem_nasti_dram_rlast,
-   output        mem_nasti_dram_rready,
-   input wire   [1:0] mem_nasti_dram_rresp,
-   input wire         mem_nasti_dram_rvalid,
-   output [63:0] mem_nasti_dram_wdata,
-   output        mem_nasti_dram_wlast,
-   input wire         mem_nasti_dram_wready,
-   output  [7:0] mem_nasti_dram_wstrb,
-   output        mem_nasti_dram_wvalid,
- `endif
-`endif //  `ifdef ADD_DDR_IO
 
-`ifdef ADD_FLASH
-   inout wire         flash_ss,
-   inout wire [3:0]   flash_io,
-`endif
-
-`ifdef ADD_SPI
-   inout wire         spi_cs,
-   inout wire         spi_sclk,
-   inout wire         spi_mosi,
-   inout wire         spi_miso,
-   output        sd_reset,
-`endif
-
-`ifdef ADD_HID
    // Simple UART interface
    input wire         rxd,
    output wire       txd,
-   output wire       rts,
-   input wire         cts,
 
    // 4-bit full SD interface
    inout wire         sd_sclk,
@@ -139,8 +34,8 @@ module chip_top
    output wire        sd_reset,
 
    // LED and DIP switch
-   output wire [21:0] o_led,
-   input wire  [15:0] i_dip,
+   output wire  [7:0] o_led,
+   input wire   [7:0] i_dip,
 
    // push button array
    input wire         GPIO_SW_C,
@@ -160,18 +55,19 @@ module chip_top
    output wire [3:0]  VGA_BLUE_O,
    output wire [3:0]  VGA_GREEN_O,
 
- //! Ethernet MAC PHY interface signals
- input wire [1:0]   i_erxd, // RMII receive data
- input wire         i_erx_dv, // PHY data valid
- input wire         i_erx_er, // PHY coding error
- input wire         i_emdint, // PHY interrupt in active low
- output reg         o_erefclk, // RMII clock out
- output reg [1:0]   o_etxd, // RMII transmit data
- output reg         o_etx_en, // RMII transmit enable
- output wire        o_emdc, // MDIO clock
- inout wire         io_emdio, // MDIO inout
- output wire        o_erstn, // PHY reset active low
-`endif //  `ifdef ADD_HID
+   /*
+    * Ethernet: 1000BASE-T RGMII
+    */
+   input  wire       phy_rx_clk,
+   input  wire [3:0] phy_rxd,
+   input  wire       phy_rx_ctl,
+   output wire       phy_tx_clk,
+   output wire [3:0] phy_txd,
+   output wire       phy_tx_ctl,
+   output wire       phy_reset_n,
+   input  wire       phy_int_n,
+   input  wire       phy_pme_n,
+   
    // clock and reset
    input wire         clk_p,
    input wire         clk_n,
@@ -200,7 +96,7 @@ module chip_top
        .ADDR_WIDTH  ( `MEM_ADDR_WIDTH ),
        .DATA_WIDTH  ( `MEM_DATA_WIDTH ))
    mem_nasti();
-wire io_emdio_i, phy_emdio_o, phy_emdio_t, clk_rmii, clk_rmii_quad, clk_locked, clk_locked_wiz;
+wire io_emdio_i, phy_emdio_o, phy_emdio_t, clk_rgmii, clk_rgmii_quad, clk_locked, clk_locked_wiz;
 reg phy_emdio_i, io_emdio_o, io_emdio_t;
 logic mig_sys_clk, clk_pixel;
 
@@ -212,68 +108,11 @@ logic mig_sys_clk, clk_pixel;
        .DATA_WIDTH  ( `MEM_DATA_WIDTH ))
    mem_mig_nasti();
 
-`ifdef ADD_PHY_DDR
-
- `ifdef ZED
-   // Clock is generated by PS7, and reset as well.
-   // So there is no need to clock generator,
-   // just use the inputs to the module
-   assign clk = clk_p;
-   assign rstn = !rst_top;
-
-   assign mem_nasti_dram_araddr       = mem_nasti.ar_addr      ;
-   assign mem_nasti_dram_arburst      = mem_nasti.ar_burst     ;
-   assign mem_nasti_dram_arcache      = mem_nasti.ar_cache     ;
-   assign mem_nasti_dram_arid         = mem_nasti.ar_id        ;
-   assign mem_nasti_dram_arlen        = mem_nasti.ar_len       ;
-   assign mem_nasti_dram_arlock       = mem_nasti.ar_lock      ;
-   assign mem_nasti_dram_arprot       = mem_nasti.ar_prot      ;
-   assign mem_nasti_dram_arqos        = mem_nasti.ar_qos       ;
-   assign mem_nasti_dram_arready      = mem_nasti.ar_ready     ;
-   assign mem_nasti_dram_arsize       = mem_nasti.ar_size      ;
-   assign mem_nasti_dram_arvalid      = mem_nasti.ar_valid     ;
-   assign mem_nasti_dram_arregion     = mem_nasti.ar_region    ;
-   assign mem_nasti_dram_awaddr       = mem_nasti.aw_addr      ;
-   assign mem_nasti_dram_awburst      = mem_nasti.aw_burst     ;
-   assign mem_nasti_dram_awcache      = mem_nasti.aw_cache     ;
-   assign mem_nasti_dram_awid         = mem_nasti.aw_id        ;
-   assign mem_nasti_dram_awlen        = mem_nasti.aw_len       ;
-   assign mem_nasti_dram_awlock       = mem_nasti.aw_lock      ;
-   assign mem_nasti_dram_awprot       = mem_nasti.aw_prot      ;
-   assign mem_nasti_dram_awqos        = mem_nasti.aw_qos       ;
-   assign mem_nasti_dram_awready      = mem_nasti.aw_ready     ;
-   assign mem_nasti_dram_awsize       = mem_nasti.aw_size      ;
-   assign mem_nasti_dram_awvalid      = mem_nasti.aw_valid     ;
-   assign mem_nasti_dram_awregion     = mem_nasti.aw_region    ;
-   assign mem_nasti_dram_bid          = mem_nasti.b_id         ;
-   assign mem_nasti_dram_bready       = mem_nasti.b_ready      ;
-   assign mem_nasti_dram_bresp        = mem_nasti.b_resp       ;
-   assign mem_nasti_dram_bvalid       = mem_nasti.b_valid      ;
-   assign mem_nasti_dram_rdata        = mem_nasti.r_data       ;
-   assign mem_nasti_dram_rid          = mem_nasti.r_id         ;
-   assign mem_nasti_dram_rlast        = mem_nasti.r_last       ;
-   assign mem_nasti_dram_rready       = mem_nasti.r_ready      ;
-   assign mem_nasti_dram_rresp        = mem_nasti.r_resp       ;
-   assign mem_nasti_dram_rvalid       = mem_nasti.r_valid      ;
-   assign mem_nasti_dram_wdata        = mem_nasti.w_data       ;
-   assign mem_nasti_dram_wlast        = mem_nasti.w_last       ;
-   assign mem_nasti_dram_wready       = mem_nasti.w_ready      ;
-   assign mem_nasti_dram_wstrb        = mem_nasti.w_strb       ;
-   assign mem_nasti_dram_wvalid       = mem_nasti.w_valid      ;
-
- `else // !`ifdef ZED
-
    // MIG clock
    logic mig_ui_clk, mig_ui_rst, mig_ui_rstn;
    assign mig_ui_rstn = !mig_ui_rst;
 
-`define ROCKET_50MHZ
-`ifdef ROCKET_50MHZ
-`define MEM_NASTI mem_mig_nasti
 `define UBAUD_DEFAULT 108
-`else
-`define MEM_NASTI mem_nasti
-`define UBAUD_DEFAULT 54
 
    // clock converter
    axi_clock_converter_0 clk_conv
@@ -362,36 +201,26 @@ logic mig_sys_clk, clk_pixel;
       .m_axi_rready         ( mem_mig_nasti.r_ready    )
       );
 
-`endif
-
- `ifdef NEXYS4_COMMON
-   //clock generator
-   logic clk_io_uart; // UART IO clock for debug
-
    clk_wiz_0 clk_gen
      (
-      .clk_in1       ( clk_p         ), // 100 MHz onboard
-      .clk_out1      ( mig_sys_clk   ), // 200 MHz
-      .clk_io_uart   ( clk_io_uart   ), // 60 MHz
-      .clk_rmii      ( clk_rmii      ), // 50 MHz rmii
-      .clk_rmii_quad ( clk_rmii_quad ), // 50 MHz rmii quad
-      .clk_pixel     ( clk_pixel     ), // 120 MHz
-      .resetn        ( rst_top       ),
-      .locked        ( clk_locked_wiz )
+      .clk_in1        ( mig_ui_clk     ), // 100 MHz onboard
+      .clk_out1       ( mig_sys_clk    ), // 200 MHz
+      .clk_cpu        ( clk            ), // 50 MHz
+      .clk_pixel      ( clk_pixel      ), // 100 MHz
+      .clk_rgmii      ( clk_rgmii      ), // 125 MHz rgmii
+      .clk_rgmii_quad ( clk_rgmii_quad ), // 125 MHz rgmii quad
+      .reset          ( mig_ui_rst     ),
+      .locked         ( clk_locked_wiz )
       );
    assign clk_locked = clk_locked_wiz & rst_top;
    assign sys_rst = ~rstn;
       
- `endif //  `ifdef NEXYS4_COMMON
-
    // DRAM controller
    mig_7series_0 dram_ctl
      (
- `ifdef KC705
       .sys_clk_p            ( clk_p                  ),
       .sys_clk_n            ( clk_n                  ),
       .sys_rst              ( rst_top                ),
-      .ui_addn_clk_0        ( clk                    ),
       .ddr3_dq              ( ddr_dq                 ),
       .ddr3_dqs_n           ( ddr_dqs_n              ),
       .ddr3_dqs_p           ( ddr_dqs_p              ),
@@ -407,44 +236,6 @@ logic mig_sys_clk, clk_pixel;
       .ddr3_cs_n            ( ddr_cs_n               ),
       .ddr3_dm              ( ddr_dm                 ),
       .ddr3_odt             ( ddr_odt                ),
- `elsif NEXYS4_VIDEO
-      .sys_clk_i            ( mig_sys_clk            ),
-      .sys_rst              ( clk_locked             ),
-      .ui_addn_clk_0        ( clk                    ),
-      .ddr3_addr            ( ddr_addr               ),
-      .ddr3_ba              ( ddr_ba                 ),
-      .ddr3_cas_n           ( ddr_cas_n              ),
-      .ddr3_ck_n            ( ddr_ck_n               ),
-      .ddr3_ck_p            ( ddr_ck_p               ),
-      .ddr3_cke             ( ddr_cke                ),
-      .ddr3_ras_n           ( ddr_ras_n              ),
-      .ddr3_reset_n         ( ddr_reset_n            ),
-      .ddr3_we_n            ( ddr_we_n               ),
-      .ddr3_dq              ( ddr_dq                 ),
-      .ddr3_dqs_n           ( ddr_dqs_n              ),
-      .ddr3_dqs_p           ( ddr_dqs_p              ),
-      .ddr3_dm              ( ddr_dm                 ),
-      .ddr3_odt             ( ddr_odt                ),
- `elsif NEXYS4
-      .sys_clk_i            ( mig_sys_clk            ),
-      .sys_rst              ( clk_locked             ),
-      .ui_addn_clk_0        ( clk                    ),
-      .device_temp_i        ( 0                      ),
-      .ddr2_dq              ( ddr_dq                 ),
-      .ddr2_dqs_n           ( ddr_dqs_n              ),
-      .ddr2_dqs_p           ( ddr_dqs_p              ),
-      .ddr2_addr            ( ddr_addr               ),
-      .ddr2_ba              ( ddr_ba                 ),
-      .ddr2_ras_n           ( ddr_ras_n              ),
-      .ddr2_cas_n           ( ddr_cas_n              ),
-      .ddr2_we_n            ( ddr_we_n               ),
-      .ddr2_ck_p            ( ddr_ck_p               ),
-      .ddr2_ck_n            ( ddr_ck_n               ),
-      .ddr2_cke             ( ddr_cke                ),
-      .ddr2_cs_n            ( ddr_cs_n               ),
-      .ddr2_dm              ( ddr_dm                 ),
-      .ddr2_odt             ( ddr_odt                ),
- `endif // !`elsif NEXYS4
       .ui_clk               ( mig_ui_clk             ),
       .ui_clk_sync_rst      ( mig_ui_rst             ),
       .mmcm_locked          ( rstn                   ),
@@ -491,36 +282,6 @@ logic mig_sys_clk, clk_pixel;
       .s_axi_rready         ( mem_mig_nasti.r_ready  )
       );
 
-  `endif // !`ifdef ZED
-`else // !`ifdef ADD_PHY_DDR
-`define MEM_NASTI mem_mig_nasti
-`define UBAUD_DEFAULT 108
-
-   assign clk = clk_p;
-   assign clk_rmii = clk_p;
-   assign clk_rmii_quad = clk_p;
-   assign rstn = !rst_top;
-   assign clk_locked = !rst_top;
-   assign clk_locked_wiz = !rst_top;
-   assign mig_sys_clk = clk_p;
-   assign clk_pixel = clk_p;   
-   assign sys_rst = rst_top;
-   
-   nasti_ram_sim
-     #(
-       .ID_WIDTH     ( `MEM_ID_WIDTH    ),
-       .ADDR_WIDTH   ( `MEM_ADDR_WIDTH  ),
-       .DATA_WIDTH   ( `MEM_DATA_WIDTH  ),
-       .USER_WIDTH   ( 1                )
-       )
-   ram_behav
-     (
-      .clk           ( clk         ),
-      .rstn          ( rstn        ),
-      .nasti         ( `MEM_NASTI   )
-      );
-`endif // !`ifdef ADD_PHY_DDR
-
    /////////////////////////////////////////////////////////////
    // IO space buses
 
@@ -547,8 +308,6 @@ logic mig_sys_clk, clk_pixel;
 
    /////////////////////////////////////////////////////////////
    // On-chip Block RAM
-
-`ifdef ADD_BRAM
 
    localparam BRAM_SIZE          = 16;        // 2^16 -> 64 KB
    localparam BRAM_WIDTH         = 128;       // always 128-bit wide
@@ -599,111 +358,11 @@ logic mig_sys_clk, clk_pixel;
 
    initial $readmemh("boot.mem", ram);
 
-`endif //  `ifdef ADD_BRAM
-
-   /////////////////////////////////////////////////////////////
-   // XIP SPI Flash
-
-`ifdef ADD_FLASH
-
-   wire       flash_ss_i,  flash_ss_o,  flash_ss_t;
-   wire [3:0] flash_io_i,  flash_io_o,  flash_io_t;
-
-   axi_quad_spi_1 flash_i
-     (
-      .ext_spi_clk      ( clk                           ),
-      .s_axi_aclk       ( clk                           ),
-      .s_axi_aresetn    ( rstn                          ),
-      .s_axi4_aclk      ( clk                           ),
-      .s_axi4_aresetn   ( rstn                          ),
-      .s_axi_araddr     ( 7'b0                          ),
-      .s_axi_arready    (                               ),
-      .s_axi_arvalid    ( 1'b0                          ),
-      .s_axi_awaddr     ( 7'b0                          ),
-      .s_axi_awready    (                               ),
-      .s_axi_awvalid    ( 1'b0                          ),
-      .s_axi_bready     ( 1'b0                          ),
-      .s_axi_bresp      (                               ),
-      .s_axi_bvalid     (                               ),
-      .s_axi_rdata      (                               ),
-      .s_axi_rready     ( 1'b0                          ),
-      .s_axi_rresp      (                               ),
-      .s_axi_rvalid     (                               ),
-      .s_axi_wdata      ( 0                             ),
-      .s_axi_wready     (                               ),
-      .s_axi_wstrb      ( 4'b0                          ),
-      .s_axi_wvalid     ( 1'b0                          ),
-      .s_axi4_awid      ( local_flash_nasti.aw_id       ),
-      .s_axi4_awaddr    ( local_flash_nasti.aw_addr     ),
-      .s_axi4_awlen     ( local_flash_nasti.aw_len      ),
-      .s_axi4_awsize    ( local_flash_nasti.aw_size     ),
-      .s_axi4_awburst   ( local_flash_nasti.aw_burst    ),
-      .s_axi4_awlock    ( local_flash_nasti.aw_lock     ),
-      .s_axi4_awcache   ( local_flash_nasti.aw_cache    ),
-      .s_axi4_awprot    ( local_flash_nasti.aw_prot     ),
-      .s_axi4_awvalid   ( local_flash_nasti.aw_valid    ),
-      .s_axi4_awready   ( local_flash_nasti.aw_ready    ),
-      .s_axi4_wdata     ( local_flash_nasti.w_data      ),
-      .s_axi4_wstrb     ( local_flash_nasti.w_strb      ),
-      .s_axi4_wlast     ( local_flash_nasti.w_last      ),
-      .s_axi4_wvalid    ( local_flash_nasti.w_valid     ),
-      .s_axi4_wready    ( local_flash_nasti.w_ready     ),
-      .s_axi4_bid       ( local_flash_nasti.b_id        ),
-      .s_axi4_bresp     ( local_flash_nasti.b_resp      ),
-      .s_axi4_bvalid    ( local_flash_nasti.b_valid     ),
-      .s_axi4_bready    ( local_flash_nasti.b_ready     ),
-      .s_axi4_arid      ( local_flash_nasti.ar_id       ),
-      .s_axi4_araddr    ( local_flash_nasti.ar_addr     ),
-      .s_axi4_arlen     ( local_flash_nasti.ar_len      ),
-      .s_axi4_arsize    ( local_flash_nasti.ar_size     ),
-      .s_axi4_arburst   ( local_flash_nasti.ar_burst    ),
-      .s_axi4_arlock    ( local_flash_nasti.ar_lock     ),
-      .s_axi4_arcache   ( local_flash_nasti.ar_cache    ),
-      .s_axi4_arprot    ( local_flash_nasti.ar_prot     ),
-      .s_axi4_arvalid   ( local_flash_nasti.ar_valid    ),
-      .s_axi4_arready   ( local_flash_nasti.ar_ready    ),
-      .s_axi4_rid       ( local_flash_nasti.r_id        ),
-      .s_axi4_rdata     ( local_flash_nasti.r_data      ),
-      .s_axi4_rresp     ( local_flash_nasti.r_resp      ),
-      .s_axi4_rlast     ( local_flash_nasti.r_last      ),
-      .s_axi4_rvalid    ( local_flash_nasti.r_valid     ),
-      .s_axi4_rready    ( local_flash_nasti.r_ready     ),
-      .io0_i            ( flash_io_i[0]                 ),
-      .io0_o            ( flash_io_o[0]                 ),
-      .io0_t            ( flash_io_t[0]                 ),
-      .io1_i            ( flash_io_i[1]                 ),
-      .io1_o            ( flash_io_o[1]                 ),
-      .io1_t            ( flash_io_t[1]                 ),
-      .io2_i            ( flash_io_i[2]                 ),
-      .io2_o            ( flash_io_o[2]                 ),
-      .io2_t            ( flash_io_t[2]                 ),
-      .io3_i            ( flash_io_i[3]                 ),
-      .io3_o            ( flash_io_o[3]                 ),
-      .io3_t            ( flash_io_t[3]                 ),
-      .ss_i             ( flash_ss_i                    ),
-      .ss_o             ( flash_ss_o                    ),
-      .ss_t             ( flash_ss_t                    )
-      );
-
-   // tri-state gates
-   generate for(i=0; i<4; i++) begin
-      assign flash_io[i] = !flash_io_t[i] ? flash_io_o[i] : 1'bz;
-      assign flash_io_i[i] = flash_io[i];
-   end
-   endgenerate
-
-   assign flash_ss = !flash_ss_t ? flash_ss_o : 1'bz;
-   assign flash_ss_i = flash_ss;
-
-`endif //  `ifdef ADD_FLASH
-
    assign spi_irq = 1'b0;
 
    /////////////////////////////////////////////////////////////
    // Human interface and miscellaneous devices
 
-`ifdef ADD_HID
-   
    wire                        hid_rst, hid_clk, hid_en;
    wire [7:0]                  hid_we;
    wire [17:0]                 hid_addr;
@@ -711,7 +370,6 @@ logic mig_sys_clk, clk_pixel;
    logic [30:0]                hid_ar_addr, hid_aw_addr;
    logic [1:0] eth_txd;
    logic eth_rstn, eth_refclk, eth_txen;
-   assign o_erstn = eth_rstn & clk_locked_wiz;
 
    axi_bram_ctrl_dummy BramCtl
      (
@@ -761,46 +419,6 @@ logic mig_sys_clk, clk_pixel;
       .bram_rddata_a   ( hid_rddata                )
       );
   
-   always @(posedge clk_rmii)
-     begin
-        phy_emdio_i <= io_emdio_i;
-        io_emdio_o <= phy_emdio_o;
-        io_emdio_t <= phy_emdio_t;
-     end
-
-   IOBUF #(
-      .DRIVE(12), // Specify the output drive strength
-      .IBUF_LOW_PWR("TRUE"),  // Low Power - "TRUE", High Performance = "FALSE" 
-      .IOSTANDARD("DEFAULT"), // Specify the I/O standard
-      .SLEW("SLOW") // Specify the output slew rate
-   ) IOBUF_inst (
-      .O(io_emdio_i),     // Buffer output
-      .IO(io_emdio),   // Buffer inout port (connect directly to top-level port)
-      .I(io_emdio_o),     // Buffer input
-      .T(io_emdio_t)      // 3-state enable input, high=input, low=output
-   );
-
-  ODDR #(
-    .DDR_CLK_EDGE("OPPOSITE_EDGE"),
-    .INIT(1'b0),
-    .IS_C_INVERTED(1'b0),
-    .IS_D1_INVERTED(1'b0),
-    .IS_D2_INVERTED(1'b0),
-    .SRTYPE("SYNC")) 
-    refclk_inst
-       (.C(eth_refclk),
-        .CE(1'b1),
-        .D1(1'b1),
-        .D2(1'b0),
-        .Q(o_erefclk),
-        .R(1'b0),
-        .S( ));
-    
-    always @(posedge clk_rmii_quad)
-        begin
-        o_etxd = eth_txd;
-        o_etx_en = eth_txen;
-        end
 
    periph_soc #(.UBAUD_DEFAULT(`UBAUD_DEFAULT)) psoc
      (
@@ -817,33 +435,21 @@ logic mig_sys_clk, clk_pixel;
       .pxl_clk    ( clk_pixel       ),
       .uart_rx    ( rxd             ),
       .uart_tx    ( txd             ),
-      .clk_rmii   ( clk_rmii        ),
-      .locked     ( clk_locked      ),
-    // SMSC ethernet PHY connections
-      .eth_rstn   ( eth_rstn        ),
-      .eth_crsdv  ( i_erx_dv        ),
-      .eth_refclk ( eth_refclk      ),
-      .eth_txd    ( eth_txd         ),
-      .eth_txen   ( eth_txen        ),
-      .eth_rxd    ( i_erxd          ),
-      .eth_rxerr  ( i_erx_er        ),
-      .eth_mdc    ( o_emdc          ),
-      .phy_mdio_i ( phy_emdio_i     ),
-      .phy_mdio_o ( phy_emdio_o     ),
-      .phy_mdio_t ( phy_emdio_t     ),
+      .clk_rgmii  ( clk_rgmii       ),
+      .clk_rgmii_quad ( clk_rgmii_quad ),
+    // RGMII ethernet PHY connections
+      .phy_rx_clk,
+      .phy_rxd,
+      .phy_rx_ctl,
+      .phy_tx_clk,
+      .phy_txd,
+      .phy_tx_ctl,
+      .phy_reset_n,
+      .phy_int_n,
+      .phy_pme_n,
       .eth_irq    ( eth_irq         ),
       .*
       );
-
-   assign rts = cts;
-   
-`else // !`ifdef ADD_HID
-
-   assign hid_irq = 1'b0;
-   assign sd_irq = 1'b0;
-   assign eth_irq = 1'b0;
-
-`endif // !`ifdef ADD_HID
 
    /////////////////////////////////////////////////////////////
    // Host for ISA regression
@@ -853,15 +459,6 @@ logic mig_sys_clk, clk_pixel;
        .ADDR_WIDTH  ( `MMIO_MASTER_ADDR_WIDTH   ),
        .DATA_WIDTH  ( `LOWRISC_IO_DAT_WIDTH     ))
    io_host_lite();
-
-`ifdef ADD_HOST
-   host_behav host
-     (
-      .clk          ( clk          ),
-      .rstn         ( rstn         ),
-      .nasti        ( io_host_lite )
-      );
-`endif
 
    /////////////////////////////////////////////////////////////
    // the Rocket chip
@@ -923,50 +520,43 @@ logic mig_sys_clk, clk_pixel;
       .debug_systemjtag_mfr_id(11'h5AA),
       .debug_ndreset(ExampleRocketSystem_debug_ndreset),
       .debug_dmactive(ExampleRocketSystem_debug_dmactive),
-      .mem_axi4_0_aw_valid                ( `MEM_NASTI.aw_valid                     ),
-      .mem_axi4_0_aw_ready                ( `MEM_NASTI.aw_ready                     ),
-      .mem_axi4_0_aw_bits_id              ( `MEM_NASTI.aw_id                        ),
-      .mem_axi4_0_aw_bits_addr            ( `MEM_NASTI.aw_addr                      ),
-      .mem_axi4_0_aw_bits_len             ( `MEM_NASTI.aw_len                       ),
-      .mem_axi4_0_aw_bits_size            ( `MEM_NASTI.aw_size                      ),
-      .mem_axi4_0_aw_bits_burst           ( `MEM_NASTI.aw_burst                     ),
-      .mem_axi4_0_aw_bits_lock            ( `MEM_NASTI.aw_lock                      ),
-      .mem_axi4_0_aw_bits_cache           ( `MEM_NASTI.aw_cache                     ),
-      .mem_axi4_0_aw_bits_prot            ( `MEM_NASTI.aw_prot                      ),
-      .mem_axi4_0_aw_bits_qos             ( `MEM_NASTI.aw_qos                       ),
-      .mem_axi4_0_w_valid                 ( `MEM_NASTI.w_valid                      ),
-      .mem_axi4_0_w_ready                 ( `MEM_NASTI.w_ready                      ),
-      .mem_axi4_0_w_bits_data             ( `MEM_NASTI.w_data                       ),
-      .mem_axi4_0_w_bits_strb             ( `MEM_NASTI.w_strb                       ),
-      .mem_axi4_0_w_bits_last             ( `MEM_NASTI.w_last                       ),
-      .mem_axi4_0_b_valid                 ( `MEM_NASTI.b_valid                      ),
-      .mem_axi4_0_b_ready                 ( `MEM_NASTI.b_ready                      ),
-      .mem_axi4_0_b_bits_id               ( `MEM_NASTI.b_id                         ),
-      .mem_axi4_0_b_bits_resp             ( `MEM_NASTI.b_resp                       ),
-      .mem_axi4_0_ar_valid                ( `MEM_NASTI.ar_valid                     ),
-      .mem_axi4_0_ar_ready                ( `MEM_NASTI.ar_ready                     ),
-      .mem_axi4_0_ar_bits_id              ( `MEM_NASTI.ar_id                        ),
-      .mem_axi4_0_ar_bits_addr            ( `MEM_NASTI.ar_addr                      ),
-      .mem_axi4_0_ar_bits_len             ( `MEM_NASTI.ar_len                       ),
-      .mem_axi4_0_ar_bits_size            ( `MEM_NASTI.ar_size                      ),
-      .mem_axi4_0_ar_bits_burst           ( `MEM_NASTI.ar_burst                     ),
-      .mem_axi4_0_ar_bits_lock            ( `MEM_NASTI.ar_lock                      ),
-      .mem_axi4_0_ar_bits_cache           ( `MEM_NASTI.ar_cache                     ),
-      .mem_axi4_0_ar_bits_prot            ( `MEM_NASTI.ar_prot                      ),
-      .mem_axi4_0_ar_bits_qos             ( `MEM_NASTI.ar_qos                       ),
-      .mem_axi4_0_r_valid                 ( `MEM_NASTI.r_valid                      ),
-      .mem_axi4_0_r_ready                 ( `MEM_NASTI.r_ready                      ),
-      .mem_axi4_0_r_bits_id               ( `MEM_NASTI.r_id                         ),
-      .mem_axi4_0_r_bits_data             ( `MEM_NASTI.r_data                       ),
-      .mem_axi4_0_r_bits_resp             ( `MEM_NASTI.r_resp                       ),
-      .mem_axi4_0_r_bits_last             ( `MEM_NASTI.r_last                       ),
-`ifdef MEM_USER_WIDTH
-      .mem_axi4_0_aw_bits_user            ( `MEM_NASTI.aw_user                      ),
-      .mem_axi4_0_w_bits_user             ( `MEM_NASTI.w_user                       ),
-      .mem_axi4_0_b_bits_user             ( `MEM_NASTI.b_user                       ),
-      .mem_axi4_0_ar_bits_user            ( `MEM_NASTI.ar_user                      ),
-      .mem_axi4_0_r_bits_user             ( `MEM_NASTI.r_user                       ),
-`endif
+      .mem_axi4_0_aw_valid                ( mem_nasti.aw_valid                     ),
+      .mem_axi4_0_aw_ready                ( mem_nasti.aw_ready                     ),
+      .mem_axi4_0_aw_bits_id              ( mem_nasti.aw_id                        ),
+      .mem_axi4_0_aw_bits_addr            ( mem_nasti.aw_addr                      ),
+      .mem_axi4_0_aw_bits_len             ( mem_nasti.aw_len                       ),
+      .mem_axi4_0_aw_bits_size            ( mem_nasti.aw_size                      ),
+      .mem_axi4_0_aw_bits_burst           ( mem_nasti.aw_burst                     ),
+      .mem_axi4_0_aw_bits_lock            ( mem_nasti.aw_lock                      ),
+      .mem_axi4_0_aw_bits_cache           ( mem_nasti.aw_cache                     ),
+      .mem_axi4_0_aw_bits_prot            ( mem_nasti.aw_prot                      ),
+      .mem_axi4_0_aw_bits_qos             ( mem_nasti.aw_qos                       ),
+      .mem_axi4_0_w_valid                 ( mem_nasti.w_valid                      ),
+      .mem_axi4_0_w_ready                 ( mem_nasti.w_ready                      ),
+      .mem_axi4_0_w_bits_data             ( mem_nasti.w_data                       ),
+      .mem_axi4_0_w_bits_strb             ( mem_nasti.w_strb                       ),
+      .mem_axi4_0_w_bits_last             ( mem_nasti.w_last                       ),
+      .mem_axi4_0_b_valid                 ( mem_nasti.b_valid                      ),
+      .mem_axi4_0_b_ready                 ( mem_nasti.b_ready                      ),
+      .mem_axi4_0_b_bits_id               ( mem_nasti.b_id                         ),
+      .mem_axi4_0_b_bits_resp             ( mem_nasti.b_resp                       ),
+      .mem_axi4_0_ar_valid                ( mem_nasti.ar_valid                     ),
+      .mem_axi4_0_ar_ready                ( mem_nasti.ar_ready                     ),
+      .mem_axi4_0_ar_bits_id              ( mem_nasti.ar_id                        ),
+      .mem_axi4_0_ar_bits_addr            ( mem_nasti.ar_addr                      ),
+      .mem_axi4_0_ar_bits_len             ( mem_nasti.ar_len                       ),
+      .mem_axi4_0_ar_bits_size            ( mem_nasti.ar_size                      ),
+      .mem_axi4_0_ar_bits_burst           ( mem_nasti.ar_burst                     ),
+      .mem_axi4_0_ar_bits_lock            ( mem_nasti.ar_lock                      ),
+      .mem_axi4_0_ar_bits_cache           ( mem_nasti.ar_cache                     ),
+      .mem_axi4_0_ar_bits_prot            ( mem_nasti.ar_prot                      ),
+      .mem_axi4_0_ar_bits_qos             ( mem_nasti.ar_qos                       ),
+      .mem_axi4_0_r_valid                 ( mem_nasti.r_valid                      ),
+      .mem_axi4_0_r_ready                 ( mem_nasti.r_ready                      ),
+      .mem_axi4_0_r_bits_id               ( mem_nasti.r_id                         ),
+      .mem_axi4_0_r_bits_data             ( mem_nasti.r_data                       ),
+      .mem_axi4_0_r_bits_resp             ( mem_nasti.r_resp                       ),
+      .mem_axi4_0_r_bits_last             ( mem_nasti.r_last                       ),
       .mmio_axi4_0_aw_valid        ( mmio_master_nasti.aw_valid               ),
       .mmio_axi4_0_aw_ready        ( mmio_master_nasti.aw_ready               ),
       .mmio_axi4_0_aw_bits_id      ( mmio_master_nasti.aw_id                  ),
@@ -1004,13 +594,6 @@ logic mig_sys_clk, clk_pixel;
       .mmio_axi4_0_r_bits_data     ( mmio_master_nasti.r_data                 ),
       .mmio_axi4_0_r_bits_resp     ( mmio_master_nasti.r_resp                 ),
       .mmio_axi4_0_r_bits_last     ( mmio_master_nasti.r_last                 ),
-`ifdef MMIO_MASTER_USER_WIDTH
-      .mmio_axi4_0_aw_bits_user    ( mmio_master_nasti.aw_user                ),
-      .mmio_axi4_0_w_bits_user     ( mmio_master_nasti.w_user                 ),
-      .mmio_axi4_0_b_bits_user     ( mmio_master_nasti.b_user                 ),
-      .mmio_axi4_0_ar_bits_user    ( mmio_master_nasti.ar_user                ),
-      .mmio_axi4_0_r_bits_user     ( mmio_master_nasti.r_user                 ),
-`endif
       .l2_frontend_bus_axi4_0_aw_valid         ( io_slave_nasti.aw_valid                ),
       .l2_frontend_bus_axi4_0_aw_ready         ( io_slave_nasti.aw_ready                ),
       .l2_frontend_bus_axi4_0_aw_bits_id       ( io_slave_nasti.aw_id                   ),
@@ -1048,13 +631,6 @@ logic mig_sys_clk, clk_pixel;
       .l2_frontend_bus_axi4_0_r_bits_data      ( io_slave_nasti.r_data                  ),
       .l2_frontend_bus_axi4_0_r_bits_resp      ( io_slave_nasti.r_resp                  ),
       .l2_frontend_bus_axi4_0_r_bits_last      ( io_slave_nasti.r_last                  ),
-`ifdef MMIO_SLAVE_USER_WIDTH
-      .l2_frontend_bus_axi4_0_aw_bits_user     ( io_salve_nasti.aw_user                 ),
-      .l2_frontend_bus_axi4_0_w_bits_user      ( io_salve_nasti.w_user                  ),
-      .l2_frontend_bus_axi4_0_b_bits_user      ( io_salve_nasti.b_user                  ),
-      .l2_frontend_bus_axi4_0_ar_bits_user     ( io_salve_nasti.ar_user                 ),
-      .l2_frontend_bus_axi4_0_r_bits_user      ( io_salve_nasti.r_user                  ),
-`endif
       .interrupts                    ( {sd_irq, eth_irq, spi_irq, uart_irq} ),
       .io_reset_vector               ( io_reset_vector                      ),
       .clock                         ( clk                                  ),

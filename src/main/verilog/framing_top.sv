@@ -12,22 +12,43 @@ module framing_top
   input wire framing_sel,
   output logic [63:0] framing_rdata,
 
-  //! Ethernet MAC PHY interface signals
-output wire   o_edutrefclk     , // RMII clock out
-input wire [1:0] i_edutrxd    ,
-input wire  i_edutrx_dv       ,
-input wire  i_edutrx_er       ,
-output wire [1:0] o_eduttxd   ,
-output wire o_eduttx_en      ,
-output wire   o_edutmdc        ,
-input wire i_edutmdio ,
-output reg  o_edutmdio   ,
-output reg  oe_edutmdio   ,
-output wire   o_edutrstn    ,   
+    // Internal 125 MHz clock
+    input clk_int,
+    input rst_int,
+    input clk90_int,
+    input clk_200_int,
+
+    /*
+     * Ethernet: 1000BASE-T RGMII
+     */
+    input  wire       phy_rx_clk,
+    input  wire [3:0] phy_rxd,
+    input  wire       phy_rx_ctl,
+    output wire       phy_tx_clk,
+    output wire [3:0] phy_txd,
+    output wire       phy_tx_ctl,
+    output wire       phy_reset_n,
+    input  wire       phy_int_n,
+    input  wire       phy_pme_n,
 
 output reg eth_irq
    );
 
+// obsolete signals to be removed
+wire   o_edutrefclk     ; // RMII clock out
+wire [1:0] i_edutrxd    ;
+wire  i_edutrx_dv       ;
+wire  i_edutrx_er       ;
+wire [1:0] o_eduttxd   ;
+wire o_eduttx_en      ;
+wire   o_edutmdc        ;
+wire i_edutmdio ;
+reg  o_edutmdio   ;
+reg  oe_edutmdio   ;
+wire   o_edutrstn    ;      
+//    
+
+   
 logic [14:0] core_lsu_addr_dly;   
 
 logic tx_enable_i;
@@ -337,7 +358,7 @@ always @(posedge clk_rmii)
             end
       end
  
-   axis_gmii_rx gmii_rx_inst (
+   lowrisc_gmii_rx gmii_rx_inst (
        .clk(clk_rmii),
        .rst(~rstn),
        .mii_select(1'b0),
@@ -354,7 +375,7 @@ always @(posedge clk_rmii)
        .fcs_reg(rx_fcs_reg)
    );
    
-   axis_gmii_tx #(
+   lowrisc_gmii_tx #(
        .ENABLE_PADDING(1),
        .MIN_FRAME_LENGTH(64)
    )
@@ -377,6 +398,26 @@ always @(posedge clk_rmii)
 
    assign o_eduttxd = axis_eduttxd;
    assign o_eduttx_en = axis_eduttx_en;
+
+rgmii_soc rgmii_soc1
+  (
+   .rst_int(rst_int),
+   .clk_int(clk_int),
+   .clk90_int(clk90_int),
+   .clk_200_int(clk_200_int),
+   /*
+    * Ethernet: 1000BASE-T RGMII
+    */
+   .phy_rx_clk(phy_rx_clk),
+   .phy_rxd(phy_rxd),
+   .phy_rx_ctl(phy_rx_ctl),
+   .phy_tx_clk(phy_tx_clk),
+   .phy_txd(phy_txd),
+   .phy_tx_ctl(phy_tx_ctl),
+   .phy_reset_n(phy_reset_n),
+   .phy_int_n(phy_int_n),
+   .phy_pme_n(phy_pme_n)
+);
    
 endmodule // framing_top
 `default_nettype wire

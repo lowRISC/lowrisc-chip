@@ -44,20 +44,6 @@ module periph_soc #(UBAUD_DEFAULT=54)
  output wire [3:0]  VGA_RED_O,
  output wire [3:0]  VGA_BLUE_O,
  output wire [3:0]  VGA_GREEN_O,
-// SMSC ethernet PHY to framing_top connections
- input wire         clk_rmii,
- input wire         locked,
- output wire        eth_rstn,
- input wire         eth_crsdv,
- output wire        eth_refclk,
- output wire [1:0]  eth_txd,
- output wire        eth_txen,
- input wire [1:0]   eth_rxd,
- input wire         eth_rxerr,
- output wire        eth_mdc,
- input wire         phy_mdio_i,
- output wire        phy_mdio_o,
- output wire        phy_mdio_t,
  output wire        eth_irq,
  output wire        ram_clk,
  output wire        ram_rst,
@@ -65,7 +51,24 @@ module periph_soc #(UBAUD_DEFAULT=54)
  output wire [7:0]  ram_we,
  output wire [15:0] ram_addr,
  output wire [63:0] ram_wrdata,
- input  wire [63:0] ram_rddata
+ input  wire [63:0] ram_rddata,
+    // Internal 125 MHz clock
+    input clk_rgmii,
+    input clk_rgmii_quad,
+
+    /*
+     * Ethernet: 1000BASE-T RGMII
+     */
+    input  wire       phy_rx_clk,
+    input  wire [3:0] phy_rxd,
+    input  wire       phy_rx_ctl,
+    output wire       phy_tx_clk,
+    output wire [3:0] phy_txd,
+    output wire       phy_tx_ctl,
+    output wire       phy_reset_n,
+    input  wire       phy_int_n,
+    input  wire       phy_pme_n
+   
  );
  
  wire [19:0] dummy;
@@ -561,9 +564,7 @@ sd_top sdtop(
 
 framing_top open
   (
-   .rstn(locked),
    .msoc_clk(msoc_clk),
-   .clk_rmii(clk_rmii),
    .core_lsu_addr(hid_addr[14:0]),
    .core_lsu_wdata(hid_wrdata),
    .core_lsu_be(hid_we),
@@ -571,17 +572,21 @@ framing_top open
    .we_d(hid_en & one_hot_data_addr[4] & (|hid_we)),
    .framing_sel(hid_en),
    .framing_rdata(one_hot_rdata[4]),
-   .o_edutrefclk(eth_refclk),
-   .i_edutrxd(eth_rxd),
-   .i_edutrx_dv(eth_crsdv),
-   .i_edutrx_er(eth_rxerr),
-   .o_eduttxd(eth_txd),
-   .o_eduttx_en(eth_txen),
-   .o_edutmdc(eth_mdc),
-   .i_edutmdio(phy_mdio_i),
-   .o_edutmdio(phy_mdio_o),
-   .oe_edutmdio(phy_mdio_t),
-   .o_edutrstn(eth_rstn),
+   .clk_int(clk_rgmii),
+   .clk90_int(clk_rgmii_quad),
+   .rst_int(!rstn),
+   /*
+    * Ethernet: 1000BASE-T RGMII
+    */
+   .phy_rx_clk(phy_rx_clk),
+   .phy_rxd(phy_rxd),
+   .phy_rx_ctl(phy_rx_ctl),
+   .phy_tx_clk(phy_tx_clk),
+   .phy_txd(phy_txd),
+   .phy_tx_ctl(phy_tx_ctl),
+   .phy_reset_n(phy_reset_n),
+   .phy_int_n(phy_int_n),
+   .phy_pme_n(phy_pme_n),
    .eth_irq(eth_irq)
 );
 
