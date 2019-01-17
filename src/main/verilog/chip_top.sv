@@ -9,7 +9,7 @@ module chip_top
    inout wire [31:0]  ddr_dq,
    inout wire [3:0]   ddr_dqs_n,
    inout wire [3:0]   ddr_dqs_p,
-   output [13:0] ddr_addr,
+   output [14:0] ddr_addr,
    output [2:0]  ddr_ba,
    output        ddr_ras_n,
    output        ddr_cas_n,
@@ -86,6 +86,123 @@ module chip_top
    logic spi_irq, sd_irq, eth_irq, uart_irq;
    // Miscellaneous
    logic TDO_driven;
+   wire io_emdio_i, phy_emdio_o, phy_emdio_t, clk_rgmii, clk_rgmii_quad, clk_locked, clk_locked_wiz;
+   reg phy_emdio_i, io_emdio_o, io_emdio_t;
+   logic mig_sys_clk, clk_pixel;
+   // MIG clock
+   logic mig_ui_clk, mig_ui_rst, mig_ui_rstn;
+   assign mig_ui_rstn = !mig_ui_rst;
+   /////////////////////////////////////////////////////////////
+   // Human interface and miscellaneous devices
+
+   wire                        hid_rst, hid_clk, hid_en;
+   wire [7:0]                  hid_we;
+   wire [17:0]                 hid_addr;
+   wire [63:0]                 hid_wrdata,  hid_rddata;
+   logic [30:0]                hid_ar_addr, hid_aw_addr;
+   logic [1:0] eth_txd;
+   logic eth_rstn, eth_refclk, eth_txen;
+   // BRAM controller
+   logic ram_clk, ram_rst, ram_en;
+   logic [7:0] ram_we;
+   logic [15:0] ram_addr;
+   logic [63:0]   ram_wrdata, ram_rddata;
+   logic [30:0] bram_ar_addr, bram_aw_addr;
+
+   clk_wiz_0 clk_gen
+     (
+      .clk_in1        ( mig_ui_clk     ), // 100 MHz onboard
+      .clk_out1       ( mig_sys_clk    ), // 200 MHz
+      .clk_cpu        ( clk            ), // 50 MHz
+      .clk_pixel      ( clk_pixel      ), // 100 MHz
+      .clk_rgmii      ( clk_rgmii      ), // 125 MHz rgmii
+      .clk_rgmii_quad ( clk_rgmii_quad ), // 125 MHz rgmii quad
+      .reset          ( mig_ui_rst     ),
+      .locked         ( clk_locked_wiz )
+      );
+
+   assign clk_locked = clk_locked_wiz & rst_top;
+   assign sys_rst = ~rstn;
+
+   // the NASTI bus for off-FPGA DRAM, converted to High frequency
+   nasti_channel   
+     #(
+       .ID_WIDTH    ( `MEM_ID_WIDTH   ),
+       .ADDR_WIDTH  ( `MEM_ADDR_WIDTH ),
+       .DATA_WIDTH  ( `MEM_DATA_WIDTH ))
+   mem_mig_nasti();
+      
+   // DRAM controller
+   mig_7series_0 dram_ctl
+     (
+      .sys_clk_p            ( clk_p                  ),
+      .sys_clk_n            ( clk_n                  ),
+      .sys_rst              ( rst_top                ),
+      .ddr3_dq              ( ddr_dq                 ),
+      .ddr3_dqs_n           ( ddr_dqs_n              ),
+      .ddr3_dqs_p           ( ddr_dqs_p              ),
+      .ddr3_addr            ( ddr_addr               ),
+      .ddr3_ba              ( ddr_ba                 ),
+      .ddr3_ras_n           ( ddr_ras_n              ),
+      .ddr3_cas_n           ( ddr_cas_n              ),
+      .ddr3_we_n            ( ddr_we_n               ),
+      .ddr3_reset_n         ( ddr_reset_n            ),
+      .ddr3_ck_p            ( ddr_ck_p               ),
+      .ddr3_ck_n            ( ddr_ck_n               ),
+      .ddr3_cke             ( ddr_cke                ),
+      .ddr3_cs_n            ( ddr_cs_n               ),
+      .ddr3_dm              ( ddr_dm                 ),
+      .ddr3_odt             ( ddr_odt                ),
+      .ui_clk               ( mig_ui_clk             ),
+      .ui_clk_sync_rst      ( mig_ui_rst             ),
+      .mmcm_locked          ( rstn                   ),
+      .aresetn              ( rstn                   ), // AXI reset
+      .app_sr_req           ( 1'b0                   ),
+      .app_ref_req          ( 1'b0                   ),
+      .app_zq_req           ( 1'b0                   ),
+      .s_axi_awid           ( mem_mig_nasti.aw_id    ),
+      .s_axi_awaddr         ( mem_mig_nasti.aw_addr  ),
+      .s_axi_awlen          ( mem_mig_nasti.aw_len   ),
+      .s_axi_awsize         ( mem_mig_nasti.aw_size  ),
+      .s_axi_awburst        ( mem_mig_nasti.aw_burst ),
+      .s_axi_awlock         ( 1'b0                   ), // not supported in AXI4
+      .s_axi_awcache        ( mem_mig_nasti.aw_cache ),
+      .s_axi_awprot         ( mem_mig_nasti.aw_prot  ),
+      .s_axi_awqos          ( mem_mig_nasti.aw_qos   ),
+      .s_axi_awvalid        ( mem_mig_nasti.aw_valid ),
+      .s_axi_awready        ( mem_mig_nasti.aw_ready ),
+      .s_axi_wdata          ( mem_mig_nasti.w_data   ),
+      .s_axi_wstrb          ( mem_mig_nasti.w_strb   ),
+      .s_axi_wlast          ( mem_mig_nasti.w_last   ),
+      .s_axi_wvalid         ( mem_mig_nasti.w_valid  ),
+      .s_axi_wready         ( mem_mig_nasti.w_ready  ),
+      .s_axi_bid            ( mem_mig_nasti.b_id     ),
+      .s_axi_bresp          ( mem_mig_nasti.b_resp   ),
+      .s_axi_bvalid         ( mem_mig_nasti.b_valid  ),
+      .s_axi_bready         ( mem_mig_nasti.b_ready  ),
+      .s_axi_arid           ( mem_mig_nasti.ar_id    ),
+      .s_axi_araddr         ( mem_mig_nasti.ar_addr  ),
+      .s_axi_arlen          ( mem_mig_nasti.ar_len   ),
+      .s_axi_arsize         ( mem_mig_nasti.ar_size  ),
+      .s_axi_arburst        ( mem_mig_nasti.ar_burst ),
+      .s_axi_arlock         ( 1'b0                   ), // not supported in AXI4
+      .s_axi_arcache        ( mem_mig_nasti.ar_cache ),
+      .s_axi_arprot         ( mem_mig_nasti.ar_prot  ),
+      .s_axi_arqos          ( mem_mig_nasti.ar_qos   ),
+      .s_axi_arvalid        ( mem_mig_nasti.ar_valid ),
+      .s_axi_arready        ( mem_mig_nasti.ar_ready ),
+      .s_axi_rid            ( mem_mig_nasti.r_id     ),
+      .s_axi_rdata          ( mem_mig_nasti.r_data   ),
+      .s_axi_rresp          ( mem_mig_nasti.r_resp   ),
+      .s_axi_rlast          ( mem_mig_nasti.r_last   ),
+      .s_axi_rvalid         ( mem_mig_nasti.r_valid  ),
+      .s_axi_rready         ( mem_mig_nasti.r_ready  )
+      );
+
+`define UBAUD_DEFAULT 108
+
+`ifndef TEST_JTAG_MASTER
+   
    /////////////////////////////////////////////////////////////
    // NASTI/Lite on-chip interconnects
 
@@ -96,23 +213,6 @@ module chip_top
        .ADDR_WIDTH  ( `MEM_ADDR_WIDTH ),
        .DATA_WIDTH  ( `MEM_DATA_WIDTH ))
    mem_nasti();
-wire io_emdio_i, phy_emdio_o, phy_emdio_t, clk_rgmii, clk_rgmii_quad, clk_locked, clk_locked_wiz;
-reg phy_emdio_i, io_emdio_o, io_emdio_t;
-logic mig_sys_clk, clk_pixel;
-
-   // the NASTI bus for off-FPGA DRAM, converted to High frequency
-   nasti_channel   
-     #(
-       .ID_WIDTH    ( `MEM_ID_WIDTH   ),
-       .ADDR_WIDTH  ( `MEM_ADDR_WIDTH ),
-       .DATA_WIDTH  ( `MEM_DATA_WIDTH ))
-   mem_mig_nasti();
-
-   // MIG clock
-   logic mig_ui_clk, mig_ui_rst, mig_ui_rstn;
-   assign mig_ui_rstn = !mig_ui_rst;
-
-`define UBAUD_DEFAULT 108
 
    // clock converter
    axi_clock_converter_0 clk_conv
@@ -201,87 +301,6 @@ logic mig_sys_clk, clk_pixel;
       .m_axi_rready         ( mem_mig_nasti.r_ready    )
       );
 
-   clk_wiz_0 clk_gen
-     (
-      .clk_in1        ( mig_ui_clk     ), // 100 MHz onboard
-      .clk_out1       ( mig_sys_clk    ), // 200 MHz
-      .clk_cpu        ( clk            ), // 50 MHz
-      .clk_pixel      ( clk_pixel      ), // 100 MHz
-      .clk_rgmii      ( clk_rgmii      ), // 125 MHz rgmii
-      .clk_rgmii_quad ( clk_rgmii_quad ), // 125 MHz rgmii quad
-      .reset          ( mig_ui_rst     ),
-      .locked         ( clk_locked_wiz )
-      );
-   assign clk_locked = clk_locked_wiz & rst_top;
-   assign sys_rst = ~rstn;
-      
-   // DRAM controller
-   mig_7series_0 dram_ctl
-     (
-      .sys_clk_p            ( clk_p                  ),
-      .sys_clk_n            ( clk_n                  ),
-      .sys_rst              ( rst_top                ),
-      .ddr3_dq              ( ddr_dq                 ),
-      .ddr3_dqs_n           ( ddr_dqs_n              ),
-      .ddr3_dqs_p           ( ddr_dqs_p              ),
-      .ddr3_addr            ( ddr_addr               ),
-      .ddr3_ba              ( ddr_ba                 ),
-      .ddr3_ras_n           ( ddr_ras_n              ),
-      .ddr3_cas_n           ( ddr_cas_n              ),
-      .ddr3_we_n            ( ddr_we_n               ),
-      .ddr3_reset_n         ( ddr_reset_n            ),
-      .ddr3_ck_p            ( ddr_ck_p               ),
-      .ddr3_ck_n            ( ddr_ck_n               ),
-      .ddr3_cke             ( ddr_cke                ),
-      .ddr3_cs_n            ( ddr_cs_n               ),
-      .ddr3_dm              ( ddr_dm                 ),
-      .ddr3_odt             ( ddr_odt                ),
-      .ui_clk               ( mig_ui_clk             ),
-      .ui_clk_sync_rst      ( mig_ui_rst             ),
-      .mmcm_locked          ( rstn                   ),
-      .aresetn              ( rstn                   ), // AXI reset
-      .app_sr_req           ( 1'b0                   ),
-      .app_ref_req          ( 1'b0                   ),
-      .app_zq_req           ( 1'b0                   ),
-      .s_axi_awid           ( mem_mig_nasti.aw_id    ),
-      .s_axi_awaddr         ( mem_mig_nasti.aw_addr  ),
-      .s_axi_awlen          ( mem_mig_nasti.aw_len   ),
-      .s_axi_awsize         ( mem_mig_nasti.aw_size  ),
-      .s_axi_awburst        ( mem_mig_nasti.aw_burst ),
-      .s_axi_awlock         ( 1'b0                   ), // not supported in AXI4
-      .s_axi_awcache        ( mem_mig_nasti.aw_cache ),
-      .s_axi_awprot         ( mem_mig_nasti.aw_prot  ),
-      .s_axi_awqos          ( mem_mig_nasti.aw_qos   ),
-      .s_axi_awvalid        ( mem_mig_nasti.aw_valid ),
-      .s_axi_awready        ( mem_mig_nasti.aw_ready ),
-      .s_axi_wdata          ( mem_mig_nasti.w_data   ),
-      .s_axi_wstrb          ( mem_mig_nasti.w_strb   ),
-      .s_axi_wlast          ( mem_mig_nasti.w_last   ),
-      .s_axi_wvalid         ( mem_mig_nasti.w_valid  ),
-      .s_axi_wready         ( mem_mig_nasti.w_ready  ),
-      .s_axi_bid            ( mem_mig_nasti.b_id     ),
-      .s_axi_bresp          ( mem_mig_nasti.b_resp   ),
-      .s_axi_bvalid         ( mem_mig_nasti.b_valid  ),
-      .s_axi_bready         ( mem_mig_nasti.b_ready  ),
-      .s_axi_arid           ( mem_mig_nasti.ar_id    ),
-      .s_axi_araddr         ( mem_mig_nasti.ar_addr  ),
-      .s_axi_arlen          ( mem_mig_nasti.ar_len   ),
-      .s_axi_arsize         ( mem_mig_nasti.ar_size  ),
-      .s_axi_arburst        ( mem_mig_nasti.ar_burst ),
-      .s_axi_arlock         ( 1'b0                   ), // not supported in AXI4
-      .s_axi_arcache        ( mem_mig_nasti.ar_cache ),
-      .s_axi_arprot         ( mem_mig_nasti.ar_prot  ),
-      .s_axi_arqos          ( mem_mig_nasti.ar_qos   ),
-      .s_axi_arvalid        ( mem_mig_nasti.ar_valid ),
-      .s_axi_arready        ( mem_mig_nasti.ar_ready ),
-      .s_axi_rid            ( mem_mig_nasti.r_id     ),
-      .s_axi_rdata          ( mem_mig_nasti.r_data   ),
-      .s_axi_rresp          ( mem_mig_nasti.r_resp   ),
-      .s_axi_rlast          ( mem_mig_nasti.r_last   ),
-      .s_axi_rvalid         ( mem_mig_nasti.r_valid  ),
-      .s_axi_rready         ( mem_mig_nasti.r_ready  )
-      );
-
    /////////////////////////////////////////////////////////////
    // IO space buses
 
@@ -318,14 +337,6 @@ logic mig_sys_clk, clk_pixel;
 
    initial assert (BRAM_OFFSET_BITS < 7) else $fatal(1, "Do not support BRAM AXI width > 64-bit!");
 
-   // BRAM controller
-   logic ram_clk, ram_rst, ram_en;
-   logic [7:0] ram_we;
-   logic [15:0] ram_addr;
-   logic [63:0]   ram_wrdata, ram_rddata;
-
-   logic [30:0] bram_ar_addr, bram_aw_addr;
-
    assign bram_ar_addr = mmio_master_nasti.ar_addr ;
    assign bram_aw_addr = mmio_master_nasti.aw_addr ;
    
@@ -359,17 +370,6 @@ logic mig_sys_clk, clk_pixel;
    initial $readmemh("boot.mem", ram);
 
    assign spi_irq = 1'b0;
-
-   /////////////////////////////////////////////////////////////
-   // Human interface and miscellaneous devices
-
-   wire                        hid_rst, hid_clk, hid_en;
-   wire [7:0]                  hid_we;
-   wire [17:0]                 hid_addr;
-   wire [63:0]                 hid_wrdata,  hid_rddata;
-   logic [30:0]                hid_ar_addr, hid_aw_addr;
-   logic [1:0] eth_txd;
-   logic eth_rstn, eth_refclk, eth_txen;
 
    axi_bram_ctrl_dummy BramCtl
      (
@@ -417,39 +417,7 @@ logic mig_sys_clk, clk_pixel;
       .bram_addr_a     ( hid_addr                  ),
       .bram_wrdata_a   ( hid_wrdata                ),
       .bram_rddata_a   ( hid_rddata                )
-      );
-  
-
-   periph_soc #(.UBAUD_DEFAULT(`UBAUD_DEFAULT)) psoc
-     (
-      .msoc_clk   ( clk             ),
-      .sd_sclk    ( sd_sclk         ),
-      .sd_detect  ( sd_detect       ),
-      .sd_dat     ( sd_dat          ),
-      .sd_cmd     ( sd_cmd          ),
-      .sd_irq     ( sd_irq          ),
-      .from_dip   ( i_dip           ),
-      .to_led     ( o_led           ),
-      .rstn       ( clk_locked      ),
-      .clk_200MHz ( mig_sys_clk     ),
-      .pxl_clk    ( clk_pixel       ),
-      .uart_rx    ( rxd             ),
-      .uart_tx    ( txd             ),
-      .clk_rgmii  ( clk_rgmii       ),
-      .clk_rgmii_quad ( clk_rgmii_quad ),
-    // RGMII ethernet PHY connections
-      .phy_rx_clk,
-      .phy_rxd,
-      .phy_rx_ctl,
-      .phy_tx_clk,
-      .phy_txd,
-      .phy_tx_ctl,
-      .phy_reset_n,
-      .phy_int_n,
-      .phy_pme_n,
-      .eth_irq    ( eth_irq         ),
-      .*
-      );
+      );  
 
    /////////////////////////////////////////////////////////////
    // Host for ISA regression
@@ -636,5 +604,130 @@ logic mig_sys_clk, clk_pixel;
       .clock                         ( clk                                  ),
       .reset                         ( sys_rst                              )
       );
+
+`else
+
+jtag_axi_0 my_jtag_master (
+  .aclk(mig_ui_clk),                  // input wire aclk
+  .aresetn(mig_ui_rstn),              // input wire aresetn
+  .m_axi_awid           ( mem_mig_nasti.aw_id    ),
+  .m_axi_awaddr         ( mem_mig_nasti.aw_addr  ),
+  .m_axi_awlen          ( mem_mig_nasti.aw_len   ),
+  .m_axi_awsize         ( mem_mig_nasti.aw_size  ),
+  .m_axi_awburst        ( mem_mig_nasti.aw_burst ),
+  .m_axi_awlock         ( mem_mig_nasti.aw_lock  ),
+  .m_axi_awcache        ( mem_mig_nasti.aw_cache ),
+  .m_axi_awprot         ( mem_mig_nasti.aw_prot  ),
+  .m_axi_awqos          ( mem_mig_nasti.aw_qos   ),
+  .m_axi_awvalid        ( mem_mig_nasti.aw_valid ),
+  .m_axi_awready        ( mem_mig_nasti.aw_ready ),
+  .m_axi_wdata          ( mem_mig_nasti.w_data   ),
+  .m_axi_wstrb          ( mem_mig_nasti.w_strb   ),
+  .m_axi_wlast          ( mem_mig_nasti.w_last   ),
+  .m_axi_wvalid         ( mem_mig_nasti.w_valid  ),
+  .m_axi_wready         ( mem_mig_nasti.w_ready  ),
+  .m_axi_bid            ( mem_mig_nasti.b_id     ),
+  .m_axi_bresp          ( mem_mig_nasti.b_resp   ),
+  .m_axi_bvalid         ( mem_mig_nasti.b_valid  ),
+  .m_axi_bready         ( mem_mig_nasti.b_ready  ),
+  .m_axi_arid           ( mem_mig_nasti.ar_id    ),
+  .m_axi_araddr         ( mem_mig_nasti.ar_addr  ),
+  .m_axi_arlen          ( mem_mig_nasti.ar_len   ),
+  .m_axi_arsize         ( mem_mig_nasti.ar_size  ),
+  .m_axi_arburst        ( mem_mig_nasti.ar_burst ),
+  .m_axi_arlock         ( mem_mig_nasti.ar_lock  ),
+  .m_axi_arcache        ( mem_mig_nasti.ar_cache ),
+  .m_axi_arprot         ( mem_mig_nasti.ar_prot  ),
+  .m_axi_arqos          ( mem_mig_nasti.ar_qos   ),
+  .m_axi_arvalid        ( mem_mig_nasti.ar_valid ),
+  .m_axi_arready        ( mem_mig_nasti.ar_ready ),
+  .m_axi_rid            ( mem_mig_nasti.r_id     ),
+  .m_axi_rdata          ( mem_mig_nasti.r_data   ),
+  .m_axi_rresp          ( mem_mig_nasti.r_resp   ),
+  .m_axi_rlast          ( mem_mig_nasti.r_last   ),
+  .m_axi_rvalid         ( mem_mig_nasti.r_valid  ),
+  .m_axi_rready         ( mem_mig_nasti.r_ready  )
+);
+   
+`endif
+   
+   periph_soc #(.UBAUD_DEFAULT(`UBAUD_DEFAULT)) psoc
+     (
+      .msoc_clk   ( clk             ),
+      .sd_sclk    ( sd_sclk         ),
+      .sd_detect  ( sd_detect       ),
+      .sd_dat     ( sd_dat          ),
+      .sd_cmd     ( sd_cmd          ),
+      .sd_irq     ( sd_irq          ),
+      .from_dip   ( i_dip           ),
+      .to_led     ( o_led           ),
+      .rstn       ( clk_locked      ),
+      .clk_200MHz ( mig_sys_clk     ),
+      .pxl_clk    ( clk_pixel       ),
+      .uart_rx    ( rxd             ),
+      .uart_tx    ( txd             ),
+      .clk_rgmii  ( clk_rgmii       ),
+      .clk_rgmii_quad ( clk_rgmii_quad ),
+    // RGMII ethernet PHY connections
+      .phy_rx_clk,
+      .phy_rxd,
+      .phy_rx_ctl,
+      .phy_tx_clk,
+      .phy_txd,
+      .phy_tx_ctl,
+      .phy_reset_n,
+      .phy_int_n,
+      .phy_pme_n,
+      .eth_irq    ( eth_irq         ),
+      .*
+      );
+
+ila_0 your_instance_name (
+	.clk(clk), // input wire clk
+	.probe0( mem_nasti.w_ready), // input wire [0:0] probe0  
+	.probe1( mem_nasti.aw_addr), // input wire [63:0]  probe1 
+	.probe2( mem_nasti.b_resp), // input wire [1:0]  probe2 
+	.probe3( mem_nasti.b_valid), // input wire [0:0]  probe3 
+	.probe4( mem_nasti.b_ready), // input wire [0:0]  probe4 
+	.probe5( mem_nasti.ar_addr), // input wire [63:0]  probe5 
+	.probe6( mem_nasti.r_ready), // input wire [0:0]  probe6 
+	.probe7( mem_nasti.w_valid), // input wire [0:0]  probe7 
+	.probe8( mem_nasti.ar_valid), // input wire [0:0]  probe8 
+	.probe9( mem_nasti.ar_ready), // input wire [0:0]  probe9 
+	.probe10( mem_nasti.r_data), // input wire [63:0]  probe10 
+	.probe11( mem_nasti.aw_valid), // input wire [0:0]  probe11 
+	.probe12( mem_nasti.aw_ready), // input wire [0:0]  probe12 
+	.probe13( mem_nasti.r_resp), // input wire [1:0]  probe13 
+	.probe14( mem_nasti.w_data), // input wire [63:0]  probe14 
+	.probe15( mem_nasti.w_strb), // input wire [7:0]  probe15 
+	.probe16( mem_nasti.r_valid), // input wire [0:0]  probe16 
+	.probe17( mem_nasti.ar_prot), // input wire [2:0]  probe17 
+	.probe18( mem_nasti.aw_prot), // input wire [2:0]  probe18 
+	.probe19( mem_nasti.aw_id), // input wire [3:0]  probe19 
+	.probe20( mem_nasti.b_id), // input wire [3:0]  probe20 
+	.probe21( mem_nasti.aw_len), // input wire [7:0]  probe21 
+	.probe22( mem_nasti.b_user), // input wire [0:0]  probe22 
+	.probe23( mem_nasti.aw_size), // input wire [2:0]  probe23 
+	.probe24( mem_nasti.aw_burst), // input wire [1:0]  probe24 
+	.probe25( mem_nasti.ar_id), // input wire [3:0]  probe25 
+	.probe26( mem_nasti.aw_lock), // input wire [0:0]  probe26 
+	.probe27( mem_nasti.ar_len), // input wire [7:0]  probe27 
+	.probe28( mem_nasti.ar_size), // input wire [2:0]  probe28 
+	.probe29( mem_nasti.ar_busrt), // input wire [1:0]  probe29 
+	.probe30( mem_nasti.ar_lock), // input wire [0:0]  probe30 
+	.probe31( mem_nasti.ar_cache), // input wire [3:0]  probe31 
+	.probe32( mem_nasti.aw_cache), // input wire [3:0]  probe32 
+	.probe33( mem_nasti.ar_region), // input wire [3:0]  probe33 
+	.probe34( mem_nasti.ar_qos), // input wire [3:0]  probe34 
+	.probe35( mem_nasti.ar_user), // input wire [0:0]  probe35 
+	.probe36( mem_nasti.aw_region), // input wire [3:0]  probe36 
+	.probe37( mem_nasti.aw_qos), // input wire [3:0]  probe37 
+	.probe38( mem_nasti.r_id), // input wire [3:0]  probe38 
+	.probe39( mem_nasti.aw_user), // input wire [0:0]  probe39 
+	.probe40( mem_nasti.w_id), // input wire [0:0]  probe40 
+	.probe41( mem_nasti.r_last), // input wire [0:0]  probe41 
+	.probe42( mem_nasti.r_user), // input wire [0:0]  probe42  
+	.probe43( mem_nasti.w_last) // input wire [0:0]  probe43
+);
    
 endmodule // chip_top

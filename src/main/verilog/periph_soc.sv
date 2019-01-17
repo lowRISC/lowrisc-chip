@@ -572,9 +572,10 @@ framing_top open
    .we_d(hid_en & one_hot_data_addr[4] & (|hid_we)),
    .framing_sel(hid_en),
    .framing_rdata(one_hot_rdata[4]),
+   .rst_int(!rstn),
    .clk_int(clk_rgmii),
    .clk90_int(clk_rgmii_quad),
-   .rst_int(!rstn),
+   .clk_200_int(clk_200MHz),
    /*
     * Ethernet: 1000BASE-T RGMII
     */
