@@ -47,17 +47,14 @@ logic [14:0] core_lsu_addr_dly;
 
 logic tx_enable_i, mac_gmii_tx_en;
 logic [47:0] mac_address, rx_dest_mac;
-logic  [7:0] mii_rx_data_i;
 logic [10:0] tx_frame_addr, rx_length_axis[0:7], tx_packet_length;
 logic [12:0] axis_tx_frame_size;
 logic        ce_d_dly, avail;
 logic [63:0] framing_rdata_pkt, framing_wdata_pkt;
 logic [3:0] tx_enable_dly, firstbuf, nextbuf, lastbuf;
-
-reg [12:0] addr_tap, nxt_addr;
-reg [23:0] rx_byte, rx_nxt, rx_byte_dly;
-reg  [2:0] rx_pair;
-reg        mii_rx_byte_received_i, full, byte_sync, sync, irq_en, mii_rx_frame_i, tx_busy;
+logic [2:0] last;
+   
+reg        byte_sync, sync, irq_en, tx_busy, rx_axis_tvalid_old;
 
    wire [7:0] m_enb = (we_d ? core_lsu_be : 8'hFF);
    logic phy_mdclk, cooked, tx_enable_old, loopback, promiscuous;
@@ -85,53 +82,33 @@ reg        mii_rx_byte_received_i, full, byte_sync, sync, irq_en, mii_rx_frame_i
       /*
         * AXIS Status
         */
-         wire        axis_error_bad_frame;
-         wire        axis_error_bad_fcs;
          wire [31:0] tx_fcs_reg_rev, rx_fcs_reg_rev;
    
    always @(posedge clk_int)
      if (rst_int == 1'b1)
        begin
 	  byte_sync <= 1'b0;
-	  addr_tap <= 'H0;
-	  rx_byte_dly <= {8{3'H1}};
        end
      else
        begin
-	  mii_rx_byte_received_i <= 0;
-	  full = &addr_tap;
-	  rx_nxt = {rx_pair,rx_byte[23:3]};
-	  rx_byte <= rx_nxt;
-	  if ((rx_nxt == {3'H7,{7{3'H5}}}) && (byte_sync == 0) && (nextbuf != (firstbuf+lastbuf)&15))
+	  if (rx_axis_tvalid && (byte_sync == 0) && (nextbuf != (firstbuf+lastbuf)&15) && ~rx_axis_tvalid_old)
             begin
                byte_sync <= 1'b1;
-               mii_rx_byte_received_i <= 1'b1;
-               addr_tap <= {addr_tap[12:2],2'b00};
             end
-	  else
+	  if (rx_axis_tlast && byte_sync && ~rx_axis_tvalid_old)
             begin
-               if (full == 0)
-		 begin
-                    nxt_addr = addr_tap+1;
-                    addr_tap <= byte_sync ? nxt_addr : nxt_addr&3;
-		 end
-               mii_rx_byte_received_i <= &addr_tap[1:0];
+               last <= 1'b1;
             end
-	  if (mii_rx_byte_received_i)
-	    begin
-	       rx_byte_dly <= byte_sync ? rx_byte : {8{3'H1}};
-               mii_rx_frame_i <= rx_byte_dly[2];
-	       mii_rx_data_i <= {rx_byte_dly[10:9],rx_byte_dly[7:6],rx_byte_dly[4:3],rx_byte_dly[1:0]};
-            end
-	  if (rx_axis_tlast)
+          else if ((last > 0) && (last < 7))
             begin
 	       byte_sync <= 1'b0;
-	       addr_tap <= 'H0;
+               last <= last + 3'b1;
+            end
+          else
+            begin
+               last <= 3'b0;
             end
        end
-
-   always @(posedge clk_int)
-       tx_enable_old <= tx_enable_i;
 
    logic [1:0] rx_wr = rx_axis_tvalid << rx_addr_axis[2];
    logic [15:0] douta;
@@ -211,15 +188,15 @@ always @(posedge msoc_clk)
         6: begin firstbuf <= core_lsu_wdata[3:0]; end
         default:;
       endcase
-       if (byte_sync & (~rx_pair[2]) & ~sync)
+       if ((last > 0) && ~sync)
          begin
          // check broadcast/multicast address
 	     sync <= (rx_dest_mac[47:24]==24'h01005E) | (&rx_dest_mac) | (mac_address == rx_dest_mac) | promiscuous;
          end
-       else if (~byte_sync)
+       else if (!last)
          begin
-         if (sync) nextbuf <= nextbuf + 1'b1;
-         sync <= 1'b0;
+            if (sync) nextbuf <= nextbuf + 1'b1;
+            sync <= 1'b0;
          end
        if (mac_gmii_tx_en && tx_axis_tlast)
          begin
@@ -237,18 +214,19 @@ always @(posedge msoc_clk)
 always @(posedge clk_int)
   if (rst_int)
     begin
-    tx_enable_i <= 1'b0;
+       tx_enable_i <= 1'b0;
     end
   else
     begin
-    if (mac_gmii_tx_en && tx_axis_tlast)
-       begin
-       tx_enable_i <= 1'b0;
-       end
-    else if (1'b1 == &tx_enable_dly)
+       tx_enable_old <= tx_enable_i;
+       if (mac_gmii_tx_en && tx_axis_tlast)
+         begin
+            tx_enable_i <= 1'b0;
+         end
+       else if (1'b1 == &tx_enable_dly)
          tx_enable_i <= 1'b1;
     end
-
+   
    always @* casez({ce_d_dly,core_lsu_addr_dly[14:3]})
     13'b10001????0000 : framing_rdata = mac_address[31:0];
     13'b10001????0001 : framing_rdata = {irq_en, promiscuous, spare, loopback, cooked, mac_address[47:32]};
@@ -319,17 +297,18 @@ always @(posedge clk_int)
 	       else if (~tx_axis_tlast)
 		 tx_axis_tvalid_dly <= 1'b0;
 	    end
-	  if (rx_axis_tvalid)
+	  if (rx_axis_tvalid & ~rx_axis_tvalid_old)
             begin
             rx_addr_axis <= rx_addr_axis + 1;
             if (rx_addr_axis < 6)
               rx_dest_mac <= {rx_dest_mac[39:0],rx_axis_tdata};
             end
-	  if (rx_axis_tlast)
+	  if (rx_axis_tlast & ~rx_axis_tvalid_old)
             begin
 	        rx_length_axis[nextbuf[2:0]] <= rx_addr_axis + 1;
 	        rx_addr_axis <= 'b0;
             end
+          rx_axis_tvalid_old <= rx_axis_tvalid;
       end
  
 rgmii_soc rgmii_soc1
@@ -362,7 +341,7 @@ rgmii_soc rgmii_soc1
    .rx_axis_tuser(rx_axis_tuser)
 );
 
-ila_2 eth_ila (
+ila_2 eth_ila_clk_int (
 	.clk(clk_int), // input wire clk
 	.probe0(tx_axis_tdata), // input wire [7:0]  probe0  
 	.probe1(tx_axis_tvalid), // input wire [0:0]  probe1 
@@ -371,7 +350,24 @@ ila_2 eth_ila (
 	.probe4(rx_axis_tdata), // input wire [7:0]  probe4 
 	.probe5(rx_axis_tvalid), // input wire [0:0]  probe5 
 	.probe6(rx_axis_tlast), // input wire [0:0]  probe6 
-	.probe7(rx_axis_tuser) // input wire [0:0]  probe7
+	.probe7(rx_axis_tuser), // input wire [0:0]  probe7
+        .probe8(byte_sync),
+        .probe9(last),
+        .probe10(rx_addr_axis),
+        .probe11(rx_dest_mac),
+        .probe12(tx_enable_i),
+	.probe13(axis_tx_frame_size),
+	.probe14(tx_axis_tvalid_dly),
+	.probe15(tx_frame_addr)
+);
+
+ila_3 eth_ila_clk_msoc (
+	.clk(msoc_clk), // input wire clk
+	.probe0(sync),
+	.probe1(avail),
+        .probe2(nextbuf),
+        .probe3(tx_enable_dly),
+        .probe4(tx_busy)
 );
    
 endmodule // framing_top

@@ -591,6 +591,7 @@ framing_top open
    .phy_reset_n(phy_reset_n),
    .phy_int_n(phy_int_n),
    .phy_pme_n(phy_pme_n),
+   .phy_mdc,
    .phy_mdio_i,
    .phy_mdio_o,
    .phy_mdio_oen,

@@ -81,7 +81,7 @@ module chip_top
 
    wire              phy_mdio_i, phy_mdio_o, phy_mdio_oen;
    
-   io_buffer_generic(
+   io_buffer_generic mdio_buf (
                      .inoutg(phy_mdio),
                      .outg(phy_mdio_i),
                      .ing(phy_mdio_o),
