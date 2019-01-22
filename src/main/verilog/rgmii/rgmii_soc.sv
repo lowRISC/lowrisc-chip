@@ -34,23 +34,41 @@ based on fpga.v
 
 module rgmii_soc (
     // Internal 125 MHz clock
-    input clk_int,
-    input rst_int,
-    input clk90_int,
-    input clk_200_int,
+    input             clk_int,
+    input             rst_int,
+    input             clk90_int,
+    input             clk_200_int,
 
     /*
      * Ethernet: 1000BASE-T RGMII
      */
-    input  wire       phy_rx_clk,
-    input  wire [3:0] phy_rxd,
-    input  wire       phy_rx_ctl,
+    input wire        phy_rx_clk,
+    input wire [3:0]  phy_rxd,
+    input wire        phy_rx_ctl,
     output wire       phy_tx_clk,
     output wire [3:0] phy_txd,
     output wire       phy_tx_ctl,
     output wire       phy_reset_n,
-    input  wire       phy_int_n,
-    input  wire       phy_pme_n
+    input wire        phy_int_n,
+    input wire        phy_pme_n,
+    output wire       mac_gmii_tx_en,
+
+       /*
+        * AXI input
+        */
+    input             tx_axis_tvalid,
+    input             tx_axis_tlast,
+    input [7:0]       tx_axis_tdata,
+    output            tx_axis_tready,
+    input             tx_axis_tuser,
+   
+       /*
+        * AXI output
+        */
+    output wire [7:0] rx_axis_tdata,
+    output wire       rx_axis_tvalid,
+    output wire       rx_axis_tlast,
+    output            rx_axis_tuser                  
 
 );
 
@@ -143,6 +161,7 @@ phy_rxd_idelay_3
 );
 
 IDELAYE2 #(
+    .IDELAY_VALUE(0),
     .IDELAY_TYPE("FIXED")
 )
 phy_rx_ctl_idelay
@@ -181,7 +200,17 @@ core_inst (
     .phy_tx_ctl(phy_tx_ctl),
     .phy_reset_n(phy_reset_n),
     .phy_int_n(phy_int_n),
-    .phy_pme_n(phy_pme_n)
+    .phy_pme_n(phy_pme_n),
+    .mac_gmii_tx_en(mac_gmii_tx_en),
+    .tx_axis_tdata(tx_axis_tdata),
+    .tx_axis_tvalid(tx_axis_tvalid),
+    .tx_axis_tready(tx_axis_tready),
+    .tx_axis_tlast(tx_axis_tlast),
+    .tx_axis_tuser(tx_axis_tuser),
+    .rx_axis_tdata(rx_axis_tdata),
+    .rx_axis_tvalid(rx_axis_tvalid),
+    .rx_axis_tlast(rx_axis_tlast),
+    .rx_axis_tuser(rx_axis_tuser)
 );
 
 endmodule

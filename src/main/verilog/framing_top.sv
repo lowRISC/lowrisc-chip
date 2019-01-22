@@ -3,55 +3,49 @@
 
 module framing_top
   (
-  input wire rstn, msoc_clk, clk_rmii,
-  input wire [14:0] core_lsu_addr,
-  input wire [63:0] core_lsu_wdata,
-  input wire [7:0] core_lsu_be,
-  input wire       ce_d,
-  input wire   we_d,
-  input wire framing_sel,
+  input wire          msoc_clk,
+  input wire [14:0]   core_lsu_addr,
+  input wire [63:0]   core_lsu_wdata,
+  input wire [7:0]    core_lsu_be,
+  input wire          ce_d,
+  input wire          we_d,
+  input wire          framing_sel,
   output logic [63:0] framing_rdata,
 
     // Internal 125 MHz clock
-    input clk_int,
-    input rst_int,
-    input clk90_int,
-    input clk_200_int,
+  input               clk_int,
+  input               rst_int,
+  input               clk90_int,
+  input               clk_200_int,
 
     /*
      * Ethernet: 1000BASE-T RGMII
      */
-    input  wire       phy_rx_clk,
-    input  wire [3:0] phy_rxd,
-    input  wire       phy_rx_ctl,
-    output wire       phy_tx_clk,
-    output wire [3:0] phy_txd,
-    output wire       phy_tx_ctl,
-    output wire       phy_reset_n,
-    input  wire       phy_int_n,
-    input  wire       phy_pme_n,
+  input wire          phy_rx_clk,
+  input wire [3:0]    phy_rxd,
+  input wire          phy_rx_ctl,
+  output wire         phy_tx_clk,
+  output wire [3:0]   phy_txd,
+  output wire         phy_tx_ctl,
+  output wire         phy_reset_n,
+  input wire          phy_int_n,
+  input wire          phy_pme_n,
+   
+  input wire          phy_mdio_i,
+  output reg          phy_mdio_o,
+  output reg          phy_mdio_oen,
+  output wire         phy_mdc,
 
-output reg eth_irq
+  output reg          eth_irq
    );
 
-// obsolete signals to be removed
-wire   o_edutrefclk     ; // RMII clock out
-wire [1:0] i_edutrxd    ;
-wire  i_edutrx_dv       ;
-wire  i_edutrx_er       ;
-wire [1:0] o_eduttxd   ;
-wire o_eduttx_en      ;
-wire   o_edutmdc        ;
-wire i_edutmdio ;
-reg  o_edutmdio   ;
-reg  oe_edutmdio   ;
-wire   o_edutrstn    ;      
+// obsolete signals to be removedphy_
 //    
 
    
 logic [14:0] core_lsu_addr_dly;   
 
-logic tx_enable_i;
+logic tx_enable_i, mac_gmii_tx_en;
 logic [47:0] mac_address, rx_dest_mac;
 logic  [7:0] mii_rx_data_i;
 logic [10:0] tx_frame_addr, rx_length_axis[0:7], tx_packet_length;
@@ -66,7 +60,7 @@ reg  [2:0] rx_pair;
 reg        mii_rx_byte_received_i, full, byte_sync, sync, irq_en, mii_rx_frame_i, tx_busy;
 
    wire [7:0] m_enb = (we_d ? core_lsu_be : 8'hFF);
-   logic edutmdio, o_edutmdclk, o_edutrst, cooked, tx_enable_old, loopback, promiscuous;
+   logic phy_mdclk, cooked, tx_enable_old, loopback, promiscuous;
    logic [3:0] spare;   
    logic [10:0] rx_addr_axis;
    
@@ -78,23 +72,16 @@ reg        mii_rx_byte_received_i, full, byte_sync, sync, irq_en, mii_rx_frame_i
         reg 	    tx_axis_tlast;
         wire [7:0]  tx_axis_tdata;
         wire        tx_axis_tready;
-        wire        tx_axis_tuser = 0;
+        wire        tx_axis_tuser = 1'b0;
    
        /*
         * AXI output
         */
-       wire [7:0]  rx_axis_tdata;
-       wire        rx_axis_tvalid;
-       wire        rx_axis_tlast;
-       wire        rx_axis_tuser;
+       wire [7:0] rx_axis_tdata;
+       wire       rx_axis_tvalid;
+       wire       rx_axis_tlast;
+       wire       rx_axis_tuser;
    
-       /*
-        * GMII interface
-        */
-        wire        gmii_rx_er = loopback ? 1'b0 : i_edutrx_er;
-        wire [7:0]  gmii_txd;
-        wire        gmii_tx_en;
-        wire        gmii_tx_er;
       /*
         * AXIS Status
         */
@@ -102,8 +89,8 @@ reg        mii_rx_byte_received_i, full, byte_sync, sync, irq_en, mii_rx_frame_i
          wire        axis_error_bad_fcs;
          wire [31:0] tx_fcs_reg_rev, rx_fcs_reg_rev;
    
-   always @(posedge clk_rmii)
-     if (rstn == 1'b0)
+   always @(posedge clk_int)
+     if (rst_int == 1'b1)
        begin
 	  byte_sync <= 1'b0;
 	  addr_tap <= 'H0;
@@ -112,7 +99,6 @@ reg        mii_rx_byte_received_i, full, byte_sync, sync, irq_en, mii_rx_frame_i
      else
        begin
 	  mii_rx_byte_received_i <= 0;
-	  rx_pair <= loopback ? {o_eduttx_en,o_eduttxd} : {i_edutrx_dv,i_edutrxd[1:0]};
 	  full = &addr_tap;
 	  rx_nxt = {rx_pair,rx_byte[23:3]};
 	  rx_byte <= rx_nxt;
@@ -144,15 +130,16 @@ reg        mii_rx_byte_received_i, full, byte_sync, sync, irq_en, mii_rx_frame_i
             end
        end
 
-   always @(posedge clk_rmii)
+   always @(posedge clk_int)
        tx_enable_old <= tx_enable_i;
 
    logic [1:0] rx_wr = rx_axis_tvalid << rx_addr_axis[2];
    logic [15:0] douta;
    assign tx_axis_tdata = douta >> {tx_frame_addr[2],3'b000};
+   assign phy_mdc = phy_mdclk;
    
    dualmem_widen8 RAMB16_inst_rx (
-                                    .clka(clk_rmii),              // Port A Clock
+                                    .clka(clk_int),              // Port A Clock
                                     .clkb(msoc_clk),              // Port A Clock
                                     .douta(),                     // Port A 8-bit Data Output
                                     .addra({nextbuf[2:0],rx_addr_axis[10:3],rx_addr_axis[1:0]}),    // Port A 11-bit Address Input
@@ -168,7 +155,7 @@ reg        mii_rx_byte_received_i, full, byte_sync, sync, irq_en, mii_rx_frame_i
                                     );
 
     dualmem_widen RAMB16_inst_tx (
-                                   .clka(~clk_rmii),             // Port A Clock
+                                   .clka(~clk_int),             // Port A Clock
                                    .clkb(msoc_clk),              // Port A Clock
                                    .douta(douta),                // Port A 8-bit Data Output
                                    .addra({1'b0,tx_frame_addr[10:3],tx_frame_addr[1:0]}),  // Port A 11-bit Address Input
@@ -183,11 +170,8 @@ reg        mii_rx_byte_received_i, full, byte_sync, sync, irq_en, mii_rx_frame_i
                                    .web(we_d ? {(|core_lsu_be[7:4]),(|core_lsu_be[3:0])} : 2'b0) // Port B Write Enable Input
                                    );
 
-assign o_edutmdc = o_edutmdclk;
-assign o_edutrefclk = clk_rmii; // was i_clk50_quad;
-
 always @(posedge msoc_clk)
-  if (!rstn)
+  if (rst_int)
     begin
     core_lsu_addr_dly <= 0;
     mac_address <= 48'H230100890702;
@@ -197,10 +181,9 @@ always @(posedge msoc_clk)
     loopback <= 1'b0;
     spare <= 4'b0;
     promiscuous <= 1'b0;
-    oe_edutmdio <= 1'b0;
-    o_edutmdio <= 1'b0;
-    o_edutmdclk <= 1'b0;
-    o_edutrst <= 1'b0;
+    phy_mdio_oen <= 1'b0;
+    phy_mdio_o <= 1'b0;
+    phy_mdclk <= 1'b0;
     sync <= 1'b0;
     firstbuf <= 4'b0;
     lastbuf <= 4'b0;
@@ -214,17 +197,16 @@ always @(posedge msoc_clk)
   else
     begin
     core_lsu_addr_dly <= core_lsu_addr;
-    edutmdio <= i_edutmdio;
     ce_d_dly <= ce_d;
     avail = nextbuf != firstbuf;
     eth_irq <= avail & irq_en; // make eth_irq go away immediately if irq_en is low
-    if (framing_sel&we_d&(core_lsu_addr[14:11]==4'b0001))
+    if (framing_sel&we_d&(&core_lsu_be[3:0])&(core_lsu_addr[14:11]==4'b0001))
       case(core_lsu_addr[6:3])
         0: mac_address[31:0] <= core_lsu_wdata;
         1: {irq_en,promiscuous,spare,loopback,cooked,mac_address[47:32]} <= core_lsu_wdata;
         2: begin tx_enable_dly <= 10; tx_packet_length <= core_lsu_wdata; end /* tx payload size */
         3: begin tx_enable_dly <= 0; tx_packet_length <= 0; end
-        4: begin {o_edutrst,oe_edutmdio,o_edutmdio,o_edutmdclk} <= core_lsu_wdata; end
+        4: begin {phy_mdio_oen,phy_mdio_o,phy_mdclk} <= core_lsu_wdata; end
         5: begin lastbuf <= core_lsu_wdata[3:0]; end
         6: begin firstbuf <= core_lsu_wdata[3:0]; end
         default:;
@@ -239,7 +221,7 @@ always @(posedge msoc_clk)
          if (sync) nextbuf <= nextbuf + 1'b1;
          sync <= 1'b0;
          end
-       if (gmii_tx_en && tx_axis_tlast)
+       if (mac_gmii_tx_en && tx_axis_tlast)
          begin
             tx_enable_dly <= 0;
          end
@@ -248,18 +230,18 @@ always @(posedge msoc_clk)
          tx_busy <= 1'b1;
          tx_enable_dly <= tx_enable_dly + 1'b1;
          end
-       else if (~gmii_tx_en)
+       else if (~mac_gmii_tx_en)
          tx_busy <= 1'b0;         
     end
 
-always @(posedge clk_rmii)
-  if (!rstn)
+always @(posedge clk_int)
+  if (rst_int)
     begin
     tx_enable_i <= 1'b0;
     end
   else
     begin
-    if (gmii_tx_en && tx_axis_tlast)
+    if (mac_gmii_tx_en && tx_axis_tlast)
        begin
        tx_enable_i <= 1'b0;
        end
@@ -272,7 +254,7 @@ always @(posedge clk_rmii)
     13'b10001????0001 : framing_rdata = {irq_en, promiscuous, spare, loopback, cooked, mac_address[47:32]};
     13'b1000?????0010 : framing_rdata = {tx_busy, 4'b0, tx_frame_addr, 5'b0, tx_packet_length};
     13'b10001????0011 : framing_rdata = tx_fcs_reg_rev;
-    13'b10001????0100 : framing_rdata = {i_edutmdio,oe_edutmdio,o_edutmdio,o_edutmdclk};
+    13'b10001????0100 : framing_rdata = {phy_mdio_i,phy_mdio_oen,phy_mdio_o,phy_mdclk};
     13'b10001????0101 : framing_rdata = rx_fcs_reg_rev;
     13'b10001????0110 : framing_rdata = {eth_irq, avail, lastbuf, nextbuf, firstbuf};
     13'b10001????1??? : framing_rdata = rx_length_axis[core_lsu_addr_dly[5:3]];
@@ -281,12 +263,8 @@ always @(posedge clk_rmii)
     default: framing_rdata = 'h0;
     endcase
 
-   assign o_edutrstn = ~o_edutrst;
-  
    parameter dly = 0;
    
-   reg [1:0] 	    axis_eduttxd ;
-   reg 		    axis_eduttx_en;
    reg [31:0] 	    tx_fcs_reg, rx_fcs_reg;
    assign 	    tx_fcs_reg_rev = {tx_fcs_reg[0],tx_fcs_reg[1],tx_fcs_reg[2],tx_fcs_reg[3],
                                           tx_fcs_reg[4],tx_fcs_reg[5],tx_fcs_reg[6],tx_fcs_reg[7],
@@ -306,14 +284,12 @@ always @(posedge clk_rmii)
                                           rx_fcs_reg[28],rx_fcs_reg[29],rx_fcs_reg[30],rx_fcs_reg[31]};
    wire axis_tx_byte_sent = &axis_tx_frame_size[1:0];
    
-   always @(posedge clk_rmii)
-     if (~rstn)
+   always @(posedge clk_int)
+     if (rst_int)
        begin
           rx_addr_axis <= 'b0;
           tx_axis_tvalid <= 'b0;
 	  axis_tx_frame_size <= 0;
-	  axis_eduttxd <= 'b0;
-	  axis_eduttx_en <= 'b0;
 	  tx_axis_tvalid_dly <= 'b0;
 	  tx_frame_addr <= 'b0;
 	  tx_axis_tlast <= 'b0;
@@ -321,7 +297,6 @@ always @(posedge clk_rmii)
        end
      else
        begin
-	  axis_eduttx_en <= gmii_tx_en;
 	  if (tx_enable_i & (tx_enable_old == 0))
 	    begin
 	       axis_tx_frame_size <= 'b0;
@@ -330,7 +305,6 @@ always @(posedge clk_rmii)
 	  else if (1'b0 == &axis_tx_frame_size)
             begin
                axis_tx_frame_size <= axis_tx_frame_size + 1;
-	       axis_eduttxd <= gmii_txd >> {axis_tx_frame_size[1:0],1'b0};
             end
 	  if (tx_axis_tready)
 	    begin
@@ -358,47 +332,6 @@ always @(posedge clk_rmii)
             end
       end
  
-   lowrisc_gmii_rx gmii_rx_inst (
-       .clk(clk_rmii),
-       .rst(~rstn),
-       .mii_select(1'b0),
-       .clk_enable(mii_rx_byte_received_i),
-       .gmii_rxd(mii_rx_data_i),
-       .gmii_rx_dv(mii_rx_frame_i),
-       .gmii_rx_er(gmii_rx_er),
-       .output_axis_tdata(rx_axis_tdata),
-       .output_axis_tvalid(rx_axis_tvalid),
-       .output_axis_tlast(rx_axis_tlast),
-       .output_axis_tuser(rx_axis_tuser),
-       .error_bad_frame(axis_error_bad_frame),
-       .error_bad_fcs(axis_error_bad_fcs),
-       .fcs_reg(rx_fcs_reg)
-   );
-   
-   lowrisc_gmii_tx #(
-       .ENABLE_PADDING(1),
-       .MIN_FRAME_LENGTH(64)
-   )
-   gmii_tx_inst (
-       .clk(clk_rmii),
-       .rst(~rstn),
-       .mii_select(1'b0),
-       .clk_enable(axis_tx_byte_sent),
-       .input_axis_tdata(tx_axis_tdata),
-       .input_axis_tvalid(tx_axis_tvalid),
-       .input_axis_tready(tx_axis_tready),
-       .input_axis_tlast(tx_axis_tlast),
-       .input_axis_tuser(tx_axis_tuser),
-       .gmii_txd(gmii_txd),
-       .gmii_tx_en(gmii_tx_en),
-       .gmii_tx_er(gmii_tx_er),
-       .ifg_delay(8'd12),
-       .fcs_reg(tx_fcs_reg)
-   );
-
-   assign o_eduttxd = axis_eduttxd;
-   assign o_eduttx_en = axis_eduttx_en;
-
 rgmii_soc rgmii_soc1
   (
    .rst_int(rst_int),
@@ -416,7 +349,29 @@ rgmii_soc rgmii_soc1
    .phy_tx_ctl(phy_tx_ctl),
    .phy_reset_n(phy_reset_n),
    .phy_int_n(phy_int_n),
-   .phy_pme_n(phy_pme_n)
+   .phy_pme_n(phy_pme_n),
+   .mac_gmii_tx_en(mac_gmii_tx_en),
+   .tx_axis_tdata(tx_axis_tdata),
+   .tx_axis_tvalid(tx_axis_tvalid),
+   .tx_axis_tready(tx_axis_tready),
+   .tx_axis_tlast(tx_axis_tlast),
+   .tx_axis_tuser(tx_axis_tuser),
+   .rx_axis_tdata(rx_axis_tdata),
+   .rx_axis_tvalid(rx_axis_tvalid),
+   .rx_axis_tlast(rx_axis_tlast),
+   .rx_axis_tuser(rx_axis_tuser)
+);
+
+ila_2 eth_ila (
+	.clk(clk_int), // input wire clk
+	.probe0(tx_axis_tdata), // input wire [7:0]  probe0  
+	.probe1(tx_axis_tvalid), // input wire [0:0]  probe1 
+	.probe2(tx_axis_tready), // input wire [0:0]  probe2 
+	.probe3(tx_axis_tlast), // input wire [0:0]  probe3 
+	.probe4(rx_axis_tdata), // input wire [7:0]  probe4 
+	.probe5(rx_axis_tvalid), // input wire [0:0]  probe5 
+	.probe6(rx_axis_tlast), // input wire [0:0]  probe6 
+	.probe7(rx_axis_tuser) // input wire [0:0]  probe7
 );
    
 endmodule // framing_top

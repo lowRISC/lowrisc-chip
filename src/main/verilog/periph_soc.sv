@@ -51,24 +51,27 @@ module periph_soc #(UBAUD_DEFAULT=54)
  output wire [7:0]  ram_we,
  output wire [15:0] ram_addr,
  output wire [63:0] ram_wrdata,
- input  wire [63:0] ram_rddata,
+ input wire [63:0]  ram_rddata,
     // Internal 125 MHz clock
-    input clk_rgmii,
-    input clk_rgmii_quad,
+ input              clk_rgmii,
+ input              clk_rgmii_quad,
 
     /*
      * Ethernet: 1000BASE-T RGMII
      */
-    input  wire       phy_rx_clk,
-    input  wire [3:0] phy_rxd,
-    input  wire       phy_rx_ctl,
-    output wire       phy_tx_clk,
-    output wire [3:0] phy_txd,
-    output wire       phy_tx_ctl,
-    output wire       phy_reset_n,
-    input  wire       phy_int_n,
-    input  wire       phy_pme_n
-   
+ input wire         phy_rx_clk,
+ input wire [3:0]   phy_rxd,
+ input wire         phy_rx_ctl,
+ output wire        phy_tx_clk,
+ output wire [3:0]  phy_txd,
+ output wire        phy_tx_ctl,
+ output wire        phy_reset_n,
+ input wire         phy_int_n,
+ input wire         phy_pme_n,
+ input wire         phy_mdio_i,
+ output wire        phy_mdio_o,
+ output wire        phy_mdio_oen,
+ output wire        phy_mdc
  );
  
  wire [19:0] dummy;
@@ -588,6 +591,9 @@ framing_top open
    .phy_reset_n(phy_reset_n),
    .phy_int_n(phy_int_n),
    .phy_pme_n(phy_pme_n),
+   .phy_mdio_i,
+   .phy_mdio_o,
+   .phy_mdio_oen,
    .eth_irq(eth_irq)
 );
 

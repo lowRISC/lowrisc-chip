@@ -48,52 +48,53 @@ module eth_mac_1g_rgmii #
     parameter MIN_FRAME_LENGTH = 64
 )
 (
-    input  wire        gtx_clk,
-    input  wire        gtx_clk90,
-    input  wire        gtx_rst,
-    output wire        rx_clk,
-    output wire        rx_rst,
-    output wire        tx_clk,
-    output wire        tx_rst,
+    input wire        gtx_clk,
+    input wire        gtx_clk90,
+    input wire        gtx_rst,
+    output wire       rx_clk,
+    output wire       rx_rst,
+    output wire       tx_clk,
+    output wire       tx_rst,
 
     /*
      * AXI input
      */
-    input  wire [7:0]  tx_axis_tdata,
-    input  wire        tx_axis_tvalid,
-    output wire        tx_axis_tready,
-    input  wire        tx_axis_tlast,
-    input  wire        tx_axis_tuser,
+    input wire [7:0]  tx_axis_tdata,
+    input wire        tx_axis_tvalid,
+    output wire       tx_axis_tready,
+    input wire        tx_axis_tlast,
+    input wire        tx_axis_tuser,
 
     /*
      * AXI output
      */
-    output wire [7:0]  rx_axis_tdata,
-    output wire        rx_axis_tvalid,
-    output wire        rx_axis_tlast,
-    output wire        rx_axis_tuser,
+    output wire [7:0] rx_axis_tdata,
+    output wire       rx_axis_tvalid,
+    output wire       rx_axis_tlast,
+    output wire       rx_axis_tuser,
 
     /*
      * RGMII interface
      */
-    input  wire        rgmii_rx_clk,
-    input  wire [3:0]  rgmii_rxd,
-    input  wire        rgmii_rx_ctl,
-    output wire        rgmii_tx_clk,
-    output wire [3:0]  rgmii_txd,
-    output wire        rgmii_tx_ctl,
+    input wire        rgmii_rx_clk,
+    input wire [3:0]  rgmii_rxd,
+    input wire        rgmii_rx_ctl,
+    output wire       rgmii_tx_clk,
+    output wire [3:0] rgmii_txd,
+    output wire       rgmii_tx_ctl,
+    output wire       mac_gmii_tx_en,
 
     /*
      * Status
      */
-    output wire        rx_error_bad_frame,
-    output wire        rx_error_bad_fcs,
-    output wire [1:0]  speed,
+    output wire       rx_error_bad_frame,
+    output wire       rx_error_bad_fcs,
+    output wire [1:0] speed,
 
     /*
      * Configuration
      */
-    input  wire [7:0]  ifg_delay
+    input wire [7:0]  ifg_delay
 );
 
 wire [7:0]  mac_gmii_rxd;
@@ -101,7 +102,6 @@ wire        mac_gmii_rx_dv;
 wire        mac_gmii_rx_er;
 wire        mac_gmii_tx_clk_en;
 wire [7:0]  mac_gmii_txd;
-wire        mac_gmii_tx_en;
 wire        mac_gmii_tx_er;
 
 reg [1:0] speed_reg = 2'b10;

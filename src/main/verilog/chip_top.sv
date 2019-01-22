@@ -6,74 +6,91 @@
 module chip_top
   (
    // DDR3 RAM
-   inout wire [31:0]  ddr_dq,
-   inout wire [3:0]   ddr_dqs_n,
-   inout wire [3:0]   ddr_dqs_p,
-   output [14:0] ddr_addr,
-   output [2:0]  ddr_ba,
-   output        ddr_ras_n,
-   output        ddr_cas_n,
-   output        ddr_we_n,
-   output        ddr_reset_n,
-   output        ddr_ck_n,
-   output        ddr_ck_p,
-   output        ddr_cke,
-   output        ddr_cs_n,
-   output [3:0]  ddr_dm,
-   output        ddr_odt,
+   inout wire [31:0] ddr_dq,
+   inout wire [3:0]  ddr_dqs_n,
+   inout wire [3:0]  ddr_dqs_p,
+   output [14:0]     ddr_addr,
+   output [2:0]      ddr_ba,
+   output            ddr_ras_n,
+   output            ddr_cas_n,
+   output            ddr_we_n,
+   output            ddr_reset_n,
+   output            ddr_ck_n,
+   output            ddr_ck_p,
+   output            ddr_cke,
+   output            ddr_cs_n,
+   output [3:0]      ddr_dm,
+   output            ddr_odt,
 
    // Simple UART interface
-   input wire         rxd,
+   input wire        rxd,
    output wire       txd,
 
    // 4-bit full SD interface
-   inout wire         sd_sclk,
-   input wire         sd_detect,
-   inout wire [3:0]   sd_dat,
-   inout wire         sd_cmd,
-   output wire        sd_reset,
+   inout wire        sd_sclk,
+   input wire        sd_detect,
+   inout wire [3:0]  sd_dat,
+   inout wire        sd_cmd,
+   output wire       sd_reset,
 
    // LED and DIP switch
-   output wire  [7:0] o_led,
-   input wire   [7:0] i_dip,
+   output wire [7:0] o_led,
+   input wire [7:0]  i_dip,
 
    // push button array
-   input wire         GPIO_SW_C,
-   input wire         GPIO_SW_W,
-   input wire         GPIO_SW_E,
-   input wire         GPIO_SW_N,
-   input wire         GPIO_SW_S,
+   input wire        GPIO_SW_C,
+   input wire        GPIO_SW_W,
+   input wire        GPIO_SW_E,
+   input wire        GPIO_SW_N,
+   input wire        GPIO_SW_S,
 
    //keyboard
-   inout wire         PS2_CLK,
-   inout wire         PS2_DATA,
+   inout wire        PS2_CLK,
+   inout wire        PS2_DATA,
 
   // display
    output wire       VGA_HS_O,
    output wire       VGA_VS_O,
-   output wire [3:0]  VGA_RED_O,
-   output wire [3:0]  VGA_BLUE_O,
-   output wire [3:0]  VGA_GREEN_O,
+   output wire [3:0] VGA_RED_O,
+   output wire [3:0] VGA_BLUE_O,
+   output wire [3:0] VGA_GREEN_O,
 
    /*
     * Ethernet: 1000BASE-T RGMII
     */
-   input  wire       phy_rx_clk,
-   input  wire [3:0] phy_rxd,
-   input  wire       phy_rx_ctl,
+   input wire        phy_rx_clk,
+   input wire [3:0]  phy_rxd,
+   input wire        phy_rx_ctl,
    output wire       phy_tx_clk,
    output wire [3:0] phy_txd,
    output wire       phy_tx_ctl,
    output wire       phy_reset_n,
-   input  wire       phy_int_n,
-   input  wire       phy_pme_n,
-   
+   input wire        phy_int_n,
+   input wire        phy_pme_n,
+   inout wire        phy_mdio,
+   output wire       phy_mdc,
+
+   // JTAG
+   input wire        tck, tms, tdi, trst_n,
+   output wire       tdo, 
    // clock and reset
-   input wire         clk_p,
-   input wire         clk_n,
-   input wire         rst_top
+   input wire        clk_p,
+   input wire        clk_n,
+   input wire        rst_top
    );
 
+   wire              phy_mdio_i, phy_mdio_o, phy_mdio_oen;
+   
+   io_buffer_generic(
+                     .inoutg(phy_mdio),
+                     .outg(phy_mdio_i),
+                     .ing(phy_mdio_o),
+                     .ctrl(~phy_mdio_oen));
+
+   wire              tdo_driven, tdo_data;
+   
+   assign tdo = tdo_driven ? tdo_data : 1'bz;
+   
    genvar        i;
 
    // internal clock and reset signals
@@ -85,7 +102,6 @@ module chip_top
    // Interrupts
    logic spi_irq, sd_irq, eth_irq, uart_irq;
    // Miscellaneous
-   logic TDO_driven;
    wire io_emdio_i, phy_emdio_o, phy_emdio_t, clk_rgmii, clk_rgmii_quad, clk_locked, clk_locked_wiz;
    reg phy_emdio_i, io_emdio_o, io_emdio_t;
    logic mig_sys_clk, clk_pixel;
@@ -122,7 +138,7 @@ module chip_top
       );
 
    assign clk_locked = clk_locked_wiz & rst_top;
-   assign sys_rst = ~rstn;
+   assign sys_rst = ~clk_locked;
 
    // the NASTI bus for off-FPGA DRAM, converted to High frequency
    nasti_channel   
@@ -430,38 +446,6 @@ module chip_top
 
    /////////////////////////////////////////////////////////////
    // the Rocket chip
-
-   wire CAPTURE, DRCK, RESET, RUNTEST, SEL, SHIFT, TCK, TDI, TMS, UPDATE, TDO, TCK_unbuf;
-
-   /* This block is just used to feed the JTAG clock into the parts of Rocket that need it */
-      
-   BSCANE2 #(
-      .JTAG_CHAIN(2)  // Value for USER command.
-   )
-   BSCANE2_inst1 (
-      .CAPTURE(CAPTURE), // 1-bit output: CAPTURE output from TAP controller.
-      .DRCK(DRCK),       // 1-bit output: Gated TCK output. When SEL is asserted, DRCK toggles when CAPTURE or
-                         // SHIFT are asserted.
-
-      .RESET(RESET),     // 1-bit output: Reset output for TAP controller.
-      .RUNTEST(RUNTEST), // 1-bit output: Output asserted when TAP controller is in Run Test/Idle state.
-      .SEL(SEL),         // 1-bit output: USER instruction active output.
-      .SHIFT(SHIFT),     // 1-bit output: SHIFT output from TAP controller.
-      .TCK(TCK_unbuf),   // 1-bit output: Test Clock output. Fabric connection to TAP Clock pin.
-      .TDI(TDI),         // 1-bit output: Test Data Input (TDI) output from TAP controller.
-      .TMS(TMS),         // 1-bit output: Test Mode Select output. Fabric connection to TAP.
-      .UPDATE(UPDATE),   // 1-bit output: UPDATE output from TAP controller
-      .TDO(TDO)          // 1-bit input: Test Data Output (TDO) input for USER function.
-   );
-
-   // BUFH: HROW Clock Buffer for a Single Clocking Region
-   //       Artix-7
-   // Xilinx HDL Language Template, version 2016.1
-
-   BUFH BUFH_inst (
-      .O(TCK), // 1-bit output: Clock output
-      .I(TCK_unbuf)  // 1-bit input: Clock input
-   );
   
   /* DMI interface tie-off */
   wire  ExampleRocketSystem_debug_ndreset;
@@ -479,12 +463,12 @@ module chip_top
    
    ExampleRocketSystem Rocket
      (
-      .debug_systemjtag_jtag_TCK(TCK),
-      .debug_systemjtag_jtag_TMS(TMS),
-      .debug_systemjtag_jtag_TDI(TDI),
-      .debug_systemjtag_jtag_TDO_data(TDO),
-      .debug_systemjtag_jtag_TDO_driven(TDO_driven),
-      .debug_systemjtag_reset(RESET),
+      .debug_systemjtag_jtag_TCK(tck),
+      .debug_systemjtag_jtag_TMS(tms),
+      .debug_systemjtag_jtag_TDI(tdi),
+      .debug_systemjtag_jtag_TDO_data(tdo_data),
+      .debug_systemjtag_jtag_TDO_driven(tdo_driven),
+      .debug_systemjtag_reset(trst_n),
       .debug_systemjtag_mfr_id(11'h5AA),
       .debug_ndreset(ExampleRocketSystem_debug_ndreset),
       .debug_dmactive(ExampleRocketSystem_debug_dmactive),
@@ -678,56 +662,11 @@ jtag_axi_0 my_jtag_master (
       .phy_reset_n,
       .phy_int_n,
       .phy_pme_n,
-      .eth_irq    ( eth_irq         ),
+      .phy_mdio_i,
+      .phy_mdio_o,
+      .phy_mdio_oen,
+      .eth_irq,
       .*
       );
 
-ila_0 your_instance_name (
-	.clk(clk), // input wire clk
-	.probe0( mem_nasti.w_ready), // input wire [0:0] probe0  
-	.probe1( mem_nasti.aw_addr), // input wire [63:0]  probe1 
-	.probe2( mem_nasti.b_resp), // input wire [1:0]  probe2 
-	.probe3( mem_nasti.b_valid), // input wire [0:0]  probe3 
-	.probe4( mem_nasti.b_ready), // input wire [0:0]  probe4 
-	.probe5( mem_nasti.ar_addr), // input wire [63:0]  probe5 
-	.probe6( mem_nasti.r_ready), // input wire [0:0]  probe6 
-	.probe7( mem_nasti.w_valid), // input wire [0:0]  probe7 
-	.probe8( mem_nasti.ar_valid), // input wire [0:0]  probe8 
-	.probe9( mem_nasti.ar_ready), // input wire [0:0]  probe9 
-	.probe10( mem_nasti.r_data), // input wire [63:0]  probe10 
-	.probe11( mem_nasti.aw_valid), // input wire [0:0]  probe11 
-	.probe12( mem_nasti.aw_ready), // input wire [0:0]  probe12 
-	.probe13( mem_nasti.r_resp), // input wire [1:0]  probe13 
-	.probe14( mem_nasti.w_data), // input wire [63:0]  probe14 
-	.probe15( mem_nasti.w_strb), // input wire [7:0]  probe15 
-	.probe16( mem_nasti.r_valid), // input wire [0:0]  probe16 
-	.probe17( mem_nasti.ar_prot), // input wire [2:0]  probe17 
-	.probe18( mem_nasti.aw_prot), // input wire [2:0]  probe18 
-	.probe19( mem_nasti.aw_id), // input wire [3:0]  probe19 
-	.probe20( mem_nasti.b_id), // input wire [3:0]  probe20 
-	.probe21( mem_nasti.aw_len), // input wire [7:0]  probe21 
-	.probe22( mem_nasti.b_user), // input wire [0:0]  probe22 
-	.probe23( mem_nasti.aw_size), // input wire [2:0]  probe23 
-	.probe24( mem_nasti.aw_burst), // input wire [1:0]  probe24 
-	.probe25( mem_nasti.ar_id), // input wire [3:0]  probe25 
-	.probe26( mem_nasti.aw_lock), // input wire [0:0]  probe26 
-	.probe27( mem_nasti.ar_len), // input wire [7:0]  probe27 
-	.probe28( mem_nasti.ar_size), // input wire [2:0]  probe28 
-	.probe29( mem_nasti.ar_busrt), // input wire [1:0]  probe29 
-	.probe30( mem_nasti.ar_lock), // input wire [0:0]  probe30 
-	.probe31( mem_nasti.ar_cache), // input wire [3:0]  probe31 
-	.probe32( mem_nasti.aw_cache), // input wire [3:0]  probe32 
-	.probe33( mem_nasti.ar_region), // input wire [3:0]  probe33 
-	.probe34( mem_nasti.ar_qos), // input wire [3:0]  probe34 
-	.probe35( mem_nasti.ar_user), // input wire [0:0]  probe35 
-	.probe36( mem_nasti.aw_region), // input wire [3:0]  probe36 
-	.probe37( mem_nasti.aw_qos), // input wire [3:0]  probe37 
-	.probe38( mem_nasti.r_id), // input wire [3:0]  probe38 
-	.probe39( mem_nasti.aw_user), // input wire [0:0]  probe39 
-	.probe40( mem_nasti.w_id), // input wire [0:0]  probe40 
-	.probe41( mem_nasti.r_last), // input wire [0:0]  probe41 
-	.probe42( mem_nasti.r_user), // input wire [0:0]  probe42  
-	.probe43( mem_nasti.w_last) // input wire [0:0]  probe43
-);
-   
 endmodule // chip_top

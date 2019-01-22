@@ -16,15 +16,7 @@ module tb;
       .*,
       .clk_p        ( clk       ),
       .clk_n        ( !clk      ),
-`ifdef FPGA_FULL
- `ifdef NEXYS4_COMMON
       .rst_top      ( !rst      )         // NEXYS4's cpu_reset is active low
- `else
-      .rst_top      ( rst       )
- `endif
-`else
-      .rst_top      ( rst       )
-`endif
       );
 
    initial begin
@@ -35,65 +27,13 @@ module tb;
 
    initial begin
       clk = 0;
-  `ifdef KC705
       forever clk = #2.5 !clk;
-  `else
-      forever clk = #5 !clk;
-  `endif
    end // initial begin
 
-`ifdef ADD_PHY_DDR
- `ifdef KC705
-
    // DDRAM3
-   wire [63:0]  ddr_dq;
-   wire [7:0]   ddr_dqs_n;
-   wire [7:0]   ddr_dqs_p;
-   logic [13:0] ddr_addr;
-   logic [2:0]  ddr_ba;
-   logic        ddr_ras_n;
-   logic        ddr_cas_n;
-   logic        ddr_we_n;
-   logic        ddr_reset_n;
-   logic        ddr_ck_p;
-   logic        ddr_ck_n;
-   logic        ddr_cke;
-   logic        ddr_cs_n;
-   wire [7:0]   ddr_dm;
-   logic        ddr_odt;
-
-   // behavioural DDR3 RAM
-   genvar       i;
-   generate
-      for (i = 0; i < 8; i = i + 1) begin: gen_mem
-         ddr3_model u_comp_ddr3
-               (
-                .rst_n   ( ddr_reset_n     ),
-                .ck      ( ddr_ck_p        ),
-                .ck_n    ( ddr_ck_n        ),
-                .cke     ( ddr_cke         ),
-                .cs_n    ( ddr_cs_n        ),
-                .ras_n   ( ddr_ras_n       ),
-                .cas_n   ( ddr_cas_n       ),
-                .we_n    ( ddr_we_n        ),
-                .dm_tdqs ( ddr_dm[i]       ),
-                .ba      ( ddr_ba          ),
-                .addr    ( ddr_addr        ),
-                .dq      ( ddr_dq[8*i +:8] ),
-                .dqs     ( ddr_dqs_p[i]    ),
-                .dqs_n   ( ddr_dqs_n[i]    ),
-                .tdqs_n  (                 ),
-                .odt     ( ddr_odt         )
-                );
-      end
-   endgenerate
-
- `elsif NEXYS4_VIDEO
-
-   // DDRAM3
-   wire [15:0]  ddr_dq;
-   wire [1:0]   ddr_dqs_n;
-   wire [1:0]   ddr_dqs_p;
+   wire [31:0]  ddr_dq;
+   wire [3:0]   ddr_dqs_n;
+   wire [3:0]   ddr_dqs_p;
    logic [14:0] ddr_addr;
    logic [2:0]  ddr_ba;
    logic        ddr_ras_n;
@@ -104,75 +44,35 @@ module tb;
    logic        ddr_ck_n;
    logic        ddr_cke;
    logic        ddr_cs_n;
-   wire [1:0]   ddr_dm;
+   wire [3:0]   ddr_dm;
    logic        ddr_odt;
-   
+
    // behavioural DDR3 RAM
    genvar       i;
    generate
-      for (i = 0; i < 2; i = i + 1) begin: gen_mem
+      for (i = 0; i < 1; i = i + 1) begin: gen_mem
          ddr3_model u_comp_ddr3
                (
-                .rst_n   ( ddr_reset_n     ),
-                .ck      ( ddr_ck_p        ),
-                .ck_n    ( ddr_ck_n        ),
-                .cke     ( ddr_cke         ),
-                .cs_n    ( ddr_cs_n        ),
-                .ras_n   ( ddr_ras_n       ),
-                .cas_n   ( ddr_cas_n       ),
-                .we_n    ( ddr_we_n        ),
-                .dm_tdqs ( ddr_dm[i]       ),
-                .ba      ( ddr_ba          ),
-                .addr    ( ddr_addr        ),
-                .dq      ( ddr_dq[8*i +:8] ),
-                .dqs     ( ddr_dqs_p[i]    ),
-                .dqs_n   ( ddr_dqs_n[i]    ),
-                .tdqs_n  (                 ),
-                .odt     ( ddr_odt         )
+                .rst_n   ( ddr_reset_n         ),
+                .ck      ( ddr_ck_p            ),
+                .ck_n    ( ddr_ck_n            ),
+                .cke     ( ddr_cke             ),
+                .cs_n    ( ddr_cs_n            ),
+                .ras_n   ( ddr_ras_n           ),
+                .cas_n   ( ddr_cas_n           ),
+                .we_n    ( ddr_we_n            ),
+                .dm_tdqs ( ddr_dm[2*i +: 2]    ),
+                .ba      ( ddr_ba              ),
+                .addr    ( ddr_addr            ),
+                .dq      ( ddr_dq[16*i +:16]   ),
+                .dqs     ( ddr_dqs_p[2*i +: 2] ),
+                .dqs_n   ( ddr_dqs_n[2*i +: 2] ),
+                .tdqs_n  (                     ),
+                .odt     ( ddr_odt             )
                 );
       end
-   endgenerate   
+   endgenerate
 
- `elsif NEXYS4
-
-   wire [15:0]  ddr_dq;
-   wire [1:0]   ddr_dqs_n;
-   wire [1:0]   ddr_dqs_p;
-   logic [12:0] ddr_addr;
-   logic [2:0]  ddr_ba;
-   logic        ddr_ras_n;
-   logic        ddr_cas_n;
-   logic        ddr_we_n;
-   logic        ddr_ck_p;
-   logic        ddr_ck_n;
-   logic        ddr_cke;
-   logic        ddr_cs_n;
-   wire [1:0]   ddr_dm;
-   logic        ddr_odt;
-
-   // behavioural DDR2 RAM
-   ddr2_model u_comp_ddr2
-     (
-      .ck      ( ddr_ck_p        ),
-      .ck_n    ( ddr_ck_n        ),
-      .cke     ( ddr_cke         ),
-      .cs_n    ( ddr_cs_n        ),
-      .ras_n   ( ddr_ras_n       ),
-      .cas_n   ( ddr_cas_n       ),
-      .we_n    ( ddr_we_n        ),
-      .dm_rdqs ( ddr_dm          ),
-      .ba      ( ddr_ba          ),
-      .addr    ( ddr_addr        ),
-      .dq      ( ddr_dq          ),
-      .dqs     ( ddr_dqs_p       ),
-      .dqs_n   ( ddr_dqs_n       ),
-      .rdqs_n  (                 ),
-      .odt     ( ddr_odt         )
-      );
- `endif // !`elsif NEXYS4
-`endif //  `ifdef ADD_PHY_DDR
-
-`ifdef ADD_HID
    wire         rxd;
    wire         txd;
    wire         rts;
@@ -208,31 +108,6 @@ uart i_uart(
     .recv_ack(received)
     );
 
-`endif
-
-`ifdef ADD_FLASH
-   wire         flash_ss;
-   wire [3:0]   flash_io;
-
-   assign flash_ss = 'bz;
-   assign flash_io = 'bzzzz;
-`endif
-
-`ifdef ADD_SPI
-   wire         spi_cs;
-   wire         spi_sclk;
-   wire         spi_mosi;
-   wire         spi_miso;
-   wire         sd_reset;
-
-   assign spi_cs = 'bz;
-   assign spi_sclk = 'bz;
-   assign spi_mosi = 'bz;
-   assign spi_miso = 'bz;
-`endif //  `ifdef ADD_SPI
-
-`ifdef ADD_HID
-
    // 4-bit full SD interface
    wire         sd_sclk;
    wire         sd_detect = 1'b0; // Simulate SD-card always there
@@ -254,7 +129,7 @@ sd_verilator_model sdflash1 (
 
    // LED and DIP switch
    wire [7:0]   o_led;
-   wire [15:0]   i_dip;
+   wire [7:0]   i_dip;
 
    assign i_dip = 16'h0;
 
@@ -285,22 +160,11 @@ sd_verilator_model sdflash1 (
    wire [3:0]  VGA_BLUE_O;
    wire [3:0]  VGA_GREEN_O;
 
-`endif //  `ifdef FPGA
-
-`ifndef VERILATOR
    // handle all run-time arguments
    string     memfile = "";
    string     vcd_name = "";
    longint    unsigned max_cycle = 0;
    longint    unsigned cycle_cnt = 0;
-
-`ifndef ADD_PHY_DDR
-   initial begin
-      #1.1;
-      if($value$plusargs("load=%s", memfile))
-        DUT.ram_behav.memory_load_mem(memfile);
-   end // initial begin
-`endif
 
    initial begin
       $value$plusargs("max-cycles=%d", max_cycle);
@@ -325,45 +189,46 @@ sd_verilator_model sdflash1 (
       if(max_cycle != 0 && max_cycle == cycle_cnt)
         $fatal(0, "maximal cycle of %d is reached...", cycle_cnt);
    end
-`endif
 
-`ifdef ADD_HOST
-   int rv;
-   always @(posedge clk) begin
-      rv = DUT.host.check_exit();
-      if(rv > 0)
-        $fatal(rv);
-      else if(rv == 0)
-        $finish();
-   end
-`endif
+   /*
+    * Ethernet: 1000BASE-T RGMII
+    */
+   wire        phy_rx_clk;
+   wire [3:0]  phy_rxd;
+   wire        phy_rx_ctl;
+   wire        phy_tx_clk;
+   wire [3:0]  phy_txd;
+   wire        phy_tx_ctl;
+   wire        phy_reset_n;
+   wire        phy_int_n;
+   wire        phy_pme_n;
+   wire        phy_mdio, phy_mdc;
+   
+   assign phy_int_n = 1'b1;
+   assign phy_pme_n = 1'b1;
+   assign phy_rxd = phy_txd;
+   assign phy_rx_clk = phy_tx_clk;
+   assign phy_rx_ctl = phy_tx_ctl;
 
-`ifdef ADD_HID
-  wire         o_erefclk; // RMII clock out
-  wire [1:0]   i_erxd ;
-  wire         i_erx_dv ;
-  wire         i_erx_er ;
-  wire         i_emdint ;
-  wire [1:0]   o_etxd ;
-  wire         o_etx_en ;
-  wire         o_emdc ;
-  wire         io_emdio ;
-  wire         o_erstn ;
-
-   assign i_emdint = 1'b1;
-   assign i_erx_dv = o_etx_en;
-   assign i_erxd = o_etxd;
-   assign i_erx_er = 1'b0;
-`endif //  `ifdef ADD_HID
+   // JTAG
+   reg         tck, tms, tdi, trst_n;
+   wire        tdo;    
 
    initial
      begin
-       force tb.DUT.Rocket.debug_systemjtag_jtag_TCK = 1'b0;
-       force tb.DUT.Rocket.debug_systemjtag_jtag_TMS = 1'b0;
-       force tb.DUT.Rocket.debug_systemjtag_jtag_TDI = 1'b0;
-       force tb.DUT.Rocket.debug_systemjtag_reset = 1'b1;
-       #130; 
-       force tb.DUT.Rocket.debug_systemjtag_reset = 1'b0;
+       tck = 1'b0;
+       tms = 1'b0;
+       tdi = 1'b0;
+       trst_n = 1'b0;
+       #50; 
+       tck = 1'b1;
+       #50; 
+       tck = 1'b0;
+       #50; 
+       tck = 1'b1;
+       #50; 
+       tck = 1'b0;
+       trst_n = 1'b1;
      end
    
 endmodule // tb
