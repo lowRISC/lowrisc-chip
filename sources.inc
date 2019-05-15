@@ -144,6 +144,8 @@ fpga_src := $(filter-out fpga/src/ariane_shell.sv \
 
 fpga_src := $(addprefix $(root-dir)/, $(fpga_src))
 
+fpga_filter := $(addprefix $(root-dir), src/util/instruction_tracer.sv)
+
 sim_src := fpga/xilinx/xlnx_clk_sd/ip/xlnx_clk_sd_sim_netlist.v \
 	   fpga/xilinx/xlnx_axi_clock_converter/ip/xlnx_axi_clock_converter_sim_netlist.v \
 	   fpga/xilinx/xlnx_axi_gpio/ip/xlnx_axi_gpio_sim_netlist.v \
@@ -152,3 +154,4 @@ sim_src := fpga/xilinx/xlnx_clk_sd/ip/xlnx_clk_sd_sim_netlist.v \
 	   fpga/xilinx/xlnx_axi_quad_spi/ip/xlnx_axi_quad_spi_sim_netlist.v \
 	   fpga/xilinx/xlnx_axi_dwidth_converter/ip/xlnx_axi_dwidth_converter_sim_netlist.v \
            fpga/xilinx/xilinx_stubs.sv
+

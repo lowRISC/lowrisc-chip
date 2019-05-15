@@ -1,7 +1,12 @@
 include sources.inc
 
+REMOTE=lowrisc5.sm
+
+tftp: riscv-pk/build/bbl
+	(cd riscv-pk/build; echo -e bin \\n put $< \\n | tftp $(REMOTE))
+
 riscv-pk/build/bbl: linux/vmlinux
-	mkdir riscv-pk/build
+	mkdir -p riscv-pk/build
 	(cd riscv-pk/build; ../configure --host=riscv64-unknown-elf --enable-print-device-tree --with-payload=../../linux/vmlinux 'CC=riscv64-unknown-elf-gcc -g'; make)
 
 linux/vmlinux: linux/.config linux/initramfs.cpio
@@ -12,9 +17,6 @@ linux/.config:
 
 linux/initramfs.cpio:
 	make -C debian-riscv64 cpio
-
-
-fpga_filter := $(addprefix $(root-dir), src/util/instruction_tracer.sv)
 
 fpga/work-fpga/$(BOARD)_ariane/ariane_xilinx.bit: $(ariane_pkg) $(util) $(src) $(fpga_src)
 	@echo "[FPGA] Generate sources"
