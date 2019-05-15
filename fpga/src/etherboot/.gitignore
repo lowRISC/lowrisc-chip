@@ -1,0 +1,10 @@
+venv
+*.elf
+*.o
+*.img
+*.bin
+*.dis
+boot.mem
+cnvmem*
+mapfile
+ariane.dtb

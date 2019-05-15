@@ -1,6 +1,3 @@
-[submodule "fpga"]
-        path = fpga
-        url = https://github.com/lowrisc/lowrisc-fpga.git
 [submodule "rocket-chip"]
 	path = rocket-chip
 	url = https://github.com/lowRISC/rocket-chip
@@ -19,3 +16,15 @@
 [submodule "riscv-pk"]
 	path = riscv-pk
 	url = https://github.com/lowRISC/riscv-pk.git
+[submodule "src/OpenIP"]
+	path = src/OpenIP
+	url = https://github.com/lowRISC/OpenIP.git
+[submodule "fpga/src/ariane-ethernet"]
+	path = fpga/src/ariane-ethernet
+	url = https://github.com/lowRISC/ariane-ethernet.git
+[submodule "fpga/src/apb_uart"]
+	path = fpga/src/apb_uart
+	url = https://github.com/lowRISC/apb_uart.git
+[submodule "fpga/src/spi_mem_programmer"]
+	path = fpga/src/spi_mem_programmer
+	url = https://github.com/jrrk/spi_mem_programmer.git
