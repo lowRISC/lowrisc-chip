@@ -6,3 +6,4 @@ project/target
 riscv/
 tools/
 lib/
+rootfs.tar.xz
