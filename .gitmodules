@@ -4,12 +4,18 @@
 [submodule "rocket-chip"]
 	path = rocket-chip
 	url = https://github.com/lowRISC/rocket-chip
-[submodule "riscv-linux"]
-	path = riscv-linux
-	url = https://github.com/lowRISC/riscv-linux.git
 [submodule "debian-riscv64"]
 	path = debian-riscv64
 	url = https://github.com/lowRISC/debian-riscv64.git
 [submodule "qemu"]
 	path = qemu
 	url = https://github.com/lowrisc/qemu.git
+[submodule "ariane"]
+	path = ariane
+	url = https://github.com/pulp-platform/ariane.git
+[submodule "linux"]
+	path = linux
+	url = https://github.com/lowRISC/linux.git
+[submodule "riscv-pk"]
+	path = riscv-pk
+	url = https://github.com/lowRISC/riscv-pk.git
