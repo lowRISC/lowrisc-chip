@@ -38,10 +38,9 @@ src :=  $(filter-out ariane/src/ariane_regfile.sv, $(wildcard ariane/src/*.sv)) 
         $(wildcard ariane/src/frontend/*.sv)                                          \
         $(filter-out ariane/src/cache_subsystem/std_no_dcache.sv,                     \
         $(wildcard ariane/src/cache_subsystem/*.sv))                                  \
-        $(wildcard bootrom/*.sv)                                               \
         $(wildcard ariane/src/clint/*.sv)                                             \
-        $(filter-out fpga/src/axi2apb/src/axi2apb_wrap.sv, $(wildcard fpga/src/axi2apb/src/*.sv)) \
-        $(wildcard fpga/src/axi_slice/src/*.sv)                                \
+        $(filter-out ariane/fpga/src/axi2apb/src/axi2apb_wrap.sv, $(wildcard ariane/fpga/src/axi2apb/src/*.sv)) \
+        $(wildcard ariane/fpga/src/axi_slice/src/*.sv)                                \
         $(wildcard ariane/src/axi_node/src/*.sv)                                      \
         $(wildcard ariane/src/axi_riscv_atomics/src/*.sv)                             \
         $(wildcard ariane/src/axi_mem_if/src/*.sv)                                    \
