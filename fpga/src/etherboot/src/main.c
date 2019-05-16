@@ -51,12 +51,6 @@ uint64_t qspi_send(uint8_t cmd, uint8_t len, uint8_t quad, uint32_t *data)
   return swp[4];
 }
 
-void puthex(unsigned n, int w)
-{
-  if (w > 1) puthex(n>>4, w-1);
-  write_serial("0123456789ABCDEF"[n&15]);
-}
-
 void qspi_read4(uint32_t i, uint8_t *buf)
       {
         uint64_t rslt, rslt2, rslt3;

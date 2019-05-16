@@ -14,21 +14,14 @@ ips := xlnx_axi_clock_converter.xci  \
        xlnx_mig_7_ddr_$(BOARD).xci
 
 ips := $(addprefix $(work-dir)/, $(ips))
-ips-target := $(join $(addsuffix /ip/, $(addprefix $(ip-dir)/, $(basename $(ips)))), $(ips))
+ips-target := $(join $(addsuffix /$(BOARD)/ip/, $(addprefix $(ip-dir)/, $(basename $(ips)))), $(ips))
 
 all: $(mcs)
 
-ELF=src/etherboot/etherboot.elf
-
-$(ELF):
-	make -C src/etherboot all
-
 ips: 
-#BBL=../../ariane-sdk-rng-tools/riscv-pk/build/bbl
-BBL=$(ELF)
 # Generate mcs from bitstream
 $(mcs): $(bit) $(BBL)
-	$(VIVADO) $(VIVADOFLAGS) -source scripts/write_cfgmem.tcl -tclargs $@ $^ $(BBL)
+	$(VIVADO) $(VIVADOFLAGS) -source scripts/write_cfgmem.tcl -tclargs $@ $^ ../riscv-pk/build/bbl
 
 $(bit): $(ips)
 	mkdir -p $(work-dir)
@@ -39,7 +32,7 @@ $(ips): %.xci :
 	mkdir -p $(work-dir)
 	@echo Generating $(@F)
 	@cd $(ip-dir)/$(basename $(@F)) && make clean && make
-	@cp $(ip-dir)/$(basename $(@F))/ip/$(@F) $@
+	@cp $(ip-dir)/$(basename $(@F))/$(BOARD)/ip/$(@F) $@
 
 mcs: $(mcs)
 
@@ -52,7 +45,8 @@ $(work-dir)/ariane_xilinx.new.mcs: $(work-dir)/ariane_xilinx.new.bit
 	env XILINX_PART="xc7a100t-csg324-1" XILINX_BOARD="digilentinc.com:nexys4_ddr:part0:1.1" vivado -nojournal -mode batch -source scripts/prologue.tcl -source scripts/write_cfgmem.tcl -tclargs $@ $< $(BBL)
 
 new: $(work-dir)/ariane_xilinx.bit search-ramb.log scripts/cnvmem.v boot.bmm 
-	riscv64-unknown-elf-objcopy -O verilog $(ELF) cnvmem.mem
+	make BOARD=$(BOARD) -C src/etherboot
+	riscv64-unknown-elf-objcopy -O verilog src/etherboot/$(BOARD).elf cnvmem.mem
 	iverilog scripts/cnvmem.v -o cnvmem
 	./cnvmem
 	mv bootram.sv src/bootram.sv

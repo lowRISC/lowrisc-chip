@@ -649,7 +649,7 @@ int testrange(void volatile *aligned, size_t bufsize, ul loops, int narrow) {
     return(exit_code);
 }
 
-void dram_main(void)
+void dram_main(int sp)
 {
   int i;
   //  enum {range=2048};  
@@ -661,6 +661,8 @@ void dram_main(void)
   //  enum {range=1048576};
   //  enum {range=1<<30};
     print_uart("\nBare metal DRAM test\n");
+    printf("dram_main() = %p\n", (void*)dram_main);
+    printf("dram sp() = %p\n", (void*)&sp);
     printf("memtester version " __version__ " (%d-bit)\n", UL_LEN);
     printf("Copyright (C) 2001-2012 Charles Cazabon.\n");
     printf("Licensed under the GNU General Public License version 2 (only).\n");

@@ -2,6 +2,10 @@ include sources.inc
 
 REMOTE=lowrisc5.sm
 
+default: nexys4_ddr_ariane
+
+all: nexys4_ddr_ariane nexys4_ddr_rocket genesys2_ariane genesys2_rocket
+
 tftp: riscv-pk/build/bbl
 	(cd riscv-pk/build; echo -e bin \\n put $< \\n | tftp $(REMOTE))
 

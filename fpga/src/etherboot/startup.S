@@ -2,7 +2,9 @@
 # 
 # 
 #include <smp.h>
+#define SP_BASE   0x4000FFF0
 #define DRAM_BASE 0x87FE0000
+#define DRAM_END  0x87FFFFF8
 
   .section .text.init
   .option norvc
@@ -14,13 +16,21 @@ _prog_start:
 _wait_dbg:
   add t4, t4, -1
   bne t4, zero, _wait_dbg
-  li sp, DRAM_BASE
+
+  li sp, SP_BASE
   la t0, init_uart
   jalr ra, t0
   la t0, print_uart
   la a0, hello
   jalr ra, t0
-
+  la t1, gpio_sw
+  jalr ra, t1
+  srli a0, a0, 0x5
+  li t1, 2
+  beq a0, t1, dram_main      
+  li sp, DRAM_END
+  la a0, relocmsg
+  jalr ra, t0
   la a1, _prog_start
   la a2, _DATA_END_
   li a3, DRAM_BASE
@@ -31,7 +41,7 @@ _wait:
   add t4, t4, -1
   ld a4, 8(a1)
   bne t4, zero, _wait      
-  li sp, 0x87FFFFF8
+
   ld a4, 0(a3)
 _copy:
   ld a4, 0(a1)
@@ -48,7 +58,6 @@ _copy:
   la a5, _reloc
   add a5, a5, a3      
   sub a5, a5, a1
-  jr a5      
 _reloc:
   la a5, trap_entry
   csrw mtvec, a5  
@@ -71,3 +80,8 @@ trap_entry:
   j 1b
 hello:
   .ascii "Hello from Ariane! Please wait a moment...\n\000"
+relocmsg:
+  .ascii "Relocating to DDR memory\n\000"
+skiprelocmsg:
+  .ascii "Skip relocating to DDR memory\n\000"
+

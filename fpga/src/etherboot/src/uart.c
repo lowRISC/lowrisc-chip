@@ -1,37 +1,29 @@
 #include "uart.h"
 
-void write_reg_u8(uintptr_t addr, uint8_t value)
-{
-    volatile uint8_t *loc_addr = (volatile uint8_t *)addr;
-    *loc_addr = value;
-}
+#define _write_reg_u8(addr, value) *((volatile uint8_t *)addr) = value
 
-uint8_t read_reg_u8(uintptr_t addr)
-{
-    return *(volatile uint8_t *)addr;
-}
+#define _read_reg_u8(addr) (*(volatile uint8_t *)addr)
 
-int is_transmit_empty()
-{
-    return read_reg_u8(UART_LINE_STATUS) & 0x20;
-}
+#define _is_transmit_empty() (read_reg_u8(UART_LINE_STATUS) & 0x20)
 
-void write_serial(char a)
-{
-    while (is_transmit_empty() == 0) {};
+#define _write_serial(a) \
+    while (_is_transmit_empty() == 0) {}; \
+    write_reg_u8(UART_THR, a); \
 
-    write_reg_u8(UART_THR, a);
-}
+void write_reg_u8(uintptr_t addr, uint8_t value) { _write_reg_u8(addr, value); }
+uint8_t read_reg_u8(uintptr_t addr) { return _read_reg_u8(addr); }
+int is_transmit_empty() { return _is_transmit_empty(); }
+void write_serial(char a) { _write_serial(a); }
 
 void init_uart()
 {
-    write_reg_u8(UART_INTERRUPT_ENABLE, 0x00); // Disable all interrupts
-    write_reg_u8(UART_LINE_CONTROL, 0x80);     // Enable DLAB (set baud rate divisor)
-    write_reg_u8(UART_DLAB_LSB, 0x1B);         // Set divisor to 27 (lo byte) 115200 baud
-    write_reg_u8(UART_DLAB_MSB, 0x00);         //                   (hi byte)
-    write_reg_u8(UART_LINE_CONTROL, 0x03);     // 8 bits, no parity, one stop bit
-    write_reg_u8(UART_FIFO_CONTROL, 0xC7);     // Enable FIFO, clear them, with 14-byte threshold
-    write_reg_u8(UART_MODEM_CONTROL, 0x20);    // Autoflow mode
+    _write_reg_u8(UART_INTERRUPT_ENABLE, 0x00); // Disable all interrupts
+    _write_reg_u8(UART_LINE_CONTROL, 0x80);     // Enable DLAB (set baud rate divisor)
+    _write_reg_u8(UART_DLAB_LSB, 0x1B);         // Set divisor to 27 (lo byte) 115200 baud
+    _write_reg_u8(UART_DLAB_MSB, 0x00);         //                   (hi byte)
+    _write_reg_u8(UART_LINE_CONTROL, 0x03);     // 8 bits, no parity, one stop bit
+    _write_reg_u8(UART_FIFO_CONTROL, 0xC7);     // Enable FIFO, clear them, with 14-byte threshold
+    _write_reg_u8(UART_MODEM_CONTROL, 0x20);    // Autoflow mode
 }
 
 void print_uart(const char *str)
@@ -39,7 +31,7 @@ void print_uart(const char *str)
     const char *cur = &str[0];
     while (*cur != '\0')
     {
-        write_serial((uint8_t)*cur);
+        _write_serial((uint8_t)*cur);
         ++cur;
     }
 }
@@ -100,3 +92,10 @@ void print_uart_byte(uint8_t byte)
     write_serial(hex[0]);
     write_serial(hex[1]);
 }
+
+void puthex(uint64_t n, int w)
+{
+  if (w > 1) puthex(n>>4, w-1);
+  write_serial("0123456789ABCDEF"[n&15]);
+}
+
