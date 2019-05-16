@@ -8,3 +8,4 @@ boot.mem
 cnvmem*
 mapfile
 *.dtb
+*.sv

@@ -13,9 +13,6 @@
 [submodule "linux"]
 	path = linux
 	url = https://github.com/lowRISC/linux.git
-[submodule "riscv-pk"]
-	path = riscv-pk
-	url = https://github.com/lowRISC/riscv-pk.git
 [submodule "src/OpenIP"]
 	path = src/OpenIP
 	url = https://github.com/lowRISC/OpenIP.git
@@ -28,3 +25,6 @@
 [submodule "fpga/src/spi_mem_programmer"]
 	path = fpga/src/spi_mem_programmer
 	url = https://github.com/jrrk/spi_mem_programmer.git
+[submodule "riscv-pk"]
+	path = riscv-pk
+	url = https://github.com/riscv/riscv-pk.git

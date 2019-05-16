@@ -96,7 +96,7 @@ src :=  $(filter-out ariane/src/ariane_regfile.sv, $(wildcard ariane/src/*.sv)) 
         ariane/src/tech_cells_generic/src/pulp_clock_gating.sv                        \
         ariane/src/tech_cells_generic/src/cluster_clock_inverter.sv                   \
         ariane/src/tech_cells_generic/src/pulp_clock_mux2.sv                          \
-        fpga/src/ariane_shell.sv                                               \
+        fpga/src/ariane_shell.sv                                                      \
 
 src := $(addprefix $(root-dir)/, $(src))
 
@@ -107,7 +107,6 @@ rocket_src := rocket-chip/vsim/generated-src/freechips.rocketchip.system.Default
 	      rocket-chip/vsrc/ClockDivider3.v \
 	      rocket-chip/vsrc/plusarg_reader.v \
               fpga/src/rocket_shell.sv \
-              fpga/src/etherboot/$(BOARD).sv
 
 rocket_src := $(addprefix $(root-dir)/, $(rocket_src))
 

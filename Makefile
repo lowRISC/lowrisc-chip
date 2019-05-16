@@ -21,15 +21,17 @@ linux/initramfs.cpio:
 fpga/src/etherboot/$(BOARD).sv: fpga/src/$(BOARD).dts
 	make -C fpga/src/etherboot BOARD=$(BOARD)
 
-fpga/work-fpga/$(BOARD)_ariane/ariane_xilinx.bit: $(ariane_pkg) $(util) $(src) $(fpga_src)
+fpga/work-fpga/$(BOARD)_ariane/ariane_xilinx.bit: $(ariane_pkg) $(util) $(src) $(fpga_src) \
+        fpga/src/etherboot/$(BOARD).sv
 	@echo "[FPGA] Generate source list"
-	@echo read_verilog -sv { $(ariane_pkg) $(filter-out $(fpga_filter), $(util) $(src)) $(fpga_src) $(open_src) } > fpga/scripts/add_sources.tcl
+	@echo read_verilog -sv { $(ariane_pkg) $(filter-out $(fpga_filter), $(util) $(src)) $(fpga_src) $(open_src) fpga/src/etherboot/$(BOARD).sv $(addprefix $(root-dir)/,fpga/src/etherboot/$(BOARD).sv) } > fpga/scripts/add_sources.tcl
 	@echo "[FPGA] Generate Bitstream"
 	make -C fpga BOARD=$(BOARD) XILINX_PART=$(XILINX_PART) XILINX_BOARD=$(XILINX_BOARD) CPU="ariane" CLK_PERIOD_NS="20"
 
-fpga/work-fpga/$(BOARD)_rocket/ariane_xilinx.bit: $(ariane_pkg) $(util) $(src) $(fpga_src) $(rocket_src)
+fpga/work-fpga/$(BOARD)_rocket/ariane_xilinx.bit: $(ariane_pkg) $(util) $(src) $(fpga_src) \
+	$(rocket_src) fpga/src/etherboot/$(BOARD).sv
 	@echo "[FPGA] Generate source list"
-	@echo read_verilog -sv { $(ariane_pkg) $(filter-out $(fpga_filter), $(util) $(src)) $(fpga_src) $(open_src) $(rocket_src) } > fpga/scripts/add_sources.tcl
+	@echo read_verilog -sv { $(ariane_pkg) $(filter-out $(fpga_filter), $(util) $(src)) $(fpga_src) $(open_src) $(rocket_src) $(addprefix $(root-dir)/,fpga/src/etherboot/$(BOARD).sv) } > fpga/scripts/add_sources.tcl
 	@echo "[FPGA] Generate Bitstream"
 	make -C fpga BOARD=$(BOARD) XILINX_PART=$(XILINX_PART) XILINX_BOARD=$(XILINX_BOARD) CPU="rocket" CLK_PERIOD_NS="20"
 
