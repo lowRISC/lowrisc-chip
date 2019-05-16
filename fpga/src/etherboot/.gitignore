@@ -7,4 +7,4 @@ venv
 boot.mem
 cnvmem*
 mapfile
-ariane.dtb
+*.dtb

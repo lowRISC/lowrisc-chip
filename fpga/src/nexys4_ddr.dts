@@ -11,7 +11,7 @@
   cpus {
     #address-cells = <1>;
     #size-cells = <0>;
-    timebase-frequency = <25000000>; // 25 MHz
+    timebase-frequency = <500000>; // 0.5 MHz
     CPU0: cpu@0 {
       clock-frequency = <50000000>; // 50 MHz
       device_type = "cpu";
@@ -84,8 +84,8 @@
       local-mac-address = [00 18 3e 02 e3 7f]; // This needs to change if more than one GenesysII on a VLAN
       reg = <0x0 0x43000000 0x0 0x8000>;
     };
-    hwrnd: lowrisc-hwrnd@44000000 {
-      compatible = "lowrisc-hwrnd";
+    gpio: lowrisc-gpio@44000000 {
+      compatible = "lowrisc-gpio";
       reg = <0x0 0x44000000 0x0 0x1000 >;
     };
   };

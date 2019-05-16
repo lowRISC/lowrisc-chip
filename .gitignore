@@ -1,6 +1,7 @@
 target/
 project/target
 *.swp
+*.log
 *~
 .addons-dont-touch
 riscv/

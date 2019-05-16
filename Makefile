@@ -18,15 +18,18 @@ linux/.config:
 linux/initramfs.cpio:
 	make -C debian-riscv64 cpio
 
+fpga/src/etherboot/$(BOARD).sv: fpga/src/$(BOARD).dts
+	make -C fpga/src/etherboot BOARD=$(BOARD)
+
 fpga/work-fpga/$(BOARD)_ariane/ariane_xilinx.bit: $(ariane_pkg) $(util) $(src) $(fpga_src)
-	@echo "[FPGA] Generate sources"
-	@echo read_verilog -sv {$(ariane_pkg) $(filter-out $(fpga_filter), $(util) $(src)) $(fpga_src) $(open_src)} > fpga/scripts/add_sources.tcl
+	@echo "[FPGA] Generate source list"
+	@echo read_verilog -sv { $(ariane_pkg) $(filter-out $(fpga_filter), $(util) $(src)) $(fpga_src) $(open_src) } > fpga/scripts/add_sources.tcl
 	@echo "[FPGA] Generate Bitstream"
 	make -C fpga BOARD=$(BOARD) XILINX_PART=$(XILINX_PART) XILINX_BOARD=$(XILINX_BOARD) CPU="ariane" CLK_PERIOD_NS="20"
 
 fpga/work-fpga/$(BOARD)_rocket/ariane_xilinx.bit: $(ariane_pkg) $(util) $(src) $(fpga_src) $(rocket_src)
-	@echo "[FPGA] Generate sources"
-	@echo read_verilog -sv {$(ariane_pkg) $(filter-out $(fpga_filter), $(util) $(src)) $(fpga_src) $(open_src) $(rocket_src)} > fpga/scripts/add_sources.tcl
+	@echo "[FPGA] Generate source list"
+	@echo read_verilog -sv { $(ariane_pkg) $(filter-out $(fpga_filter), $(util) $(src)) $(fpga_src) $(open_src) $(rocket_src) } > fpga/scripts/add_sources.tcl
 	@echo "[FPGA] Generate Bitstream"
 	make -C fpga BOARD=$(BOARD) XILINX_PART=$(XILINX_PART) XILINX_BOARD=$(XILINX_BOARD) CPU="rocket" CLK_PERIOD_NS="20"
 
@@ -48,8 +51,8 @@ genesys2_ariane:
 genesys2_rocket:
 	make fpga/work-fpga/genesys2_rocket/ariane_xilinx.bit BOARD="genesys2" XILINX_PART="xc7k325tffg900-2" XILINX_BOARD="digilentinc.com:genesys2:part0:1.1" CLK_PERIOD_NS="20"
 
-$(rocket_src): ../rocket-chip/vsim/Makefile
-	make -C ../rocket-chip/vsim verilog
+$(rocket_src): rocket-chip/vsim/Makefile
+	make -C rocket-chip/vsim verilog
 
-../rocket-chip/vsim/Makefile:
-	git clone -b ariane-nexys4ddr-compat https://github.com/lowRISC/rocket-chip --recursive ../rocket-chip
+rocket-chip/vsim/Makefile:
+	git submodule update --init --recursive rocket-chip

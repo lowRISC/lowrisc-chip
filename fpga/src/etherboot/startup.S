@@ -71,8 +71,3 @@ trap_entry:
   j 1b
 hello:
   .ascii "Hello from Ariane! Please wait a moment...\n\000"
-  .section .dtb
-  .globl _dtb
-  .align 4, 0
-_dtb:
-  .incbin "ariane.dtb"

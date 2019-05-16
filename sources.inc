@@ -96,20 +96,20 @@ src :=  $(filter-out ariane/src/ariane_regfile.sv, $(wildcard ariane/src/*.sv)) 
         ariane/src/tech_cells_generic/src/pulp_clock_gating.sv                        \
         ariane/src/tech_cells_generic/src/cluster_clock_inverter.sv                   \
         ariane/src/tech_cells_generic/src/pulp_clock_mux2.sv                          \
-        fpga/src/bootram.sv                                                    \
         fpga/src/ariane_shell.sv                                               \
 
 src := $(addprefix $(root-dir)/, $(src))
 
-rocket_src := ../rocket-chip/vsim/generated-src/freechips.rocketchip.system.DefaultConfig.v \
-	      ../rocket-chip/vsim/generated-src/freechips.rocketchip.system.DefaultConfig.behav_srams.v \
-	      ../rocket-chip/vsrc/AsyncResetReg.v \
-	      ../rocket-chip/vsrc/ClockDivider2.v \
-	      ../rocket-chip/vsrc/ClockDivider3.v \
-	      ../rocket-chip/vsrc/plusarg_reader.v \
-              fpga/src/rocket_shell.sv
+rocket_src := rocket-chip/vsim/generated-src/freechips.rocketchip.system.DefaultConfig.v \
+	      rocket-chip/vsim/generated-src/freechips.rocketchip.system.DefaultConfig.behav_srams.v \
+	      rocket-chip/vsrc/AsyncResetReg.v \
+	      rocket-chip/vsrc/ClockDivider2.v \
+	      rocket-chip/vsrc/ClockDivider3.v \
+	      rocket-chip/vsrc/plusarg_reader.v \
+              fpga/src/rocket_shell.sv \
+              fpga/src/etherboot/$(BOARD).sv
 
-rocket_src := $(addprefix $(root-dir)/ariane/, $(rocket_src))
+rocket_src := $(addprefix $(root-dir)/, $(rocket_src))
 
 open_src := $(filter-out src/OpenIP/axi/common.sv                         \
 			src/OpenIP/axi/dummy_slave.sv                     \
@@ -135,8 +135,7 @@ open_src := $(addprefix $(root-dir), $(open_src))
 
 fpga_src := $(filter-out fpga/src/ariane_shell.sv \
                          fpga/src/rocket_shell.sv \
-                         fpga/src/boom_shell.sv \
-                         fpga/src/bootram.sv, $(wildcard fpga/src/*.sv)) \
+                         fpga/src/boom_shell.sv, $(wildcard fpga/src/*.sv)) \
             $(wildcard fpga/src/apb_uart/src/*.sv) \
             $(wildcard fpga/src/ariane-ethernet/*.sv) \
             $(wildcard fpga/src/spi_mem_programmer/*.sv)

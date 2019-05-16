@@ -11,22 +11,29 @@ INCLUDES = -I./ -I./src
 SRCS_C = src/blk_legacy.c src/ctype.c src/dhcp-client.c src/display_options.c src/div64.c src/elf.c src/ethlib.c src/ff.c src/hash-md5.c src/lowrisc_mmc.c src/mini-printf.c src/mmc.c src/mmc_legacy.c src/random.c src/string.c src/strto.c src/tftp_c.c src/time.c src/uart.c src/boot.c src/dram.c src/cachetest.c
 BOOT_O = src/main.o
 
-SRCS_ASM = startup.S
+SRCS_ASM = startup.S $(BOARD).S 
 OBJS_C = $(SRCS_C:.c=.o)
 OBJS_S = $(SRCS_ASM:.S=.o)
 
-MAIN = etherboot.elf
+MAIN = $(BOARD).elf
 MAIN_BIN = $(MAIN:.elf=.bin)
 MAIN_DIS = $(MAIN:.elf=.dis)
 MAIN_IMG = $(MAIN:.elf=.img)
 MAIN_SV = $(MAIN:.elf=.sv)
-BOOTRAM = ../../src/bootram.sv
+BOOTRAM = 
 
 #.PHONY: clean
 
-$(MAIN): ariane.dtb $(OBJS_C) src/main.o $(OBJS_S) linker.lds
+all: $(MAIN) $(MAIN_BIN) $(MAIN_IMG) $(MAIN_DIS) $(MAIN_SV) $(BOARD).sv
+	@echo "zero stage etherboot loader has been compiled!"
+
+$(MAIN): $(OBJS_C) src/main.o $(OBJS_S) linker.lds
 	$(CC) $(CFLAGS) $(LDFLAGS) $(INCLUDES) -Tlinker.lds $(OBJS_S) $(OBJS_C) src/main.o -o $@
 	@echo "LD    >= $(MAIN)"
+
+$(BOARD).o: ../$(BOARD).dts
+	dtc -I dts $< -O dtb -o $(BOARD).dtb
+	echo -e .section .dtb \; .align 4,0 \; .globl _dtb \; _dtb: \; .incbin \"$(BOARD).dtb\" | $(CC) $(CFLAGS) -c -xassembler - -o $(BOARD).o
 
 %.img: %.bin
 	dd if=$< of=$@ bs=128
@@ -44,23 +51,17 @@ $(MAIN): ariane.dtb $(OBJS_C) src/main.o $(OBJS_S) linker.lds
 	@$(CC) $(CFLAGS) $(CCASFLAGS) $(INCLUDES) -c $<  -o $@
 	@echo "CC    <= $<"
 
-%.dtb: %.dts
-	dtc -I dts $< -O dtb -o $@
-
 %.sv: %.img
 	$(PYTHON) ./gen_rom.py $<
 	@echo "PYTHON >= $(MAIN_SV)"
 
 clean:
-	$(RM) $(OBJS_C) $(OBJS_S) $(MAIN) $(MAIN_BIN) $(MAIN_IMG) *.dtb
-
-all: $(MAIN) $(MAIN_BIN) $(MAIN_IMG) $(MAIN_DIS) $(MAIN_SV) $(BOOTRAM)
-	@echo "zero stage etherboot loader has been compiled!"
+	$(RM) $(OBJS_C) $(OBJS_S) $(MAIN) $(MAIN_BIN) $(MAIN_IMG)
 
 dram.elf: $(OBJS_C) src/dram.o $(OBJS_S) linker.lds
 	$(CC) $(CFLAGS) $(LDFLAGS) $(INCLUDES) -Tlinker.lds $(OBJS_S) $(OBJS_C) src/dram.o -o $@
 
-$(BOOTRAM): $(MAIN)
+$(BOARD).sv: $(MAIN)
 	$(CROSSCOMPILE)objcopy -O verilog $< cnvmem.mem
 	iverilog ../../scripts/cnvmem.v -o cnvmem
 	./cnvmem
