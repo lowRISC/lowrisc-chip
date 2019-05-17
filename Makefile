@@ -28,7 +28,7 @@ fpga/src/etherboot/$(BOARD).sv: fpga/src/$(BOARD).dts
 fpga/work-fpga/$(BOARD)_ariane/ariane_xilinx.bit: $(ariane_pkg) $(util) $(src) $(fpga_src) \
         fpga/src/etherboot/$(BOARD).sv
 	@echo "[FPGA] Generate source list"
-	@echo read_verilog -sv { $(ariane_pkg) $(filter-out $(fpga_filter), $(util) $(src)) $(fpga_src) $(open_src) fpga/src/etherboot/$(BOARD).sv $(addprefix $(root-dir)/,fpga/src/etherboot/$(BOARD).sv) } > fpga/scripts/add_sources.tcl
+	@echo read_verilog -sv { $(ariane_pkg) $(filter-out $(fpga_filter), $(util) $(src)) $(fpga_src) $(open_src) $(addprefix $(root-dir)/,fpga/src/etherboot/$(BOARD).sv) } > fpga/scripts/add_sources.tcl
 	@echo "[FPGA] Generate Bitstream"
 	make -C fpga BOARD=$(BOARD) XILINX_PART=$(XILINX_PART) XILINX_BOARD=$(XILINX_BOARD) CPU="ariane" CLK_PERIOD_NS="20"
 
