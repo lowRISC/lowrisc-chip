@@ -35,11 +35,11 @@ uint32_t qspistatus(void)
   return swp[6]; // {spi_busy, spi_error}
 }
 
-uint64_t qspi_send(uint8_t cmd, uint8_t len, uint8_t quad, uint32_t *data)
+uint64_t qspi_send(uint8_t len, uint8_t quad, uint16_t data_in_count, uint16_t data_out_count, uint32_t *data)
 {
   uint32_t i, stat;
   volatile uint64_t *swp = (volatile uint64_t *)GPIOBase;
-  swp[5] = cmd | (len << 8) | (quad << 16);
+  swp[5] = (quad<<31) | ((len&127) << 24) | ((data_out_count&4095) << 12) | (data_in_count&4095);
   for (i = 0; i < len; i++)
     swp[5] = data[i];
   i = 0;
@@ -51,86 +51,70 @@ uint64_t qspi_send(uint8_t cmd, uint8_t len, uint8_t quad, uint32_t *data)
   return swp[4];
 }
 
-void qspi_read4(uint32_t i, uint8_t *buf)
+uint8_t *const qspi_base = (void *)0x84000000;
+
+void qspi_read4(void)
       {
-        uint64_t rslt, rslt2, rslt3;
-        uint32_t j, data[2];
-        uint8_t buf1[8], buf3[8];
-        int data_in_count = 5;
-        int data_out_count = 8;
-        uint32_t off = i + 0x00400000;
-        data[0] = (CMD_4READ << 8) | (off >> 24); // Should locate start of BBL
-        data[1] = (off << 8) | (data_in_count << 4) | data_out_count;
-        rslt = qspi_send(CMD_4READ, 2, 0, data);
-        rslt2 = qspi_send(CMD_4READ, 2, 0, data);
-        rslt3 = qspi_send(CMD_4READ, 2, 0, data);
-        for (j = 0; j < 8; j++)
+        uint32_t i = 0;
+        uint64_t rslt;
+        uint32_t j, data[2], blank = 0;
+        int data_in_count = 39;
+        int data_out_count = 65;
+        data[0] = CMD_4READ;
+        do
           {
-            buf1[j] = rslt >> (7-j)*8;
-            buf[j] = rslt2 >> (7-j)*8;
-            buf3[j] = rslt3 >> (7-j)*8;
+            data[1] = i + 0x00B00000; // Should locate start of BBL
+            rslt = qspi_send(2, 0, data_in_count, data_out_count, data);
+            if (rslt == 0xFFFFFFFFFFFFFFFF)
+              ++blank;
+            else
+              blank = 0;
+            for (j = 0; j < 8; j++)
+              {
+                qspi_base[i+j] = rslt >> (7-j)*8;
+              }
+#ifdef QSPI_VERBOSE
+            for (j = 0; j < 8; j++)
+              {
+                puthex(qspi_base[i+j], 2);
+                printf(" ");
+              }
+            printf("\n");
+#endif                
+            i += 8;
           }
-        puthex(off, 8);
-        printf(" ");
-        for (j = 0; j < 8; j++)
-          {
-            puthex(buf1[i+j], 2);
-            printf(" ");
-          }
-        printf("\n");
-        puthex(off, 8);
-        printf(" ");
-        for (j = 0; j < 8; j++)
-          {
-            puthex(buf[i+j], 2);
-            printf(" ");
-          }
-        printf("\n");
-        puthex(off, 8);
-        printf(" ");
-        for (j = 0; j < 8; j++)
-          {
-            puthex(buf3[i+j], 2);
-            printf(" ");
-          }
-        printf("\n");
+        while (blank < 512);
       }
 
 void qspi_elfn(void *dst, uint32_t off, uint32_t sz)
 {
-  uint32_t i, j;
-  uint8_t last[sizeof(uint64_t)];
-  uint8_t *ptr = (uint8_t *)dst;
-  uint8_t *buf = (uint8_t *)dst;
-  // Read file into memory from QSPI flash
-  uint32_t len = 0;   // Read count
-  for (i = 0; i < sz-8; i += 8)
-    {
-      qspi_read4(off+i, ptr);
-      ptr += sizeof(uint64_t);
-      len += sizeof(uint64_t);
-      gpio_leds(len >> 12);
-    }
-  qspi_read4(off+i, last);
-  memcpy(ptr, last, sz-i);
-  for (i = 0; i < sz; i += 16)
+  uint32_t i;
+  memcpy(dst, qspi_base+off, sz);
+#ifdef QSPI_VERBOSE
+#else  
+  if (off < 0x1000) for (i = 0; i < sz; i += 16)
       {
-        puthex(i, 8);
+        uint32_t j;
+        uint8_t *buf = i + (uint8_t *)dst;
+        puthex(off+i, 8);
         printf(" ");
         for (j = 0; j < 16; j++)
           {
-            puthex(buf[i+j], 2);
+            puthex(buf[j], 2);
             printf(" ");
           }
         printf("\n");
       }
+#endif
 }
   
 void qspi_main(int sw)
 {
   int64_t entry;
   // read elf
-  printf("load elf to DDR memory\n");
+  printf("load QSPI to DDR memory\n");
+  qspi_read4();
+  printf("load ELF to DDR memory\n");
   entry = load_elf(qspi_elfn);
   if (entry < 0)
     {

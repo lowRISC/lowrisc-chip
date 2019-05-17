@@ -33,5 +33,5 @@
 
 // Logic analysers enabled
 
-// `define XLNX_ILA_QSPI
+`define XLNX_ILA_QSPI
 // `define XLNX_ILA_TRACE

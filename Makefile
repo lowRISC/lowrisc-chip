@@ -62,3 +62,6 @@ $(rocket_src): rocket-chip/vsim/Makefile
 
 rocket-chip/vsim/Makefile:
 	git submodule update --init --recursive rocket-chip
+
+genesys2_ariane_new:
+	make -C fpga BOARD=genesys2 CPU=ariane new
