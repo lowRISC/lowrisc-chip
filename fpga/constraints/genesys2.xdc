@@ -114,6 +114,33 @@ set_property -dict { PACKAGE_PIN R20 IOSTANDARD LVCMOS33 } [get_ports { QSPI_D[2
 set_property -dict { PACKAGE_PIN R21 IOSTANDARD LVCMOS33 } [get_ports { QSPI_D[3] }]; #IO_L2N_T0_D03_14 Sch=qspi_d[3]
 set_property BITSTREAM.CONFIG.SPI_BUSWIDTH 4 [current_design]
 
+## VGA Connector
+set_property -dict { PACKAGE_PIN AH20  IOSTANDARD LVCMOS33 } [get_ports { VGA_BLUE_O[0] }]; #IO_L22N_T3_12 Sch=vga_b[3]
+set_property -dict { PACKAGE_PIN AG20  IOSTANDARD LVCMOS33 } [get_ports { VGA_BLUE_O[1] }]; #IO_L22P_T3_12 Sch=vga_b[4]
+set_property -dict { PACKAGE_PIN AF21  IOSTANDARD LVCMOS33 } [get_ports { VGA_BLUE_O[2] }]; #IO_L19N_T3_VREF_12 Sch=vga_b[5]
+set_property -dict { PACKAGE_PIN AK20  IOSTANDARD LVCMOS33 } [get_ports { VGA_BLUE_O[3] }]; #IO_L24P_T3_12 Sch=vga_b[6]
+set_property -dict { PACKAGE_PIN AG22  IOSTANDARD LVCMOS33 } [get_ports { VGA_BLUE_O[4] }]; #IO_L20P_T3_12 Sch=vga_b[7]
+
+set_property -dict { PACKAGE_PIN AJ23  IOSTANDARD LVCMOS33 } [get_ports { VGA_GREEN_O[0] }]; #IO_L21N_T3_DQS_12 Sch=vga_g[2]
+set_property -dict { PACKAGE_PIN AJ22  IOSTANDARD LVCMOS33 } [get_ports { VGA_GREEN_O[1] }]; #IO_L21P_T3_DQS_12 Sch=vga_g[3]
+set_property -dict { PACKAGE_PIN AH22  IOSTANDARD LVCMOS33 } [get_ports { VGA_GREEN_O[2] }]; #IO_L20N_T3_12 Sch=vga_g[4]
+set_property -dict { PACKAGE_PIN AK21  IOSTANDARD LVCMOS33 } [get_ports { VGA_GREEN_O[3] }]; #IO_L24N_T3_12 Sch=vga_g[5]
+set_property -dict { PACKAGE_PIN AJ21  IOSTANDARD LVCMOS33 } [get_ports { VGA_GREEN_O[4] }]; #IO_L23N_T3_12 Sch=vga_g[6]
+set_property -dict { PACKAGE_PIN AK23  IOSTANDARD LVCMOS33 } [get_ports { VGA_GREEN_O[5] }]; #IO_L17P_T2_12 Sch=vga_g[7]
+
+set_property -dict { PACKAGE_PIN AK25  IOSTANDARD LVCMOS33 } [get_ports { VGA_RED_O[0] }]; #IO_L15N_T2_DQS_12 Sch=vga_r[3]
+set_property -dict { PACKAGE_PIN AG25  IOSTANDARD LVCMOS33 } [get_ports { VGA_RED_O[1] }]; #IO_L18P_T2_12 Sch=vga_r[4]
+set_property -dict { PACKAGE_PIN AH25  IOSTANDARD LVCMOS33 } [get_ports { VGA_RED_O[2] }]; #IO_L18N_T2_12 Sch=vga_r[5]
+set_property -dict { PACKAGE_PIN AK24  IOSTANDARD LVCMOS33 } [get_ports { VGA_RED_O[3] }]; #IO_L17N_T2_12 Sch=vga_r[6]
+set_property -dict { PACKAGE_PIN AJ24  IOSTANDARD LVCMOS33 } [get_ports { VGA_RED_O[4] }]; #IO_L15P_T2_DQS_12 Sch=vga_r[7]
+
+set_property -dict { PACKAGE_PIN AF20  IOSTANDARD LVCMOS33 } [get_ports { VGA_HS_O }]; #IO_L19P_T3_12 Sch=vga_hs
+set_property -dict { PACKAGE_PIN AG23  IOSTANDARD LVCMOS33 } [get_ports { VGA_VS_O }]; #IO_L13N_T2_MRCC_12 Sch=vga_vs
+
+## USB HIDs For Both Mouse and Keyboard
+set_property -dict { PACKAGE_PIN AD23  IOSTANDARD LVCMOS33  PULLUP true } [get_ports { PS2_CLK }]; #IO_L12P_T1_MRCC_12 Sch=ps2_clk[0]
+set_property -dict { PACKAGE_PIN AE20  IOSTANDARD LVCMOS33  PULLUP true } [get_ports { PS2_DATA }]; #IO_25_12 Sch=ps2_data[0]
+
 ## JTAG
 # minimize routing delay
 

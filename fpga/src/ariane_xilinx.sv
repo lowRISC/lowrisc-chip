@@ -97,16 +97,25 @@ module ariane_xilinx (
   inout wire         sd_cmd,
   output reg         sd_reset,
   // common part
-  input  logic        tck         ,
-  input  logic        tms         ,
-  input  logic        trst_n      ,
-  input  logic        tdi         ,
-  output wire         tdo         ,
-  input  logic        rx          ,
-  output logic        tx          ,
+  input  logic       tck         ,
+  input  logic       tms         ,
+  input  logic       trst_n      ,
+  input  logic       tdi         ,
+  output wire        tdo         ,
+  input  logic       rx          ,
+  output logic       tx          ,
   // Quad-SPI
-  inout wire          QSPI_CSN    ,
-  inout wire [3:0]    QSPI_D
+  inout wire         QSPI_CSN    ,
+  inout wire [3:0]   QSPI_D      ,
+  //keyboard
+  inout wire         PS2_CLK     ,
+  inout wire         PS2_DATA    ,
+  // display
+  output wire        VGA_HS_O    ,
+  output wire        VGA_VS_O    ,
+  output wire [4:0]  VGA_RED_O   ,
+  output wire [4:0]  VGA_BLUE_O  ,
+  output wire [5:0]  VGA_GREEN_O   
 );
 localparam NBSlave = 2; // debug, ariane
 localparam AxiAddrWidth = 64;
@@ -656,7 +665,17 @@ ariane_peripherals_xilinx #(
     .leds_o         ( led             ),
     .dip_switches_i ( sw              ),
     .QSPI_CSN, // Quad-SPI (for MAC address)
-    .QSPI_D
+    .QSPI_D,
+    .pxl_clk(clk_pixel),
+    //keyboard
+    .PS2_CLK,
+    .PS2_DATA,
+    // display
+    .VGA_HS_O,
+    .VGA_VS_O,
+    .VGA_RED_O,
+    .VGA_BLUE_O,
+    .VGA_GREEN_O
 );
 
 
