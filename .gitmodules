@@ -7,9 +7,6 @@
 [submodule "qemu"]
 	path = qemu
 	url = https://github.com/lowrisc/qemu.git
-[submodule "ariane"]
-	path = ariane
-	url = https://github.com/pulp-platform/ariane.git
 [submodule "src/OpenIP"]
 	path = src/OpenIP
 	url = https://github.com/lowRISC/OpenIP.git
@@ -28,3 +25,6 @@
 [submodule "riscv-gnu-toolchain"]
 	path = riscv-gnu-toolchain
 	url = https://github.com/jrrk/riscv-gnu-toolchain-1.git
+[submodule "ariane"]
+	path = ariane
+	url = https://github.com/lowrisc/ariane.git
