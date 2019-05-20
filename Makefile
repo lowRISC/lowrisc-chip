@@ -1,6 +1,7 @@
 include sources.inc
 
 REMOTE=lowrisc5.sm
+LINUX=linux-5.1.3-lowrisc
 
 default: nexys4_ddr_ariane
 
@@ -9,18 +10,23 @@ all: nexys4_ddr_ariane nexys4_ddr_rocket genesys2_ariane genesys2_rocket
 tftp: riscv-pk/build/bbl
 	(cd riscv-pk/build; echo -e bin \\n put $< \\n | tftp $(REMOTE))
 
-riscv-pk/build/bbl: linux/vmlinux
+riscv-pk/build/bbl: $(LINUX)/vmlinux
 	mkdir -p riscv-pk/build
-	(cd riscv-pk/build; ../configure --host=riscv64-unknown-elf --enable-print-device-tree --with-payload=../../linux/vmlinux 'CC=riscv64-unknown-elf-gcc -g'; make)
+	(cd riscv-pk/build; ../configure --host=riscv64-unknown-elf --enable-print-device-tree --with-payload=../../$(LINUX)/vmlinux 'CC=riscv64-unknown-elf-gcc -g'; make)
 
-linux/vmlinux: linux/.config linux/initramfs.cpio
-	make -C linux ARCH=riscv CROSS_COMPILE=riscv64-unknown-elf-
+$(LINUX)/vmlinux: $(LINUX)/.config $(LINUX)/initramfs.cpio
+	make -C $(LINUX) ARCH=riscv CROSS_COMPILE=riscv64-unknown-elf-
 
-linux/.config:
-	make -C linux ARCH=riscv CROSS_COMPILE=riscv64-unknown-elf- defconfig
+$(LINUX)/.config:
+	make -C $(LINUX) ARCH=riscv CROSS_COMPILE=riscv64-unknown-elf- defconfig
 
-linux/initramfs.cpio:
+$(LINUX)/initramfs.cpio:
 	make -C debian-riscv64 cpio
+
+$(LINUX)/Makefile:
+	curl https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-5.1.3.tar.xz|tar xJf -
+	patch -d linux-5.1.3 -p1 < linux-5.1.3.patch
+	mv linux-5.1.3 linux-5.1.3-lowrisc
 
 fpga/src/etherboot/$(BOARD).sv: fpga/src/$(BOARD).dts
 	make -C fpga/src/etherboot BOARD=$(BOARD)
