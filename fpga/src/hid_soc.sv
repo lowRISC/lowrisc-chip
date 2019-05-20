@@ -15,8 +15,6 @@ module hid_soc
   (
 `ifdef GENESYSII
     // display
-    output wire        VGA_HS_O,
-    output wire        VGA_VS_O,
     output wire [4:0]  VGA_RED_O,
     output wire [4:0]  VGA_BLUE_O,
     output wire [5:0]  VGA_GREEN_O,
