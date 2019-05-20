@@ -19,8 +19,7 @@ module ariane_peripherals_xilinx #(
     parameter bit InclUART     = 1,
     parameter bit InclSPI      = 0,
     parameter bit InclEthernet = 0,
-    parameter bit InclGPIO     = 0,
-    parameter bit InclHID      = 1
+    parameter bit InclGPIO     = 0
 ) (
     input  logic       clk_i           , // Clock
     input  logic       clk_200MHz_i    ,
@@ -66,18 +65,30 @@ module ariane_peripherals_xilinx #(
     output reg         sd_reset,
     output logic [7:0] leds_o,
     input  logic [7:0] dip_switches_i,
-    inout wire         QSPI_CSN,
-    inout wire [3:0]   QSPI_D,
     input wire         pxl_clk,
-    //keyboard
-    inout wire         PS2_CLK,
-    inout wire         PS2_DATA,
+`ifdef GENESYSII
     // display
     output wire        VGA_HS_O,
     output wire        VGA_VS_O,
     output wire [4:0]  VGA_RED_O,
     output wire [4:0]  VGA_BLUE_O,
-    output wire [5:0]  VGA_GREEN_O   
+    output wire [5:0]  VGA_GREEN_O,
+`elsif NEXYS4DDR
+    output wire   [3:0] VGA_RED_O   ,
+    output wire   [3:0] VGA_BLUE_O  ,
+    output wire   [3:0] VGA_GREEN_O ,
+`endif
+`ifndef NEXYS_VIDEO
+  //keyboard
+    inout wire         PS2_CLK     ,
+    inout wire         PS2_DATA    ,
+  // display
+    output wire        VGA_HS_O    ,
+    output wire        VGA_VS_O    ,
+`endif
+  // Quad-SPI
+    inout wire         QSPI_CSN,
+    inout wire [3:0]   QSPI_D   
 );
 
 AXI_BUS #(
@@ -600,8 +611,6 @@ dword_interface dwi_inst(
 
     // HID
 
-    if (InclHID) begin : gen_hid
-
 logic                    hid_en, hid_we, hid_int_n, hid_pme_n, hid_mdio_i, hid_mdio_o, hid_mdio_oe;
 logic [AxiAddrWidth-1:0] hid_addr, hid_addr_prev;
 logic [AxiDataWidth-1:0] hid_wrdata, hid_rddata;
@@ -624,7 +633,9 @@ axi2mem #(
     .data_i ( hid_rddata              )
 );
 
-hid_soc
+`ifndef NEXYS_VIDEO
+
+hid_soc hid1
   (
  // clock and reset
  .pxl_clk,
@@ -645,9 +656,9 @@ hid_soc
  .VGA_BLUE_O,
  .VGA_GREEN_O
    );
-  
-end
 
+`endif
+  
 endmodule
 
 `default_nettype wire

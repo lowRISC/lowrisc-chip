@@ -13,6 +13,24 @@
 
 module hid_soc
   (
+`ifdef GENESYSII
+    // display
+    output wire        VGA_HS_O,
+    output wire        VGA_VS_O,
+    output wire [4:0]  VGA_RED_O,
+    output wire [4:0]  VGA_BLUE_O,
+    output wire [5:0]  VGA_GREEN_O,
+`elsif NEXYS4DDR
+    output wire   [3:0] VGA_RED_O   ,
+    output wire   [3:0] VGA_BLUE_O  ,
+    output wire   [3:0] VGA_GREEN_O ,
+`endif
+  //keyboard
+    inout wire         PS2_CLK     ,
+    inout wire         PS2_DATA    ,
+  // display
+    output wire        VGA_HS_O    ,
+    output wire        VGA_VS_O    ,
  // clock and reset
  input wire         pxl_clk,
  input wire         msoc_clk,
@@ -21,17 +39,7 @@ module hid_soc
  input wire [7:0]   hid_be,
  input wire [18:0]  hid_addr,
  input wire [63:0]  hid_wrdata,
- output reg [63:0]  hid_rddata,
- //keyboard
- inout wire         PS2_CLK,
- inout wire         PS2_DATA,
- 
-   // display
- output wire        VGA_HS_O,
- output wire        VGA_VS_O,
- output wire [4:0]  VGA_RED_O,
- output wire [4:0]  VGA_BLUE_O,
- output wire [5:0]  VGA_GREEN_O
+ output reg [63:0]  hid_rddata
  );
  
  wire        scan_ready, scan_released;
@@ -121,9 +129,15 @@ FIFO18E1 #(
       .clk_data(msoc_clk)
      );
 
+`ifdef GENESYSII   
  assign VGA_RED_O = red[7:3];
  assign VGA_GREEN_O = green[7:2];
  assign VGA_BLUE_O = blue[7:3];
+`elsif NEXYS4DDR
+ assign VGA_RED_O = red[7:5];
+ assign VGA_GREEN_O = green[7:5];
+ assign VGA_BLUE_O = blue[7:5];
+`endif
 
    assign one_hot_rdata[6] = {tx_error_no_keyboard_ack,keyb_empty,keyb_fifo_out[8:0]};
    

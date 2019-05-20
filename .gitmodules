@@ -28,3 +28,6 @@
 [submodule "riscv-pk"]
 	path = riscv-pk
 	url = https://github.com/lowRISC/riscv-pk.git
+[submodule "riscv-gnu-toolchain"]
+	path = riscv-gnu-toolchain
+	url = https://github.com/jrrk/riscv-gnu-toolchain-1.git

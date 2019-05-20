@@ -79,6 +79,43 @@ set_property IOSTANDARD LVCMOS33 [get_ports QSPI_D[2]]
 set_property PACKAGE_PIN M14 [get_ports QSPI_D[3]]
 set_property IOSTANDARD LVCMOS33 [get_ports QSPI_D[3]]
 
+#VGA Connector
+
+set_property PACKAGE_PIN A3 [get_ports {VGA_RED_O[0]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {VGA_RED_O[0]}]
+set_property PACKAGE_PIN B4 [get_ports {VGA_RED_O[1]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {VGA_RED_O[1]}]
+set_property PACKAGE_PIN C5 [get_ports {VGA_RED_O[2]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {VGA_RED_O[2]}]
+set_property PACKAGE_PIN A4 [get_ports {VGA_RED_O[3]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {VGA_RED_O[3]}]
+
+set_property PACKAGE_PIN C6 [get_ports {VGA_GREEN_O[0]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {VGA_GREEN_O[0]}]
+set_property PACKAGE_PIN A5 [get_ports {VGA_GREEN_O[1]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {VGA_GREEN_O[1]}]
+set_property PACKAGE_PIN B6 [get_ports {VGA_GREEN_O[2]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {VGA_GREEN_O[2]}]
+set_property PACKAGE_PIN A6 [get_ports {VGA_GREEN_O[3]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {VGA_GREEN_O[3]}]
+
+set_property PACKAGE_PIN B7 [get_ports {VGA_BLUE_O[0]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {VGA_BLUE_O[0]}]
+set_property PACKAGE_PIN C7 [get_ports {VGA_BLUE_O[1]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {VGA_BLUE_O[1]}]
+set_property PACKAGE_PIN D7 [get_ports {VGA_BLUE_O[2]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {VGA_BLUE_O[2]}]
+set_property PACKAGE_PIN D8 [get_ports {VGA_BLUE_O[3]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {VGA_BLUE_O[3]}]
+
+set_property -dict {PACKAGE_PIN B11 IOSTANDARD LVCMOS33} [get_ports VGA_HS_O]
+set_property -dict {PACKAGE_PIN B12 IOSTANDARD LVCMOS33} [get_ports VGA_VS_O]
+
+#USB HID (PS/2)
+
+set_property -dict {PACKAGE_PIN F4 IOSTANDARD LVCMOS33} [get_ports PS2_CLK]
+set_property -dict {PACKAGE_PIN B2 IOSTANDARD LVCMOS33} [get_ports PS2_DATA]
+
 set_property INTERNAL_VREF  0.750 [get_iobanks 35]
 set_property CFGBVS VCCO [current_design]
 #where value1 is either VCCO or GND  

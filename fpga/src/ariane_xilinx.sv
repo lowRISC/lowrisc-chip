@@ -31,6 +31,9 @@ module ariane_xilinx (
   output logic [ 0:0]  ddr3_cs_n   ,
   output logic [ 3:0]  ddr3_dm     ,
   output logic [ 0:0]  ddr3_odt    ,
+  output wire   [4:0]  VGA_RED_O   ,
+  output wire   [4:0]  VGA_BLUE_O  ,
+  output wire   [5:0]  VGA_GREEN_O ,
 `elsif NEXYS4DDR
   input  logic        clk_p       ,
   input  logic        cpu_resetn  ,
@@ -47,6 +50,9 @@ module ariane_xilinx (
   output logic [ 0:0] ddr2_cke    ,
   output logic [ 1:0] ddr2_dm     ,
   output logic [ 0:0] ddr2_odt    ,
+  output wire   [3:0] VGA_RED_O   ,
+  output wire   [3:0] VGA_BLUE_O  ,
+  output wire   [3:0] VGA_GREEN_O ,
 `elsif NEXYS_VIDEO
   input  logic        clk_p       ,
   input  logic        cpu_resetn  ,
@@ -96,6 +102,14 @@ module ariane_xilinx (
   inout wire [3:0]   sd_dat,
   inout wire         sd_cmd,
   output reg         sd_reset,
+`ifndef NEXYS_VIDEO
+  //keyboard
+  inout wire         PS2_CLK     ,
+  inout wire         PS2_DATA    ,
+  // display
+  output wire        VGA_HS_O    ,
+  output wire        VGA_VS_O    ,
+`endif
   // common part
   input  logic       tck         ,
   input  logic       tms         ,
@@ -106,16 +120,7 @@ module ariane_xilinx (
   output logic       tx          ,
   // Quad-SPI
   inout wire         QSPI_CSN    ,
-  inout wire [3:0]   QSPI_D      ,
-  //keyboard
-  inout wire         PS2_CLK     ,
-  inout wire         PS2_DATA    ,
-  // display
-  output wire        VGA_HS_O    ,
-  output wire        VGA_VS_O    ,
-  output wire [4:0]  VGA_RED_O   ,
-  output wire [4:0]  VGA_BLUE_O  ,
-  output wire [5:0]  VGA_GREEN_O   
+  inout wire [3:0]   QSPI_D
 );
 localparam NBSlave = 2; // debug, ariane
 localparam AxiAddrWidth = 64;
