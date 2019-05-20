@@ -8,7 +8,7 @@ LDFLAGS = -nostdlib -nodefaultlibs -nostartfiles -Wl,-Map=mapfile
 
 INCLUDES = -I./ -I./src
 
-SRCS_C = src/blk_legacy.c src/ctype.c src/dhcp-client.c src/display_options.c src/div64.c src/elf.c src/ethlib.c src/ff.c src/hash-md5.c src/lowrisc_mmc.c src/mini-printf.c src/mmc.c src/mmc_legacy.c src/random.c src/string.c src/strto.c src/tftp_c.c src/time.c src/uart.c src/boot.c src/dram.c src/cachetest.c
+SRCS_C = src/blk_legacy.c src/ctype.c src/dhcp-client.c src/display_options.c src/div64.c src/elf.c src/ethlib.c src/ff.c src/hash-md5.c src/lowrisc_mmc.c src/mini-printf.c src/mmc.c src/mmc_legacy.c src/random.c src/string.c src/strto.c src/tftp_c.c src/time.c src/uart.c src/boot.c src/dram.c src/cachetest.c src/hid.c src/logo.c
 BOOT_O = src/main.o
 
 SRCS_ASM = startup.S $(BOARD).S 

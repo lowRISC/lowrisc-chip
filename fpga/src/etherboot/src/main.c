@@ -2,6 +2,7 @@
 #include <sys/types.h>
 #include <stdint.h>
 #include "uart.h"
+#include "hid.h"
 #include "mini-printf.h"
 #include "ariane.h"
 #include "qspi.h"
@@ -129,6 +130,7 @@ int main()
   uint32_t i, rnd, sw, sw2;
   init_uart();
   print_uart("Hello World!\r\n");
+  hid_init();
   for (i = 0; i < 5; i++)
     {
       volatile uint64_t *swp = (volatile uint64_t *)GPIOBase;

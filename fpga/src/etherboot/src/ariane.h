@@ -10,6 +10,9 @@ typedef enum {
         SPIBase      = 0x42000000,
         EthernetBase = 0x43000000,
         GPIOBase     = 0x44000000,
+        KeybBase     = 0x45030000, // These have been relocated
+        VgaBase      = 0x45038000,
+        FbBase       = 0x45040000,
         DRAMBase     = 0x80000000
     } soc_bus_start_t;
 

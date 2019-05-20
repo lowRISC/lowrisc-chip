@@ -15,18 +15,18 @@ riscv-pk/build/bbl: $(LINUX)/vmlinux
 	(cd riscv-pk/build; ../configure --host=riscv64-unknown-elf --enable-print-device-tree --with-payload=../../$(LINUX)/vmlinux 'CC=riscv64-unknown-elf-gcc -g'; make)
 
 $(LINUX)/vmlinux: $(LINUX)/.config $(LINUX)/initramfs.cpio
-	make -C $(LINUX) ARCH=riscv CROSS_COMPILE=riscv64-unknown-elf-
+	make -C $(LINUX) ARCH=riscv CROSS_COMPILE=riscv64-unknown-elf- -j 4 # V=1 KBUILD_CFLAGS=-v
 
-$(LINUX)/.config:
+$(LINUX)/.config: $(LINUX)/drivers/net/ethernet/Makefile
 	make -C $(LINUX) ARCH=riscv CROSS_COMPILE=riscv64-unknown-elf- defconfig
 
 $(LINUX)/initramfs.cpio:
 	make -C debian-riscv64 cpio
 
-$(LINUX)/Makefile:
+$(LINUX)/drivers/net/ethernet/Makefile: linux-5.1.3.patch
 	curl https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-5.1.3.tar.xz|tar xJf -
 	patch -d linux-5.1.3 -p1 < linux-5.1.3.patch
-	mv linux-5.1.3 linux-5.1.3-lowrisc
+	mv linux-5.1.3 $(LINUX)
 
 fpga/src/etherboot/$(BOARD).sv: fpga/src/$(BOARD).dts
 	make -C fpga/src/etherboot BOARD=$(BOARD)
@@ -71,3 +71,6 @@ rocket-chip/vsim/Makefile:
 
 genesys2_ariane_new:
 	make -C fpga BOARD=genesys2 CPU=ariane new
+
+nexys4_ddr_rocket_new:
+	make -C fpga BOARD=nexys4_ddr CPU=rocket new
