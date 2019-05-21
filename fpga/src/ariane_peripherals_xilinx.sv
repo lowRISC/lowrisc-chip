@@ -609,28 +609,32 @@ dword_interface dwi_inst(
 
     // HID
 
+localparam RamAddrWidth = 19;
+   
 logic                    hid_en, hid_we, hid_int_n, hid_pme_n, hid_mdio_i, hid_mdio_o, hid_mdio_oe;
-logic [AxiAddrWidth-1:0] hid_addr, hid_addr_prev;
+logic [RamAddrWidth-1:0] hid_addr;
 logic [AxiDataWidth-1:0] hid_wrdata, hid_rddata;
 logic [AxiDataWidth/8-1:0] hid_be;
 
-axi2mem #(
-    .AXI_ID_WIDTH   ( AxiIdWidth       ),
-    .AXI_ADDR_WIDTH ( AxiAddrWidth     ),
-    .AXI_DATA_WIDTH ( AxiDataWidth     ),
-    .AXI_USER_WIDTH ( AxiUserWidth     )
-) i_axi2hid (
-    .clk_i  ( clk_i                    ),
-    .rst_ni ( rst_ni                   ),
-    .slave  ( master[ariane_soc::HID] ),
-    .req_o  ( hid_en                  ),
-    .we_o   ( hid_we                  ),
-    .addr_o ( hid_addr                ),
-    .be_o   ( hid_be                  ),
-    .data_o ( hid_wrdata              ),
-    .data_i ( hid_rddata              )
+axi_bram_ctrl #(
+    .ID_WIDTH        ( AxiIdWidth       ),
+    .ADDR_WIDTH      ( AxiAddrWidth     ),
+    .DATA_WIDTH      ( AxiDataWidth     ),
+    .BRAM_ADDR_WIDTH ( RamAddrWidth     ),
+    .USER_WIDTH      ( AxiUserWidth     )
+) i_axi2hid  (
+    .clk         ( clk_i                   ),
+    .rstn        ( rst_ni                  ),
+    .master      ( master[ariane_soc::HID] ),
+    .bram_en     ( hid_en                  ),
+    .bram_addr   ( hid_addr                ),
+    .bram_we     ( hid_be                  ),
+    .bram_wrdata ( hid_wrdata              ),
+    .bram_rddata ( hid_rddata              )
 );
 
+assign hid_we = hid_en & (|hid_be);
+   
 `ifndef NEXYS_VIDEO
 
 hid_soc hid1
@@ -641,7 +645,7 @@ hid_soc hid1
  .rstn(rst_ni),
  .hid_en,
  .hid_be,
- .hid_addr(hid_addr[18:0]),
+ .hid_addr(hid_addr),
  .hid_wrdata,
  .hid_rddata,
  //keyboard

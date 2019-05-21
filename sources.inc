@@ -114,14 +114,12 @@ open_src := $(filter-out src/OpenIP/axi/common.sv                         \
 			src/OpenIP/axi/dummy_slave.sv                     \
 			src/OpenIP/axi/dummy_master.sv                    \
 			src/OpenIP/axi/id_downsizer.sv                    \
-			src/OpenIP/axi/to_lite.sv                         \
 			src/OpenIP/axi/from_lite.sv                       \
 			src/OpenIP/axi/crossbar.sv                        \
-			src/OpenIP/axi/bram_ctrl.sv                       \
 			src/OpenIP/axi/buf.sv                             \
 			src/OpenIP/axi/mux.sv                             \
 			src/OpenIP/axi/join.sv,                           \
-                        $(wildcard src/OpenIP/axi/[dr]*.sv))              \
+                        $(wildcard src/OpenIP/axi/*.sv))                  \
         $(filter-out src/OpenIP/util/from_if.sv                           \
 			src/OpenIP/util/to_if.sv                          \
 			src/OpenIP/util/axi_xbar_rework.sv                \
