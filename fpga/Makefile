@@ -49,8 +49,6 @@ $(work-dir)/$(CPU)_xilinx.new.mcs: $(work-dir)/$(CPU)_xilinx.new.bit
 
 new: $(work-dir)/$(CPU)_xilinx.bit $(work-dir)/search-ramb.log scripts/cnvmem.v src/etherboot/$(BOARD)_$(CPU).mem boot.bmm 
 	data2mem -bm boot.bmm -bd src/etherboot/$(BOARD)_$(CPU).mem -bt $< -o b $(work-dir)/$(CPU)_xilinx.new.bit
-	echo '_start: .globl _start; .incbin "boot.bin"' | riscv64-unknown-elf-gcc -nostdlib -x assembler -Ttext=0x10000 - -o bootrom.elf
-	riscv64-unknown-elf-objcopy -O verilog bootrom.elf bootrom.vlog
 
 src/etherboot/$(BOARD)_$(CPU).mem:
 	make BOARD=$(BOARD) COMPATIBLE=$(COMPATIBLE) -C src/etherboot

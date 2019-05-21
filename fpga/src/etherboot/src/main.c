@@ -64,7 +64,7 @@ void qspi_read4(void)
         data[0] = CMD_4READ;
         do
           {
-            data[1] = i + 0x00B00000; // Should locate start of BBL
+            data[1] = i + BITSIZE; // Should locate start of BBL
             rslt = qspi_send(2, 0, data_in_count, data_out_count, data);
             if (rslt == 0xFFFFFFFFFFFFFFFF)
               ++blank;
