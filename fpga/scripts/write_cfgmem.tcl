@@ -25,4 +25,4 @@ if {$argc < 2 || $argc > 4} {
 lassign $argv mcsfile bitfile datafile
 
 # https://scholar.princeton.edu/jbalkind/blog/programming-genesys-2-qspi-spi-x4-flash
-write_cfgmem -format mcs -interface SPIx4 -size 32 -loadbit "up 0x0 $bitfile" -loaddata "up 0xB00000 $datafile" -file $mcsfile -force
+write_cfgmem -format mcs -interface SPIx4 -size 32 -loadbit "up 0x0 $bitfile" -loaddata "up $::env(BITSIZE) $datafile" -file $mcsfile -force

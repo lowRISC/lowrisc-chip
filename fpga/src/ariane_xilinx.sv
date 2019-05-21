@@ -11,7 +11,17 @@
 // Description: Xilinx FPGA top-level
 // Author: Florian Zaruba <zarubaf@iis.ee.ethz.ch>
 
-module ariane_xilinx (
+module
+`ifdef ARIANE_SHELL   
+ariane_xilinx
+`elsif ROCKET_SHELL
+rocket_xilinx
+`elsif BOOM_SHELL
+boom_xilinx
+`else
+   if (1) $error("One of ARIANE_SHELL, ROCKET_SHELL, BOOM_SHELL should be defined");
+`endif
+(
 `ifdef GENESYSII
   input  logic         sys_clk_p   ,
   input  logic         sys_clk_n   ,
@@ -149,13 +159,14 @@ IOBUF #(
 `ifdef GENESYSII
 
 xlnx_clk_genesys2 i_xlnx_clk_gen (
-  .clk_out1 ( clk           ), // 50 MHz
-  .clk_out2 ( phy_tx_clk    ), // 125 MHz (for RGMII PHY)
-  .clk_out3 ( eth_clk       ), // 125 MHz quadrature (90 deg phase shift)
-  .clk_out4 ( sd_clk_sys    ), // 50 MHz clock
-  .resetn   ( cpu_resetn    ),
-  .locked   ( pll_locked    ),
-  .clk_in1  ( mig_ui_clk    )
+  .clk_out1 ( clk            ), // 50 MHz
+  .clk_out2 ( phy_tx_clk     ), // 125 MHz (for RGMII PHY)
+  .clk_out3 ( eth_clk        ), // 125 MHz quadrature (90 deg phase shift)
+  .clk_out4 ( sd_clk_sys     ), // 50 MHz clock
+  .clk_out5 ( clk_pixel      ), // 120 MHz clock
+  .resetn   ( cpu_resetn     ),
+  .locked   ( pll_locked     ),
+  .clk_in1  ( mig_ui_clk     )
 );
 
 assign mig_sys_clk = mig_ui_clk;

@@ -17,7 +17,7 @@
       device_type = "cpu";
       reg = <0>;
       status = "okay";
-      compatible = "ethz, ariane", "riscv";
+      compatible = "", "riscv";
       riscv,isa = "rv64imafdc";
       mmu-type = "riscv,sv39";
       tlb-split;

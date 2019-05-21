@@ -4,8 +4,9 @@ venv
 *.img
 *.bin
 *.dis
-boot.mem
+*.mem
 cnvmem*
 mapfile
 *.dtb
 *.sv
+*.vlog
