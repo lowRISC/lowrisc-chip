@@ -13,7 +13,7 @@ specific language governing permissions and limitations under the License.
 // A simple monitor (LCD display) driver with glass TTY behaviour in text mode
 
 module fstore2(
-               input wire         pixel2_clk,
+               input wire         pxl_clk,
                output reg [7:0]   red,
                output reg [7:0]   green,
                output reg [7:0]   blue,
@@ -21,14 +21,15 @@ module fstore2(
                output wire        vsyn,
                output reg         hsyn,
 
-               output reg  [63:0] doutg,
+               output reg [63:0]  doutg,
                output wire [63:0] doutb,
-               input wire  [63:0] dinb,
-               input wire  [18:0] addrb,
-               input wire  [7:0]  web,
-               input wire         enb,
-               input wire         clk_data,
-               input wire         irst
+               input wire [63:0]  hid_wrdata,
+               input wire [18:0]  hid_addr,
+               input wire [7:0]   hid_we,
+               input wire [7:0]   one_hot_data_addr;
+               input wire         hid_en,
+               input wire         clk_i,
+               input wire         rst_ni
                );
 
    parameter rwidth = 14;
@@ -70,9 +71,9 @@ module fstore2(
 
    reg [23:0]                    palette0[0:15], palette[0:15];
 
-   dualmem ram1(.clka(pixel2_clk),
+   dualmem ram1(.clka(pxl_clk),
                 .dina(8'b0), .addra({offvreg[10:5],offhreg[12:8]}), .wea(8'b0), .douta(dout), .ena(1'b1),
-                .clkb(~clk_data), .dinb(dinb), .addrb(addrb[13:3]), .web(web), .doutb(dout0), .enb(enb&~addrb[14]));
+                .clkb(~clk_i), .dinb(hid_wrdata), .addrb(hid_addr[13:3]), .web(hid_we), .doutb(dout0), .enb(hid_en & one_hot_data_addr[7] & ~hid_addr[14]));
 
    parameter graphmax = 12;
    
@@ -93,22 +94,22 @@ module fstore2(
           end
      end
    generate for (r = 0; r < graphmax; r=r+1)
-     dualmem ram1(.clka(pixel2_clk),
+     dualmem ram1(.clka(pxl_clk),
                   .dina(8'b0),
                   .addra(gaddra[14:4]),
                   .wea(8'b0),
                   .douta(doutpix[r]),
                   .ena(gaddra[18:15]==r),
-                  .clkb(clk_data),
-                  .dinb(dinb),
-                  .addrb(addrb[13:3]),
-                  .web(web),
+                  .clkb(clk_i),
+                  .dinb(hid_wrdata),
+                  .addrb(hid_addr[13:3]),
+                  .web(hid_we),
                   .doutb(doutfb[r]),
-                  .enb((addrb[17:14]==r) && addrb[18]));
+                  .enb(hid_en && (hid_addr[17:14]==r) && hid_addr[18]);
    endgenerate
 
-   always @(posedge clk_data)
-   if (irst)
+   always @(posedge clk_i)
+   if (~rst_ni)
      begin
         ghlimit0 <= 32;
         modereg0 <= 0;
@@ -130,30 +131,30 @@ module fstore2(
      end
    else
      begin
-        addrb_1 <= addrb;
-        if (web && enb && addrb[14] && ~addrb[13])
-          casez (addrb[8:3])
-            6'd0: modereg0 <= dinb[6:0];
-            6'd1: cursorvreg0 <= dinb[6:0];
-            6'd2: xcursor0 <= dinb[6:0];
-            6'd3: ycursor0 <= dinb[6:0];
-            6'd4: hstartreg0 <= dinb[11:0];
-            6'd5: hsynreg0 <= dinb[11:0];
-            6'd6: hstopreg0 <= dinb[11:0];
-            6'd7: vstartreg0 <= dinb[11:0];
-            6'd8: vstopreg0 <= dinb[11:0];
-            6'd11: vpixstartreg0 <= dinb[11:0];
-            6'd12: vpixstopreg0 <= dinb[11:0];
-            6'd13: hpixstartreg0 <= dinb[11:0];
-            6'd14: hpixstopreg0 <= dinb[11:0];
-            6'd15: hpixreg0 <= dinb[11:0];
-            6'd16: vpixreg0 <= dinb[11:0];
-            6'd17: divreg0 <= dinb[3:0];
-            6'd18: ghlimit0 <= dinb[7:0];
+        addrb_1 <= hid_addr;
+        if (hid_we && hid_en & one_hot_data_addr[7] && hid_addr[14] && ~hid_addr[13])
+          casez (hid_addr[8:3])
+            6'd0: modereg0 <= hid_wrdata[6:0];
+            6'd1: cursorvreg0 <= hid_wrdata[6:0];
+            6'd2: xcursor0 <= hid_wrdata[6:0];
+            6'd3: ycursor0 <= hid_wrdata[6:0];
+            6'd4: hstartreg0 <= hid_wrdata[11:0];
+            6'd5: hsynreg0 <= hid_wrdata[11:0];
+            6'd6: hstopreg0 <= hid_wrdata[11:0];
+            6'd7: vstartreg0 <= hid_wrdata[11:0];
+            6'd8: vstopreg0 <= hid_wrdata[11:0];
+            6'd11: vpixstartreg0 <= hid_wrdata[11:0];
+            6'd12: vpixstopreg0 <= hid_wrdata[11:0];
+            6'd13: hpixstartreg0 <= hid_wrdata[11:0];
+            6'd14: hpixstopreg0 <= hid_wrdata[11:0];
+            6'd15: hpixreg0 <= hid_wrdata[11:0];
+            6'd16: vpixreg0 <= hid_wrdata[11:0];
+            6'd17: divreg0 <= hid_wrdata[3:0];
+            6'd18: ghlimit0 <= hid_wrdata[7:0];
             default:;
           endcase
-        if (web && enb && addrb[14] && ~addrb[13] && addrb[8])
-            palette0[addrb[6:3]] <= dinb[23:0];
+        if (hid_we && hid_en & one_hot_data_addr[7] && hid_addr[14] && ~hid_addr[13] && hid_addr[8])
+            palette0[hid_addr[6:3]] <= hid_wrdata[23:0];
      end
 
 `ifdef LASTMSG
@@ -165,15 +166,15 @@ module fstore2(
    reg [7:0]                     crnt, msgi;
                      
    // This section generates a message in simulation, it gets trimmed in hardware.
-   always @(posedge clk_data)
-     if (irst)
+   always @(posedge clk_i)
+     if (~rst_ni)
        last_msg = {msgwid{8'h20}};
      else
      begin
-        if (enb) for (msgi = 0; msgi < 8; msgi=msgi+1)
-          if (web[msgi])
+        if (hid_en & one_hot_data_addr[7]) for (msgi = 0; msgi < 8; msgi=msgi+1)
+          if (hid_we[msgi])
             begin
-               crnt = dinb >> msgi*8;
+               crnt = hid_wrdata >> msgi*8;
                $write("%c", crnt);
                if (crnt==10 || crnt==13) $fflush();
                last_msg = {last_msg[msgwid*8-9:0],crnt};
@@ -181,8 +182,8 @@ module fstore2(
      end
 `endif
    
-   always @(posedge pixel2_clk) // or posedge reset) // JRRK - does this need async ?
-   if (irst)
+   always @(posedge pxl_clk) // or posedge reset) // JRRK - does this need async ?
+   if (~rst_ni)
      begin
         modereg <= 0;
         hreg <= 0;
@@ -308,8 +309,8 @@ module fstore2(
    wire [7:0] pixels_out, fout;
    reg [3:0]  faddr;
 
-   always @(web)
-     case(web)
+   always @(hid_we)
+     case(hid_we)
        8'h01: faddr = 0;
        8'h02: faddr = 1;
        8'h04: faddr = 2;
@@ -319,21 +320,21 @@ module fstore2(
        8'h40: faddr = 6;
        8'h80: faddr = 7;
        default: faddr = 8;
-   endcase // case (web)
+   endcase // case (hid_we)
    
    assign doutb = addrb_1[14] ? {fout,fout,fout,fout,fout,fout,fout,fout} : dout0;
-   wire [7:0] font_in = dinb >> {faddr[2:0],3'b000};
+   wire [7:0] font_in = hid_wrdata >> {faddr[2:0],3'b000};
                   
    chargen_7x5_rachel the_rachel(
-    .clk(pixel2_clk),
+    .clk(pxl_clk),
     .ascii(dout16[7:0]),
     .row(vrow),
     .pixels_out(pixels_out),
-    .font_clk(~clk_data),
+    .font_clk(~clk_i),
     .font_out(fout),
-    .font_addr({addrb[10:3],faddr[2:0]}),
+    .font_addr({hid_addr[10:3],faddr[2:0]}),
     .font_in(font_in),
-    .font_en(enb & addrb[14] & addrb[13]),
+    .font_en(hid_en & one_hot_data_addr[7] & hid_addr[14] & hid_addr[13]),
     .font_we(~faddr[3]));
    
      wire pixel = pixels_out[3'd7 ^ offpixel1] || cursor;

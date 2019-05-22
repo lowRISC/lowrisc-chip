@@ -31,10 +31,10 @@ module hid_soc
     output wire        VGA_VS_O    ,
  // clock and reset
  input wire         pxl_clk,
- input wire         msoc_clk,
- input wire         rstn,
+ input wire         clk_i,
+ input wire         rst_ni,
  input wire         hid_en,
- input wire [7:0]   hid_be,
+ input wire [7:0]   hid_we,
  input wire [18:0]  hid_addr,
  input wire [63:0]  hid_wrdata,
  output reg [63:0]  hid_rddata
@@ -52,8 +52,8 @@ logic [63:0] doutg, one_hot_rdata[7:0];
 logic haddr18;
 
     ps2 keyb_mouse(
-      .clk(msoc_clk),
-      .rst(~rstn),
+      .clk(clk_i),
+      .rst(~rst_ni),
       .PS2_K_CLK_IO(PS2_CLK),
       .PS2_K_DATA_IO(PS2_DATA),
       .PS2_M_CLK_IO(),
@@ -64,7 +64,7 @@ logic haddr18;
       .rx_scan_read(scan_ready),
       .tx_error_no_keyboard_ack(tx_error_no_keyboard_ack));
  
- always @(negedge msoc_clk)
+ always @(negedge clk_i)
     begin
         scan_ready_dly <= scan_ready;
     end
@@ -95,13 +95,13 @@ FIFO18E1 #(
                         .WRCOUNT(),                // 12-bit output: Write count
                         .WRERR(),                  // 1-bit output: Write error
                         // Read Control Signals: 1-bit (each) input: Read clock, enable and reset input signals
-                        .RDCLK(~msoc_clk),         // 1-bit input: Read clock
-                        .RDEN(hid_en&(|hid_be)&one_hot_data_addr[6]&~hid_addr[14]), // 1-bit input: Read enable
+                        .RDCLK(~clk_i),         // 1-bit input: Read clock
+                        .RDEN(hid_en&(|hid_we)&one_hot_data_addr[6]&~hid_addr[14]), // 1-bit input: Read enable
                         .REGCE(1'b1),              // 1-bit input: Clock enable
-                        .RST(~rstn),               // 1-bit input: Asynchronous Reset
+                        .RST(~rst_ni),               // 1-bit input: Asynchronous Reset
                         .RSTREG(1'b0),             // 1-bit input: Output register set/reset
                         // Write Control Signals: 1-bit (each) input: Write clock and enable input signals
-                        .WRCLK(~msoc_clk),         // 1-bit input: Write clock
+                        .WRCLK(~clk_i),         // 1-bit input: Write clock
                         .WREN(scan_ready & ~scan_ready_dly),               // 1-bit input: Write enable
                         // Write Data: 32-bit (each) input: Write input data
                         .DI(scan_code),                   // 32-bit input: Data input
@@ -111,20 +111,21 @@ FIFO18E1 #(
     wire [7:0] red,  green, blue;
  
     fstore2 the_fstore(
-      .pixel2_clk(pxl_clk),
+      .pxl_clk,
       .vsyn(VGA_VS_O),
       .hsyn(VGA_HS_O),
-      .red(red),
-      .green(green),
-      .blue(blue),
-      .web(hid_en ? hid_be : 8'b0),
-      .enb(hid_en & one_hot_data_addr[7]),
-      .addrb(hid_addr[18:0]),
-      .dinb(hid_wrdata),
+      .red,
+      .green,
+      .blue,
+      .hid_en,
+      .hid_we,
+      .one_hot_data_addr,
+      .hid_addr,
+      .hid_wrdata,
       .doutb(one_hot_rdata[7]),
       .doutg(doutg),
-      .irst(~rstn),
-      .clk_data(msoc_clk)
+      .rst_ni,
+      .clk_i
      );
 
 `ifdef GENESYSII   
@@ -141,7 +142,7 @@ FIFO18E1 #(
    
 //----------------------------------------------------------------------------//
 
-   always @(posedge msoc_clk)
+   always @(posedge clk_i)
      begin
         haddr18 <= hid_addr[18];
      end

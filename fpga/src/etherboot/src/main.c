@@ -134,7 +134,7 @@ int main()
   for (i = 0; i < 5; i++)
     {
       volatile uint64_t *swp = (volatile uint64_t *)GPIOBase;
-      printf("swp[%d] = %X\n", i, swp[i]);
+      printf("swp[%d] = %lX\n", i, swp[i]);
     }
   set_dummy_mac();
   for (i = 0; i < 4; i++)

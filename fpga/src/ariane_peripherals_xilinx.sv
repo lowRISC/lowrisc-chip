@@ -611,10 +611,10 @@ dword_interface dwi_inst(
 
 localparam RamAddrWidth = 19;
    
-logic                    hid_en, hid_we, hid_int_n, hid_pme_n, hid_mdio_i, hid_mdio_o, hid_mdio_oe;
+logic                    hid_en;
 logic [RamAddrWidth-1:0] hid_addr;
 logic [AxiDataWidth-1:0] hid_wrdata, hid_rddata;
-logic [AxiDataWidth/8-1:0] hid_be;
+logic [AxiDataWidth/8-1:0] hid_we;
 
 axi_bram_ctrl #(
     .ID_WIDTH        ( AxiIdWidth       ),
@@ -628,23 +628,21 @@ axi_bram_ctrl #(
     .master      ( master[ariane_soc::HID] ),
     .bram_en     ( hid_en                  ),
     .bram_addr   ( hid_addr                ),
-    .bram_we     ( hid_be                  ),
+    .bram_we     ( hid_we                  ),
     .bram_wrdata ( hid_wrdata              ),
     .bram_rddata ( hid_rddata              )
 );
 
-assign hid_we = hid_en & (|hid_be);
-   
 `ifndef NEXYS_VIDEO
 
 hid_soc hid1
   (
  // clock and reset
  .pxl_clk,
- .msoc_clk(clk_i),
- .rstn(rst_ni),
+ .clk_i,
+ .rst_ni,
  .hid_en,
- .hid_be,
+ .hid_we,
  .hid_addr(hid_addr),
  .hid_wrdata,
  .hid_rddata,
