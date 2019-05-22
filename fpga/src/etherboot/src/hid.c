@@ -1,7 +1,13 @@
 // See LICENSE.Cambridge for license details.
 
+#include <stddef.h>
 #include "uart.h"
 #include "hid.h"
+#include "mini-printf.h"
+
+const struct { char scan,lwr,upr; } scancode[] = {
+#include "scancode.h"
+  };
 
 // LowRISC VGA-compatible display base address
 volatile uint16_t *const hid_vga_ptr = (uint16_t *)VgaBase;
@@ -170,6 +176,35 @@ int hid_puts(const char *str) {
   while (*str) hid_send(*str++);
   hid_send('\n');
   return 0;
+}
+
+void keyb_main(void)
+{
+  int i;
+  int height = 11;
+  int width = 5;
+  for (;;)
+    {
+      int scan, ascii, event = *keyb_base;
+      if (0x200 & ~event)
+        {
+          *keyb_base = 0; // pop FIFO
+          event = *keyb_base & ~0x200;
+          scan = scancode[event&~0x100].scan;
+          ascii = scancode[event&~0x100].lwr;
+          printf("Keyboard event = %X, scancode = %X, ascii = '%c'\n", event, scan, ascii);
+          if (0x100 & ~event) switch(scan)
+            {
+            case 0x50: hid_reg_ptr[LOWRISC_REGS_VPIX] = ++height; printf(" %d,%d", height, width); break;
+            case 0x48: hid_reg_ptr[LOWRISC_REGS_VPIX] = --height; printf(" %d,%d", height, width); break;
+            case 0x4D: hid_reg_ptr[LOWRISC_REGS_HPIX] = ++width; printf(" %d,%d", height, width); break;
+            case 0x4B: hid_reg_ptr[LOWRISC_REGS_HPIX] = --width; printf(" %d,%d", height, width); break;
+            case 0xE0: break;
+            case 0x39: for (i = 33; i < 47; i++) hid_reg_ptr[i] = rand32(); break;
+            default: printf("?%x", scan); break;
+            }
+        }
+    }
 }
 
 const char zifu[]={

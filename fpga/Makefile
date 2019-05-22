@@ -48,7 +48,7 @@ $(work-dir)/$(CPU)_xilinx.new.mcs: $(work-dir)/$(CPU)_xilinx.new.bit
 	env XILINX_PART="xc7a100t-csg324-1" XILINX_BOARD="digilentinc.com:nexys4_ddr:part0:1.1" vivado -nojournal -mode batch -source scripts/prologue.tcl -source scripts/write_cfgmem.tcl -tclargs $@ $< $(BBL)
 
 new: $(work-dir)/$(CPU)_xilinx.bit $(work-dir)/search-ramb.log scripts/cnvmem.v boot.bmm 
-	make BOARD=$(BOARD) COMPATIBLE=$(COMPATIBLE) -C src/etherboot
+	make BOARD=$(BOARD) COMPATIBLE="$(COMPATIBLE)" -C src/etherboot
 	data2mem -bm boot.bmm -bd src/etherboot/$(BOARD)_$(CPU).mem -bt $< -o b $(work-dir)/$(CPU)_xilinx.new.bit
 
 $(work-dir)/search-ramb.log: scripts/search_ramb.tcl $(work-dir)/$(CPU)_xilinx_routed.dcp

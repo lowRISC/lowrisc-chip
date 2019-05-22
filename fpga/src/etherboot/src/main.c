@@ -154,6 +154,7 @@ int main()
     case 0x2: printf("DRAM test\n"); dram_main(sw); break;
     case 0x4: printf("TFTP boot\n"); eth_main(); break;
     case 0x6: printf("Cache test\n"); cache_main(); break;
+    case 0x7: printf("Keyboard test\n"); keyb_main(); break;
     }
   while (1)
     {

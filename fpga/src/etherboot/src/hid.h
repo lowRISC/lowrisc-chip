@@ -39,6 +39,7 @@ extern volatile uint16_t *const hid_vga_ptr;
 extern volatile uint64_t *const hid_reg_ptr;
 extern volatile uint8_t  *const hid_font_ptr;
 extern volatile uint64_t *const hid_fb_ptr;
+extern volatile uint32_t *const keyb_base;
 
 extern void hid_init(void);
 extern void hid_send(uint8_t);

@@ -32,8 +32,10 @@ void eth_main(void);
 void sd_main(int sw);
 void dram_main(int sw);
 void cache_main(void);
+void keyb_main(void);
 uint32_t hwrnd(void);
 void gpio_leds(uint32_t arg);
 uint32_t gpio_sw(void);
+unsigned int rand32(void);
 
 #endif
