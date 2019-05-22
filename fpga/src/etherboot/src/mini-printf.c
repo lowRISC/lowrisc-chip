@@ -45,6 +45,7 @@
 #include <stdarg.h>
 #include "mini-printf.h"
 #include "uart.h"
+#include "hid.h"
 
 static unsigned int
 itoa(int value, unsigned int radix, unsigned int uppercase, unsigned int unsig,

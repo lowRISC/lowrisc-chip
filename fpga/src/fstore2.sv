@@ -26,7 +26,7 @@ module fstore2(
                input wire [63:0]  hid_wrdata,
                input wire [18:0]  hid_addr,
                input wire [7:0]   hid_we,
-               input wire [7:0]   one_hot_data_addr;
+               input wire [7:0]   one_hot_data_addr,
                input wire         hid_en,
                input wire         clk_i,
                input wire         rst_ni
