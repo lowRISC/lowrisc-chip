@@ -105,7 +105,7 @@ module fstore2(
                   .addrb(hid_addr[13:3]),
                   .web(hid_we),
                   .doutb(doutfb[r]),
-                  .enb(hid_en && (hid_addr[17:14]==r) && hid_addr[18]);
+                  .enb(hid_en && (hid_addr[17:14]==r) && hid_addr[18]));
    endgenerate
 
    always @(posedge clk_i)
