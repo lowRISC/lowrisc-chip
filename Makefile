@@ -1,3 +1,6 @@
+.SUFFIXES:
+.PHONY: # riscv-pk/vt/vmlinux-vt riscv-pk/serial/vmlinux-serial
+
 include sources.inc
 
 REMOTE=lowrisc5.sm
@@ -7,25 +10,49 @@ default: nexys4_ddr_ariane
 
 all: nexys4_ddr_ariane nexys4_ddr_rocket genesys2_ariane genesys2_rocket
 
-tftp: riscv-pk/build/bbl
-	(cd riscv-pk/build; echo -e bin \\n put $< \\n | tftp $(REMOTE))
+tftp_serial: riscv-pk/serial/bbl
+	(cd riscv-pk/serial; echo -e bin \\n put $< \\n | tftp $(REMOTE))
 
-riscv-pk/build/bbl: $(LINUX)/vmlinux
-	mkdir -p riscv-pk/build
-	(cd riscv-pk/build; ../configure --host=riscv64-unknown-elf --enable-print-device-tree --with-payload=../../$(LINUX)/vmlinux 'CC=riscv64-unknown-elf-gcc -g'; make)
+tftp_vt: riscv-pk/vt/bbl
+	(cd riscv-pk/vt; echo -e bin \\n put $< \\n | tftp $(REMOTE))
 
-$(LINUX)/vmlinux: $(LINUX)/.config $(LINUX)/initramfs.cpio
-	make -C $(LINUX) ARCH=riscv CROSS_COMPILE=riscv64-unknown-elf- -j 4 # V=1 KBUILD_CFLAGS=-v
+linux_serial: riscv-pk/serial/bbl
 
-$(LINUX)/.config: $(LINUX)/drivers/net/ethernet/Makefile
+riscv-pk/serial/bbl: $(LINUX)/drivers/net/ethernet/Makefile $(LINUX)/initramfs.cpio $(LINUX)/.config riscv-pk/serial/vmlinux-serial riscv-pk/serial/Makefile
+	make -C riscv-pk/serial
+
+riscv-pk/serial/Makefile:
+	mkdir -p riscv-pk/serial
+	cd riscv-pk/serial; ../configure --host=riscv64-unknown-elf --enable-print-device-tree --with-payload=vmlinux-serial
+
+riscv-pk/vt/Makefile:
+	mkdir -p riscv-pk/vt
+	cd riscv-pk/vt; ../configure --host=riscv64-unknown-elf --enable-print-device-tree --with-payload=vmlinux-vt
+
+linux_vt: riscv-pk/vt/bbl
+
+riscv-pk/vt/bbl: $(LINUX)/drivers/net/ethernet/Makefile $(LINUX)/initramfs.cpio $(LINUX)/.config riscv-pk/vt/vmlinux-vt 
+	make -C riscv-pk/vt
+
+riscv-pk/vt/vmlinux-vt: riscv-pk/vt/Makefile
+	make -C $(LINUX) ARCH=riscv CROSS_COMPILE=riscv64-unknown-elf- CONFIG_SERIAL_8250_CONSOLE=n CONFIG_VT_CONSOLE=y -j 4 # V=1 KBUILD_CFLAGS=-v
+	mv $(LINUX)/vmlinux $@
+
+riscv-pk/serial/vmlinux-serial: riscv-pk/serial/Makefile
+	make -C $(LINUX) ARCH=riscv CROSS_COMPILE=riscv64-unknown-elf- CONFIG_SERIAL_8250_CONSOLE=y CONFIG_VT_CONSOLE=n -j 4 # V=1 KBUILD_CFLAGS=-v
+	mv $(LINUX)/vmlinux $@
+
+$(LINUX)/.config:
 	make -C $(LINUX) ARCH=riscv CROSS_COMPILE=riscv64-unknown-elf- defconfig
 
 $(LINUX)/initramfs.cpio:
 	make -C debian-riscv64 cpio
 
 $(LINUX)/drivers/net/ethernet/Makefile: linux-5.1.3.patch
+	rm -rf linux-5.1.3
 	curl https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-5.1.3.tar.xz|tar xJf -
 	patch -d linux-5.1.3 -p1 < linux-5.1.3.patch
+	mv -f $(LINUX) $(LINUX).old
 	mv linux-5.1.3 $(LINUX)
 
 fpga/src/etherboot/$(BOARD)_$(CPU).sv: fpga/src/$(BOARD).dts

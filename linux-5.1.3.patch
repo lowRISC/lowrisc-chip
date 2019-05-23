@@ -1,10 +1,10 @@
-diff -urN linux-5.1.3/arch/riscv/configs/defconfig linux-5.1.3-lowrisc/arch/riscv/configs/defconfig
+diff -urN linux-5.1.3/arch/riscv/configs/defconfig linux-5.1.3-new/arch/riscv/configs/defconfig
 --- linux-5.1.3/arch/riscv/configs/defconfig	2019-05-16 18:35:40.000000000 +0100
-+++ linux-5.1.3-lowrisc/arch/riscv/configs/defconfig	2019-05-20 13:32:55.079325213 +0100
-@@ -1,83 +1,1628 @@
++++ linux-5.1.3-new/arch/riscv/configs/defconfig	2019-05-22 16:58:21.096769871 +0100
+@@ -1,83 +1,1643 @@
 +#
 +# Automatically generated file; DO NOT EDIT.
-+# Linux/riscv 5.1.0-rc7 Kernel Configuration
++# Linux/riscv 5.1.3 Kernel Configuration
 +#
 +
 +#
@@ -252,7 +252,7 @@ diff -urN linux-5.1.3/arch/riscv/configs/defconfig linux-5.1.3-lowrisc/arch/risc
 +# GCOV-based kernel profiling
 +#
 +# CONFIG_GCOV_KERNEL is not set
-+CONFIG_PLUGIN_HOSTCC=""
++CONFIG_PLUGIN_HOSTCC="g++"
 +CONFIG_RT_MUTEXES=y
 +CONFIG_BASE_SMALL=0
 +# CONFIG_MODULES is not set
@@ -792,6 +792,8 @@ diff -urN linux-5.1.3/arch/riscv/configs/defconfig linux-5.1.3-lowrisc/arch/risc
 +# CONFIG_KEYBOARD_OMAP4 is not set
 +# CONFIG_KEYBOARD_XTKBD is not set
 +# CONFIG_KEYBOARD_BCM is not set
++CONFIG_KEYBOARD_LOWRISC=y
++# CONFIG_KEYBOARD_LOWRISC_FAKE is not set
 +# CONFIG_INPUT_MOUSE is not set
 +# CONFIG_INPUT_JOYSTICK is not set
 +# CONFIG_INPUT_TABLET is not set
@@ -818,7 +820,11 @@ diff -urN linux-5.1.3/arch/riscv/configs/defconfig linux-5.1.3-lowrisc/arch/risc
 +# Character devices
 +#
 +CONFIG_TTY=y
-+# CONFIG_VT is not set
++CONFIG_VT=y
++# CONFIG_CONSOLE_TRANSLATIONS is not set
++CONFIG_VT_CONSOLE=y
++CONFIG_HW_CONSOLE=y
++# CONFIG_VT_HW_CONSOLE_BINDING is not set
 +CONFIG_UNIX98_PTYS=y
 +CONFIG_LEGACY_PTYS=y
 +CONFIG_LEGACY_PTY_COUNT=256
@@ -834,9 +840,10 @@ diff -urN linux-5.1.3/arch/riscv/configs/defconfig linux-5.1.3-lowrisc/arch/risc
 +#
 +CONFIG_SERIAL_EARLYCON=y
  CONFIG_SERIAL_8250=y
+-CONFIG_SERIAL_8250_CONSOLE=y
 +CONFIG_SERIAL_8250_DEPRECATED_OPTIONS=y
 +# CONFIG_SERIAL_8250_FINTEK is not set
- CONFIG_SERIAL_8250_CONSOLE=y
++# CONFIG_SERIAL_8250_CONSOLE is not set
 +CONFIG_SERIAL_8250_NR_UARTS=4
 +CONFIG_SERIAL_8250_RUNTIME_UARTS=4
 +# CONFIG_SERIAL_8250_EXTENDED is not set
@@ -958,6 +965,15 @@ diff -urN linux-5.1.3/arch/riscv/configs/defconfig linux-5.1.3-lowrisc/arch/risc
 +#
 +# CONFIG_FB is not set
 +# CONFIG_BACKLIGHT_LCD_SUPPORT is not set
++
++#
++# Console display driver support
++#
++# CONFIG_VGA_CONSOLE is not set
++CONFIG_LOWRISC_VGA_CONSOLE=y
++CONFIG_DUMMY_CONSOLE=y
++CONFIG_DUMMY_CONSOLE_COLUMNS=80
++CONFIG_DUMMY_CONSOLE_ROWS=25
 +# CONFIG_SOUND is not set
 +
 +#
@@ -1680,9 +1696,776 @@ diff -urN linux-5.1.3/arch/riscv/configs/defconfig linux-5.1.3-lowrisc/arch/risc
 +# CONFIG_SAMPLES is not set
 +# CONFIG_UBSAN is not set
 +CONFIG_UBSAN_ALIGNMENT=y
-diff -urN linux-5.1.3/drivers/mmc/host/Kconfig linux-5.1.3-lowrisc/drivers/mmc/host/Kconfig
+diff -urN linux-5.1.3/drivers/input/keyboard/Kconfig linux-5.1.3-new/drivers/input/keyboard/Kconfig
+--- linux-5.1.3/drivers/input/keyboard/Kconfig	2019-05-16 18:35:40.000000000 +0100
++++ linux-5.1.3-new/drivers/input/keyboard/Kconfig	2019-05-22 16:58:21.096769871 +0100
+@@ -757,3 +757,19 @@
+ 	  module will be called pmic-keys.
+ 
+ endif
++
++config KEYBOARD_LOWRISC
++	tristate "LowRISC keyboard"
++	select INPUT_POLLDEV
++	default n
++	help
++	  Say Y here if you want to use a LowRISC keyboard.
++	  If unsure, say N.
++
++config KEYBOARD_LOWRISC_FAKE
++	tristate "Translate LowRISC serial characters to fake keyboard events"
++	select INPUT_POLLDEV
++	default n
++	help
++	  Say Y here if you want to use a serial device as a fake keyboard input device.
++	  If unsure, say N.
+diff -urN linux-5.1.3/drivers/input/keyboard/lowrisc-fake-keys.c linux-5.1.3-new/drivers/input/keyboard/lowrisc-fake-keys.c
+--- linux-5.1.3/drivers/input/keyboard/lowrisc-fake-keys.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.1.3-new/drivers/input/keyboard/lowrisc-fake-keys.c	2019-05-22 16:58:21.096769871 +0100
+@@ -0,0 +1,273 @@
++/*
++ * Lowrisc Dummy Keyboard Controller Driver - Translates UART input to fake key events
++ * http://www.lowrisc.org/
++ *
++ * based on opencores Javier Herrero <jherrero@hvsistemas.es>
++ * Copyright 2007-2009 HV Sistemas S.L.
++ *
++ * Licensed under the GPL-2 or later.
++ *
++ * This driver acts as a shadow console, forwarding serial port events to the main console
++ * using the input event mechanism. It's primary use is to allow LowRISC to be used via
++ * a serial port without screen and keyboard being connected.
++ *
++ * It also may be used as a conduit to shadow an approximation of console output to the serial port
++ *
++ * Since console output is already processed according to the type of device at this point, it would
++ * be too complicated to replicate all the behaviour of a serial console. So everything other than
++ * emergency hacking should be done via ssh (for editing) or sftp (for uploading)
++ */
++
++#include <linux/input.h>
++#include <linux/interrupt.h>
++#include <linux/io.h>
++#include <linux/ioport.h>
++#include <linux/kernel.h>
++#include <linux/module.h>
++#include <linux/platform_device.h>
++#include <linux/input-polldev.h>
++#include <linux/slab.h>
++#include <asm/io.h>
++#include <linux/uaccess.h>
++#include <asm/sbi.h>
++
++#define DRIVER_NAME "lowrisc-fake"
++
++static struct lowrisc_fake {
++  struct platform_device *pdev;
++  struct resource *fake;
++  spinlock_t lock;
++  volatile uint32_t *fake_base;
++  struct input_dev *input;
++  unsigned short keycodes[128];
++} lowrisc_fake_static;
++
++void lowrisc_shadow_console_putchar(int ch)
++{
++  volatile uint64_t *tx = (volatile uint64_t *)(lowrisc_fake_static.fake_base);
++  if (tx)
++    {
++      *tx = ch & 0x7f; /* just send the US ASCII subset */
++    }
++  else /* probe function not called yet */
++    {
++      sbi_console_putchar(ch);
++    }
++}
++
++static int upper(int ch)
++{
++  if ( ch >= 'A' && ch <= 'Z' ) return 1;
++  switch ( ch )
++    {
++    case '!' : return 1;
++    case '"' : return 1;
++    case '#' : return 1;
++    case '$' : return 1;
++    case '%' : return 1;
++    case '^' : return 1;
++    case '&' : return 1;
++    case '*' : return 1;
++    case '<' : return 1;
++    case '>' : return 1;
++    case '~' : return 1;
++    case '@' : return 1;
++    case '+' : return 1;
++    case '_' : return 1;
++    case '(' : return 1;
++    case ')' : return 1;
++    case '{' : return 1;
++    case '}' : return 1;
++    case '|' : return 1;
++    case ':' : return 1;
++    case '?' : return 1;
++    default  : return 0;
++    }
++}
++
++static void lowrisc_keys_poll(struct input_polled_dev *dev)
++{
++  struct lowrisc_fake *lowrisc_fake = dev->private;
++  struct input_dev *input = dev->input;
++  unsigned char c;
++  volatile uint64_t *rx = (volatile uint64_t *)(lowrisc_fake->fake_base);
++  int ch = *rx;
++  if (0x200 & ~ch)
++    {
++      enum {lctrl=0x1d, lshift=0x2a};
++      int ctrl;
++      rx[0x200] = 0; // pop FIFO
++      ch = *rx & 0x7f;
++      ctrl = ch >= 1 && ch <= 26;
++      if (ctrl)
++	{
++	  input_report_key(input, lctrl, 1);
++          ch = ch + 'a' - 1; // Convert ctrl-key back to normal key
++	}      
++      switch(ch)
++	{
++	case '\e' : c =  	  0x01; break;
++	case '1' : case '!' : c = 0x02; break;
++	case '2' : case '@' : c =  	  0x03; break;
++	case '3' : case '#' : c =  	  0x04; break;
++	case '4' : case '$' : c =  	  0x05; break;
++	case '5' : case '%' : c =  	  0x06; break;
++	case '6' : case '^' : c =  	  0x07; break;
++	case '7' : case '&' : c =  	  0x08; break;
++	case '8' : case '*' : c =  	  0x09; break;
++	case '9' : case '(' : c =  	  0x0a; break;
++	case '0' : case ')' : c =  	      0x0b; break;
++	case '-' : case '_' : c =  	  0x0c; break;
++	case '=' : case '+' : c =  	  0x0d; break;
++	case 0x7f : c = 0x0e; break;
++	case '\t' : c = 0x0f; break;
++	case 'Q' : case 'q' : c =  	  0x10; break;
++	case 'W' : case 'w' : c =  	  0x11; break;
++	case 'E' : case 'e' : c =  	  0x12; break;
++	case 'R' : case 'r' : c =  	  0x13; break;
++	case 'T' : case 't' : c =  	  0x14; break;
++	case 'Y' : case 'y' : c =  	  0x15; break;
++	case 'U' : case 'u' : c =  	  0x16; break;
++	case 'I' : case 'i' : c =  	  0x17; break;
++	case 'O' : case 'o' : c =  	  0x18; break;
++	case 'P' : case 'p' : c =  	  0x19; break;
++	case '[' : case '{' : c =  	  0x1a; break;
++	case ']' : case '}' : c =  	  0x1b; break;
++	case '\r' : c =  	  0x1c; break;
++	case 'A' : case 'a' : c =  	  0x1e; break;
++	case 'S' : case 's' : c =  	  0x1f; break;
++	case 'D' : case 'd' : c =  	  0x20; break;
++	case 'F' : case 'f' : c =  	  0x21; break;
++	case 'G' : case 'g' : c =  	  0x22; break;
++	case 'H' : case 'h' : c =  	  0x23; break;
++	case 'J' : case 'j' : c =  	  0x24; break;
++	case 'K' : case 'k' : c =  	  0x25; break;
++	case 'L' : case 'l' : c =  	  0x26; break;
++	case ';' : case ':' : c =  	  0x27; break;
++	case '\'' : case '"' : c =  	  0x28; break;
++	case '`' : case '~' : c =  	  0x29; break;
++	case '\\' : case '|' : c =  	  0x2b; break;
++	case 'Z' : case 'z' : c =   0x2c; break;
++	case 'X' : case 'x' : c =   0x2d; break;
++	case 'C' : case 'c' : c =   0x2e; break;
++	case 'V' : case 'v' : c =   0x2f; break;
++	case 'B' : case 'b' : c =   0x30; break;
++	case 'N' : case 'n' : c =   0x31; break;
++	case 'M' : case 'm' : c =   0x32; break;
++	case ',' : case '<' : c =   0x33; break;
++	case '.' : case '>' : c =   0x34; break;
++	case '/' : case '?' : c =   0x35; break;
++	case ' ' : c =   0x39; break;
++	default: c = 0; printk("input_report_key 0x%x not translated\n", ch);
++	}
++      if (upper(ch))
++	{
++	  input_report_key(input, lshift, 1);
++	}
++      input_report_key(input, c, 1);
++      input_report_key(input, c, 0);
++      if (ctrl)
++	{
++	  input_report_key(input, lctrl, 0);
++	}
++      if (upper(ch))
++	{
++	  input_report_key(input, lshift, 0);
++	}
++      input_sync(input);
++    }
++}
++
++static int lowrisc_fake_probe(struct platform_device *pdev)
++{
++  struct input_dev *input;
++  struct lowrisc_fake *lowrisc_fake;
++  int i, error;
++  struct input_polled_dev *poll_dev;
++  struct device *dev = &pdev->dev;
++
++  printk("lowrisc_fake_probe\n");
++  lowrisc_fake = &lowrisc_fake_static;
++  
++  if (lowrisc_fake->fake_base) /* Only one instance allowed */
++    {
++    return -ENOMEM;
++    }
++
++  lowrisc_fake->fake = platform_get_resource(pdev, IORESOURCE_MEM, 0);
++  if (!request_mem_region(lowrisc_fake->fake->start, resource_size(lowrisc_fake->fake), "lowrisc_fake"))
++    {
++    dev_err(&pdev->dev, "cannot request LowRISC UART region\n");
++    return -EBUSY;
++    }
++
++  lowrisc_fake->fake_base = (volatile uint32_t *)ioremap(lowrisc_fake->fake->start, resource_size(lowrisc_fake->fake));
++  printk("fake_keyboard address %llx, remapped to %lx\n", lowrisc_fake->fake->start, (size_t)lowrisc_fake->fake_base);
++
++  poll_dev = devm_input_allocate_polled_device(dev);
++  if (!poll_dev) {
++    dev_err(dev, "failed to allocate input device\n");
++    return -ENOMEM;
++  }
++  
++  poll_dev->poll_interval = 100;
++  
++  poll_dev->poll = lowrisc_keys_poll;
++  poll_dev->private = lowrisc_fake;
++  
++  input = poll_dev->input;
++
++  lowrisc_fake->input = input;
++
++  input->name = pdev->name;
++  input->phys = "lowrisc-fake/input0";
++  
++  input->id.bustype = BUS_HOST;
++  input->id.vendor = 0x0001;
++  input->id.product = 0x0001;
++  input->id.version = 0x0100;
++  
++  input->keycode = lowrisc_fake->keycodes;
++  input->keycodesize = sizeof(lowrisc_fake->keycodes[0]);
++  input->keycodemax = ARRAY_SIZE(lowrisc_fake->keycodes);
++  
++  __set_bit(EV_KEY, input->evbit);
++  
++  for (i = 0; i < ARRAY_SIZE(lowrisc_fake->keycodes); i++) {
++    /*
++     * Lowrisc lowrisc_faketroller happens to have scancodes match
++     * our KEY_* definitions.
++     */
++    lowrisc_fake->keycodes[i] = i;
++    __set_bit(lowrisc_fake->keycodes[i], input->keybit);
++  }
++  __clear_bit(KEY_RESERVED, input->keybit);
++  
++  error = input_register_polled_device(poll_dev);
++  if (error) {
++    dev_err(dev, "Unable to register input device: %d\n", error);
++    return error;
++  }
++ 
++  return 0;
++}
++
++static const struct of_device_id lowrisc_fake_of_match[] = {
++	{ .compatible = DRIVER_NAME },
++	{ }
++};
++
++MODULE_DEVICE_TABLE(of, lowrisc_fake_of_match);
++
++static struct platform_driver lowrisc_fake_device_driver = {
++	.probe    = lowrisc_fake_probe,
++	.driver   = {
++		.name = DRIVER_NAME,
++		.of_match_table = lowrisc_fake_of_match,
++	},
++};
++module_platform_driver(lowrisc_fake_device_driver);
++
++MODULE_LICENSE("GPL");
++MODULE_AUTHOR("Jonathan Kimmitt <jonathan@kimmitt.uk>");
++MODULE_DESCRIPTION("Dummy Keyboard input events for Lowrisc");
+diff -urN linux-5.1.3/drivers/input/keyboard/lowrisc-kbd.c linux-5.1.3-new/drivers/input/keyboard/lowrisc-kbd.c
+--- linux-5.1.3/drivers/input/keyboard/lowrisc-kbd.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.1.3-new/drivers/input/keyboard/lowrisc-kbd.c	2019-05-22 16:58:21.096769871 +0100
+@@ -0,0 +1,168 @@
++/*
++ * Lowrisc Keyboard Controller Driver
++ * http://www.lowrisc.org/
++ *
++ * based on opencores Javier Herrero <jherrero@hvsistemas.es>
++ * Copyright 2007-2009 HV Sistemas S.L.
++ *
++ * Licensed under the GPL-2 or later.
++ *
++ * This driver polls the Nexys4DDR onboard PIC which has a PS/2 to USB converter for legacy keyboards
++ * Newer keyboards such as Apple USB do not use PS/2 emulation so you are out of luck.
++ * This driver was tested with a Microsoft Wired Keyboard 200, which meets the above criterion.
++ * Alternatively PS/2 keyboards that have a USB adaptor plug would probably be suitable (but untested)
++ *
++ * The Verilog sub-system generates raw scancodes which this driver converts to PC standard codes, and
++ * the input subsystem then converts them to ASCII according National/Regional preferences.
++ *
++ * There may be missing or incorrect codes which can be corrected in RTL, but the PIC programming is not
++ * open source as far as I am aware, so unhappy users should use the lowrisc-fake-keys.c driver which
++ * emulates serial events for all keyboards over the serial port. In the latter case the USB port is free
++ * to attach a mouse or similar device, but emulation speeds are too limited for effective graphical console
++ * use (and VGA graphics RTL would have to be designed).
++ */
++
++#include <linux/input.h>
++#include <linux/interrupt.h>
++#include <linux/io.h>
++#include <linux/ioport.h>
++#include <linux/kernel.h>
++#include <linux/module.h>
++#include <linux/platform_device.h>
++#include <linux/input-polldev.h>
++#include <linux/slab.h>
++#include <asm/io.h>
++#include <linux/uaccess.h>
++#include <asm/sbi.h>
++
++#define DRIVER_NAME "lowrisc-keyb"
++
++struct lowrisc_kbd {
++  struct platform_device *pdev;
++  struct resource *keyb;
++  spinlock_t lock;
++  volatile uint32_t *keyb_base;
++  struct input_dev *input;
++  unsigned short keycodes[128];
++};
++
++enum {scan_code_mask=0xFF, scan_released=0x100, keyb_empty=0x200, no_keyboard=0x400};
++
++const struct { char scan,lwr,upr; } scancode[] = {
++#include "lowrisc-scancode.h"
++};
++
++static void lowrisc_keys_poll(struct input_polled_dev *dev)
++{
++  struct lowrisc_kbd *lowrisc_kbd = dev->private;
++  struct input_dev *input = dev->input;
++  unsigned char c;
++  uint32_t key = *lowrisc_kbd->keyb_base;
++  while (keyb_empty & ~key)
++    {
++      *lowrisc_kbd->keyb_base = 0; // bump FIFO location
++      key = *lowrisc_kbd->keyb_base;
++      c = scancode[key&scan_code_mask].scan; /* convert to standard AT keyboard codes */
++      if (c != 0x3A) // Ignore caps lock for now (and hopefully always)
++        {
++          input_report_key(input, c, key & scan_released ? 0 : 1);
++          input_sync(input);
++        }
++      pr_debug("input event key %c\n", scancode[key&scan_code_mask].lwr);
++    }
++}
++
++static int lowrisc_kbd_probe(struct platform_device *pdev)
++{
++  struct input_dev *input;
++  struct lowrisc_kbd *lowrisc_kbd;
++  int i, error;
++  struct input_polled_dev *poll_dev;
++  struct device *dev = &pdev->dev;
++
++  printk("lowrisc_kbd_probe\n");
++  lowrisc_kbd = devm_kzalloc(&pdev->dev, sizeof(struct lowrisc_kbd), GFP_KERNEL);
++  if (!lowrisc_kbd) {
++    return -ENOMEM;
++  }
++  lowrisc_kbd->keyb = platform_get_resource(pdev, IORESOURCE_MEM, 0);
++  if (!request_mem_region(lowrisc_kbd->keyb->start, resource_size(lowrisc_kbd->keyb), "lowrisc_kbd"))
++    {
++    dev_err(&pdev->dev, "cannot request LowRISC keyboard region\n");
++    return -EBUSY;
++    }
++  lowrisc_kbd->keyb_base = (volatile uint32_t *)ioremap(lowrisc_kbd->keyb->start, resource_size(lowrisc_kbd->keyb));
++  printk("hid_keyboard address %llx, remapped to %lx\n", lowrisc_kbd->keyb->start, (size_t)lowrisc_kbd->keyb_base);
++
++  poll_dev = devm_input_allocate_polled_device(dev);
++  if (!poll_dev) {
++    dev_err(dev, "failed to allocate input device\n");
++    return -ENOMEM;
++  }
++  
++  poll_dev->poll_interval = 100;
++  
++  poll_dev->poll = lowrisc_keys_poll;
++  poll_dev->private = lowrisc_kbd;
++  
++  input = poll_dev->input;
++
++  lowrisc_kbd->input = input;
++
++  input->name = pdev->name;
++  input->phys = "lowrisc-kbd/input0";
++  
++  input->id.bustype = BUS_HOST;
++  input->id.vendor = 0x0001;
++  input->id.product = 0x0001;
++  input->id.version = 0x0100;
++  
++  input->keycode = lowrisc_kbd->keycodes;
++  input->keycodesize = sizeof(lowrisc_kbd->keycodes[0]);
++  input->keycodemax = ARRAY_SIZE(lowrisc_kbd->keycodes);
++  
++  __set_bit(EV_KEY, input->evbit);
++  
++  for (i = 0; i < ARRAY_SIZE(lowrisc_kbd->keycodes); i++) {
++    /*
++     * Lowrisc lowrisc_kbdtroller happens to have scancodes match
++     * our KEY_* definitions.
++     */
++    lowrisc_kbd->keycodes[i] = i;
++    __set_bit(lowrisc_kbd->keycodes[i], input->keybit);
++  }
++  __clear_bit(KEY_RESERVED, input->keybit);
++  
++  error = input_register_polled_device(poll_dev);
++  if (error) {
++    dev_err(dev, "Unable to register input device: %d\n", error);
++    return error;
++  }
++  printk("Clear any pending input\n");
++  while ((1<<9) & ~*lowrisc_kbd->keyb_base)
++    {
++      *lowrisc_kbd->keyb_base = 0; // bump FIFO location
++    }
++  printk("Loading keyboard input device returns success\n");  
++  return 0;
++}
++
++static const struct of_device_id lowrisc_kbd_of_match[] = {
++	{ .compatible = "lowrisc-keyb" },
++	{ }
++};
++
++MODULE_DEVICE_TABLE(of, lowrisc_kbd_of_match);
++
++static struct platform_driver lowrisc_kbd_device_driver = {
++	.probe    = lowrisc_kbd_probe,
++	.driver   = {
++		.name = "lowrisc-keyb",
++		.of_match_table = lowrisc_kbd_of_match,
++	},
++};
++module_platform_driver(lowrisc_kbd_device_driver);
++
++MODULE_LICENSE("GPL");
++MODULE_AUTHOR("Jonathan Kimmitt <jonathan@kimmitt.uk>");
++MODULE_DESCRIPTION("Keyboard driver for Lowrisc Keyboard Lowrisc_controller");
+diff -urN linux-5.1.3/drivers/input/keyboard/lowrisc-scancode.h linux-5.1.3-new/drivers/input/keyboard/lowrisc-scancode.h
+--- linux-5.1.3/drivers/input/keyboard/lowrisc-scancode.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.1.3-new/drivers/input/keyboard/lowrisc-scancode.h	2019-05-22 16:58:21.096769871 +0100
+@@ -0,0 +1,282 @@
++//////////////////////////////////////////////////////////////////////
++////                                                              ////
++//// A table of PS/2 to AT scan code conversions,                 ////
++//// based on ps2_defines.v                                       ////
++//// Copyright (C) 2000 Miha Dolenc, mihad@opencores.org          ////
++////                                                              ////
++//// This source file may be used and distributed without         ////
++//// restriction provided that this copyright statement is not    ////
++//// removed from the file and that any derivative work contains  ////
++//// the original copyright notice and the associated disclaimer. ////
++////                                                              ////
++//// This source file is free software; you can redistribute it   ////
++//// and/or modify it under the terms of the GNU Lesser General   ////
++//// Public License as published by the Free Software Foundation; ////
++//// either version 2.1 of the License, or (at your option) any   ////
++//// later version.                                               ////
++////                                                              ////
++//// This source is distributed in the hope that it will be       ////
++//// useful, but WITHOUT ANY WARRANTY; without even the implied   ////
++//// warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR      ////
++//// PURPOSE.  See the GNU Lesser General Public License for more ////
++//// details.                                                     ////
++////                                                              ////
++//// You should have received a copy of the GNU Lesser General    ////
++//// Public License along with this source; if not, download it   ////
++//// from http://www.opencores.org/lgpl.shtml                     ////
++[  0] = {0x00,0x00,0x00},
++[  1] = {0x43,0x00,0x00},
++[  2] = {0x41,0x00,0x00},
++[  3] = {0x3f,0x00,0x00},
++[  4] = {0x3d,0x00,0x00},
++[  5] = {0x3b,0x00,0x00},
++[  6] = {0x3c,0x00,0x00},
++[  7] = {0x58,0x00,0x00},
++[  8] = {0x64,0x00,0x00},
++[  9] = {0x44,0x00,0x00},
++[ 10] = {0x42,0x00,0x00},
++[ 11] = {0x40,0x00,0x00},
++[ 12] = {0x3e,0x00,0x00},
++[ 13] = {0x0f,0x09,0x09},
++[ 14] = {0x29,0x60,0x60},
++[ 15] = {0x59,0x00,0x00},
++[ 16] = {0x65,0x00,0x00},
++[ 17] = {0x38,0x00,0x00},
++[ 18] = {0x2a,0x00,0x00},
++[ 19] = {0x70,0x00,0x00},
++[ 20] = {0x1d,0x00,0x00},
++[ 21] = {0x10,0x71,0x51},
++[ 22] = {0x02,0x31,0x21},
++[ 23] = {0x5a,0x00,0x00},
++[ 24] = {0x66,0x00,0x00},
++[ 25] = {0x71,0x00,0x00},
++[ 26] = {0x2c,0x7a,0x5a},
++[ 27] = {0x1f,0x73,0x53},
++[ 28] = {0x1e,0x61,0x41},
++[ 29] = {0x11,0x77,0x57},
++[ 30] = {0x03,0x32,0x22},
++[ 31] = {0x5b,0x00,0x00},
++[ 32] = {0x67,0x00,0x00},
++[ 33] = {0x2e,0x63,0x43},
++[ 34] = {0x2d,0x78,0x58},
++[ 35] = {0x20,0x64,0x44},
++[ 36] = {0x12,0x65,0x45},
++[ 37] = {0x05,0x34,0x24},
++[ 38] = {0x04,0x33,0x23},
++[ 39] = {0x5c,0x00,0x00},
++[ 40] = {0x68,0x00,0x00},
++[ 41] = {0x39,0x20,0x20},
++[ 42] = {0x2f,0x76,0x56},
++[ 43] = {0x21,0x66,0x46},
++[ 44] = {0x14,0x74,0x54},
++[ 45] = {0x13,0x72,0x52},
++[ 46] = {0x06,0x35,0x25},
++[ 47] = {0x5d,0x00,0x00},
++[ 48] = {0x69,0x00,0x00},
++[ 49] = {0x31,0x6e,0x4e},
++[ 50] = {0x30,0x62,0x42},
++[ 51] = {0x23,0x68,0x48},
++[ 52] = {0x22,0x67,0x47},
++[ 53] = {0x15,0x79,0x59},
++[ 54] = {0x07,0x36,0x5e},
++[ 55] = {0x5e,0x00,0x00},
++[ 56] = {0x6a,0x00,0x00},
++[ 57] = {0x72,0x00,0x00},
++[ 58] = {0x32,0x6d,0x4d},
++[ 59] = {0x24,0x6a,0x4a},
++[ 60] = {0x16,0x75,0x55},
++[ 61] = {0x08,0x37,0x26},
++[ 62] = {0x09,0x38,0x2a},
++[ 63] = {0x5f,0x00,0x00},
++[ 64] = {0x6b,0x00,0x00},
++[ 65] = {0x33,0x2c,0x3c},
++[ 66] = {0x25,0x6b,0x4b},
++[ 67] = {0x17,0x69,0x49},
++[ 68] = {0x18,0x6f,0x4f},
++[ 69] = {0x0b,0x30,0x29},
++[ 70] = {0x0a,0x39,0x28},
++[ 71] = {0x60,0x00,0x00},
++[ 72] = {0x6c,0x00,0x00},
++[ 73] = {0x34,0x2e,0x3e},
++[ 74] = {0x35,0x2f,0x3f},
++[ 75] = {0x26,0x6c,0x4c},
++[ 76] = {0x27,0x3b,0x3a},
++[ 77] = {0x19,0x70,0x50},
++[ 78] = {0x0c,0x2d,0x5f},
++[ 79] = {0x61,0x00,0x00},
++[ 80] = {0x6d,0x00,0x00},
++[ 81] = {0x73,0x00,0x00},
++[ 82] = {0x28,0x27,0x40},
++[ 83] = {0x74,0x00,0x00},
++[ 84] = {0x1a,0x5b,0x7b},
++[ 85] = {0x0d,0x3d,0x2b},
++[ 86] = {0x62,0x00,0x00},
++[ 87] = {0x6e,0x00,0x00},
++[ 88] = {0x3a,0x00,0x00},
++[ 89] = {0x36,0x00,0x00},
++[ 90] = {0x1c,0x0d,0x0d},
++[ 91] = {0x1b,0x5d,0x7d},
++[ 92] = {0x75,0x00,0x00},
++[ 93] = {0x2b,0x5c,0x7c},
++[ 94] = {0x63,0x00,0x00},
++[ 95] = {0x76,0x00,0x00},
++[ 96] = {0x55,0x00,0x00},
++[ 97] = {0x56,0x00,0x00},
++[ 98] = {0x77,0x00,0x00},
++[ 99] = {0x78,0x00,0x00},
++[100] = {0x79,0x00,0x00},
++[101] = {0x7a,0x00,0x00},
++[102] = {0x0e,0x08,0x08},
++[103] = {0x7b,0x00,0x00},
++[104] = {0x7c,0x00,0x00},
++[105] = {0x4f,0x00,0x00},
++[106] = {0x7d,0x00,0x00},
++[107] = {0x4b,0x00,0x00},
++[108] = {0x47,0x00,0x00},
++[109] = {0x7e,0x00,0x00},
++[110] = {0x7f,0x00,0x00},
++[111] = {0x6f,0x00,0x00},
++[112] = {0x52,0x00,0x00},
++[113] = {0x53,0x00,0x00},
++[114] = {0x50,0x00,0x00},
++[115] = {0x4c,0x00,0x00},
++[116] = {0x4d,0x00,0x00},
++[117] = {0x48,0x00,0x00},
++[118] = {0x01,0x1b,0x1b},
++[119] = {0x45,0x00,0x00},
++[120] = {0x57,0x00,0x00},
++[121] = {0x4e,0x2b,0x2b},
++[122] = {0x51,0x00,0x00},
++[123] = {0x4a,0x2d,0x5f},
++[124] = {0x37,0x2a,0x2a},
++[125] = {0x49,0x00,0x00},
++[126] = {0x46,0x00,0x00},
++[127] = {0x54,0x00,0x00},
++[128] = {0x80,0x00,0x00},
++[129] = {0x81,0x1b,0x1b},
++[130] = {0x82,0x31,0x21},
++[131] = {0x41,0x00,0x00},
++[132] = {0x54,0x00,0x00},
++[133] = {0x85,0x34,0x24},
++[134] = {0x86,0x35,0x25},
++[135] = {0x87,0x36,0x5e},
++[136] = {0x88,0x37,0x26},
++[137] = {0x89,0x38,0x2a},
++[138] = {0x8a,0x39,0x28},
++[139] = {0x8b,0x30,0x29},
++[140] = {0x8c,0x2d,0x5f},
++[141] = {0x8d,0x3d,0x2b},
++[142] = {0x8e,0x08,0x08},
++[143] = {0x8f,0x09,0x09},
++[144] = {0x90,0x71,0x51},
++[145] = {0x91,0x77,0x57},
++[146] = {0x92,0x65,0x45},
++[147] = {0x93,0x72,0x52},
++[148] = {0x94,0x74,0x54},
++[149] = {0x95,0x79,0x59},
++[150] = {0x96,0x75,0x55},
++[151] = {0x97,0x69,0x49},
++[152] = {0x98,0x6f,0x4f},
++[153] = {0x99,0x70,0x50},
++[154] = {0x9a,0x5b,0x7b},
++[155] = {0x9b,0x5d,0x7d},
++[156] = {0x9c,0x0d,0x0d},
++[157] = {0x9d,0x00,0x00},
++[158] = {0x9e,0x61,0x41},
++[159] = {0x9f,0x73,0x53},
++[160] = {0xa0,0x64,0x44},
++[161] = {0xa1,0x66,0x46},
++[162] = {0xa2,0x67,0x47},
++[163] = {0xa3,0x68,0x48},
++[164] = {0xa4,0x6a,0x4a},
++[165] = {0xa5,0x6b,0x4b},
++[166] = {0xa6,0x6c,0x4c},
++[167] = {0xa7,0x3b,0x3a},
++[168] = {0xa8,0x27,0x40},
++[169] = {0xa9,0x60,0x60},
++[170] = {0xaa,0x00,0x00},
++[171] = {0xab,0x5c,0x7c},
++[172] = {0xac,0x7a,0x5a},
++[173] = {0xad,0x78,0x58},
++[174] = {0xae,0x63,0x43},
++[175] = {0xaf,0x76,0x56},
++[176] = {0xb0,0x62,0x42},
++[177] = {0xb1,0x6e,0x4e},
++[178] = {0xb2,0x6d,0x4d},
++[179] = {0xb3,0x2c,0x3c},
++[180] = {0xb4,0x2e,0x3e},
++[181] = {0xb5,0x2f,0x3f},
++[182] = {0xb6,0x00,0x00},
++[183] = {0xb7,0x2a,0x2a},
++[184] = {0xb8,0x00,0x00},
++[185] = {0xb9,0x20,0x20},
++[186] = {0xba,0x00,0x00},
++[187] = {0xbb,0x00,0x00},
++[188] = {0xbc,0x00,0x00},
++[189] = {0xbd,0x00,0x00},
++[190] = {0xbe,0x00,0x00},
++[191] = {0xbf,0x00,0x00},
++[192] = {0xc0,0x00,0x00},
++[193] = {0xc1,0x00,0x00},
++[194] = {0xc2,0x00,0x00},
++[195] = {0xc3,0x00,0x00},
++[196] = {0xc4,0x00,0x00},
++[197] = {0xc5,0x00,0x00},
++[198] = {0xc6,0x00,0x00},
++[199] = {0xc7,0x00,0x00},
++[200] = {0xc8,0x00,0x00},
++[201] = {0xc9,0x00,0x00},
++[202] = {0xca,0x2d,0x5f},
++[203] = {0xcb,0x00,0x00},
++[204] = {0xcc,0x00,0x00},
++[205] = {0xcd,0x00,0x00},
++[206] = {0xce,0x2b,0x2b},
++[207] = {0xcf,0x00,0x00},
++[208] = {0xd0,0x00,0x00},
++[209] = {0xd1,0x00,0x00},
++[210] = {0xd2,0x00,0x00},
++[211] = {0xd3,0x00,0x00},
++[212] = {0xd4,0x00,0x00},
++[213] = {0xd5,0x00,0x00},
++[214] = {0xd6,0x00,0x00},
++[215] = {0xd7,0x00,0x00},
++[216] = {0xd8,0x00,0x00},
++[217] = {0xd9,0x00,0x00},
++[218] = {0xda,0x00,0x00},
++[219] = {0xdb,0x00,0x00},
++[220] = {0xdc,0x00,0x00},
++[221] = {0xdd,0x00,0x00},
++[222] = {0xde,0x00,0x00},
++[223] = {0xdf,0x00,0x00},
++[224] = {0xe0,0x00,0x00},
++[225] = {0xe1,0x00,0x00},
++[226] = {0xe2,0x00,0x00},
++[227] = {0xe3,0x00,0x00},
++[228] = {0xe4,0x00,0x00},
++[229] = {0xe5,0x00,0x00},
++[230] = {0xe6,0x00,0x00},
++[231] = {0xe7,0x00,0x00},
++[232] = {0xe8,0x00,0x00},
++[233] = {0xe9,0x00,0x00},
++[234] = {0xea,0x00,0x00},
++[235] = {0xeb,0x00,0x00},
++[236] = {0xec,0x00,0x00},
++[237] = {0xed,0x00,0x00},
++[238] = {0xee,0x00,0x00},
++[239] = {0xef,0x00,0x00},
++[240] = {0xf0,0x00,0x00},
++[241] = {0xf1,0x00,0x00},
++[242] = {0xf2,0x00,0x00},
++[243] = {0xf3,0x00,0x00},
++[244] = {0xf4,0x00,0x00},
++[245] = {0xf5,0x00,0x00},
++[246] = {0xf6,0x00,0x00},
++[247] = {0xf7,0x00,0x00},
++[248] = {0xf8,0x00,0x00},
++[249] = {0xf9,0x00,0x00},
++[250] = {0xfa,0x00,0x00},
++[251] = {0xfb,0x00,0x00},
++[252] = {0xfc,0x00,0x00},
++[253] = {0xfd,0x00,0x00},
++[254] = {0xfe,0x00,0x00},
++[255] = {0xff,0x00,0x00},
+diff -urN linux-5.1.3/drivers/input/keyboard/Makefile linux-5.1.3-new/drivers/input/keyboard/Makefile
+--- linux-5.1.3/drivers/input/keyboard/Makefile	2019-05-16 18:35:40.000000000 +0100
++++ linux-5.1.3-new/drivers/input/keyboard/Makefile	2019-05-22 16:58:21.096769871 +0100
+@@ -67,3 +67,5 @@
+ obj-$(CONFIG_KEYBOARD_TWL4030)		+= twl4030_keypad.o
+ obj-$(CONFIG_KEYBOARD_XTKBD)		+= xtkbd.o
+ obj-$(CONFIG_KEYBOARD_W90P910)		+= w90p910_keypad.o
++obj-$(CONFIG_KEYBOARD_LOWRISC)		+= lowrisc-kbd.o
++obj-$(CONFIG_KEYBOARD_LOWRISC_FAKE)	+= lowrisc-fake-keys.o
+diff -urN linux-5.1.3/drivers/mmc/host/Kconfig linux-5.1.3-new/drivers/mmc/host/Kconfig
 --- linux-5.1.3/drivers/mmc/host/Kconfig	2019-05-16 18:35:40.000000000 +0100
-+++ linux-5.1.3-lowrisc/drivers/mmc/host/Kconfig	2019-05-20 13:32:55.079325213 +0100
++++ linux-5.1.3-new/drivers/mmc/host/Kconfig	2019-05-22 16:58:21.096769871 +0100
 @@ -938,6 +938,12 @@
  
  	  If unsure, say N.
@@ -1696,9 +2479,9 @@ diff -urN linux-5.1.3/drivers/mmc/host/Kconfig linux-5.1.3-lowrisc/drivers/mmc/h
  config MMC_MTK
  	tristate "MediaTek SD/MMC Card Interface support"
  	depends on HAS_DMA
-diff -urN linux-5.1.3/drivers/mmc/host/lowrisc_sd.c linux-5.1.3-lowrisc/drivers/mmc/host/lowrisc_sd.c
+diff -urN linux-5.1.3/drivers/mmc/host/lowrisc_sd.c linux-5.1.3-new/drivers/mmc/host/lowrisc_sd.c
 --- linux-5.1.3/drivers/mmc/host/lowrisc_sd.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.1.3-lowrisc/drivers/mmc/host/lowrisc_sd.c	2019-05-20 13:32:55.079325213 +0100
++++ linux-5.1.3-new/drivers/mmc/host/lowrisc_sd.c	2019-05-22 16:58:21.096769871 +0100
 @@ -0,0 +1,803 @@
 +/*
 + *  LowRISC Secure Digital Host Controller Interface driver
@@ -2503,9 +3286,9 @@ diff -urN linux-5.1.3/drivers/mmc/host/lowrisc_sd.c linux-5.1.3-lowrisc/drivers/
 +MODULE_AUTHOR("Jonathan Kimmitt");
 +MODULE_DESCRIPTION("LowRISC Secure Digital Host Controller Interface driver");
 +MODULE_LICENSE("GPL");
-diff -urN linux-5.1.3/drivers/mmc/host/lowrisc_sd.h linux-5.1.3-lowrisc/drivers/mmc/host/lowrisc_sd.h
+diff -urN linux-5.1.3/drivers/mmc/host/lowrisc_sd.h linux-5.1.3-new/drivers/mmc/host/lowrisc_sd.h
 --- linux-5.1.3/drivers/mmc/host/lowrisc_sd.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.1.3-lowrisc/drivers/mmc/host/lowrisc_sd.h	2019-05-20 13:32:55.079325213 +0100
++++ linux-5.1.3-new/drivers/mmc/host/lowrisc_sd.h	2019-05-22 16:58:21.096769871 +0100
 @@ -0,0 +1,52 @@
 +/*
 + *  LowRISC PCI Secure Digital Host Controller Interface driver
@@ -2559,9 +3342,9 @@ diff -urN linux-5.1.3/drivers/mmc/host/lowrisc_sd.h linux-5.1.3-lowrisc/drivers/
 +  int irq;
 +  int int_en, width_setting;
 +};
-diff -urN linux-5.1.3/drivers/mmc/host/Makefile linux-5.1.3-lowrisc/drivers/mmc/host/Makefile
+diff -urN linux-5.1.3/drivers/mmc/host/Makefile linux-5.1.3-new/drivers/mmc/host/Makefile
 --- linux-5.1.3/drivers/mmc/host/Makefile	2019-05-16 18:35:40.000000000 +0100
-+++ linux-5.1.3-lowrisc/drivers/mmc/host/Makefile	2019-05-20 13:32:55.083325138 +0100
++++ linux-5.1.3-new/drivers/mmc/host/Makefile	2019-05-22 16:58:21.096769871 +0100
 @@ -73,6 +73,7 @@
  obj-$(CONFIG_MMC_USDHI6ROL0)	+= usdhi6rol0.o
  obj-$(CONFIG_MMC_TOSHIBA_PCI)	+= toshsd.o
@@ -2570,9 +3353,9 @@ diff -urN linux-5.1.3/drivers/mmc/host/Makefile linux-5.1.3-lowrisc/drivers/mmc/
  
  obj-$(CONFIG_MMC_REALTEK_PCI)	+= rtsx_pci_sdmmc.o
  obj-$(CONFIG_MMC_REALTEK_USB)	+= rtsx_usb_sdmmc.o
-diff -urN linux-5.1.3/drivers/net/ethernet/Kconfig linux-5.1.3-lowrisc/drivers/net/ethernet/Kconfig
+diff -urN linux-5.1.3/drivers/net/ethernet/Kconfig linux-5.1.3-new/drivers/net/ethernet/Kconfig
 --- linux-5.1.3/drivers/net/ethernet/Kconfig	2019-05-16 18:35:40.000000000 +0100
-+++ linux-5.1.3-lowrisc/drivers/net/ethernet/Kconfig	2019-05-20 13:32:55.083325138 +0100
++++ linux-5.1.3-new/drivers/net/ethernet/Kconfig	2019-05-22 16:58:21.100769794 +0100
 @@ -115,6 +115,7 @@
  	  Support for the PMAC of the Gigabit switch (GSWIP) inside the
  	  Lantiq / Intel VRX200 VDSL SoC
@@ -2581,9 +3364,9 @@ diff -urN linux-5.1.3/drivers/net/ethernet/Kconfig linux-5.1.3-lowrisc/drivers/n
  source "drivers/net/ethernet/marvell/Kconfig"
  source "drivers/net/ethernet/mediatek/Kconfig"
  source "drivers/net/ethernet/mellanox/Kconfig"
-diff -urN linux-5.1.3/drivers/net/ethernet/lowrisc/Kconfig linux-5.1.3-lowrisc/drivers/net/ethernet/lowrisc/Kconfig
+diff -urN linux-5.1.3/drivers/net/ethernet/lowrisc/Kconfig linux-5.1.3-new/drivers/net/ethernet/lowrisc/Kconfig
 --- linux-5.1.3/drivers/net/ethernet/lowrisc/Kconfig	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.1.3-lowrisc/drivers/net/ethernet/lowrisc/Kconfig	2019-05-20 13:32:55.083325138 +0100
++++ linux-5.1.3-new/drivers/net/ethernet/lowrisc/Kconfig	2019-05-22 16:58:21.100769794 +0100
 @@ -0,0 +1,26 @@
 +#
 +# Xilink device configuration
@@ -2611,9 +3394,9 @@ diff -urN linux-5.1.3/drivers/net/ethernet/lowrisc/Kconfig linux-5.1.3-lowrisc/d
 +	  This driver supports the 100MHz Ethernet for Nexys4_DDR Digilent boards from Lowrisc.
 +
 +endif # NET_VENDOR_LOWRISC
-diff -urN linux-5.1.3/drivers/net/ethernet/lowrisc/lowrisc_100MHz.c linux-5.1.3-lowrisc/drivers/net/ethernet/lowrisc/lowrisc_100MHz.c
+diff -urN linux-5.1.3/drivers/net/ethernet/lowrisc/lowrisc_100MHz.c linux-5.1.3-new/drivers/net/ethernet/lowrisc/lowrisc_100MHz.c
 --- linux-5.1.3/drivers/net/ethernet/lowrisc/lowrisc_100MHz.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.1.3-lowrisc/drivers/net/ethernet/lowrisc/lowrisc_100MHz.c	2019-05-20 13:32:55.083325138 +0100
++++ linux-5.1.3-new/drivers/net/ethernet/lowrisc/lowrisc_100MHz.c	2019-05-22 16:58:21.100769794 +0100
 @@ -0,0 +1,830 @@
 +/*
 + * Lowrisc Ether100MHz Linux driver for the Lowrisc Ethernet 100MHz device.
@@ -3445,9 +4228,9 @@ diff -urN linux-5.1.3/drivers/net/ethernet/lowrisc/lowrisc_100MHz.c linux-5.1.3-
 +MODULE_AUTHOR("Jonathan Kimmitt");
 +MODULE_DESCRIPTION("Lowrisc Ethernet 100MHz driver");
 +MODULE_LICENSE("GPL");
-diff -urN linux-5.1.3/drivers/net/ethernet/lowrisc/lowrisc_100MHz.h linux-5.1.3-lowrisc/drivers/net/ethernet/lowrisc/lowrisc_100MHz.h
+diff -urN linux-5.1.3/drivers/net/ethernet/lowrisc/lowrisc_100MHz.h linux-5.1.3-new/drivers/net/ethernet/lowrisc/lowrisc_100MHz.h
 --- linux-5.1.3/drivers/net/ethernet/lowrisc/lowrisc_100MHz.h	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.1.3-lowrisc/drivers/net/ethernet/lowrisc/lowrisc_100MHz.h	2019-05-20 13:32:55.083325138 +0100
++++ linux-5.1.3-new/drivers/net/ethernet/lowrisc/lowrisc_100MHz.h	2019-05-22 16:58:21.100769794 +0100
 @@ -0,0 +1,55 @@
 +// See LICENSE for license details.
 +
@@ -3504,9 +4287,9 @@ diff -urN linux-5.1.3/drivers/net/ethernet/lowrisc/lowrisc_100MHz.h linux-5.1.3-
 +#define HEADER_IP_LENGTH_OFFSET     16      /* IP Length Offset */
 +
 +#endif
-diff -urN linux-5.1.3/drivers/net/ethernet/lowrisc/Makefile linux-5.1.3-lowrisc/drivers/net/ethernet/lowrisc/Makefile
+diff -urN linux-5.1.3/drivers/net/ethernet/lowrisc/Makefile linux-5.1.3-new/drivers/net/ethernet/lowrisc/Makefile
 --- linux-5.1.3/drivers/net/ethernet/lowrisc/Makefile	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.1.3-lowrisc/drivers/net/ethernet/lowrisc/Makefile	2019-05-20 13:32:55.083325138 +0100
++++ linux-5.1.3-new/drivers/net/ethernet/lowrisc/Makefile	2019-05-22 16:58:21.100769794 +0100
 @@ -0,0 +1,6 @@
 +#
 +# Makefile for the Lowrisc network device driver.
@@ -3514,9 +4297,9 @@ diff -urN linux-5.1.3/drivers/net/ethernet/lowrisc/Makefile linux-5.1.3-lowrisc/
 +
 +obj-$(CONFIG_LOWRISC_DIGILENT_100MHZ) += lowrisc_100MHz.o
 +CFLAGS_lowrisc_100MHz.o := -DDEBUG
-diff -urN linux-5.1.3/drivers/net/ethernet/Makefile linux-5.1.3-lowrisc/drivers/net/ethernet/Makefile
+diff -urN linux-5.1.3/drivers/net/ethernet/Makefile linux-5.1.3-new/drivers/net/ethernet/Makefile
 --- linux-5.1.3/drivers/net/ethernet/Makefile	2019-05-16 18:35:40.000000000 +0100
-+++ linux-5.1.3-lowrisc/drivers/net/ethernet/Makefile	2019-05-20 13:32:55.083325138 +0100
++++ linux-5.1.3-new/drivers/net/ethernet/Makefile	2019-05-22 16:58:21.100769794 +0100
 @@ -50,6 +50,7 @@
  obj-$(CONFIG_KORINA) += korina.o
  obj-$(CONFIG_LANTIQ_ETOP) += lantiq_etop.o
@@ -3525,3 +4308,314 @@ diff -urN linux-5.1.3/drivers/net/ethernet/Makefile linux-5.1.3-lowrisc/drivers/
  obj-$(CONFIG_NET_VENDOR_MARVELL) += marvell/
  obj-$(CONFIG_NET_VENDOR_MEDIATEK) += mediatek/
  obj-$(CONFIG_NET_VENDOR_MELLANOX) += mellanox/
+diff -urN linux-5.1.3/drivers/video/console/Kconfig linux-5.1.3-new/drivers/video/console/Kconfig
+--- linux-5.1.3/drivers/video/console/Kconfig	2019-05-16 18:35:40.000000000 +0100
++++ linux-5.1.3-new/drivers/video/console/Kconfig	2019-05-22 16:58:21.100769794 +0100
+@@ -90,6 +90,11 @@
+           Say Y here if you want the console on the Newport aka XL graphics
+           card of your Indy.  Most people say Y here.
+ 
++config LOWRISC_VGA_CONSOLE
++	bool
++	depends on RISCV
++	default y
++
+ config DUMMY_CONSOLE
+ 	bool
+ 	depends on VGA_CONSOLE!=y || SGI_NEWPORT_CONSOLE!=y 
+diff -urN linux-5.1.3/drivers/video/console/lowrisc-con.c linux-5.1.3-new/drivers/video/console/lowrisc-con.c
+--- linux-5.1.3/drivers/video/console/lowrisc-con.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.1.3-new/drivers/video/console/lowrisc-con.c	2019-05-22 16:58:21.100769794 +0100
+@@ -0,0 +1,281 @@
++/*
++ *  linux/drivers/video/lowrisc_con.c -- A lowrisc console driver
++ *
++ *  Based on dummycon.c (for plain VGA text)
++ *
++ *  This lowrisc device is designed to replicate some of the functions of a PC VGA console
++ *  It does not have graphics, colour is rudimentary and scrolling primitive. Cursor control is TBD.
++ */
++
++#include <linux/types.h>
++#include <linux/kdev_t.h>
++#include <linux/console.h>
++#include <linux/vt_kern.h>
++#include <linux/screen_info.h>
++#include <linux/init.h>
++#include <linux/module.h>
++#include <linux/interrupt.h>
++#include <linux/platform_device.h>
++#include <linux/serial_core.h>
++#include <linux/of.h>
++#include <asm/sbi.h>
++
++#define DRIVER_NAME     "lowrisc-vga"
++
++/*
++ *  Lowrisc console driver
++ */
++
++#define LOWRISC_MEM	4096
++#define LOWRISC_REGS	8192
++#define LOWRISC_COLUMNS	128
++#define LOWRISC_ROWS	32
++#define LOWRISC_REGS_SCROLL (0<<2)
++#define LOWRISC_REGS_XCUR   (2<<2)
++#define LOWRISC_REGS_YCUR   (3<<2)
++
++static uint16_t *hid_vga_ptr;
++static int oldxpos, oldypos;
++
++static void mymove(uint16_t *dest, const uint16_t *src, size_t n)
++{
++  if (dest < hid_vga_ptr || dest+n > hid_vga_ptr+LOWRISC_MEM || src < hid_vga_ptr || src+n > hid_vga_ptr+LOWRISC_MEM)
++    printk("out of range scroll move %lx\n", (long)dest);
++  else
++    memmove(dest, src, n*sizeof(u16));
++}
++
++static void myset(uint16_t *dest, int c, size_t n)
++{
++  if (dest < hid_vga_ptr || dest+n > hid_vga_ptr+LOWRISC_MEM)
++    printk("out of range scroll set %lx\n", (long)dest);
++  else
++    memset(dest, c, n*sizeof(u16));
++}
++
++static const char *lowrisc_con_startup(void)
++{
++    return "lowrisc device";
++}
++
++static void lowrisc_con_init(struct vc_data *vc, int init)
++{
++    vc->vc_can_do_color = 1;
++    if (init) {
++	vc->vc_cols = LOWRISC_COLUMNS;
++	vc->vc_rows = LOWRISC_ROWS;
++    } else
++	vc_resize(vc, LOWRISC_COLUMNS, LOWRISC_ROWS);
++}
++
++static void lowrisc_con_deinit(struct vc_data *vc) { }
++
++static void lowrisc_con_clear(struct vc_data *vc, int sy, int sx, int height, int width)
++{
++  int y;
++  for (y = sy; y < height; y++)
++    {
++      myset(hid_vga_ptr+y*LOWRISC_COLUMNS+sx, 0, width);
++    }
++}
++
++static void lowrisc_con_cursor(struct vc_data *vc, int mode)
++{
++	int xcurs, ycurs;
++
++	switch (mode) {
++	case CM_ERASE:
++                hid_vga_ptr[LOWRISC_REGS+LOWRISC_REGS_YCUR] = 32;
++		break;
++
++	case CM_MOVE:
++	case CM_DRAW:
++                xcurs = vc->vc_pos >> 1;
++		ycurs = xcurs / LOWRISC_COLUMNS;
++		xcurs = xcurs % LOWRISC_COLUMNS;
++                hid_vga_ptr[LOWRISC_REGS+LOWRISC_REGS_XCUR] = xcurs;
++                hid_vga_ptr[LOWRISC_REGS+LOWRISC_REGS_YCUR] = ycurs;
++		break;
++	}
++}
++
++static void lowrisc_con_putc(struct vc_data *vc, int c, int ypos, int xpos)
++{
++  extern void lowrisc_shadow_console_putchar(int);
++  hid_vga_ptr[LOWRISC_COLUMNS*ypos+xpos] = c;
++#ifdef CONFIG_KEYBOARD_LOWRISC_FAKE
++  if (xpos == oldxpos) lowrisc_shadow_console_putchar('\b');
++  else if (xpos < oldxpos) lowrisc_shadow_console_putchar('\r');
++  else if (xpos > oldxpos+1) lowrisc_shadow_console_putchar(' ');
++  if (ypos > oldypos) lowrisc_shadow_console_putchar('\n');
++  lowrisc_shadow_console_putchar(c);
++  if (xpos == oldxpos)
++    {
++      lowrisc_shadow_console_putchar('\b');
++      oldxpos = xpos-1;
++    }
++  else
++    oldxpos = xpos;
++#else
++  oldxpos = xpos;
++#endif
++  oldypos = ypos;
++}
++
++static void lowrisc_con_putcs(struct vc_data *vc, const unsigned short *s, int count, int ypos, int xpos)
++{
++  while (count--) lowrisc_con_putc(vc, *s++, ypos, xpos++);
++}
++
++static bool lowrisc_con_scroll(struct vc_data *vc, unsigned int top,
++                           unsigned int bottom, enum con_scroll dir,
++                           unsigned int lines)
++{
++  oldypos--;
++#if 0
++  if (lines <= 0)
++    return false;
++
++  if (lines > LOWRISC_ROWS)   /* maximum realistic size */
++    lines = LOWRISC_ROWS;
++
++  switch (dir)
++    {
++
++    case SM_UP:
++      mymove(hid_vga_ptr+top*LOWRISC_COLUMNS, hid_vga_ptr+(top+lines)*LOWRISC_COLUMNS, LOWRISC_MEM-(bottom-top-lines)*LOWRISC_COLUMNS);
++      myset(hid_vga_ptr+(bottom-lines)*LOWRISC_COLUMNS, 0, lines*LOWRISC_COLUMNS);
++      break;
++
++    case SM_DOWN:
++      mymove(hid_vga_ptr+(top+lines)*LOWRISC_COLUMNS, hid_vga_ptr+top*LOWRISC_COLUMNS, LOWRISC_MEM-(bottom-top-lines)*LOWRISC_COLUMNS);
++      myset(hid_vga_ptr+top*LOWRISC_COLUMNS, 0, lines*LOWRISC_COLUMNS);
++      break;
++    }
++
++  return true;
++
++#else
++
++  switch (dir)
++    {
++    case SM_UP:
++      mymove(hid_vga_ptr, hid_vga_ptr+LOWRISC_COLUMNS, LOWRISC_MEM-LOWRISC_COLUMNS);
++      myset(hid_vga_ptr+LOWRISC_MEM-LOWRISC_COLUMNS, 0, LOWRISC_COLUMNS);
++      break;
++
++    case SM_DOWN:
++      mymove(hid_vga_ptr+LOWRISC_COLUMNS, hid_vga_ptr, LOWRISC_MEM-LOWRISC_COLUMNS);
++      myset(hid_vga_ptr, 0, LOWRISC_COLUMNS);
++      break;
++    }
++  
++  return true;
++
++#endif        
++}
++
++static int lowrisc_con_switch(struct vc_data *vc)
++{
++	return 0;
++}
++
++static int lowrisc_con_blank(struct vc_data *vc, int blank, int mode_switch)
++{
++	return 0;
++}
++
++static int lowrisc_con_font_set(struct vc_data *vc, struct console_font *font,
++			     unsigned int flags)
++{
++	return 0;
++}
++
++static int lowrisc_con_font_default(struct vc_data *vc,
++				 struct console_font *font, char *name)
++{
++	return 0;
++}
++
++static int lowrisc_con_font_copy(struct vc_data *vc, int con)
++{
++	return 0;
++}
++
++/*
++ *  The console `switch' structure for the lowrisc console
++ *
++ *  Most of the operations are dummies.
++ */
++
++const struct consw lowrisc_con = {
++	.owner =		THIS_MODULE,
++	.con_startup =	lowrisc_con_startup,
++	.con_init =		lowrisc_con_init,
++	.con_deinit =	lowrisc_con_deinit,
++	.con_clear =	lowrisc_con_clear,
++	.con_putc =		lowrisc_con_putc,
++	.con_putcs =	lowrisc_con_putcs,
++	.con_cursor =	lowrisc_con_cursor,
++        .con_scroll =	lowrisc_con_scroll,
++	.con_switch =	lowrisc_con_switch,
++	.con_blank =	lowrisc_con_blank,
++	.con_font_set =	lowrisc_con_font_set,
++	.con_font_default =	lowrisc_con_font_default,
++	.con_font_copy =	lowrisc_con_font_copy,
++};
++
++static int lowrisc_con_probe(struct platform_device *ofdev)
++{
++        struct resource *lowrisc_vga;
++	int rc = 0;
++
++        lowrisc_vga = platform_get_resource(ofdev, IORESOURCE_MEM, 0);
++
++        hid_vga_ptr = devm_ioremap_resource(&ofdev->dev, lowrisc_vga);
++
++	printk(DRIVER_NAME": Lowrisc VGA console (%llX-%llX) mapped to %lx\n",
++               lowrisc_vga[0].start,
++               lowrisc_vga[0].end,
++               (size_t)(hid_vga_ptr));
++
++        console_lock();
++        rc = do_take_over_console(&lowrisc_con, 0, MAX_NR_CONSOLES - 1, 1);
++        console_unlock();
++        
++	return rc;
++}
++
++/* Match table for OF platform binding */
++static const struct of_device_id lowrisc_con_of_match[] = {
++	{ .compatible = DRIVER_NAME },
++	{ /* end of list */ },
++};
++MODULE_DEVICE_TABLE(of, lowrisc_con_of_match);
++
++void lowrisc_con_free(struct platform_device *of_dev)
++{
++        struct resource *iomem = platform_get_resource(of_dev, IORESOURCE_MEM, 0);
++        release_mem_region(iomem->start, resource_size(iomem));
++}
++
++int lowrisc_con_unregister(struct platform_device *of_dev)
++{
++        lowrisc_con_free(of_dev);
++        return 0;
++}
++
++static struct platform_driver lowrisc_con_driver = {
++	.driver = {
++		.name = DRIVER_NAME,
++		.of_match_table = lowrisc_con_of_match,
++	},
++	.probe = lowrisc_con_probe,
++	.remove = lowrisc_con_unregister,
++};
++
++module_platform_driver(lowrisc_con_driver);
++
++MODULE_AUTHOR("Jonathan Kimmitt");
++MODULE_DESCRIPTION("Lowrisc VGA-compatible console driver");
++MODULE_LICENSE("GPL");
+diff -urN linux-5.1.3/drivers/video/console/Makefile linux-5.1.3-new/drivers/video/console/Makefile
+--- linux-5.1.3/drivers/video/console/Makefile	2019-05-16 18:35:40.000000000 +0100
++++ linux-5.1.3-new/drivers/video/console/Makefile	2019-05-22 16:58:21.100769794 +0100
+@@ -4,6 +4,7 @@
+ # Rewritten to use lists instead of if-statements.
+ 
+ obj-$(CONFIG_DUMMY_CONSOLE)       += dummycon.o
++obj-$(CONFIG_LOWRISC_VGA_CONSOLE) += lowrisc-con.o
+ obj-$(CONFIG_SGI_NEWPORT_CONSOLE) += newport_con.o
+ obj-$(CONFIG_STI_CONSOLE)         += sticon.o sticore.o
+ obj-$(CONFIG_VGA_CONSOLE)         += vgacon.o

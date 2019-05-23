@@ -81,12 +81,29 @@
       device_type = "network";
       interrupt-parent = <&PLIC0>;
       interrupts = <3>;
-      local-mac-address = [00 18 3e 02 e3 7f]; // This needs to change if more than one GenesysII on a VLAN
       reg = <0x0 0x43000000 0x0 0x8000>;
     };
     gpio: lowrisc-gpio@44000000 {
       compatible = "lowrisc-gpio";
       reg = <0x0 0x44000000 0x0 0x1000 >;
+    };
+    keyb: lowrisc-keyb@45030000 {
+            reg = <0x0 0x45030000 0x0 0x4000>;
+            reg-io-width = <8>;
+            reg-shift = <3>;
+            compatible = "lowrisc-keyb";
+    };
+    vga: lowrisc-vga@45038000 {
+            reg = <0x0 0x45038000 0x0 0x8000>;
+            reg-io-width = <8>;
+            reg-shift = <3>;
+            compatible = "lowrisc-vga";
+    };
+    fb: lowrisc-fb@45040000 {
+            reg = <0x0 0x45040000 0x0 0x40000>;
+            reg-io-width = <8>;
+            reg-shift = <3>;
+            compatible = "lowrisc-fb";
     };
   };
 };
