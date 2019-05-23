@@ -52,6 +52,7 @@ $(LINUX)/drivers/net/ethernet/Makefile: linux-5.1.3.patch
 	rm -rf linux-5.1.3
 	curl https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-5.1.3.tar.xz|tar xJf -
 	patch -d linux-5.1.3 -p1 < linux-5.1.3.patch
+	mkdir -p $(LINUX)
 	mv -f $(LINUX) $(LINUX).old
 	mv linux-5.1.3 $(LINUX)
 
