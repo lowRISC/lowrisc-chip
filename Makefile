@@ -96,14 +96,14 @@ $(rocket_src): rocket-chip/vsim/Makefile
 rocket-chip/vsim/Makefile:
 	git submodule update --init --recursive rocket-chip
 
-genesys2_ariane_new:
-	make -C fpga BOARD=genesys2 BITSIZE=0xB00000 CPU=ariane COMPATIBLE="ethz, ariane" new newmcs
+genesys2_ariane_new: $(root-dir)/riscv-pk/vt/bbl
+	make -C fpga BOARD=genesys2 BITSIZE=0xB00000 CPU=ariane COMPATIBLE="ethz, ariane" BBL=$< new newmcs
 
-genesys2_rocket_new:
-	make -C fpga BOARD=genesys2 BITSIZE=0xB00000 CPU=rocket COMPATIBLE="sifive,rocket0" new newmcs
+genesys2_rocket_new: $(root-dir)/riscv-pk/vt/bbl
+	make -C fpga BOARD=genesys2 BITSIZE=0xB00000 CPU=rocket COMPATIBLE="sifive,rocket0" BBL=$< new newmcs
 
-nexys4_ddr_ariane_new:
-	make -C fpga BOARD=nexys4_ddr BITSIZE=0x400000 CPU=ariane COMPATIBLE="ethz, ariane" new newmcs
+nexys4_ddr_ariane_new: $(root-dir)/riscv-pk/vt/bbl
+	make -C fpga BOARD=nexys4_ddr BITSIZE=0x400000 CPU=ariane COMPATIBLE="ethz, ariane" BBL=$< new newmcs
 
-nexys4_ddr_rocket_new:
-	make -C fpga BOARD=nexys4_ddr BITSIZE=0x400000 CPU=rocket COMPATIBLE="sifive,rocket0" new newmcs
+nexys4_ddr_rocket_new: $(root-dir)/riscv-pk/vt/bbl
+	make -C fpga BOARD=nexys4_ddr BITSIZE=0x400000 CPU=rocket COMPATIBLE="sifive,rocket0" BBL=$< new newmcs

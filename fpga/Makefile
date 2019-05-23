@@ -26,7 +26,6 @@ all: $(mcs)
 
 ips: 
 # Generate mcs from bitstream
-BBL=../riscv-pk/vt/bbl
 
 $(mcs): $(bit) $(BBL)
 	$(VIVADO) $(VIVADOFLAGS) -source scripts/write_cfgmem.tcl -tclargs $@ $^ $(BBL)
