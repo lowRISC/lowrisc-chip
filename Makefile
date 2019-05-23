@@ -18,7 +18,7 @@ tftp_vt: riscv-pk/vt/bbl
 
 linux_serial: riscv-pk/serial/bbl
 
-riscv-pk/serial/bbl: $(LINUX)/drivers/net/ethernet/Makefile $(LINUX)/initramfs.cpio $(LINUX)/.config riscv-pk/serial/vmlinux-serial riscv-pk/serial/Makefile
+riscv-pk/serial/bbl: $(LINUX)/drivers/net/ethernet/Makefile $(LINUX)/initramfs.cpio riscv-pk/serial/vmlinux-serial riscv-pk/serial/Makefile
 	make -C riscv-pk/serial
 
 riscv-pk/serial/Makefile:
@@ -31,19 +31,16 @@ riscv-pk/vt/Makefile:
 
 linux_vt: riscv-pk/vt/bbl
 
-riscv-pk/vt/bbl: $(LINUX)/drivers/net/ethernet/Makefile $(LINUX)/initramfs.cpio $(LINUX)/.config riscv-pk/vt/vmlinux-vt 
+riscv-pk/vt/bbl: $(LINUX)/drivers/net/ethernet/Makefile $(LINUX)/initramfs.cpio riscv-pk/vt/vmlinux-vt 
 	make -C riscv-pk/vt
 
 riscv-pk/vt/vmlinux-vt: riscv-pk/vt/Makefile
-	make -C $(LINUX) ARCH=riscv CROSS_COMPILE=riscv64-unknown-elf- CONFIG_SERIAL_8250_CONSOLE=n CONFIG_VT_CONSOLE=y -j 4 # V=1 KBUILD_CFLAGS=-v
+	make -C $(LINUX) defconfig _all ARCH=riscv CROSS_COMPILE=riscv64-unknown-elf- CONFIG_SERIAL_8250_CONSOLE=n CONFIG_VT_CONSOLE=y -j 4 # V=1 KBUILD_CFLAGS=-v
 	mv $(LINUX)/vmlinux $@
 
 riscv-pk/serial/vmlinux-serial: riscv-pk/serial/Makefile
-	make -C $(LINUX) ARCH=riscv CROSS_COMPILE=riscv64-unknown-elf- CONFIG_SERIAL_8250_CONSOLE=y CONFIG_VT_CONSOLE=n -j 4 # V=1 KBUILD_CFLAGS=-v
+	make -C $(LINUX) defconfig _all ARCH=riscv CROSS_COMPILE=riscv64-unknown-elf- CONFIG_SERIAL_8250_CONSOLE=y CONFIG_VT_CONSOLE=n -j 4 # V=1 KBUILD_CFLAGS=-v
 	mv $(LINUX)/vmlinux $@
-
-$(LINUX)/.config:
-	make -C $(LINUX) ARCH=riscv CROSS_COMPILE=riscv64-unknown-elf- defconfig
 
 $(LINUX)/initramfs.cpio:
 	make -C debian-riscv64 cpio
