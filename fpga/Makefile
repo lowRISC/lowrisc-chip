@@ -1,7 +1,7 @@
 export XILINX_VER=2018.2
 export XILINX_ROOT=/opt/Xilinx
 export XILINX_VIVADO=$(XILINX_ROOT)/Vivado/$(XILINX_VER)
-export PATH=$(XILINX_VIVADO)/bin:$(XILINX_ROOT)/SDK/$(XILINX_VER)/bin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+export PATH=$(XILINX_VIVADO)/bin:$(XILINX_ROOT)/SDK/$(XILINX_VER)/bin:/$(RISCV)/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 VIVADO ?= vivado
 VIVADOFLAGS ?= -nojournal -mode batch -source scripts/prologue.tcl
