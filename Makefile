@@ -1,5 +1,5 @@
 .SUFFIXES:
-.PHONY: # riscv-pk/vt/vmlinux-vt riscv-pk/serial/vmlinux-serial
+.PHONY: riscv-pk/vt/vmlinux-vt riscv-pk/serial/vmlinux-serial
 
 include sources.inc
 
@@ -34,13 +34,16 @@ linux_vt: riscv-pk/vt/bbl
 riscv-pk/vt/bbl: $(LINUX)/drivers/net/ethernet/Makefile $(LINUX)/initramfs.cpio riscv-pk/vt/vmlinux-vt 
 	make -C riscv-pk/vt
 
-riscv-pk/vt/vmlinux-vt: riscv-pk/vt/Makefile
-	make -C $(LINUX) defconfig _all ARCH=riscv CROSS_COMPILE=riscv64-unknown-elf- CONFIG_SERIAL_8250_CONSOLE=n CONFIG_VT_CONSOLE=y -j 4 # V=1 KBUILD_CFLAGS=-v
+riscv-pk/vt/vmlinux-vt: riscv-pk/vt/Makefile $(LINUX)/.config
+	make -C $(LINUX) ARCH=riscv CROSS_COMPILE=riscv64-unknown-elf- CONFIG_SERIAL_8250_CONSOLE=n CONFIG_VT_CONSOLE=y CONFIG_LOWRISC_VGA_CONSOLE=y -j 4
 	mv $(LINUX)/vmlinux $@
 
-riscv-pk/serial/vmlinux-serial: riscv-pk/serial/Makefile
-	make -C $(LINUX) defconfig _all ARCH=riscv CROSS_COMPILE=riscv64-unknown-elf- CONFIG_SERIAL_8250_CONSOLE=y CONFIG_VT_CONSOLE=n -j 4 # V=1 KBUILD_CFLAGS=-v
+riscv-pk/serial/vmlinux-serial: riscv-pk/serial/Makefile $(LINUX)/.config
+	make -C $(LINUX) ARCH=riscv CROSS_COMPILE=riscv64-unknown-elf- CONFIG_SERIAL_8250_CONSOLE=y CONFIG_VT_CONSOLE=n CONFIG_LOWRISC_VGA_CONSOLE=n -j 4
 	mv $(LINUX)/vmlinux $@
+
+$(LINUX)/.config: $(LINUX)/arch/riscv/configs/defconfig
+	make -C $(LINUX) defconfig ARCH=riscv CROSS_COMPILE=riscv64-unknown-elf-
 
 $(LINUX)/initramfs.cpio:
 	make -C debian-riscv64 cpio

@@ -4325,8 +4325,8 @@ diff -urN linux-5.1.3/drivers/video/console/Kconfig linux-5.1.3-new/drivers/vide
  	depends on VGA_CONSOLE!=y || SGI_NEWPORT_CONSOLE!=y 
 diff -urN linux-5.1.3/drivers/video/console/lowrisc-con.c linux-5.1.3-new/drivers/video/console/lowrisc-con.c
 --- linux-5.1.3/drivers/video/console/lowrisc-con.c	1970-01-01 01:00:00.000000000 +0100
-+++ linux-5.1.3-new/drivers/video/console/lowrisc-con.c	2019-05-22 16:58:21.100769794 +0100
-@@ -0,0 +1,281 @@
++++ linux-5.1.3-new/drivers/video/console/lowrisc-con.c	2019-05-24 10:48:44.192049900 +0100
+@@ -0,0 +1,282 @@
 +/*
 + *  linux/drivers/video/lowrisc_con.c -- A lowrisc console driver
 + *
@@ -4568,10 +4568,11 @@ diff -urN linux-5.1.3/drivers/video/console/lowrisc-con.c linux-5.1.3-new/driver
 +               lowrisc_vga[0].end,
 +               (size_t)(hid_vga_ptr));
 +
++#ifdef CONFIG_VT_CONSOLE        
 +        console_lock();
 +        rc = do_take_over_console(&lowrisc_con, 0, MAX_NR_CONSOLES - 1, 1);
 +        console_unlock();
-+        
++#endif
 +	return rc;
 +}
 +
@@ -4619,3 +4620,233 @@ diff -urN linux-5.1.3/drivers/video/console/Makefile linux-5.1.3-new/drivers/vid
  obj-$(CONFIG_SGI_NEWPORT_CONSOLE) += newport_con.o
  obj-$(CONFIG_STI_CONSOLE)         += sticon.o sticore.o
  obj-$(CONFIG_VGA_CONSOLE)         += vgacon.o
+diff -urN linux-5.1.3/drivers/video/fbdev/Kconfig linux-5.1.3-new/drivers/video/fbdev/Kconfig
+--- linux-5.1.3/drivers/video/fbdev/Kconfig	2019-05-16 18:35:40.000000000 +0100
++++ linux-5.1.3-new/drivers/video/fbdev/Kconfig	2019-05-24 10:48:59.987733209 +0100
+@@ -2272,6 +2272,15 @@
+ 	  Configuration re: surface address, size, and format must be provided
+ 	  through device tree, or plain old platform data.
+ 
++config FB_LOWRISC
++	bool "Simple framebuffer support"
++	depends on (FB = y)
++	select FB_CFB_FILLRECT
++	select FB_CFB_COPYAREA
++	select FB_CFB_IMAGEBLIT
++	help
++	  Say Y if you want support for a lowrisc frame-buffer.
++
+ config FB_SSD1307
+ 	tristate "Solomon SSD1307 framebuffer support"
+ 	depends on FB && I2C
+diff -urN linux-5.1.3/drivers/video/fbdev/lowrisc_fb.c linux-5.1.3-new/drivers/video/fbdev/lowrisc_fb.c
+--- linux-5.1.3/drivers/video/fbdev/lowrisc_fb.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.1.3-new/drivers/video/fbdev/lowrisc_fb.c	2019-05-24 09:18:10.236980000 +0100
+@@ -0,0 +1,196 @@
++/* lowrisc_fb.c, based on Sun XVR-1000 fb driver for sparc64 systems by David S. Miller (davem@davemloft.net)
++ *
++ * License: GPL
++ *
++ * Copyright (C) 2010 David S. Miller (davem@davemloft.net)
++ * Modications copyright (C) 2019 lowrisc.org
++ */
++
++#include <linux/kernel.h>
++#include <linux/fb.h>
++#include <linux/init.h>
++#include <linux/of_device.h>
++
++struct lowrisc_fb_info {
++	struct fb_info		*info;
++
++	char __iomem		*fb_base;
++	unsigned long		fb_base_phys;
++
++	struct device_node	*of_node;
++
++	unsigned int		width;
++	unsigned int		height;
++	unsigned int		depth;
++	unsigned int		fb_size;
++
++	u32			pseudo_palette[16];
++};
++
++static int lowrisc_fb_get_props(struct lowrisc_fb_info *gp)
++{
++  gp->width = 640;
++  gp->height = 614;
++  gp->depth = 4;
++  return 0;
++}
++
++static int lowrisc_fb_setcolreg(unsigned regno,
++			 unsigned red, unsigned green, unsigned blue,
++			 unsigned transp, struct fb_info *info)
++{
++	u32 value;
++
++	if (regno < 16) {
++		red >>= 8;
++		green >>= 8;
++		blue >>= 8;
++
++		value = (blue << 16) | (green << 8) | red;
++		((u32 *)info->pseudo_palette)[regno] = value;
++	}
++
++	return 0;
++}
++
++static struct fb_ops lowrisc_fb_ops = {
++	.owner			= THIS_MODULE,
++	.fb_setcolreg		= lowrisc_fb_setcolreg,
++	.fb_fillrect		= cfb_fillrect,
++	.fb_copyarea		= cfb_copyarea,
++	.fb_imageblit		= cfb_imageblit,
++};
++
++static int lowrisc_fb_set_fbinfo(struct lowrisc_fb_info *gp)
++{
++	struct fb_info *info = gp->info;
++	struct fb_var_screeninfo *var = &info->var;
++
++	info->flags = FBINFO_DEFAULT;
++	info->fbops = &lowrisc_fb_ops;
++	info->screen_base = gp->fb_base;
++	info->screen_size = gp->fb_size;
++
++	info->pseudo_palette = gp->pseudo_palette;
++
++	/* Fill fix common fields */
++	strlcpy(info->fix.id, "lowrisc_fb", sizeof(info->fix.id));
++        info->fix.smem_start = gp->fb_base_phys;
++        info->fix.smem_len = gp->fb_size;
++        info->fix.type = FB_TYPE_PACKED_PIXELS;
++	info->fix.visual = FB_VISUAL_PSEUDOCOLOR;
++
++	var->xres = gp->width;
++	var->yres = gp->height;
++	var->xres_virtual = var->xres;
++	var->yres_virtual = var->yres;
++	var->bits_per_pixel = gp->depth;
++
++	var->red.offset = 0;
++	var->red.length = 8;
++	var->green.offset = 8;
++	var->green.length = 8;
++	var->blue.offset = 16;
++	var->blue.length = 8;
++	var->transp.offset = 0;
++	var->transp.length = 0;
++
++	if (fb_alloc_cmap(&info->cmap, 256, 0)) {
++		printk(KERN_ERR "lowrisc_fb: Cannot allocate color map.\n");
++		return -ENOMEM;
++	}
++
++        return 0;
++}
++
++static int lowrisc_fb_probe(struct platform_device *ofdev)
++{
++	struct device_node *dp = ofdev->dev.of_node;
++	struct fb_info *info;
++	struct lowrisc_fb_info *gp;
++        struct resource *lowrisc_fb;
++	int err;
++
++        printk("lowrisc_fb_probe");
++        
++	info = framebuffer_alloc(sizeof(struct lowrisc_fb_info), &ofdev->dev);
++	if (!info) {
++		printk(KERN_ERR "lowrisc_fb: Cannot allocate fb_info\n");
++		err = -ENOMEM;
++		goto err_out;
++	}
++
++	gp = info->par;
++	gp->info = info;
++	gp->of_node = dp;
++
++        lowrisc_fb = platform_get_resource(ofdev, IORESOURCE_MEM, 0);
++        
++	gp->fb_base_phys = lowrisc_fb[0].start;
++
++	err = lowrisc_fb_get_props(gp);
++	if (err)
++		goto err_release_fb;
++
++	/* Framebuffer length is the same regardless of resolution. */
++	info->fix.line_length = 320;
++	gp->fb_size = lowrisc_fb[0].end - lowrisc_fb[0].start;
++
++	gp->fb_base = devm_ioremap_resource(&ofdev->dev, lowrisc_fb);
++
++	if (!gp->fb_base) {
++		err = -ENOMEM;
++		goto err_release_fb;
++	}
++
++	err = lowrisc_fb_set_fbinfo(gp);
++	if (err)
++		goto err_unmap_fb;
++
++	printk("lowrisc_fb: Found device at %pOF\n", dp);
++
++	err = register_framebuffer(info);
++	if (err < 0) {
++		printk(KERN_ERR "lowrisc_fb: Could not register framebuffer %pOF\n",
++		       dp);
++		goto err_unmap_fb;
++	}
++
++	dev_set_drvdata(&ofdev->dev, info);
++
++	return 0;
++
++err_unmap_fb:
++        iounmap(gp->fb_base);
++        
++err_release_fb:
++        framebuffer_release(info);
++
++err_out:
++	return err;
++}
++
++static const struct of_device_id lowrisc_fb_match[] = {
++	{
++		.name = "lowrisc-fb",
++	},
++	{},
++};
++
++static struct platform_driver lowrisc_fb_driver = {
++	.probe		= lowrisc_fb_probe,
++	.driver = {
++		.name			= "lowrisc-fb",
++		.of_match_table		= lowrisc_fb_match,
++		.suppress_bind_attrs	= true,
++	},
++};
++
++static int __init lowrisc_fb_init(void)
++{
++  printk("lowrisc_fb_init");
++  
++	return platform_driver_register(&lowrisc_fb_driver);
++}
++
++device_initcall(lowrisc_fb_init);
+diff -urN linux-5.1.3/drivers/video/fbdev/Makefile linux-5.1.3-new/drivers/video/fbdev/Makefile
+--- linux-5.1.3/drivers/video/fbdev/Makefile	2019-05-16 18:35:40.000000000 +0100
++++ linux-5.1.3-new/drivers/video/fbdev/Makefile	2019-05-24 10:49:11.859495189 +0100
+@@ -136,6 +136,7 @@
+ obj-$(CONFIG_FB_MXS)		  += mxsfb.o
+ obj-$(CONFIG_FB_SSD1307)	  += ssd1307fb.o
+ obj-$(CONFIG_FB_SIMPLE)           += simplefb.o
++obj-$(CONFIG_FB_LOWRISC)          += lowrisc_fb.o
+ 
+ # the test framebuffer is last
+ obj-$(CONFIG_FB_VIRTUAL)          += vfb.o
