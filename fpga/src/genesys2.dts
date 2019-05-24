@@ -94,14 +94,8 @@
             reg-shift = <3>;
             compatible = "lowrisc-keyb";
     };
-    vga: lowrisc-vga@45038000 {
-            reg = <0x0 0x45038000 0x0 0x8000>;
-            reg-io-width = <8>;
-            reg-shift = <3>;
-            compatible = "lowrisc-vga";
-    };
-    fb: lowrisc-fb@45040000 {
-            reg = <0x0 0x45040000 0x0 0x40000>;
+    fb: lowrisc-fb@45038000 {
+            reg = <0x0 0x45038000 0x0 0x48000>;
             reg-io-width = <8>;
             reg-shift = <3>;
             compatible = "lowrisc-fb";
