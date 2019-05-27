@@ -35,7 +35,7 @@ module hid_soc
  input wire         rst_ni,
  input wire         hid_en,
  input wire [7:0]   hid_we,
- input wire [18:0]  hid_addr,
+ input wire [19:0]  hid_addr,
  input wire [63:0]  hid_wrdata,
  output reg [63:0]  hid_rddata
  );
@@ -47,9 +47,9 @@ module hid_soc
  reg scan_ready_dly;
  wire [8:0] keyb_fifo_out;
  // signals from/to core
-logic [7:0] one_hot_data_addr;
+logic [7:0] one_hot_data_addr, one_hot_data_addr_dly;
 logic [63:0] doutg, one_hot_rdata[7:0];
-logic haddr18;
+logic haddr19;
 
     ps2 keyb_mouse(
       .clk(clk_i),
@@ -144,17 +144,18 @@ FIFO18E1 #(
 
    always @(posedge clk_i)
      begin
-        haddr18 <= hid_addr[18];
+        haddr19 <= hid_addr[19];
+	one_hot_data_addr_dly <= one_hot_data_addr;
      end
    
 always_comb
   begin:onehot
      integer i;
-     hid_rddata = haddr18 ? doutg : 64'b0;
+     hid_rddata = haddr19 ? doutg : 64'b0;
      for (i = 0; i < 8; i++)
        begin
-	   one_hot_data_addr[i] = hid_addr[18:15] == i;
-	   hid_rddata |= (one_hot_data_addr[i] ? one_hot_rdata[i] : 64'b0);
+	   one_hot_data_addr[i] = hid_addr[19:15] == i;
+	   hid_rddata |= (one_hot_data_addr_dly[i] ? one_hot_rdata[i] : 64'b0);
        end
   end
    

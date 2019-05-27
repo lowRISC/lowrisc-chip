@@ -95,7 +95,7 @@
             compatible = "lowrisc-keyb";
     };
     fb: lowrisc-fb@45038000 {
-            reg = <0x0 0x45038000 0x0 0x48000>;
+            reg = <0x0 0x45038000 0x0 0xC8000>;
             reg-io-width = <8>;
             reg-shift = <3>;
             compatible = "lowrisc-fb";

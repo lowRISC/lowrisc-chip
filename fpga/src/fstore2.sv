@@ -24,7 +24,7 @@ module fstore2(
                output reg [63:0]  doutg,
                output wire [63:0] doutb,
                input wire [63:0]  hid_wrdata,
-               input wire [18:0]  hid_addr,
+               input wire [19:0]  hid_addr,
                input wire [7:0]   hid_we,
                input wire [7:0]   one_hot_data_addr,
                input wire         hid_en,
@@ -89,12 +89,12 @@ module fstore2(
         fstore_rddata = 64'b0;
         for (i = 0; i < graphmax; i++)
           begin
-	     doutg |= addrb_1[17:14] == r ? doutfb[i] : 64'b0;
+	     doutg |= addrb_1[18:15] == r ? doutfb[i] : 64'b0;
 	     fstore_rddata |= (gaddra_1[18:15] == i) && (offgpixel_1[11:4] < ghlimit) ? doutpix[i] : 64'b0;
           end
      end
    generate for (r = 0; r < graphmax; r=r+1)
-     dualmem ram1(.clka(pxl_clk),
+     dualmem4 ram1(.clka(pxl_clk),
                   .dina(8'b0),
                   .addra(gaddra[14:4]),
                   .wea(8'b0),
@@ -102,10 +102,10 @@ module fstore2(
                   .ena(gaddra[18:15]==r),
                   .clkb(clk_i),
                   .dinb(hid_wrdata),
-                  .addrb(hid_addr[13:3]),
+                  .addrb(hid_addr[14:3]),
                   .web(hid_we),
                   .doutb(doutfb[r]),
-                  .enb(hid_en && (hid_addr[17:14]==r) && hid_addr[18]));
+                  .enb(hid_en && (hid_addr[18:15]==r) && hid_addr[19]));
    endgenerate
 
    always @(posedge clk_i)

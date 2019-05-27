@@ -609,7 +609,7 @@ dword_interface dwi_inst(
 
     // HID
 
-localparam RamAddrWidth = 19;
+localparam RamAddrWidth = 20;
    
 logic                    hid_en;
 logic [RamAddrWidth-1:0] hid_addr;

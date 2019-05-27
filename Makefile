@@ -51,6 +51,7 @@ $(LINUX)/initramfs.cpio:
 $(LINUX)/drivers/net/ethernet/Makefile: linux-5.1.3.patch
 	rm -rf linux-5.1.3
 	curl https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-5.1.3.tar.xz|tar xJf -
+	(cd linux-5.1.3; git init; git add .; git commit -a -m linux-5.1.3; git status)
 	patch -d linux-5.1.3 -p1 < linux-5.1.3.patch
 	mkdir -p $(LINUX)
 	mv -f $(LINUX) $(LINUX).old
@@ -97,14 +98,14 @@ $(rocket_src): rocket-chip/vsim/Makefile
 rocket-chip/vsim/Makefile:
 	git submodule update --init --recursive rocket-chip
 
-genesys2_ariane_new: riscv-pk/vt/bbl
+genesys2_ariane_new: riscv-pk/serial/bbl
 	make -C fpga BOARD=genesys2 BITSIZE=0xB00000 CPU=ariane COMPATIBLE="ethz, ariane" BBL=$(root-dir)$< new newmcs
 
-genesys2_rocket_new: riscv-pk/vt/bbl
+genesys2_rocket_new: riscv-pk/serial/bbl
 	make -C fpga BOARD=genesys2 BITSIZE=0xB00000 CPU=rocket COMPATIBLE="sifive,rocket0" BBL=$(root-dir)$< new newmcs
 
-nexys4_ddr_ariane_new: riscv-pk/vt/bbl
+nexys4_ddr_ariane_new: riscv-pk/serial/bbl
 	make -C fpga BOARD=nexys4_ddr BITSIZE=0x400000 CPU=ariane COMPATIBLE="ethz, ariane" BBL=$(root-dir)$< new newmcs
 
-nexys4_ddr_rocket_new: riscv-pk/vt/bbl
+nexys4_ddr_rocket_new: riscv-pk/serial/bbl
 	make -C fpga BOARD=nexys4_ddr BITSIZE=0x400000 CPU=rocket COMPATIBLE="sifive,rocket0" BBL=$(root-dir)$< new newmcs

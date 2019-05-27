@@ -12,7 +12,7 @@ typedef enum {
         GPIOBase     = 0x44000000,
         KeybBase     = 0x45030000, // These have been relocated
         VgaBase      = 0x45038000,
-        FbBase       = 0x45040000,
+        FbBase       = 0x45080000,
         DRAMBase     = 0x80000000
     } soc_bus_start_t;
 

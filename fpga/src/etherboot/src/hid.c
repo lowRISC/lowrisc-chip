@@ -58,7 +58,7 @@ void uart_console_putchar(unsigned char ch)
 void hid_init(void)
 {
   enum {width=1024, height=768};
-  int i, j, ghlimit = 40;
+  int i, j, ghlimit = 80;
   
   addr_int = LOWRISC_START;
   hid_reg_ptr[LOWRISC_REGS_CURSV] = 10;
@@ -75,7 +75,7 @@ void hid_init(void)
   hid_reg_ptr[LOWRISC_REGS_HPIXSTOP ] = 128*3+256*6;
   hid_reg_ptr[LOWRISC_REGS_HPIX ] = 5;
   hid_reg_ptr[LOWRISC_REGS_VPIX ] = 11; // squashed vertical display uses 10
-  hid_reg_ptr[LOWRISC_REGS_GHLIMIT] = ghlimit;
+  hid_reg_ptr[LOWRISC_REGS_GHLIMIT] = ghlimit / 2;
   hid_reg_ptr[LOWRISC_REGS_PALETTE +     0] = 0x20272D;
   hid_reg_ptr[LOWRISC_REGS_PALETTE +     1] = 0xE0354F;
   hid_reg_ptr[LOWRISC_REGS_PALETTE +     2] = 0xE9374F;
