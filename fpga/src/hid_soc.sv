@@ -40,36 +40,36 @@ module hid_soc
  output reg [63:0]  hid_rddata
  );
  
- wire        scan_ready, scan_released;
- wire [7:0]  scan_code, fstore_data;
+ wire        keyb_scan_ready, keyb_scan_released;
+ wire [7:0]  keyb_scan_code, fstore_data;
  wire        keyb_empty, tx_error_no_keyboard_ack;
  wire        mouse_empty;  
  reg [31:0]  keycode;
- reg scan_ready_dly, rx_aux_data_ready_dly;
+ reg keyb_scan_ready_dly, rx_mouse_data_ready_dly;
  wire [8:0] keyb_fifo_out, mouse_fifo_out;
  // signals from/to core
 logic [7:0] one_hot_data_addr, one_hot_data_addr_dly;
 logic [63:0] doutg, one_hot_rdata[7:0];
 logic haddr19;
-logic [7:0] rx_scan_code, rx_aux_data;
-logic [7:0] tx_aux_data;
-logic rx_aux_data_ready, tx_aux_write_ack, tx_error_no_aux_ack;
-logic tx_aux_write;
+logic [7:0] rx_scan_code, rx_mouse_data;
+logic [7:0] tx_mouse_data;
+logic rx_mouse_data_ready, tx_mouse_write_ack, tx_error_no_mouse_ack;
+logic tx_mouse_write;
 
    always @(posedge clk_i)
      if (~rst_ni)
        begin
-	  tx_aux_data <= 8'b0;
-	  tx_aux_write <= 1'b0;
+	  tx_mouse_data <= 8'b0;
+	  tx_mouse_write <= 1'b0;
        end
      else
        begin
-	  if (tx_aux_write_ack)
-	    tx_aux_write <= 1'b0;
+	  if (tx_mouse_write_ack)
+	    tx_mouse_write <= 1'b0;
 	  if (hid_en & (|hid_we) & one_hot_data_addr[5] & hid_addr[14])
 	    begin
-	       tx_aux_data <= hid_wrdata[7:0];
-	       tx_aux_write <= 1'b1;
+	       tx_mouse_data <= hid_wrdata[7:0];
+	       tx_mouse_write <= 1'b1;
 	    end
        end
    
@@ -80,23 +80,23 @@ logic tx_aux_write;
       .PS2_K_DATA_IO(PS2_DATA),
       .PS2_M_CLK_IO(),
       .PS2_M_DATA_IO(),
-      .rx_released(scan_released),
-      .rx_scan_ready(scan_ready),
-      .rx_scan_code(scan_code),
-      .rx_scan_read(scan_ready),
+      .rx_released(keyb_scan_released),
+      .rx_scan_ready(keyb_scan_ready),
+      .rx_scan_code(keyb_scan_code),
+      .rx_scan_read(keyb_scan_ready),
       .tx_error_no_keyboard_ack,
-      .rx_aux_data,
-      .rx_aux_data_ready,
-      .rx_aux_read(rx_aux_data_ready),
-      .tx_aux_data,
-      .tx_aux_write,
-      .tx_aux_write_ack,
-      .tx_error_no_aux_ack);
+      .rx_mouse_data,
+      .rx_mouse_data_ready,
+      .rx_mouse_read(rx_mouse_data_ready),
+      .tx_mouse_data,
+      .tx_mouse_write,
+      .tx_mouse_write_ack,
+      .tx_error_no_mouse_ack);
  
  always @(negedge clk_i)
     begin
-        scan_ready_dly <= scan_ready;
-        rx_aux_data_ready_dly <= rx_aux_data_ready;
+        keyb_scan_ready_dly <= keyb_scan_ready;
+        rx_mouse_data_ready_dly <= rx_mouse_data_ready;
     end
        
 FIFO18E1 #(
@@ -111,7 +111,7 @@ FIFO18E1 #(
       .SIM_DEVICE("7SERIES"),            // Must be set to "7SERIES" for simulation behavior
       .SRVAL(36'h000000000)              // Set/Reset value for output port
       )
-      FIFO18E1_inst_18 (
+      FIFO18E1_inst_keyboard (
                         // Read Data: 32-bit (each) output: Read output data
                         .DO(keyb_fifo_out[7:0]),   // 32-bit output: Data output
                         .DOP(keyb_fifo_out[8]),    // 4-bit output: Parity data output
@@ -132,10 +132,10 @@ FIFO18E1 #(
                         .RSTREG(1'b0),             // 1-bit input: Output register set/reset
                         // Write Control Signals: 1-bit (each) input: Write clock and enable input signals
                         .WRCLK(~clk_i),         // 1-bit input: Write clock
-                        .WREN(scan_ready & ~scan_ready_dly),               // 1-bit input: Write enable
+                        .WREN(keyb_scan_ready & ~keyb_scan_ready_dly),               // 1-bit input: Write enable
                         // Write Data: 32-bit (each) input: Write input data
-                        .DI(scan_code),                   // 32-bit input: Data input
-                        .DIP(scan_released)                  // 4-bit input: Parity input
+                        .DI(keyb_scan_code),                   // 32-bit input: Data input
+                        .DIP(keyb_scan_released)                  // 4-bit input: Parity input
                         );
        
 FIFO18E1 #(
@@ -150,7 +150,7 @@ FIFO18E1 #(
       .SIM_DEVICE("7SERIES"),            // Must be set to "7SERIES" for simulation behavior
       .SRVAL(36'h000000000)              // Set/Reset value for output port
       )
-      FIFO18E1_inst_18 (
+      FIFO18E1_inst_mouse (
                         // Read Data: 32-bit (each) output: Read output data
                         .DO(mouse_fifo_out[7:0]),   // 32-bit output: Data output
                         .DOP(mouse_fifo_out[8]),    // 4-bit output: Parity data output
@@ -171,9 +171,9 @@ FIFO18E1 #(
                         .RSTREG(1'b0),             // 1-bit input: Output register set/reset
                         // Write Control Signals: 1-bit (each) input: Write clock and enable input signals
                         .WRCLK(~clk_i),         // 1-bit input: Write clock
-                        .WREN(rx_aux_data_ready & ~rx_aux_data_ready_dly),               // 1-bit input: Write enable
+                        .WREN(rx_mouse_data_ready & ~rx_mouse_data_ready_dly),               // 1-bit input: Write enable
                         // Write Data: 32-bit (each) input: Write input data
-                        .DI(rx_aux_data),                   // 32-bit input: Data input
+                        .DI(rx_mouse_data),                   // 32-bit input: Data input
                         .DIP(1'b0)                  // 4-bit input: Parity input
                         );
   
@@ -207,9 +207,9 @@ FIFO18E1 #(
  assign VGA_BLUE_O = blue[7:5];
 `endif
 
-   assign one_hot_rdata[6] = {tx_error_no_aux_ack,tx_error_no_keyboard_ack,keyb_empty,keyb_fifo_out[8:0]};
+   assign one_hot_rdata[6] = {tx_error_no_keyboard_ack,keyb_empty,keyb_fifo_out[8:0]};
 
-   assign one_hot_rdata[5] = {tx_error_no_aux_ack,mouse_empty,mouse_fifo_out[8:0]};
+   assign one_hot_rdata[5] = {tx_error_no_mouse_ack,mouse_empty,mouse_fifo_out[8:0]};
    
 //----------------------------------------------------------------------------//
 
