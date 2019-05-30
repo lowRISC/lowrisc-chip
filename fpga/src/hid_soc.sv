@@ -22,10 +22,22 @@ module hid_soc
     output wire   [3:0] VGA_RED_O   ,
     output wire   [3:0] VGA_BLUE_O  ,
     output wire   [3:0] VGA_GREEN_O ,
+   output wire        CA,
+   output wire        CB,
+   output wire        CC,
+   output wire        CD,
+   output wire        CE,
+   output wire        CF,
+   output wire        CG,
+   output wire        DP,
+   output wire [7:0]  AN,
 `endif
-  //keyboard
+  // keyboard
     inout wire         PS2_CLK     ,
     inout wire         PS2_DATA    ,
+  // mouse
+    inout wire         PS2_MCLK    ,
+    inout wire         PS2_MDATA   ,
   // display
     output wire        VGA_HS_O    ,
     output wire        VGA_VS_O    ,
@@ -43,35 +55,14 @@ module hid_soc
  wire        keyb_scan_ready, keyb_scan_released;
  wire [7:0]  keyb_scan_code, fstore_data;
  wire        keyb_empty, tx_error_no_keyboard_ack;
- wire        mouse_empty;  
  reg [31:0]  keycode;
  reg keyb_scan_ready_dly, rx_mouse_data_ready_dly;
- wire [8:0] keyb_fifo_out, mouse_fifo_out;
+ wire [8:0] keyb_fifo_out;
  // signals from/to core
 logic [7:0] one_hot_data_addr, one_hot_data_addr_dly;
 logic [63:0] doutg, one_hot_rdata[7:0];
 logic haddr19;
 logic [7:0] rx_scan_code, rx_mouse_data;
-logic [7:0] tx_mouse_data;
-logic rx_mouse_data_ready, tx_mouse_write_ack, tx_error_no_mouse_ack;
-logic tx_mouse_write;
-
-   always @(posedge clk_i)
-     if (~rst_ni)
-       begin
-	  tx_mouse_data <= 8'b0;
-	  tx_mouse_write <= 1'b0;
-       end
-     else
-       begin
-	  if (tx_mouse_write_ack)
-	    tx_mouse_write <= 1'b0;
-	  if (hid_en & (|hid_we) & one_hot_data_addr[5] & hid_addr[14])
-	    begin
-	       tx_mouse_data <= hid_wrdata[7:0];
-	       tx_mouse_write <= 1'b1;
-	    end
-       end
    
     ps2 keyb_mouse(
       .clk(clk_i),
@@ -84,19 +75,11 @@ logic tx_mouse_write;
       .rx_scan_ready(keyb_scan_ready),
       .rx_scan_code(keyb_scan_code),
       .rx_scan_read(keyb_scan_ready),
-      .tx_error_no_keyboard_ack,
-      .rx_mouse_data,
-      .rx_mouse_data_ready,
-      .rx_mouse_read(rx_mouse_data_ready),
-      .tx_mouse_data,
-      .tx_mouse_write,
-      .tx_mouse_write_ack,
-      .tx_error_no_mouse_ack);
+      .tx_error_no_keyboard_ack);
  
  always @(negedge clk_i)
     begin
         keyb_scan_ready_dly <= keyb_scan_ready;
-        rx_mouse_data_ready_dly <= rx_mouse_data_ready;
     end
        
 FIFO18E1 #(
@@ -137,11 +120,30 @@ FIFO18E1 #(
                         .DI(keyb_scan_code),                   // 32-bit input: Data input
                         .DIP(keyb_scan_released)                  // 4-bit input: Parity input
                         );
-       
+
+// =======================================================================================
+// 							  	      Mouse Implementation
+// =======================================================================================
+
+wire [9:0]   X, Y;
+wire [3:0]   Z;
+
+wire [8*7-1:0] digits;
+wire           left, middle, right, new_event, mouse_empty;
+logic [31:0] mouse_scan_code_dly, mouse_fifo_out;
+wire [31:0] mouse_scan_code = {left, middle, right, new_event, Z,2'b0,Y,2'b0,X};
+
+assign one_hot_rdata[5] = {mouse_empty,mouse_fifo_out};
+
+always @(posedge clk_i)
+     begin
+	mouse_scan_code_dly <= mouse_scan_code;
+     end
+
 FIFO18E1 #(
       .ALMOST_EMPTY_OFFSET(13'h0080),    // Sets the almost empty threshold
       .ALMOST_FULL_OFFSET(13'h0080),     // Sets almost full threshold
-      .DATA_WIDTH(9),                    // Sets data width to 4-36
+      .DATA_WIDTH(36),                   // Sets data width to 4-36
       .DO_REG(0),                        // Enable output register (1-0) Must be 1 if EN_SYN = FALSE
       .EN_SYN("TRUE"),                   // Specifies FIFO as dual-clock (FALSE) or Synchronous (TRUE)
       .FIFO_MODE("FIFO18"),              // Sets mode to FIFO18 or FIFO18_36
@@ -152,12 +154,12 @@ FIFO18E1 #(
       )
       FIFO18E1_inst_mouse (
                         // Read Data: 32-bit (each) output: Read output data
-                        .DO(mouse_fifo_out[7:0]),   // 32-bit output: Data output
-                        .DOP(mouse_fifo_out[8]),    // 4-bit output: Parity data output
+                        .DO(mouse_fifo_out),       // 32-bit output: Data output
+                        .DOP(),                    // 4-bit output: Parity data output
                         // Status: 1-bit (each) output: Flags and other FIFO status outputs
                         .ALMOSTEMPTY(),            // 1-bit output: Almost empty flag
                         .ALMOSTFULL(),             // 1-bit output: Almost full flag
-                        .EMPTY(mouse_empty),        // 1-bit output: Empty flag
+                        .EMPTY(mouse_empty),       // 1-bit output: Empty flag
                         .FULL(),                   // 1-bit output: Full flag
                         .RDCOUNT(),                // 12-bit output: Read count
                         .RDERR(),                  // 1-bit output: Read error
@@ -171,11 +173,52 @@ FIFO18E1 #(
                         .RSTREG(1'b0),             // 1-bit input: Output register set/reset
                         // Write Control Signals: 1-bit (each) input: Write clock and enable input signals
                         .WRCLK(~clk_i),         // 1-bit input: Write clock
-                        .WREN(rx_mouse_data_ready & ~rx_mouse_data_ready_dly),               // 1-bit input: Write enable
+                        .WREN(mouse_scan_code != mouse_scan_code_dly),               // 1-bit input: Write enable
                         // Write Data: 32-bit (each) input: Write input data
-                        .DI(rx_mouse_data),                   // 32-bit input: Data input
+                        .DI(mouse_scan_code),                   // 32-bit input: Data input
                         .DIP(1'b0)                  // 4-bit input: Parity input
                         );
+
+   for (genvar i = 0; i < 8; i = i + 1) begin
+      sevensegment
+                   u_seg(.in  (mouse_scan_code[(i+1)*4-1:i*4]),
+                         .out (digits[(i+1)*7-1:i*7]));
+   end
+
+nexys4ddr_display
+  #(.FREQ(50000000))
+u_display(.clk       (clk_i),
+          .rst       (!rst_ni),
+          .digits    (digits),
+          .decpoints (8'b00000000),
+          .CA        (CA),
+          .CB        (CB),
+          .CC        (CC),
+          .CD        (CD),
+          .CE        (CE),
+          .CF        (CF),
+          .CG        (CG),
+          .DP        (DP),
+          .AN        (AN));
+
+	//--------------------------------------
+	//			Mouse Reference Component
+	//--------------------------------------
+   MouseRefComp C0(
+				.CLK(clk_i),
+				.RESOLUTION(1'b0),
+				.SWITCH(1'b0),
+				.RST(hid_en&(&hid_we)&one_hot_data_addr[5]&hid_addr[14]),
+				.LEFT(left),
+				.MIDDLE(middle),
+				.NEW_EVENT(new_event),
+				.RIGHT(right),
+				.XPOS(X),
+				.YPOS(Y),
+				.ZPOS(Z),
+				.PS2_CLK(PS2_MCLK),
+				.PS2_DATA(PS2_MDATA)
+	);
   
     wire [7:0] red,  green, blue;
  
@@ -208,8 +251,6 @@ FIFO18E1 #(
 `endif
 
    assign one_hot_rdata[6] = {tx_error_no_keyboard_ack,keyb_empty,keyb_fifo_out[8:0]};
-
-   assign one_hot_rdata[5] = {tx_error_no_mouse_ack,mouse_empty,mouse_fifo_out[8:0]};
    
 //----------------------------------------------------------------------------//
 

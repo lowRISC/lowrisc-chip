@@ -19,6 +19,8 @@ volatile uint64_t *const hid_fb_ptr = (volatile uint64_t *)(FbBase);
 volatile uint8_t *const hid_font_ptr = (volatile uint8_t *)(VgaBase+24576);
 // HID keyboard
 volatile uint32_t *const keyb_base = (volatile uint32_t *)KeybBase;
+// HID mouse
+volatile uint64_t *const mouse_base = (volatile uint32_t *)MouseBase;
 
 static int addr_int = 0;
 
@@ -183,6 +185,7 @@ void keyb_main(void)
   int i;
   int height = 11;
   int width = 5;
+  uint64_t mouse_ev, old_ev = -1;
   for (;;)
     {
       int scan, ascii, event = *keyb_base;
@@ -203,6 +206,19 @@ void keyb_main(void)
             case 0x39: for (i = 33; i < 47; i++) hid_reg_ptr[i] = rand32(); break;
             default: printf("?%x", scan); break;
             }
+        }
+      mouse_ev = *mouse_base;
+      if (old_ev != mouse_ev)
+        {
+          int X = mouse_ev & 1023;
+          int Y = (mouse_ev>>16) & 1023;
+          int Z = (mouse_ev>>32) & 15;
+          int ev = (mouse_ev>>36) & 1;
+          int right = (mouse_ev>>37) & 1;
+          int middle = (mouse_ev>>38) & 1;
+          int left = (mouse_ev>>39) & 1;
+          printf("Mouse event: X=%d, Y=%d, left=%d, middle=%d, right=%d\n", X, Y, left, middle, right);
+          old_ev = mouse_ev;
         }
     }
 }

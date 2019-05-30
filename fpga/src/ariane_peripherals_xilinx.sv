@@ -75,11 +75,23 @@ module ariane_peripherals_xilinx #(
     output wire   [3:0] VGA_RED_O   ,
     output wire   [3:0] VGA_BLUE_O  ,
     output wire   [3:0] VGA_GREEN_O ,
+    output wire        CA,
+    output wire        CB,
+    output wire        CC,
+    output wire        CD,
+    output wire        CE,
+    output wire        CF,
+    output wire        CG,
+    output wire        DP,
+    output wire [7:0]  AN,
 `endif
 `ifndef NEXYS_VIDEO
-  //keyboard
+  // keyboard
     inout wire         PS2_CLK     ,
     inout wire         PS2_DATA    ,
+  // mouse
+    inout wire         PS2_MCLK    ,
+    inout wire         PS2_MDATA   ,
   // display
     output wire        VGA_HS_O    ,
     output wire        VGA_VS_O    ,
@@ -646,9 +658,21 @@ hid_soc hid1
  .hid_addr(hid_addr),
  .hid_wrdata,
  .hid_rddata,
- //keyboard
+ // keyboard
  .PS2_CLK,
  .PS2_DATA,
+ // mouse
+ .PS2_MCLK,
+ .PS2_MDATA,
+ .CA,
+ .CB,
+ .CC,
+ .CD,
+ .CE,
+ .CF,
+ .CG,
+ .DP,
+ .AN,
  // display
  .VGA_HS_O,
  .VGA_VS_O,

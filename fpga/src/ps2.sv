@@ -42,10 +42,7 @@
 
 module ps2(clk, rst,
            PS2_K_CLK_IO, PS2_K_DATA_IO, PS2_M_CLK_IO, PS2_M_DATA_IO,
-           rx_scan_read, rx_released, rx_scan_ready, rx_scan_code, tx_error_no_keyboard_ack,
-	   rx_mouse_data, rx_mouse_data_ready, rx_mouse_read,
-	   tx_mouse_data, tx_mouse_write, tx_mouse_write_ack,
-	   tx_error_no_mouse_ack);
+           rx_scan_read, rx_released, rx_scan_ready, rx_scan_code, tx_error_no_keyboard_ack);
 
    input clk, rst;
    input rx_scan_read;
@@ -56,13 +53,8 @@ module ps2(clk, rst,
    inout PS2_M_DATA_IO;
 
    output rx_scan_ready, rx_released, tx_error_no_keyboard_ack;
-   output [7:0] rx_scan_code, rx_mouse_data;
-   input [7:0] tx_mouse_data;
+   output [7:0] rx_scan_code;
 
-   output      rx_mouse_data_ready, rx_mouse_read, tx_mouse_write_ack, tx_error_no_mouse_ack;
-   
-   input 	tx_mouse_write;
-   
    wire             ps2_k_clk_en_o_ ;
    wire             ps2_k_data_en_o_ ;
    wire             ps2_k_clk_i ;
@@ -91,24 +83,6 @@ module ps2(clk, rst,
                            .ing(ps2_k_data_en_o_),     // Buffer input
                            .ctrl(ps2_k_data_en_o_)      // 3-state enable input 
                            );
-
-ps2_mouse mouse1
-(
-    .clk                         (clk),
-    .reset                       (rst),
-    .ps2_clk_en_o_               (ps2_ctrl_mouse_clk_en_),
-    .ps2_data_en_o_              (ps2_ctrl_mouse_data_en_),
-    .ps2_clk_i                   (ps2_m_clk_i),
-    .ps2_data_i                  (ps2_m_data_i),
-    .rx_scan_code                (rx_mouse_data),
-    .rx_data_ready               (rx_mouse_data_ready),
-    .rx_read                     (rx_mouse_read),
-    .tx_data                     (tx_mouse_data),
-    .tx_write                    (tx_mouse_write),
-    .tx_write_ack_o              (tx_mouse_write_ack),
-    .tx_error_no_ack             (tx_error_no_mouse_ack),
-    .divide_reg_i                (divide_reg)
-);
 
    ps2_keyboard key1(
                      .clock_i(clk),
