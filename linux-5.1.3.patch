@@ -2545,10 +2545,10 @@ index e49f085..e211709 100644
  obj-$(CONFIG_MOUSE_PC110PAD)		+= pc110pad.o
 diff --git a/drivers/input/mouse/lowrisc_mouse.c b/drivers/input/mouse/lowrisc_mouse.c
 new file mode 100644
-index 0000000..bfafee5
+index 0000000..ad0d2e3
 --- /dev/null
 +++ b/drivers/input/mouse/lowrisc_mouse.c
-@@ -0,0 +1,182 @@
+@@ -0,0 +1,192 @@
 +/*
 + * Driver for LowRISC mouse on AXI bus with PS/2 interface.
 + *
@@ -2597,40 +2597,55 @@ index 0000000..bfafee5
 +{
 +  struct lowrisc_mouse *mouse = dev->private;
 +  struct input_dev *input = dev->input;
-+  uint64_t ev = mouse->mouse_base[0];
-+  if (0x100000000ULL & ~ev)
++  int ev = 0;
++  do
 +    {
-+      uint32_t mouse_ev;
++      uint32_t mouse_ev = mouse->mouse_base[0];
++      int X = mouse_ev & 1023;
++      int Y = (mouse_ev>>12) & 1023;
++      int Z = (mouse_ev>>24) & 15;
++      int right = (mouse_ev>>29) & 1;
++      int middle = (mouse_ev>>30) & 1;
++      int left = (mouse_ev>>31) & 1;
++      if (mouse->left != left)
++        {
++          ev = 1;
++          input_report_key(input, BTN_LEFT, left);
++        }
++      if (mouse->middle != middle)
++        {
++          ev = 1;
++          input_report_key(input, BTN_MIDDLE, middle);
++        }
++      if (mouse->right != right)
++        {
++          ev = 1;
++          input_report_key(input, BTN_RIGHT, right);
++        }
++      if (mouse->X != X)
++        {
++          ev = 1;
++          input_report_abs(input, ABS_X, X);
++        }
++      if (mouse->Y != Y)
++        {
++          ev = 1;
++          input_report_abs(input, ABS_Y, Y);
++        }
++      if (ev)
++        {
++          pr_debug("Mouse(%d,%d,%d), ev=%d, left=%d, middle=%d, right=%d\n",
++             X, Y, Z, ev, left, middle, right);
++          input_sync(input);
++        }
++      mouse->left = left;
++      mouse->middle = middle;
++      mouse->right = right;
++      mouse->X = X;
++      mouse->Y = Y;
 +      mouse->mouse_base[0] = 0; // bump FIFO location
-+      mouse_ev = mouse->mouse_base[0];
-+      {
-+        int X = mouse_ev & 1023;
-+        int Y = (mouse_ev>>12) & 1023;
-+        int Z = (mouse_ev>>24) & 15;
-+        int ev = (mouse_ev>>28) & 1;
-+        int right = (mouse_ev>>29) & 1;
-+        int middle = (mouse_ev>>30) & 1;
-+        int left = (mouse_ev>>31) & 1;
-+        if (ev)
-+          {
-+            printk("Mouse(%d,%d,%d), ev=%d, left=%d, middle=%d, right=%d\n",
-+                 X, Y, Z, ev, left, middle, right);
-+        
-+            if (mouse->left != left) input_report_key(input, BTN_LEFT, left);
-+            if (mouse->middle != middle) input_report_key(input, BTN_MIDDLE, middle);
-+            if (mouse->right != right) input_report_key(input, BTN_RIGHT, right);
-+
-+            if (mouse->X != X) input_report_abs(input, ABS_X, X);
-+            if (mouse->Y != Y) input_report_abs(input, ABS_Y, Y);
-+            input_sync(input);
-+            mouse->left = left;
-+            mouse->middle = middle;
-+            mouse->right = right;
-+            mouse->X = X;
-+            mouse->Y = Y;
-+          }
-+      }
 +    }
++  while (ev && (0x100000000ULL & ~(mouse->mouse_base[0])));
 +}
 +
 +static int lowrisc_open(struct input_dev *dev)
@@ -2667,12 +2682,7 @@ index 0000000..bfafee5
 +  lowrisc_mouse->mouse_base = (volatile uint64_t *)ioremap(lowrisc_mouse->mouse->start, resource_size(lowrisc_mouse->mouse));
 +  printk("hid_mouse address %llx, remapped to %lx\n", lowrisc_mouse->mouse->start, (size_t)lowrisc_mouse->mouse_base);
 +
-+  while (0x100000000ULL & lowrisc_mouse->mouse_base[0])
-+    {
-+    lowrisc_mouse->mouse_base[0] = 0; // bump FIFO location
-+    printk("Discarded mouse message %X", (uint32_t)(lowrisc_mouse->mouse_base[0]));
-+    }
-+  printk("Previous input drained");
++  lowrisc_mouse->mouse_base[0x800] = 0; // Reset Mouse
 +  input_poll = devm_input_allocate_polled_device(dev);
 +  if (!input_poll) {
 +    dev_err(dev, "not enough memory for input device\n");
@@ -4963,7 +4973,7 @@ index 846b0c9..2f2173d 100644
  obj-$(CONFIG_FB_VIRTUAL)          += vfb.o
 diff --git a/drivers/video/fbdev/lowrisc_fb.c b/drivers/video/fbdev/lowrisc_fb.c
 new file mode 100644
-index 0000000..c626087
+index 0000000..ba05b23
 --- /dev/null
 +++ b/drivers/video/fbdev/lowrisc_fb.c
 @@ -0,0 +1,213 @@
@@ -5023,7 +5033,7 @@ index 0000000..c626087
 +{
 +  u32 value;
 +        
-+  printk("Palette index %d set to %X,%X,%X\n", regno, red, green, blue);
++  pr_debug("Palette index %d set to %X,%X,%X\n", regno, red, green, blue);
 +
 +  if (regno < 16)
 +    {
