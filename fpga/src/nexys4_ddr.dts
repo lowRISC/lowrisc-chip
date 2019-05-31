@@ -87,6 +87,12 @@
       compatible = "lowrisc-gpio";
       reg = <0x0 0x44000000 0x0 0x1000 >;
     };
+    mouse: lowrisc-mouse@45028000 {
+            reg = <0x0 0x45028000 0x0 0x8000>;
+            reg-io-width = <8>;
+            reg-shift = <3>;
+            compatible = "lowrisc-mouse";
+    };
     keyb: lowrisc-keyb@45030000 {
             reg = <0x0 0x45030000 0x0 0x4000>;
             reg-io-width = <8>;

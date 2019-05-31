@@ -1,18 +1,18 @@
 diff --git a/arch/riscv/configs/defconfig b/arch/riscv/configs/defconfig
-index 2fd3461..4c92be4 100644
+index 2fd3461..1ffbe77 100644
 --- a/arch/riscv/configs/defconfig
 +++ b/arch/riscv/configs/defconfig
-@@ -1,83 +1,1665 @@
+@@ -1,83 +1,1684 @@
 +#
 +# Automatically generated file; DO NOT EDIT.
 +# Linux/riscv 5.1.3 Kernel Configuration
 +#
 +
 +#
-+# Compiler: riscv64-unknown-elf-gcc (GCC) 7.2.0
++# Compiler: riscv64-unknown-elf-gcc (GCC) 8.3.0
 +#
 +CONFIG_CC_IS_GCC=y
-+CONFIG_GCC_VERSION=70200
++CONFIG_GCC_VERSION=80300
 +CONFIG_CLANG_VERSION=0
 +CONFIG_CC_HAS_ASM_GOTO=y
 +CONFIG_CC_HAS_WARN_MAYBE_UNINITIALIZED=y
@@ -103,6 +103,7 @@ index 2fd3461..4c92be4 100644
 +CONFIG_CGROUP_FREEZER=y
 +CONFIG_CGROUP_DEVICE=y
 +CONFIG_CGROUP_CPUACCT=y
++# CONFIG_CGROUP_PERF is not set
  CONFIG_CGROUP_BPF=y
 -CONFIG_NAMESPACES=y
 -CONFIG_USER_NS=y
@@ -170,7 +171,8 @@ index 2fd3461..4c92be4 100644
 +#
 +# Kernel Performance Events And Counters
 +#
-+# CONFIG_PERF_EVENTS is not set
++CONFIG_PERF_EVENTS=y
++# CONFIG_DEBUG_PERF_USE_VMALLOC is not set
 +CONFIG_VM_EVENT_COUNTERS=y
 +CONFIG_SLUB_DEBUG=y
 +CONFIG_SLUB_MEMCG_SYSFS_ON=y
@@ -211,6 +213,11 @@ index 2fd3461..4c92be4 100644
 +CONFIG_TUNE_GENERIC=y
 +CONFIG_RISCV_ISA_C=y
 +CONFIG_RISCV_ISA_A=y
++
++#
++# supported PMU type
++#
++CONFIG_RISCV_BASE_PMU=y
 +CONFIG_FPU=y
 +
 +#
@@ -257,6 +264,7 @@ index 2fd3461..4c92be4 100644
 +CONFIG_RT_MUTEXES=y
 +CONFIG_BASE_SMALL=0
 +# CONFIG_MODULES is not set
++CONFIG_MODULES_TREE_LOOKUP=y
 +CONFIG_BLOCK=y
 +CONFIG_BLK_SCSI_REQUEST=y
 +CONFIG_BLK_DEV_BSG=y
@@ -633,7 +641,6 @@ index 2fd3461..4c92be4 100644
 -CONFIG_E1000E=y
 -CONFIG_R8169=y
 -CONFIG_MICROSEMI_PHY=y
--CONFIG_INPUT_MOUSEDEV=y
 +CONFIG_NET_CORE=y
 +# CONFIG_BONDING is not set
 +# CONFIG_DUMMY is not set
@@ -774,7 +781,10 @@ index 2fd3461..4c92be4 100644
 +#
 +# Userland interfaces
 +#
-+# CONFIG_INPUT_MOUSEDEV is not set
+ CONFIG_INPUT_MOUSEDEV=y
++# CONFIG_INPUT_MOUSEDEV_PSAUX is not set
++CONFIG_INPUT_MOUSEDEV_SCREEN_X=1024
++CONFIG_INPUT_MOUSEDEV_SCREEN_Y=768
 +# CONFIG_INPUT_JOYDEV is not set
 +# CONFIG_INPUT_EVDEV is not set
 +# CONFIG_INPUT_EVBUG is not set
@@ -795,7 +805,11 @@ index 2fd3461..4c92be4 100644
 +# CONFIG_KEYBOARD_BCM is not set
 +CONFIG_KEYBOARD_LOWRISC=y
 +# CONFIG_KEYBOARD_LOWRISC_FAKE is not set
-+# CONFIG_INPUT_MOUSE is not set
++CONFIG_INPUT_MOUSE=y
++# CONFIG_MOUSE_PS2 is not set
++# CONFIG_MOUSE_SERIAL is not set
++# CONFIG_MOUSE_VSXXXAA is not set
++CONFIG_MOUSE_LOWRISC=y
 +# CONFIG_INPUT_JOYSTICK is not set
 +# CONFIG_INPUT_TABLET is not set
 +# CONFIG_INPUT_TOUCHSCREEN is not set
@@ -807,7 +821,7 @@ index 2fd3461..4c92be4 100644
 +#
 +CONFIG_SERIO=y
 +CONFIG_SERIO_SERPORT=y
-+# CONFIG_SERIO_LIBPS2 is not set
++CONFIG_SERIO_LIBPS2=y
 +# CONFIG_SERIO_RAW is not set
 +# CONFIG_SERIO_ALTERA_PS2 is not set
 +# CONFIG_SERIO_PS2MULT is not set
@@ -1138,6 +1152,10 @@ index 2fd3461..4c92be4 100644
 +# CONFIG_PHY_PXA_28NM_USB2 is not set
 +# CONFIG_POWERCAP is not set
 +# CONFIG_MCB is not set
++
++#
++# Performance monitor support
++#
 +CONFIG_RAS=y
 +
 +#
@@ -1171,7 +1189,6 @@ index 2fd3461..4c92be4 100644
 +# CONFIG_EXT3_FS_SECURITY is not set
  CONFIG_EXT4_FS=y
 -CONFIG_EXT4_FS_POSIX_ACL=y
--CONFIG_AUTOFS4_FS=y
 +# CONFIG_EXT4_FS_POSIX_ACL is not set
 +# CONFIG_EXT4_FS_SECURITY is not set
 +# CONFIG_EXT4_DEBUG is not set
@@ -1197,8 +1214,8 @@ index 2fd3461..4c92be4 100644
 +CONFIG_INOTIFY_USER=y
 +# CONFIG_FANOTIFY is not set
 +# CONFIG_QUOTA is not set
-+# CONFIG_AUTOFS4_FS is not set
-+# CONFIG_AUTOFS_FS is not set
+ CONFIG_AUTOFS4_FS=y
++CONFIG_AUTOFS_FS=y
 +# CONFIG_FUSE_FS is not set
 +# CONFIG_OVERLAY_FS is not set
 +
@@ -2494,6 +2511,226 @@ index 0000000..8711843
 +[253] = {0xfd,0x00,0x00},
 +[254] = {0xfe,0x00,0x00},
 +[255] = {0xff,0x00,0x00},
+diff --git a/drivers/input/mouse/Kconfig b/drivers/input/mouse/Kconfig
+index 566a1e3..571c7bf 100644
+--- a/drivers/input/mouse/Kconfig
++++ b/drivers/input/mouse/Kconfig
+@@ -393,6 +393,15 @@ config MOUSE_GPIO
+ 	  To compile this driver as a module, choose M here: the
+ 	  module will be called gpio_mouse.
+ 
++config MOUSE_LOWRISC
++	tristate "LowRISC mouse"
++	depends on RISCV
++	select INPUT_POLLDEV
++	help
++	  This driver connects a PS/2 mouse on the LowRISC AXI bus
++
++	  Say Y here if your hardware is Nexys4DDR.
++
+ config MOUSE_PXA930_TRKBALL
+ 	tristate "PXA930 Trackball mouse"
+ 	depends on CPU_PXA930 || CPU_PXA935
+diff --git a/drivers/input/mouse/Makefile b/drivers/input/mouse/Makefile
+index e49f085..e211709 100644
+--- a/drivers/input/mouse/Makefile
++++ b/drivers/input/mouse/Makefile
+@@ -14,6 +14,7 @@ obj-$(CONFIG_MOUSE_ELAN_I2C)		+= elan_i2c.o
+ obj-$(CONFIG_MOUSE_GPIO)		+= gpio_mouse.o
+ obj-$(CONFIG_MOUSE_INPORT)		+= inport.o
+ obj-$(CONFIG_MOUSE_LOGIBM)		+= logibm.o
++obj-$(CONFIG_MOUSE_LOWRISC)		+= lowrisc_mouse.o
+ obj-$(CONFIG_MOUSE_MAPLE)		+= maplemouse.o
+ obj-$(CONFIG_MOUSE_NAVPOINT_PXA27x)	+= navpoint.o
+ obj-$(CONFIG_MOUSE_PC110PAD)		+= pc110pad.o
+diff --git a/drivers/input/mouse/lowrisc_mouse.c b/drivers/input/mouse/lowrisc_mouse.c
+new file mode 100644
+index 0000000..bfafee5
+--- /dev/null
++++ b/drivers/input/mouse/lowrisc_mouse.c
+@@ -0,0 +1,182 @@
++/*
++ * Driver for LowRISC mouse on AXI bus with PS/2 interface.
++ *
++ * Based on gpio_mouse.c
++ *
++ * Copyright (C) 2007 Atmel Corporation
++ * Copyright (C) 2017 Linus Walleij <linus.walleij@linaro.org>
++ * Copyright (C) 2017 Hans-Christian Egtvedt <egtvedt@samfundet.no>
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License version 2 as
++ * published by the Free Software Foundation.
++ */
++
++#include <linux/io.h>
++#include <linux/module.h>
++#include <linux/platform_device.h>
++#include <linux/input-polldev.h>
++#include <linux/property.h>
++#include <linux/of.h>
++
++enum {MAX_X=640, MAX_Y=480};
++
++/**
++ * struct lowrisc_mouse
++ * @mouse_base: The virtual base address on the AXI bus
++ * @mouse: The resources reported by the device tree blob
++ * @scan_ms: the scan interval in milliseconds.
++ * @left, middle, right, X, Y: previous value reported by hardware
++ *
++ * This struct must be added to the platform_device in the board code.
++ * It is used by the lowrisc_mouse driver to calculate mouse movement.
++ */
++struct lowrisc_mouse {
++  volatile uint64_t *mouse_base;
++  struct resource *mouse;
++  u32 scan_ms;
++  int left, middle, right, X, Y;
++};
++
++/*
++ * Timer function which is run every scan_ms ms when the device is opened.
++ * The dev input variable is set to the the input_dev pointer.
++ */
++static void lowrisc_mouse_scan(struct input_polled_dev *dev)
++{
++  struct lowrisc_mouse *mouse = dev->private;
++  struct input_dev *input = dev->input;
++  uint64_t ev = mouse->mouse_base[0];
++  if (0x100000000ULL & ~ev)
++    {
++      uint32_t mouse_ev;
++      mouse->mouse_base[0] = 0; // bump FIFO location
++      mouse_ev = mouse->mouse_base[0];
++      {
++        int X = mouse_ev & 1023;
++        int Y = (mouse_ev>>12) & 1023;
++        int Z = (mouse_ev>>24) & 15;
++        int ev = (mouse_ev>>28) & 1;
++        int right = (mouse_ev>>29) & 1;
++        int middle = (mouse_ev>>30) & 1;
++        int left = (mouse_ev>>31) & 1;
++        if (ev)
++          {
++            printk("Mouse(%d,%d,%d), ev=%d, left=%d, middle=%d, right=%d\n",
++                 X, Y, Z, ev, left, middle, right);
++        
++            if (mouse->left != left) input_report_key(input, BTN_LEFT, left);
++            if (mouse->middle != middle) input_report_key(input, BTN_MIDDLE, middle);
++            if (mouse->right != right) input_report_key(input, BTN_RIGHT, right);
++
++            if (mouse->X != X) input_report_abs(input, ABS_X, X);
++            if (mouse->Y != Y) input_report_abs(input, ABS_Y, Y);
++            input_sync(input);
++            mouse->left = left;
++            mouse->middle = middle;
++            mouse->right = right;
++            mouse->X = X;
++            mouse->Y = Y;
++          }
++      }
++    }
++}
++
++static int lowrisc_open(struct input_dev *dev)
++{
++  printk("Opening mouse");
++  return 0;
++}
++
++static void lowrisc_close(struct input_dev *dev)
++{
++  printk("Closing mouse");
++}
++
++static int lowrisc_mouse_probe(struct platform_device *pdev)
++{
++  struct device *dev = &pdev->dev;
++  struct lowrisc_mouse *lowrisc_mouse;
++  struct input_polled_dev *input_poll;
++  struct input_dev *input;
++  int ret;
++
++  printk("lowrisc_mouse_probe\n");
++  lowrisc_mouse = devm_kzalloc(dev, sizeof(*lowrisc_mouse), GFP_KERNEL);
++  if (!lowrisc_mouse)
++    return -ENOMEM;
++  
++  lowrisc_mouse->scan_ms = 50;
++  lowrisc_mouse->mouse = platform_get_resource(pdev, IORESOURCE_MEM, 0);
++  if (!request_mem_region(lowrisc_mouse->mouse->start, resource_size(lowrisc_mouse->mouse), "lowrisc_mouse"))
++    {
++    dev_err(&pdev->dev, "cannot request LowRISC mouse region\n");
++    return -EBUSY;
++    }
++  lowrisc_mouse->mouse_base = (volatile uint64_t *)ioremap(lowrisc_mouse->mouse->start, resource_size(lowrisc_mouse->mouse));
++  printk("hid_mouse address %llx, remapped to %lx\n", lowrisc_mouse->mouse->start, (size_t)lowrisc_mouse->mouse_base);
++
++  while (0x100000000ULL & lowrisc_mouse->mouse_base[0])
++    {
++    lowrisc_mouse->mouse_base[0] = 0; // bump FIFO location
++    printk("Discarded mouse message %X", (uint32_t)(lowrisc_mouse->mouse_base[0]));
++    }
++  printk("Previous input drained");
++  input_poll = devm_input_allocate_polled_device(dev);
++  if (!input_poll) {
++    dev_err(dev, "not enough memory for input device\n");
++    return -ENOMEM;
++  }
++
++  platform_set_drvdata(pdev, input_poll);
++
++  /* set input-polldev handlers */
++  input_poll->private = lowrisc_mouse;
++  input_poll->poll = lowrisc_mouse_scan;
++  input_poll->poll_interval = lowrisc_mouse->scan_ms;
++  
++  input = input_poll->input;
++  input->name = pdev->name;
++  input->id.bustype = BUS_HOST;
++  input->dev.parent = &pdev->dev;
++  input->open = lowrisc_open;
++  input->close = lowrisc_close;
++  
++  input_set_capability(input, EV_KEY, BTN_LEFT);
++  input_set_capability(input, EV_KEY, BTN_MIDDLE);
++  input_set_capability(input, EV_KEY, BTN_RIGHT);
++  input_set_capability(input, EV_ABS, ABS_X);
++  input_set_capability(input, EV_ABS, ABS_Y);
++  input_set_abs_params(input, ABS_X, 0, MAX_X, 0, 0);
++  input_set_abs_params(input, ABS_Y, 0, MAX_Y, 0, 0);
++
++  ret = input_register_polled_device(input_poll);
++  if (ret) {
++    dev_err(dev, "could not register input device\n");
++    return ret;
++  }
++  
++  dev_dbg(dev, "%d ms scan time\n", lowrisc_mouse->scan_ms);
++  
++  return 0;
++}
++
++static const struct of_device_id lowrisc_mouse_of_match[] = {
++	{ .compatible = "lowrisc-mouse", },
++	{ },
++};
++MODULE_DEVICE_TABLE(of, lowrisc_mouse_of_match);
++
++static struct platform_driver lowrisc_mouse_device_driver = {
++	.probe		= lowrisc_mouse_probe,
++	.driver		= {
++		.name	= "lowrisc_mouse",
++		.of_match_table = lowrisc_mouse_of_match,
++	}
++};
++module_platform_driver(lowrisc_mouse_device_driver);
++
++MODULE_AUTHOR("Jonathan Kimmitt <jrrk2@cam.ac.uk>");
++MODULE_DESCRIPTION("LowRISC PS/2 mouse driver");
++MODULE_LICENSE("GPL");
++MODULE_ALIAS("platform:lowrisc_mouse"); /* work with hotplug and coldplug */
 diff --git a/drivers/mmc/host/Kconfig b/drivers/mmc/host/Kconfig
 index 28fcd8f..fbff935 100644
 --- a/drivers/mmc/host/Kconfig

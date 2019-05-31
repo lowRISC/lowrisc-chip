@@ -48,6 +48,9 @@ $(LINUX)/.config: $(LINUX)/arch/riscv/configs/defconfig
 $(LINUX)/initramfs.cpio:
 	make -C debian-riscv64 cpio
 
+#We don't want to download the entire revision history of Linux, but we do want to track any changes we make
+#So we do it this way ...
+
 $(LINUX)/drivers/net/ethernet/Makefile: linux-5.1.3.patch
 	rm -rf linux-5.1.3
 	curl https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-5.1.3.tar.xz|tar xJf -
@@ -56,6 +59,7 @@ $(LINUX)/drivers/net/ethernet/Makefile: linux-5.1.3.patch
 	mkdir -p $(LINUX)
 	mv -f $(LINUX) $(LINUX).old
 	mv linux-5.1.3 $(LINUX)
+	(cd $(LINUX); git checkout -b $(LINUX); git add .; git commit -a -m $(LINUX); git status)
 
 fpga/src/etherboot/$(BOARD)_$(CPU).sv: fpga/src/$(BOARD).dts
 	make -C fpga/src/etherboot BOARD=$(BOARD) CPU=$(CPU)
