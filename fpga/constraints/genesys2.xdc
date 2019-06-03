@@ -1,3 +1,9 @@
+## Mouse
+##Pmod Header JB
+
+set_property -dict { PACKAGE_PIN V29   IOSTANDARD LVCMOS33 } [get_ports { PS2_MDATA }]; #IO_L17P_T2_A14_D30_14 Sch=jb_p[1]
+set_property -dict { PACKAGE_PIN V25   IOSTANDARD LVCMOS33 } [get_ports { PS2_MCLK }]; #IO_L18P_T2_A12_D28_14 Sch=jb_p[2]
+
 ## Buttons
 set_property -dict {PACKAGE_PIN R19 IOSTANDARD LVCMOS33} [get_ports cpu_resetn]
 
