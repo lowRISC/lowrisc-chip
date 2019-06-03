@@ -701,6 +701,7 @@ ariane_peripherals_xilinx #(
     // mouse
     .PS2_MCLK,
     .PS2_MDATA,
+`ifdef NEXYS4DDR
     .CA,
     .CB,
     .CC,
@@ -710,6 +711,7 @@ ariane_peripherals_xilinx #(
     .CG,
     .DP,
     .AN,
+`endif //  `ifdef NEXYS4DDR
     // display
     .VGA_HS_O,
     .VGA_VS_O,
