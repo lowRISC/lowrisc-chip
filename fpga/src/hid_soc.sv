@@ -180,6 +180,7 @@ FIFO18E1 #(
                         .DIP(1'b0)                  // 4-bit input: Parity input
                         );
 
+`ifdef NEXYS4DDR
    for (genvar i = 0; i < 8; i = i + 1) begin
       sevensegment
                    u_seg(.in  (mouse_scan_code[(i+1)*4-1:i*4]),
@@ -201,6 +202,7 @@ u_display(.clk       (clk_i),
           .CG        (CG),
           .DP        (DP),
           .AN        (AN));
+`endif //  `ifdef NEXYS4DDR
 
 	//--------------------------------------
 	//			Mouse Reference Component
