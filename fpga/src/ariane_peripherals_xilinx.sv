@@ -664,6 +664,7 @@ hid_soc hid1
  // mouse
  .PS2_MCLK,
  .PS2_MDATA,
+`ifdef NEXYS4DDR
  .CA,
  .CB,
  .CC,
@@ -673,6 +674,7 @@ hid_soc hid1
  .CG,
  .DP,
  .AN,
+`endif
  // display
  .VGA_HS_O,
  .VGA_VS_O,
