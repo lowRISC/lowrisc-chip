@@ -27,4 +27,4 @@
 	url = https://github.com/jrrk/riscv-gnu-toolchain-1.git
 [submodule "ariane"]
 	path = ariane
-	url = https://github.com/lowrisc/ariane.git
+	url = https://github.com/pulp-platform/ariane.git

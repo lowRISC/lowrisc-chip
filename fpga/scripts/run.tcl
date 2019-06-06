@@ -29,32 +29,30 @@ source scripts/add_sources.tcl
 set_property top $::env(CPU)_xilinx [current_fileset]
 
 set file src/$::env(BOARD)_$::env(CPU).svh
-set registers "../ariane/src/common_cells/include/common_cells/registers.svh"
+read_verilog -sv $file
 
-read_verilog -sv $file $registers
-
-set file_obj [get_files -of_objects [get_filesets sources_1] [list "*$file" "*$registers"]]
+set file_obj [get_files -of_objects [get_filesets sources_1] [list "*$file"]]
 set_property -dict { file_type {Verilog Header} is_global_include 1} -objects $file_obj
 
 update_compile_order -fileset sources_1
 
 add_files -fileset constrs_1 -norecurse constraints/$::env(BOARD).xdc
 
-set_property include_dirs src/axi_sd_bridge/include [current_fileset]
+set_property include_dirs ../ariane/src/common_cells/include [current_fileset]
 
 synth_design -rtl -name rtl_1
 
 set_property STEPS.SYNTH_DESIGN.ARGS.RETIMING true [get_runs synth_1]
 #set_property STEPS.SYNTH_DESIGN.ARGS.FLATTEN_HIERARCHY full [get_runs synth_1]
-set_property STEPS.SYNTH_DESIGN.ARGS.GATED_CLOCK_CONVERSION on [get_runs synth_1]
-set_property STEPS.SYNTH_DESIGN.ARGS.RESOURCE_SHARING auto [get_runs synth_1]
-set_property STEPS.SYNTH_DESIGN.ARGS.DIRECTIVE AreaMapLargeShiftRegToBRAM [get_runs synth_1]
-set_property STEPS.PLACE_DESIGN.ARGS.DIRECTIVE ExtraTimingOpt [get_runs impl_1]
-set_property STEPS.PHYS_OPT_DESIGN.ARGS.DIRECTIVE AlternateFlowWithRetiming [get_runs impl_1]
-set_property STEPS.ROUTE_DESIGN.ARGS.DIRECTIVE MoreGlobalIterations [get_runs impl_1]
-set_property STEPS.POST_ROUTE_PHYS_OPT_DESIGN.ARGS.DIRECTIVE AddRetime [get_runs impl_1]
-set_property STEPS.OPT_DESIGN.ARGS.DIRECTIVE ExploreWithRemap [get_runs impl_1]
-set_property STEPS.SYNTH_DESIGN.ARGS.FLATTEN_HIERARCHY none [get_runs synth_1]
+#set_property STEPS.SYNTH_DESIGN.ARGS.GATED_CLOCK_CONVERSION on [get_runs synth_1]
+#set_property STEPS.SYNTH_DESIGN.ARGS.RESOURCE_SHARING auto [get_runs synth_1]
+#set_property STEPS.SYNTH_DESIGN.ARGS.DIRECTIVE AreaMapLargeShiftRegToBRAM [get_runs synth_1]
+#set_property STEPS.PLACE_DESIGN.ARGS.DIRECTIVE ExtraTimingOpt [get_runs impl_1]
+#set_property STEPS.PHYS_OPT_DESIGN.ARGS.DIRECTIVE AlternateFlowWithRetiming [get_runs impl_1]
+#set_property STEPS.ROUTE_DESIGN.ARGS.DIRECTIVE MoreGlobalIterations [get_runs impl_1]
+#set_property STEPS.POST_ROUTE_PHYS_OPT_DESIGN.ARGS.DIRECTIVE AddRetime [get_runs impl_1]
+#set_property STEPS.OPT_DESIGN.ARGS.DIRECTIVE ExploreWithRemap [get_runs impl_1]
+#set_property STEPS.SYNTH_DESIGN.ARGS.FLATTEN_HIERARCHY none [get_runs synth_1]
 
 launch_runs synth_1
 wait_on_run synth_1

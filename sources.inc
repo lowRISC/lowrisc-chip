@@ -79,8 +79,8 @@ src :=  $(filter-out ariane/src/ariane_regfile.sv, $(wildcard ariane/src/*.sv)) 
         ariane/src/common_cells/src/spill_register.sv                                 \
         ariane/src/common_cells/src/sync_wedge.sv                                     \
         ariane/src/common_cells/src/edge_detect.sv                                    \
-        ariane/src/common_cells/src/deprecated/stream_arbiter.sv                      \
-        ariane/src/common_cells/src/deprecated/stream_arbiter_flushable.sv            \
+        ariane/src/common_cells/src/stream_arbiter.sv                                 \
+        ariane/src/common_cells/src/stream_arbiter_flushable.sv                       \
         ariane/src/common_cells/src/deprecated/fifo_v1.sv                             \
         ariane/src/common_cells/src/deprecated/fifo_v2.sv                             \
         ariane/src/common_cells/src/fifo_v3.sv                                        \
