@@ -45,6 +45,7 @@
 #include <stdarg.h>
 #include "mini-printf.h"
 #include "uart.h"
+#include "hid.h"
 
 static unsigned int
 itoa(int value, unsigned int radix, unsigned int uppercase, unsigned int unsig,
@@ -216,6 +217,9 @@ int printf (const char *fmt, ...)
   va_start(va, fmt);
   rslt = vsnprintf(buffer, sizeof(buffer), fmt, va);
   va_end(va);
-  print_uart(buffer);
+  if (0)
+    print_uart(buffer);
+  else
+    hid_send_string(buffer);
   return rslt;
 }

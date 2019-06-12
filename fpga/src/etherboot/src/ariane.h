@@ -10,6 +10,10 @@ typedef enum {
         SPIBase      = 0x42000000,
         EthernetBase = 0x43000000,
         GPIOBase     = 0x44000000,
+        MouseBase    = 0x45028000,
+        KeybBase     = 0x45030000,
+        VgaBase      = 0x45038000,
+        FbBase       = 0x45080000,
         DRAMBase     = 0x80000000
     } soc_bus_start_t;
 
@@ -29,8 +33,10 @@ void eth_main(void);
 void sd_main(int sw);
 void dram_main(int sw);
 void cache_main(void);
+void keyb_main(void);
 uint32_t hwrnd(void);
 void gpio_leds(uint32_t arg);
 uint32_t gpio_sw(void);
+unsigned int rand32(void);
 
 #endif

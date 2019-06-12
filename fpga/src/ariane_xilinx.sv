@@ -11,7 +11,17 @@
 // Description: Xilinx FPGA top-level
 // Author: Florian Zaruba <zarubaf@iis.ee.ethz.ch>
 
-module ariane_xilinx (
+module
+`ifdef ARIANE_SHELL   
+ariane_xilinx
+`elsif ROCKET_SHELL
+rocket_xilinx
+`elsif BOOM_SHELL
+boom_xilinx
+`else
+   if (1) $error("One of ARIANE_SHELL, ROCKET_SHELL, BOOM_SHELL should be defined");
+`endif
+(
 `ifdef GENESYSII
   input  logic         sys_clk_p   ,
   input  logic         sys_clk_n   ,
@@ -31,6 +41,9 @@ module ariane_xilinx (
   output logic [ 0:0]  ddr3_cs_n   ,
   output logic [ 3:0]  ddr3_dm     ,
   output logic [ 0:0]  ddr3_odt    ,
+  output wire   [4:0]  VGA_RED_O   ,
+  output wire   [4:0]  VGA_BLUE_O  ,
+  output wire   [5:0]  VGA_GREEN_O ,
 `elsif NEXYS4DDR
   input  logic        clk_p       ,
   input  logic        cpu_resetn  ,
@@ -47,6 +60,18 @@ module ariane_xilinx (
   output logic [ 0:0] ddr2_cke    ,
   output logic [ 1:0] ddr2_dm     ,
   output logic [ 0:0] ddr2_odt    ,
+  output wire   [3:0] VGA_RED_O   ,
+  output wire   [3:0] VGA_BLUE_O  ,
+  output wire   [3:0] VGA_GREEN_O ,
+  output wire        CA,
+  output wire        CB,
+  output wire        CC,
+  output wire        CD,
+  output wire        CE,
+  output wire        CF,
+  output wire        CG,
+  output wire        DP,
+  output wire [7:0]  AN,
 `elsif NEXYS_VIDEO
   input  logic        clk_p       ,
   input  logic        cpu_resetn  ,
@@ -96,17 +121,28 @@ module ariane_xilinx (
   inout wire [3:0]   sd_dat,
   inout wire         sd_cmd,
   output reg         sd_reset,
+`ifndef NEXYS_VIDEO
+  // keyboard
+  inout wire         PS2_CLK     ,
+  inout wire         PS2_DATA    ,
+  // mouse
+  inout wire         PS2_MCLK    ,
+  inout wire         PS2_MDATA   ,
+  // display
+  output wire        VGA_HS_O    ,
+  output wire        VGA_VS_O    ,
+`endif
   // common part
-  input  logic        tck         ,
-  input  logic        tms         ,
-  input  logic        trst_n      ,
-  input  logic        tdi         ,
-  output wire         tdo         ,
-  input  logic        rx          ,
-  output logic        tx          ,
+  input  logic       tck         ,
+  input  logic       tms         ,
+  input  logic       trst_n      ,
+  input  logic       tdi         ,
+  output wire        tdo         ,
+  input  logic       rx          ,
+  output logic       tx          ,
   // Quad-SPI
-  inout wire          QSPI_CSN    ,
-  inout wire [3:0]    QSPI_D
+  inout wire         QSPI_CSN    ,
+  inout wire [3:0]   QSPI_D
 );
 localparam NBSlave = 2; // debug, ariane
 localparam AxiAddrWidth = 64;
@@ -135,13 +171,14 @@ IOBUF #(
 `ifdef GENESYSII
 
 xlnx_clk_genesys2 i_xlnx_clk_gen (
-  .clk_out1 ( clk           ), // 50 MHz
-  .clk_out2 ( phy_tx_clk    ), // 125 MHz (for RGMII PHY)
-  .clk_out3 ( eth_clk       ), // 125 MHz quadrature (90 deg phase shift)
-  .clk_out4 ( sd_clk_sys    ), // 50 MHz clock
-  .resetn   ( cpu_resetn    ),
-  .locked   ( pll_locked    ),
-  .clk_in1  ( mig_ui_clk    )
+  .clk_out1 ( clk            ), // 50 MHz
+  .clk_out2 ( phy_tx_clk     ), // 125 MHz (for RGMII PHY)
+  .clk_out3 ( eth_clk        ), // 125 MHz quadrature (90 deg phase shift)
+  .clk_out4 ( sd_clk_sys     ), // 50 MHz clock
+  .clk_out5 ( clk_pixel      ), // 120 MHz clock
+  .resetn   ( cpu_resetn     ),
+  .locked   ( pll_locked     ),
+  .clk_in1  ( mig_ui_clk     )
 );
 
 assign mig_sys_clk = mig_ui_clk;
@@ -656,7 +693,31 @@ ariane_peripherals_xilinx #(
     .leds_o         ( led             ),
     .dip_switches_i ( sw              ),
     .QSPI_CSN, // Quad-SPI (for MAC address)
-    .QSPI_D
+    .QSPI_D,
+    .pxl_clk(clk_pixel),
+    // keyboard
+    .PS2_CLK,
+    .PS2_DATA,
+    // mouse
+    .PS2_MCLK,
+    .PS2_MDATA,
+`ifdef NEXYS4DDR
+    .CA,
+    .CB,
+    .CC,
+    .CD,
+    .CE,
+    .CF,
+    .CG,
+    .DP,
+    .AN,
+`endif //  `ifdef NEXYS4DDR
+    // display
+    .VGA_HS_O,
+    .VGA_VS_O,
+    .VGA_RED_O,
+    .VGA_BLUE_O,
+    .VGA_GREEN_O
 );
 
 

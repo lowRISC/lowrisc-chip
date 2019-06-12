@@ -2,6 +2,7 @@
 #include <sys/types.h>
 #include <stdint.h>
 #include "uart.h"
+#include "hid.h"
 #include "mini-printf.h"
 #include "ariane.h"
 #include "qspi.h"
@@ -63,7 +64,7 @@ void qspi_read4(void)
         data[0] = CMD_4READ;
         do
           {
-            data[1] = i + 0x00B00000; // Should locate start of BBL
+            data[1] = i + BITSIZE; // Should locate start of BBL
             rslt = qspi_send(2, 0, data_in_count, data_out_count, data);
             if (rslt == 0xFFFFFFFFFFFFFFFF)
               ++blank;
@@ -129,10 +130,11 @@ int main()
   uint32_t i, rnd, sw, sw2;
   init_uart();
   print_uart("Hello World!\r\n");
+  hid_init();
   for (i = 0; i < 5; i++)
     {
       volatile uint64_t *swp = (volatile uint64_t *)GPIOBase;
-      printf("swp[%d] = %X\n", i, swp[i]);
+      printf("swp[%d] = %lX\n", i, swp[i]);
     }
   set_dummy_mac();
   for (i = 0; i < 4; i++)
@@ -152,6 +154,7 @@ int main()
     case 0x2: printf("DRAM test\n"); dram_main(sw); break;
     case 0x4: printf("TFTP boot\n"); eth_main(); break;
     case 0x6: printf("Cache test\n"); cache_main(); break;
+    case 0x7: printf("Keyboard test\n"); keyb_main(); break;
     }
   while (1)
     {

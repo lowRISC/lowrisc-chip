@@ -8,3 +8,4 @@ riscv/
 tools/
 lib/
 rootfs.tar.xz
+linux-5.1.3-lowrisc/

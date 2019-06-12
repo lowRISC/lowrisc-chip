@@ -65,8 +65,40 @@ module ariane_peripherals_xilinx #(
     output reg         sd_reset,
     output logic [7:0] leds_o,
     input  logic [7:0] dip_switches_i,
+    input wire         pxl_clk,
+`ifdef GENESYSII
+    // display
+    output wire [4:0]  VGA_RED_O,
+    output wire [4:0]  VGA_BLUE_O,
+    output wire [5:0]  VGA_GREEN_O,
+`elsif NEXYS4DDR
+    output wire   [3:0] VGA_RED_O   ,
+    output wire   [3:0] VGA_BLUE_O  ,
+    output wire   [3:0] VGA_GREEN_O ,
+    output wire        CA,
+    output wire        CB,
+    output wire        CC,
+    output wire        CD,
+    output wire        CE,
+    output wire        CF,
+    output wire        CG,
+    output wire        DP,
+    output wire [7:0]  AN,
+`endif
+`ifndef NEXYS_VIDEO
+  // keyboard
+    inout wire         PS2_CLK     ,
+    inout wire         PS2_DATA    ,
+  // mouse
+    inout wire         PS2_MCLK    ,
+    inout wire         PS2_MDATA   ,
+  // display
+    output wire        VGA_HS_O    ,
+    output wire        VGA_VS_O    ,
+`endif
+  // Quad-SPI
     inout wire         QSPI_CSN,
-    inout wire [3:0]   QSPI_D
+    inout wire [3:0]   QSPI_D   
 );
 
 AXI_BUS #(
@@ -74,17 +106,18 @@ AXI_BUS #(
     .AXI_DATA_WIDTH ( AxiDataWidth     ),
     .AXI_ID_WIDTH   ( AxiIdWidth       ),
     .AXI_USER_WIDTH ( AxiUserWidth     )
-) master[4:0]();
+) master[ariane_soc::ExtLast-1:0]();
 
-logic [4:0][AxiAddrWidth-1:0] BASE;
-logic [4:0][AxiAddrWidth-1:0] MASK;
+logic [ariane_soc::ExtLast-1:0][AxiAddrWidth-1:0] BASE;
+logic [ariane_soc::ExtLast-1:0][AxiAddrWidth-1:0] MASK;
 
 assign BASE = {
         ariane_soc::BOOTBase,
         ariane_soc::UARTBase,
         ariane_soc::SPIBase,
         ariane_soc::EthernetBase,
-        ariane_soc::GPIOBase
+        ariane_soc::GPIOBase,
+        ariane_soc::HIDBase
       };
       
 assign MASK = {
@@ -92,13 +125,14 @@ assign MASK = {
               ariane_soc::UARTLength - 1,
               ariane_soc::SPILength - 1,
               ariane_soc::EthernetLength -1,
-              ariane_soc::GPIOLength - 1
+              ariane_soc::GPIOLength - 1,
+              ariane_soc::HIDLength - 1
             };
 
 axi_demux_raw #(
-    .SLAVE_NUM  ( 5                ),
-    .ADDR_WIDTH ( AxiAddrWidth     ),
-    .ID_WIDTH   ( AxiIdWidth       )
+    .SLAVE_NUM  ( ariane_soc::ExtLast ),
+    .ADDR_WIDTH ( AxiAddrWidth        ),
+    .ID_WIDTH   ( AxiIdWidth          )
 ) demux (.clk(clk_i), .rstn(rst_ni), .master(iobus), .slave(master), .BASE, .MASK);
 
 // ---------------
@@ -584,6 +618,73 @@ dword_interface dwi_inst(
 `endif
    
     end
+
+    // HID
+
+localparam RamAddrWidth = 20;
+   
+logic                    hid_en;
+logic [RamAddrWidth-1:0] hid_addr;
+logic [AxiDataWidth-1:0] hid_wrdata, hid_rddata;
+logic [AxiDataWidth/8-1:0] hid_we;
+
+axi_bram_ctrl #(
+    .ID_WIDTH        ( AxiIdWidth       ),
+    .ADDR_WIDTH      ( AxiAddrWidth     ),
+    .DATA_WIDTH      ( AxiDataWidth     ),
+    .BRAM_ADDR_WIDTH ( RamAddrWidth     ),
+    .USER_WIDTH      ( AxiUserWidth     )
+) i_axi2hid  (
+    .clk         ( clk_i                   ),
+    .rstn        ( rst_ni                  ),
+    .master      ( master[ariane_soc::HID] ),
+    .bram_en     ( hid_en                  ),
+    .bram_addr   ( hid_addr                ),
+    .bram_we     ( hid_we                  ),
+    .bram_wrdata ( hid_wrdata              ),
+    .bram_rddata ( hid_rddata              )
+);
+
+`ifndef NEXYS_VIDEO
+
+hid_soc hid1
+  (
+ // clock and reset
+ .pxl_clk,
+ .clk_i,
+ .rst_ni,
+ .hid_en,
+ .hid_we,
+ .hid_addr(hid_addr),
+ .hid_wrdata,
+ .hid_rddata,
+ // keyboard
+ .PS2_CLK,
+ .PS2_DATA,
+ // mouse
+ .PS2_MCLK,
+ .PS2_MDATA,
+`ifdef NEXYS4DDR
+ .CA,
+ .CB,
+ .CC,
+ .CD,
+ .CE,
+ .CF,
+ .CG,
+ .DP,
+ .AN,
+`endif
+ // display
+ .VGA_HS_O,
+ .VGA_VS_O,
+ .VGA_RED_O,
+ .VGA_BLUE_O,
+ .VGA_GREEN_O
+   );
+
+`endif
+  
 endmodule
 
 `default_nettype wire

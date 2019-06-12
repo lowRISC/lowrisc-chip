@@ -8,10 +8,13 @@ module cnvmem;
    
    reg [7:0] byt, mem[`vstrt:`vstop];
    reg [127:0] mem2[0:'hfff];
-
+   reg [1023:0] cnvmem_mem;
+   
    initial
      begin
-        $readmemh("cnvmem.mem", mem);
+        if (!$value$plusargs("VLOG=%s", cnvmem_mem))
+          $error;
+        $readmemh(cnvmem_mem, mem);
         i = `vstrt;
 	while ((i < `vstop) && (1'bx === ^mem[i]))
 	  i=i+16;
@@ -35,11 +38,15 @@ module cnvmem;
                                    mem[i+7],mem[i+6],mem[i+5],mem[i+4],
                                    mem[i+3],mem[i+2],mem[i+1],mem[i+0]};
           end
-        fd = $fopen("boot.mem", "w");
+        if (!$value$plusargs("MEM=%s", cnvmem_mem))
+          $error;
+        fd = $fopen(cnvmem_mem, "w");
         for (i = 0; i <= 'hfff; i=i+1)
           $fdisplay(fd, "%32x", mem2[i]);
         $fclose(fd);
-        fd = $fopen("bootram.sv", "w");
+        if (!$value$plusargs("SV=%s", cnvmem_mem))
+          $error;
+        fd = $fopen(cnvmem_mem, "w");
         $fdisplay(fd, "/* Copyright 2018 ETH Zurich and University of Bologna.");
         $fdisplay(fd, " * Copyright and related rights are licensed under the Solderpad Hardware");
         $fdisplay(fd, " * License, Version 0.51 (the %cLicense%c); you may not use this file except in", 34, 34);

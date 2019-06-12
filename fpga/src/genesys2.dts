@@ -17,7 +17,7 @@
       device_type = "cpu";
       reg = <0>;
       status = "okay";
-      compatible = "ethz, ariane", "riscv";
+      compatible = "", "riscv";
       riscv,isa = "rv64imafdc";
       mmu-type = "riscv,sv39";
       tlb-split;
@@ -82,12 +82,23 @@
       device_type = "network";
       interrupt-parent = <&PLIC0>;
       interrupts = <3>;
-      local-mac-address = [00 18 3e 02 e3 7f]; // This needs to change if more than one GenesysII on a VLAN
       reg = <0x0 0x43000000 0x0 0x8000>;
     };
     gpio: lowrisc-gpio@44000000 {
       compatible = "lowrisc-gpio";
       reg = <0x0 0x44000000 0x0 0x1000 >;
+    };
+    keyb: lowrisc-keyb@45030000 {
+            reg = <0x0 0x45030000 0x0 0x4000>;
+            reg-io-width = <8>;
+            reg-shift = <3>;
+            compatible = "lowrisc-keyb";
+    };
+    fb: lowrisc-fb@45038000 {
+            reg = <0x0 0x45038000 0x0 0xC8000>;
+            reg-io-width = <8>;
+            reg-shift = <3>;
+            compatible = "lowrisc-fb";
     };
   };
 };
