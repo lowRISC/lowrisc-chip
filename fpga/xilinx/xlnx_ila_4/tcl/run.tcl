@@ -24,7 +24,7 @@ set_property -dict [list \
                         CONFIG.C_PROBE13_WIDTH {7} \
                         CONFIG.C_PROBE14_WIDTH {7} \
                         CONFIG.C_PROBE15_WIDTH {3} \
-                        CONFIG.C_DATA_DEPTH {1024} \
+                        CONFIG.C_DATA_DEPTH {4096} \
                         CONFIG.C_NUM_OF_PROBES {16} \
                         CONFIG.C_ADV_TRIGGER {true} \
                         CONFIG.C_TRIGOUT_EN {false} \

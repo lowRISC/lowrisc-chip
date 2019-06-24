@@ -17,7 +17,6 @@
 
 uint32_t qspistatus(void);
 uint64_t qspi_send(uint8_t len, uint8_t quad, uint16_t data_in_count, uint16_t data_out_count, uint32_t *data);
-void just_jump (void);
 void gpio_leds(uint32_t arg);
 uint32_t gpio_sw(void);
 uint32_t hwrnd(void);

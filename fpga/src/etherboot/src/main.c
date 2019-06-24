@@ -122,7 +122,7 @@ void qspi_main(int sw)
     printf("elf read failed with code %ld", -entry);
     return;
     }
-  just_jump();
+  just_jump(entry);
 }
 
 int main()

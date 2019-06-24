@@ -119,5 +119,6 @@ typedef struct {
 } Elf64_Sym;
 
 extern int64_t load_elf(void (*elfn)(void *dst, uint32_t off, uint32_t sz));
+extern void just_jump (int64_t entry);
 
 #endif

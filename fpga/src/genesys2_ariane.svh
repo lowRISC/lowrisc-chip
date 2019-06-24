@@ -33,5 +33,8 @@
 
 // Logic analysers enabled
 
-`define XLNX_ILA_QSPI
+// `define XLNX_ILA_QSPI
 // `define XLNX_ILA_TRACE
+`define XLNX_ILA_PERF
+`define XLNX_ILA_FPU
+`define FPNEW_TOP_DUMMY

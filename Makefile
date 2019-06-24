@@ -5,6 +5,7 @@ include sources.inc
 
 REMOTE=lowrisc5.sm
 LINUX=linux-5.1.3-lowrisc
+export RISCV=/opt/riscv
 
 default: nexys4_ddr_ariane
 
@@ -19,7 +20,7 @@ tftp_vt: riscv-pk/vt/bbl
 linux_serial: riscv-pk/serial/bbl
 
 riscv-pk/serial/bbl: $(LINUX)/drivers/net/ethernet/Makefile $(LINUX)/initramfs.cpio riscv-pk/serial/vmlinux-serial riscv-pk/serial/Makefile
-	make -C riscv-pk/serial
+	make -C riscv-pk/serial PATH=$(RISCV)/bin:/usr/bin:/bin
 
 riscv-pk/serial/Makefile:
 	mkdir -p riscv-pk/serial
@@ -32,18 +33,18 @@ riscv-pk/vt/Makefile:
 linux_vt: riscv-pk/vt/bbl
 
 riscv-pk/vt/bbl: $(LINUX)/drivers/net/ethernet/Makefile $(LINUX)/initramfs.cpio riscv-pk/vt/vmlinux-vt 
-	make -C riscv-pk/vt
+	make -C riscv-pk/vt PATH=$(RISCV)/bin:/usr/bin:/bin
 
 riscv-pk/vt/vmlinux-vt: riscv-pk/vt/Makefile $(LINUX)/.config
-	make -C $(LINUX) ARCH=riscv CROSS_COMPILE=riscv64-unknown-elf- CONFIG_SERIAL_8250_CONSOLE=n CONFIG_VT_CONSOLE=y CONFIG_LOWRISC_VGA_CONSOLE=y -j 4
+	make -C $(LINUX) ARCH=riscv CROSS_COMPILE=$(RISCV)/bin/riscv64-unknown-elf- CONFIG_SERIAL_8250_CONSOLE=n CONFIG_VT_CONSOLE=y CONFIG_LOWRISC_VGA_CONSOLE=y -j 4
 	mv $(LINUX)/vmlinux $@
 
 riscv-pk/serial/vmlinux-serial: riscv-pk/serial/Makefile $(LINUX)/.config
-	make -C $(LINUX) ARCH=riscv CROSS_COMPILE=riscv64-unknown-elf- CONFIG_SERIAL_8250_CONSOLE=y CONFIG_VT_CONSOLE=n CONFIG_LOWRISC_VGA_CONSOLE=n -j 4
+	make -C $(LINUX) ARCH=riscv CROSS_COMPILE=$(RISCV)/bin/riscv64-unknown-elf- CONFIG_SERIAL_8250_CONSOLE=y CONFIG_VT_CONSOLE=n CONFIG_LOWRISC_VGA_CONSOLE=n -j 4
 	mv $(LINUX)/vmlinux $@
 
 $(LINUX)/.config: $(LINUX)/arch/riscv/configs/defconfig
-	make -C $(LINUX) defconfig ARCH=riscv CROSS_COMPILE=riscv64-unknown-elf-
+	make -C $(LINUX) defconfig ARCH=riscv CROSS_COMPILE=$(RISCV)/bin/riscv64-unknown-elf-
 
 $(LINUX)/initramfs.cpio:
 	make -C debian-riscv64 cpio

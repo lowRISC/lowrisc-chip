@@ -77,35 +77,6 @@ Error Codes
    7         No such user.
 */
 
-/* hack in a document_root */
-const char *const conf_document_root = "";
-
-/* poor man's atoi that only does natural numbers (plus zero in case some pedantic insists zero is unnatural) */
-
-int myatoi(const char *nptr)
-{
-  int rslt = 0;
-  while (*nptr)
-    {
-    switch(*nptr)
-      {
-      case '0':
-      case '1':
-      case '2':
-      case '3':
-      case '4':
-      case '5':
-      case '6':
-      case '7':
-      case '8':
-      case '9':
-        rslt = rslt * 10 + *nptr - '0';
-      }
-    ++nptr;
-    }
-  return rslt;
-}
-
 void myputn(int wid, unsigned n)
 {
   if ((wid > 0) || (n > 9)) myputn(wid-1, n / 10);
@@ -113,7 +84,8 @@ void myputn(int wid, unsigned n)
 }
 
 enum {verbose=0, md5sum = 1};
-static char *file_ptr, *strt_ptr;
+static char *file_ptr, *strt_ptr, fullpath[80];
+static int crc_err_old, fram_err_old;
 
 void tftp_elfn(void *dst, uint32_t off, uint32_t sz)
 {
@@ -124,10 +96,18 @@ void tftp_elfn(void *dst, uint32_t off, uint32_t sz)
   memcpy(dst, strt_ptr+off, sz);
 }
 
-void file_open(const char *path)
+void file_open(const char *r_path)
 {
+  crc_err_old = eth_read(RFCS_OFFSET) >> 32;
+  fram_err_old = eth_read(TFCS_OFFSET) >> 32;
   strt_ptr = 0x1000000 + (char *)DRAMBase;
   file_ptr = strt_ptr;
+  if (strlen(r_path) > sizeof(fullpath) - 1) {		
+    printf("Request path too long. %ld\n", strlen(r_path));
+    return;
+  }
+	
+  strcpy(fullpath, r_path);
 }
 
 void file_write(void *data, int siz)
@@ -138,15 +118,19 @@ void file_write(void *data, int siz)
 
 void file_close(void)
 {
-  extern char _dtb[];
   uint8_t *hash_value;
-  int br, siz = file_ptr - strt_ptr;
+  int siz = file_ptr - strt_ptr;
   int64_t entry_point;
   printf("File length = %d\n", siz);
   if (md5sum)
     {
       hash_value = hash_buf(strt_ptr, siz);
       printf("md5(%p,%d) = %s\n", strt_ptr, siz, hash_value);
+      if (strcmp((char *)hash_value, fullpath))
+        {
+          printf("Aborting boot, expected hash value %s\n", fullpath);
+          return;
+        }
     }
   printf("load elf to DDR memory\n");
   entry_point = load_elf(tftp_elfn);
@@ -174,41 +158,24 @@ int myrecv(int sock, struct tftpx_packet *rcv_packet, int siz)
 }
 
 static ushort block;
-static int blocksize;
 static struct tftpx_packet ack_packet;
 
 void handle_wrq(int sock, struct tftpx_request *request) {
-	char fullpath[256];
 	char *r_path = request->packet.filename;	// request file
 	char *mode = r_path + strlen(r_path) + 1;
-	char *blocksize_str = mode + strlen(mode) + 1;	
-	blocksize = myatoi(blocksize_str);
-
-	if (blocksize <= 0 || blocksize > DATA_SIZE) {
-		blocksize = DATA_SIZE;
-	}
-
-	if (strlen(r_path) + strlen(conf_document_root) > sizeof(fullpath) - 1) {		
-		printf("Request path too long. %ld\n", strlen(r_path) + strlen(conf_document_root));
+        if (strcmp(mode, "octet")) {
+		printf("Only octet mode is supported (client specified %s)\n", mode);
 		return;
-	}
-	
-	// build fullpath
-	memset(fullpath, 0, sizeof(fullpath));
-	strcpy(fullpath, conf_document_root);
-	if(r_path[0] != '/'){
-		strcat(fullpath, "/");
-	}
-	strcat(fullpath, r_path);
-
-	printf("wrq: \"%s\", blocksize=%d\n", fullpath, blocksize);
+	}          
+          
+	printf("wrq: \"%s\", blocksize=%d\n", r_path, DATA_SIZE);
 	
 	//if(!strncasecmp(mode, "octet", 5) && !strncasecmp(mode, "netascii", 8)){
 	//	// send error packet
 	//	return;
 	//}
 		
-	file_open(fullpath);
+	file_open(r_path);
 	
 	ack_packet.cmd = htons(CMD_ACK);
 	ack_packet.block = htons(0);
@@ -236,9 +203,11 @@ void handle_data_packet(int sock, struct tftpx_packet *rcv_packet, int r_size) {
         }
       block++;
     }
-  if (r_size < blocksize + 4)
+  if (r_size < DATA_SIZE + 4)
     {
-      printf("Receive file end.\n");
+      int crc_err = eth_read(RFCS_OFFSET) >> 32;
+      int fram_err = eth_read(TFCS_OFFSET) >> 32;
+      printf("Receive file end (blocks = %d, crc err = %d, fram err = %d)\n", block, crc_err-crc_err_old, fram_err-fram_err_old);
       file_close();
     }
 } 
