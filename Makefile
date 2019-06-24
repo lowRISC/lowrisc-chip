@@ -63,7 +63,7 @@ $(LINUX)/drivers/net/ethernet/Makefile: linux-5.1.3.patch
 	(cd $(LINUX); git checkout -b $(LINUX); git add .; git commit -a -m $(LINUX); git status)
 
 fpga/src/etherboot/$(BOARD)_$(CPU).sv: fpga/src/$(BOARD).dts
-	make -C fpga/src/etherboot BOARD=$(BOARD) CPU=$(CPU)
+	make -C fpga/src/etherboot BOARD=$(BOARD) CPU=$(CPU) PATH=$(RISCV)/bin:/usr/local/bin:/usr/bin:/bin
 
 fpga/work-fpga/$(BOARD)_ariane/ariane_xilinx.bit: $(ariane_pkg) $(util) $(src) $(fpga_src) \
         fpga/src/etherboot/$(BOARD)_$(CPU).sv

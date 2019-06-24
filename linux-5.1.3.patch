@@ -3707,10 +3707,10 @@ index 0000000..4eb3ade
 +CFLAGS_lowrisc_100MHz.o := -DDEBUG
 diff --git a/drivers/net/ethernet/lowrisc/lowrisc_100MHz.c b/drivers/net/ethernet/lowrisc/lowrisc_100MHz.c
 new file mode 100644
-index 0000000..4984e7b
+index 0000000..b07a6d9
 --- /dev/null
 +++ b/drivers/net/ethernet/lowrisc/lowrisc_100MHz.c
-@@ -0,0 +1,830 @@
+@@ -0,0 +1,839 @@
 +/*
 + * Lowrisc Ether100MHz Linux driver for the Lowrisc Ethernet 100MHz device.
 + *
@@ -3797,11 +3797,12 @@ index 0000000..4984e7b
 +  struct mutex lock;
 +  uint32_t last_mdio_gpio;
 +  int irq, num_tests, phy_addr;
-+
++  uint32_t crc_err_old, fram_err_old;
++  
 +  struct napi_struct napi;
 +};
 +
-+static void inline eth_write(struct net_local *priv, size_t addr, int data)
++static void inline eth_write(struct net_local *priv, size_t addr, uint64_t data)
 +{
 +  volatile uint64_t *eth_base = (volatile uint64_t *)(priv->ioaddr);
 +  eth_base[addr >> 3] = data;
@@ -3828,7 +3829,7 @@ index 0000000..4984e7b
 +    }
 +}
 +
-+static volatile inline int eth_read(struct net_local *priv, size_t addr)
++static volatile inline uint64_t eth_read(struct net_local *priv, size_t addr)
 +{
 +  volatile uint64_t *eth_base = (volatile uint64_t *)(priv->ioaddr);
 +  return eth_base[addr >> 3];
@@ -4221,7 +4222,11 @@ index 0000000..4984e7b
 +            }
 +        }
 +      else
-+	  ndev->stats.rx_errors++;
++        {
++	  ndev->stats.rx_length_errors++;
++        }
++      ndev->stats.rx_crc_errors = (eth_read(priv, RFCS_OFFSET) >> 32) - priv->crc_err_old;
++      ndev->stats.rx_frame_errors = (eth_read(priv, TFCS_OFFSET) >> 32) - priv->fram_err_old;
 +      /* acknowledge, even if an error occurs, to reset irq */
 +      eth_write(priv, RSR_OFFSET, ++buf);
 +      rsr = eth_read(priv, RSR_OFFSET);
@@ -4283,7 +4288,7 @@ index 0000000..4984e7b
 +  for (i = 0; i < LOWRISC_REGS_LEN; i++)
 +    {
 +      if (i >= 32)
-+	regs_buff[i] = eth_read(priv, MACLO_OFFSET+((i-32)<<3));
++	regs_buff[i] = eth_read(priv, MACLO_OFFSET+((i-32)/2)*8) >> (i%2 << 5);
 +      else
 +	{
 +	regs_buff[i] = phy_read(phy, i);
@@ -4316,6 +4321,10 @@ index 0000000..4984e7b
 +
 +  /* Set the MAC address each time opened */
 +  lowrisc_update_address(priv, ndev->dev_addr);
++  /* reset stats */
++  memset(&(ndev->stats), 0, sizeof(ndev->stats));
++  priv->crc_err_old = eth_read(priv, RFCS_OFFSET) >> 32;
++  priv->fram_err_old = eth_read(priv, TFCS_OFFSET) >> 32;
 +  
 +  if (priv->phy_dev) {
 +    linkmode_copy(priv->phy_dev->advertising, priv->phy_dev->supported);
@@ -4323,7 +4332,7 @@ index 0000000..4984e7b
 +  }
 +  
 +  /* Grab the IRQ */
-+  printk("Open device, request interrupt %d\n", priv->irq);
++  pr_debug("Open device, request interrupt %d\n", priv->irq);
 +  retval = request_irq(priv->irq, lowrisc_ether_isr, 0, ndev->name, priv);
 +  if (retval) {
 +    dev_err(&priv->ndev->dev, "Could not allocate interrupt %d\n", priv->irq);
