@@ -24,11 +24,11 @@ riscv-pk/serial/bbl: $(LINUX)/drivers/net/ethernet/Makefile $(LINUX)/initramfs.c
 
 riscv-pk/serial/Makefile:
 	mkdir -p riscv-pk/serial
-	cd riscv-pk/serial; ../configure --host=riscv64-unknown-elf --enable-print-device-tree --with-payload=vmlinux-serial
+	cd riscv-pk/serial; env PATH=$(RISCV)/bin:/usr/bin:/bin ../configure --host=riscv64-unknown-elf --enable-print-device-tree --with-payload=vmlinux-serial
 
 riscv-pk/vt/Makefile:
 	mkdir -p riscv-pk/vt
-	cd riscv-pk/vt; ../configure --host=riscv64-unknown-elf --enable-print-device-tree --with-payload=vmlinux-vt
+	cd riscv-pk/vt; env PATH=$(RISCV)/bin:/usr/bin:/bin ../configure --host=riscv64-unknown-elf --enable-print-device-tree --with-payload=vmlinux-vt
 
 linux_vt: riscv-pk/vt/bbl
 
