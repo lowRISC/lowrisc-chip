@@ -132,13 +132,14 @@ wire [8*7-1:0] digits;
 wire           left, middle, right, new_event, mouse_empty;
 logic [31:0] mouse_scan_code_dly, mouse_fifo_out;
 wire [31:0] mouse_scan_code = {left, middle, right, new_event, Z,2'b0,Y,2'b0,X};
-wire rst = (hid_en&(&hid_we)&one_hot_data_addr[5]&hid_addr[14]) || ~rst_ni;
+logic rst;
    
 assign one_hot_rdata[5] = {mouse_empty,mouse_fifo_out};
 
 always @(posedge clk_i)
      begin
 	mouse_scan_code_dly <= mouse_scan_code;
+        rst <= hid_en&(&hid_we)&one_hot_data_addr[5]&hid_addr[14];
      end
 
 FIFO18E1 #(
@@ -170,7 +171,7 @@ FIFO18E1 #(
                         .RDCLK(~clk_i),         // 1-bit input: Read clock
                         .RDEN(hid_en&(|hid_we)&one_hot_data_addr[5]&~hid_addr[14]), // 1-bit input: Read enable
                         .REGCE(1'b1),              // 1-bit input: Clock enable
-                        .RST(rst),               // 1-bit input: Asynchronous Reset
+                        .RST(rst || ~rst_ni),               // 1-bit input: Asynchronous Reset
                         .RSTREG(1'b0),             // 1-bit input: Output register set/reset
                         // Write Control Signals: 1-bit (each) input: Write clock and enable input signals
                         .WRCLK(~clk_i),         // 1-bit input: Write clock
@@ -211,7 +212,7 @@ u_display(.clk       (clk_i),
 				.CLK(clk_i),
 				.RESOLUTION(1'b0),
 				.SWITCH(1'b0),
-				.RST(rst),
+				.RST(rst || ~rst_ni),
 				.LEFT(left),
 				.MIDDLE(middle),
 				.NEW_EVENT(new_event),
