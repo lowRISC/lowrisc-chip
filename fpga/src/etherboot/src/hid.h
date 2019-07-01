@@ -34,10 +34,7 @@
 #define LOWRISC_REGS_GHLIMIT   (18)
 #define LOWRISC_REGS_PALETTE   (32)
 
-extern const char zifu[];
-extern volatile uint16_t *const hid_vga_ptr;
 extern volatile uint64_t *const hid_reg_ptr;
-extern volatile uint8_t  *const hid_font_ptr;
 extern volatile uint64_t *const hid_fb_ptr;
 extern volatile uint32_t *const keyb_base;
 extern volatile uint64_t *const mouse_base;
