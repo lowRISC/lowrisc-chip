@@ -56,8 +56,8 @@ module fstore2(
    reg [7:0]                     ghlimit, ghlimit0;
    reg [18:0]                    addrb_1;
    wire [63:0]                   dout, dout0;
-   wire [15:0]                   dout16 = dout >> {offhreg1[7:6],4'b0000};
-   reg [15:0]                    dout16_1;
+//   wire [15:0]                   dout16 = dout >> {offhreg1[7:6],4'b0000};
+//   reg [15:0]                    dout16_1;
    wire                          cursor = (offvreg[10:5] == ycursor[6:0]) && (offhreg[12:6] == xcursor[6:0]) && (vrow==cursorvreg);
    
    // 100 MHz / 2100 is 47.6kHz.  Divide by further 788 to get 60.4 Hz.
@@ -71,11 +71,13 @@ module fstore2(
 
    reg [23:0]                    palette0[0:15], palette[0:15];
 
+/*   
    dualmem ram1(.clka(pxl_clk),
                 .dina(8'b0), .addra({offvreg[10:5],offhreg[12:8]}), .wea(8'b0), .douta(dout), .ena(1'b1),
                 .clkb(~clk_i), .dinb(hid_wrdata), .addrb(hid_addr[13:3]), .web(hid_we), .doutb(dout0), .enb(hid_en & one_hot_data_addr[7] & ~hid_addr[14]));
-
-   parameter graphmax = 12;
+*/
+   
+   parameter graphmax = 16;
    
    genvar                        r;
    logic [63:0]                  fstore_rddata, doutfb[graphmax-1:0], doutpix[graphmax-1:0];
@@ -210,7 +212,7 @@ module fstore2(
         offgpixel_1 <= offgpixel;
         gaddra_1 <= gaddra;
         offpixel1 <= offpixel;
-        dout16_1 <= dout16;
+//        dout16_1 <= dout16;
         bitmapped_pixel1 <= bitmapped_pixel;
         cursorvreg <= cursorvreg0;
 	xcursor <= xcursor0;
@@ -306,6 +308,7 @@ module fstore2(
 
    assign vsyn = vstart;
 
+/*                  
    wire [7:0] pixels_out, fout;
    reg [3:0]  faddr;
 
@@ -324,7 +327,7 @@ module fstore2(
    
    assign doutb = addrb_1[14] ? {fout,fout,fout,fout,fout,fout,fout,fout} : dout0;
    wire [7:0] font_in = hid_wrdata >> {faddr[2:0],3'b000};
-                  
+
    chargen_7x5_rachel the_rachel(
     .clk(pxl_clk),
     .ascii(dout16[7:0]),
@@ -339,9 +342,9 @@ module fstore2(
    
      wire pixel = pixels_out[3'd7 ^ offpixel1] || cursor;
      wire [3:0] colour = pixel ? dout16_1[11:8]: dout16_1[14:12];
-     wire graph = (modereg[0] && dout16_1[15]) | modereg[1];
+*/
      
      assign
-       {red_in,green_in,blue_in} = bitmapped_pixel1 ? palette[graph ? doutpix4 : colour] : 24'b0;
+       {blue_in,green_in,red_in} = bitmapped_pixel1 ? palette[doutpix4] : 24'b0;
    
 endmodule

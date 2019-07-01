@@ -25,8 +25,8 @@ void uart_console_putchar(unsigned char ch)
 
 void hid_init(void)
 {
-  enum {width=1024, height=768};
-  int i, j, ghlimit = 100;
+  enum {width=1024, height=768, xpixels=768, ypixels=682};
+  int i, j, ghlimit = xpixels/8;
   unsigned char *fb_ptr = (unsigned char *)hid_fb_ptr;
   
   hid_reg_ptr[LOWRISC_REGS_CURSV] = 10;
@@ -37,10 +37,10 @@ void hid_init(void)
   hid_reg_ptr[LOWRISC_REGS_HSTOP] = width*2+51;
   hid_reg_ptr[LOWRISC_REGS_VSTART] = height;
   hid_reg_ptr[LOWRISC_REGS_VSTOP] = height+19;
-  hid_reg_ptr[LOWRISC_REGS_VPIXSTART ] = 80;
-  hid_reg_ptr[LOWRISC_REGS_VPIXSTOP ] = 650+80;
-  hid_reg_ptr[LOWRISC_REGS_HPIXSTART ] = 380;
-  hid_reg_ptr[LOWRISC_REGS_HPIXSTOP ] = 128+100+ghlimit*16;
+  hid_reg_ptr[LOWRISC_REGS_VPIXSTART ] = 16;
+  hid_reg_ptr[LOWRISC_REGS_VPIXSTOP ] = ypixels+16;
+  hid_reg_ptr[LOWRISC_REGS_HPIXSTART ] = 378;
+  hid_reg_ptr[LOWRISC_REGS_HPIXSTOP ] = xpixels*2 + 378;
   hid_reg_ptr[LOWRISC_REGS_HPIX ] = 5;
   hid_reg_ptr[LOWRISC_REGS_VPIX ] = 11; // squashed vertical display uses 10
   hid_reg_ptr[LOWRISC_REGS_GHLIMIT] = ghlimit / 2;
@@ -64,10 +64,14 @@ void hid_init(void)
   draw_logo(ghlimit);
   for (i = 0; i < ghlimit*8; i++)
     fb_ptr[i*ghlimit*8 + i] = i;
-  for (i = 0; i < 655; i++)
+  for (i = 0; i < ypixels; i++)
     {
-      for (j = 0; j < 800; j += 100)
+      for (j = 0; j < xpixels; j += 100)
+        {
+        fb_ptr[i*ghlimit*8 + j + 4] = 15;
         fb_ptr[i*ghlimit*8 + j] = 15;
+        }
+      fb_ptr[i*ghlimit*8 + xpixels-1] = 15;
     }
 }
 

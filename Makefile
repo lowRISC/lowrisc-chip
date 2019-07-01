@@ -5,6 +5,8 @@ include sources.inc
 
 REMOTE=lowrisc5.sm
 LINUX=linux-5.1.3-lowrisc
+MD5SERIAL=$(shell md5sum riscv-pk/serial/bbl | cut -d\  -f1)
+MD5VT=$(shell md5sum riscv-pk/vt/bbl | cut -d\  -f1)
 export RISCV=/opt/riscv
 
 default: nexys4_ddr_ariane
@@ -12,10 +14,14 @@ default: nexys4_ddr_ariane
 all: nexys4_ddr_ariane nexys4_ddr_rocket genesys2_ariane genesys2_rocket
 
 tftp_serial: riscv-pk/serial/bbl
-	(cd riscv-pk/serial; echo -e bin \\n put $< \\n | tftp $(REMOTE))
+	md5sum $<
+	cp $< $(MD5SERIAL)
+	echo -e bin \\n put $(MD5SERIAL) \\n | tftp $(REMOTE)
 
 tftp_vt: riscv-pk/vt/bbl
-	(cd riscv-pk/vt; echo -e bin \\n put $< \\n | tftp $(REMOTE))
+	md5sum $<
+	cp $< $(MD5VT)
+	echo -e bin \\n put $(MD5VT) \\n | tftp $(REMOTE)
 
 linux_serial: riscv-pk/serial/bbl
 
