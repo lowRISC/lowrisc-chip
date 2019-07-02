@@ -4982,10 +4982,10 @@ index 846b0c9..2f2173d 100644
  obj-$(CONFIG_FB_VIRTUAL)          += vfb.o
 diff --git a/drivers/video/fbdev/lowrisc_fb.c b/drivers/video/fbdev/lowrisc_fb.c
 new file mode 100644
-index 0000000..ba05b23
+index 0000000..1c9b4bd
 --- /dev/null
 +++ b/drivers/video/fbdev/lowrisc_fb.c
-@@ -0,0 +1,213 @@
+@@ -0,0 +1,282 @@
 +/* lowrisc_fb.c, based on Sun XVR-1000 fb driver for sparc64 systems by David S. Miller (davem@davemloft.net)
 + *
 + * License: GPL
@@ -4999,104 +4999,187 @@ index 0000000..ba05b23
 +#include <linux/init.h>
 +#include <linux/of_device.h>
 +
-+struct lowrisc_fb_info {
-+	struct fb_info		*info;
-+
-+	char __iomem		*fb_base;
-+	unsigned long		fb_base_phys;
-+
-+	struct device_node	*of_node;
-+
-+	unsigned int		width;
-+	unsigned int		height;
-+	unsigned int		depth;
-+	unsigned int		fb_size;
-+
-+	u32			pseudo_palette_storage[16];
-+};
-+
-+#define LOWRISC_REGS_PALETTE    32
-+
-+static int lowrisc_fb_get_props(struct lowrisc_fb_info *gp)
++static int lowrisc_fb_setcmap(struct fb_cmap *cmap, struct fb_info *info)
 +{
-+  gp->width = 640;
-+  gp->height = 614;
-+  gp->depth = 8;
-+  return 0;
-+}
-+
-+static void lowrisc_con_palette(int idx, int palette, struct fb_info *info)
-+{
-+  struct lowrisc_fb_info *gp = info->par;
-+  uint64_t *hid_reg_ptr = (uint64_t *)(gp->fb_base + 0x4000);
++  int i, start = cmap->start;
++  uint64_t *hid_reg_ptr = (uint64_t *)(info->fix.mmio_start);
 +  if (hid_reg_ptr)
 +    {
-+      hid_reg_ptr[LOWRISC_REGS_PALETTE+(idx&15)] = palette;
++      pr_debug("Palette index %d..%d set\n", start, start+cmap->len-1);
++      for (i = 0; i < cmap->len; i++)
++        {
++          int regno = start + i;
++          unsigned red = cmap->red[i];
++          unsigned green = cmap->green[i];
++          unsigned blue = cmap->blue[i];
++          if (regno < 16)
++            {
++              enum {LOWRISC_REGS_PALETTE=32};
++              hid_reg_ptr[LOWRISC_REGS_PALETTE+regno] = ((blue&0xFF00) << 8) | (green&0xFF00) | ((red&0xFF00) >> 8);
++            }
++          else
++            return -EINVAL;
++        }
++      return 0;
 +    }
++  else
++    return -EINVAL;
 +}
 +
-+
-+static int lowrisc_fb_setcolreg(unsigned regno,
-+			 unsigned blue, unsigned green, unsigned red,
-+			 unsigned transp, struct fb_info *info)
++/**
++ *      lowrisc_fb_fillrect - REQUIRED function. Can use generic routines if 
++ *                       non acclerated hardware and packed pixel based.
++ *                       Draws a rectangle on the screen.               
++ *
++ *      @info: frame buffer structure that represents a single frame buffer
++ *      @region: The structure representing the rectangular region we 
++ *               wish to draw to.
++ *
++ *      This drawing operation places/removes a retangle on the screen 
++ *      depending on the rastering operation with the value of color which
++ *      is in the current color depth format.
++ */
++void lowrisc_fb_fillrect(struct fb_info *p, const struct fb_fillrect *region)
 +{
-+  u32 value;
-+        
-+  pr_debug("Palette index %d set to %X,%X,%X\n", regno, red, green, blue);
-+
-+  if (regno < 16)
++/*      Meaning of struct fb_fillrect
++ *
++ *      @dx: The x and y corrdinates of the upper left hand corner of the 
++ *      @dy: area we want to draw to. 
++ *      @width: How wide the rectangle is we want to draw.
++ *      @height: How tall the rectangle is we want to draw.
++ *      @color: The color to fill in the rectangle with. 
++ *      @rop: The raster operation. We can draw the rectangle with a COPY
++ *            of XOR which provides erasing effect. 
++ */
++#if 0  
++  cfb_fillrect(p,region);
++#else
++  int y;
++  char *buf = p->screen_base + region->dy * p->fix.line_length + region->dx;
++  for (y = region->dy; y < region->dy+region->height; y++)
 +    {
-+      red >>= 8;
-+      green >>= 8;
-+      blue >>= 8;
-+      
-+      value = (red << 16) | (green << 8) | blue;
-+      ((u32 *)(info->pseudo_palette))[regno] = value;
-+      lowrisc_con_palette(regno, value, info);
++      memset(buf, region->color, region->width);
++      buf += p->fix.line_length;
 +    }
-+  
-+  return 0;
++#endif  
++}
++
++/**
++ *      lowrisc_fb_copyarea - REQUIRED function. Can use generic routines if
++ *                       non acclerated hardware and packed pixel based.
++ *                       Copies one area of the screen to another area.
++ *
++ *      @info: frame buffer structure that represents a single frame buffer
++ *      @area: Structure providing the data to copy the framebuffer contents
++ *             from one region to another.
++ *
++ *      This drawing operation copies a rectangular area from one area of the
++ *      screen to another area.
++ */
++void lowrisc_fb_copyarea(struct fb_info *p, const struct fb_copyarea *area) 
++{
++/*
++ *      @dx: The x and y coordinates of the upper left hand corner of the
++ *      @dy: destination area on the screen.
++ *      @width: How wide the rectangle is we want to copy.
++ *      @height: How tall the rectangle is we want to copy.
++ *      @sx: The x and y coordinates of the upper left hand corner of the
++ *      @sy: source area on the screen.
++ */
++#if 0  
++  cfb_copyarea(p, area);
++#else
++  int y;
++  char *buf = p->screen_base + area->dy * p->fix.line_length + area->dx;
++  char *buf2 = p->screen_base + area->sy * p->fix.line_length + area->sx;
++  for (y = area->dy; y < area->dy+area->height; y++)
++    {
++      memcpy(buf, buf2, area->width);
++      buf += p->fix.line_length;
++      buf2 += p->fix.line_length;
++    }
++#endif  
++}
++
++/**
++ *      lowrisc_fb_imageblit - REQUIRED function. Can use generic routines if
++ *                        non acclerated hardware and packed pixel based.
++ *                        Copies a image from system memory to the screen. 
++ *
++ *      @info: frame buffer structure that represents a single frame buffer
++ *      @image: structure defining the image.
++ *
++ *      This drawing operation draws a image on the screen. It can be a 
++ *      mono image (needed for font handling) or a color image (needed for
++ *      tux). 
++ */
++void lowrisc_fb_imageblit(struct fb_info *p, const struct fb_image *image) 
++{
++/*
++ *      @dx: The x and y coordinates of the upper left hand corner of the
++ *      @dy: destination area to place the image on the screen.
++ *      @width: How wide the image is we want to copy.
++ *      @height: How tall the image is we want to copy.
++ *      @fg_color: For mono bitmap images this is color data for     
++ *      @bg_color: the foreground and background of the image to
++ *                 write directly to the frmaebuffer.
++ *      @depth: How many bits represent a single pixel for this image.
++ *      @data: The actual data used to construct the image on the display.
++ *      @cmap: The colormap used for color images.   
++ */
++#if 0
++  cfb_imageblit(p, image);
++#else
++  int y;
++  char *buf = p->screen_base + image->dy * p->fix.line_length + image->dx;
++  const char *buf2 = image->data;
++  for (y = image->dy; y < image->dy+image->height; y++)
++    {
++      memcpy(buf, buf2, image->width);
++      buf += p->fix.line_length;
++      buf2 += image->depth * image->width >> 3;
++    }
++#endif  
 +}
 +
 +static struct fb_ops lowrisc_fb_ops = {
 +	.owner			= THIS_MODULE,
-+	.fb_setcolreg		= lowrisc_fb_setcolreg,
-+	.fb_fillrect		= cfb_fillrect,
-+	.fb_copyarea		= cfb_copyarea,
-+	.fb_imageblit		= cfb_imageblit,
++	.fb_setcmap		= lowrisc_fb_setcmap,
++	.fb_fillrect		= lowrisc_fb_fillrect,
++	.fb_copyarea		= lowrisc_fb_copyarea,
++	.fb_imageblit		= lowrisc_fb_imageblit,
 +};
 +
-+static int lowrisc_fb_set_fbinfo(struct lowrisc_fb_info *gp)
++static int lowrisc_fb_set_fbinfo(struct fb_info *info, struct resource *lowrisc_fb, char __iomem *fb_base)
 +{
-+	struct fb_info *info = gp->info;
 +	struct fb_var_screeninfo *var = &info->var;
 +
 +	info->flags = FBINFO_DEFAULT;
 +	info->fbops = &lowrisc_fb_ops;
-+	info->screen_base = gp->fb_base + 0x48000;
-+	info->screen_size = gp->fb_size - 0x48000;
-+
-+	info->pseudo_palette = gp->pseudo_palette_storage;
++	info->screen_base = fb_base + 0x48000;
++	info->screen_size = lowrisc_fb[0].end - lowrisc_fb[0].start - 0x48000;
 +
 +	/* Fill fix common fields */
 +	strlcpy(info->fix.id, "lowrisc_fb", sizeof(info->fix.id));
-+        info->fix.smem_start = gp->fb_base_phys + 0x48000;
-+        info->fix.smem_len = gp->fb_size - 0x48000;
++        info->fix.smem_start = lowrisc_fb[0].start + 0x48000;
++        info->fix.smem_len = info->screen_size;
 +        info->fix.type = FB_TYPE_PACKED_PIXELS;
 +	info->fix.visual = FB_VISUAL_PSEUDOCOLOR;
-+
-+	var->xres = gp->width;
-+	var->yres = gp->height;
++	info->fix.line_length = 768;
++        info->fix.mmio_start = (unsigned long)(fb_base + 0x4000);
++	var->xres = info->fix.line_length;
++	var->yres = 682;
 +	var->xres_virtual = var->xres;
 +	var->yres_virtual = var->yres;
-+	var->bits_per_pixel = gp->depth;
++	var->bits_per_pixel = 8;
++        var->grayscale = 0;
 +
++	var->red.offset = 0;
++	var->red.length = var->bits_per_pixel;
++	var->green.offset = 0;
++	var->green.length = var->bits_per_pixel;
 +	var->blue.offset = 0;
-+	var->blue.length = 8;
-+	var->green.offset = 8;
-+	var->green.length = 8;
-+	var->red.offset = 16;
-+	var->red.length = 8;
++	var->blue.length = var->bits_per_pixel;
 +	var->transp.offset = 0;
 +	var->transp.length = 0;
 +
@@ -5112,47 +5195,33 @@ index 0000000..ba05b23
 +{
 +	struct device_node *dp = ofdev->dev.of_node;
 +	struct fb_info *info;
-+	struct lowrisc_fb_info *gp;
 +        struct resource *lowrisc_fb;
++	char __iomem *fb_base;
 +	int err;
 +
 +        printk("lowrisc_fb_probe");
 +        
-+	info = framebuffer_alloc(sizeof(struct lowrisc_fb_info), &ofdev->dev);
++	info = framebuffer_alloc(0, &ofdev->dev);
 +	if (!info) {
 +		printk(KERN_ERR "lowrisc_fb: Cannot allocate fb_info\n");
 +		err = -ENOMEM;
 +		goto err_out;
 +	}
 +
-+	gp = info->par;
-+	gp->info = info;
-+	gp->of_node = dp;
-+
 +        lowrisc_fb = platform_get_resource(ofdev, IORESOURCE_MEM, 0);
 +        
-+	gp->fb_base_phys = lowrisc_fb[0].start;
++	fb_base = devm_ioremap_resource(&ofdev->dev, lowrisc_fb);
 +
-+	err = lowrisc_fb_get_props(gp);
-+	if (err)
-+		goto err_release_fb;
-+
-+	/* Framebuffer length is the same regardless of resolution. */
-+	info->fix.line_length = 640;
-+	gp->fb_size = lowrisc_fb[0].end - lowrisc_fb[0].start;
-+
-+	gp->fb_base = devm_ioremap_resource(&ofdev->dev, lowrisc_fb);
-+
-+	if (!gp->fb_base) {
++	if (!fb_base) {
 +		err = -ENOMEM;
 +		goto err_release_fb;
 +	}
 +
-+	err = lowrisc_fb_set_fbinfo(gp);
++	err = lowrisc_fb_set_fbinfo(info, lowrisc_fb, fb_base);
 +	if (err)
 +		goto err_unmap_fb;
 +
-+	printk("lowrisc_fb: Found device at %pOF, mapped to %lX (size=%X)\n", dp, (size_t)(gp->fb_base), gp->fb_size);
++	printk("lowrisc_fb: Found device at %pOF, mapped to %lX (size=%lX)\n", dp, (size_t)(fb_base), info->screen_size);
 +
 +	err = register_framebuffer(info);
 +	if (err < 0) {
@@ -5166,7 +5235,7 @@ index 0000000..ba05b23
 +	return 0;
 +
 +err_unmap_fb:
-+        iounmap(gp->fb_base);
++        iounmap(fb_base);
 +        
 +err_release_fb:
 +        framebuffer_release(info);

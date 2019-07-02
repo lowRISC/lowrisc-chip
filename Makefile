@@ -15,13 +15,11 @@ all: nexys4_ddr_ariane nexys4_ddr_rocket genesys2_ariane genesys2_rocket
 
 tftp_serial: riscv-pk/serial/bbl
 	md5sum $<
-	cp $< $(MD5SERIAL)
-	echo -e bin \\n put $(MD5SERIAL) \\n | tftp $(REMOTE)
+	echo -e bin \\n put $< $(MD5SERIAL) \\n | tftp $(REMOTE)
 
 tftp_vt: riscv-pk/vt/bbl
 	md5sum $<
-	cp $< $(MD5VT)
-	echo -e bin \\n put $(MD5VT) \\n | tftp $(REMOTE)
+	echo -e bin \\n put $< $(MD5VT) \\n | tftp $(REMOTE)
 
 linux_serial: riscv-pk/serial/bbl
 
