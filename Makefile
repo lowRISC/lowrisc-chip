@@ -62,7 +62,7 @@ $(LINUX)/drivers/net/ethernet/Makefile: linux-5.1.3.patch
 	(cd linux-5.1.3; git init; git add .; git commit -a -m linux-5.1.3; git status)
 	patch -d linux-5.1.3 -p1 < linux-5.1.3.patch
 	mkdir -p $(LINUX)
-	mv -f $(LINUX) $(LINUX).old
+	mv -f $(LINUX) $(LINUX).`date -I`
 	mv linux-5.1.3 $(LINUX)
 	(cd $(LINUX); git checkout -b $(LINUX); git add .; git commit -a -m $(LINUX); git status)
 
