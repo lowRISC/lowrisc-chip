@@ -37,8 +37,6 @@
 //  Description   :
 //==================================================================================================
 
-// `include    "define.tmp.h"
-
 // ------ Configurable Parameters ------ //
 `define CACHE_ENTRY_WIDTH       3   // Need to re-configure BRAM in the SD cache if set larger than 3
 `define CACHE_INDEX_WIDTH       1   // Must be smaller than CACHE_ENTRY_WIDTH

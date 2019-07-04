@@ -69,12 +69,21 @@ module piton_sd_top #(
     input wire                       req_wr, // HIGH write; LOW read.
     input wire                       req_val,
     output wire                      req_rdy,
+    output reg [`SD_ADDR_WIDTH-1:0]  req_addr_sd_f,
+    output reg [`SD_ADDR_WIDTH-1:0]  req_addr_dma_f,
 
     // Response Master
     output wire                      resp_ok, // HIGH ok; LOW err.
     output wire                      resp_val,
-    input wire                       resp_rdy
+    input wire                       resp_rdy,
    
+    // Core <-> Buffer
+    input wire    [31:0]      core_buffer_addr,
+    input wire                core_buffer_ce,
+    input wire                core_buffer_wr,
+    input wire    [1:0]       core_buffer_sz,
+    input wire    [`NOC_DATA_BITS]    core_buffer_data,
+    output wire   [`NOC_DATA_BITS]    buffer_core_data
     );
 
     // Aggregated reset signal
@@ -110,14 +119,6 @@ module piton_sd_top #(
     wire    [7:0]       m_wb_adr_o_init;
     wire                m_wb_we_o_init;
     wire                m_wb_stb_o_init;
-
-    // Core <-> Buffer
-    wire    [31:0]      core_buffer_addr;
-    wire                core_buffer_ce;
-    wire                core_buffer_wr;
-    wire    [1:0]       core_buffer_sz;
-    wire    [`NOC_DATA_BITS]    core_buffer_data;
-    wire    [`NOC_DATA_BITS]    buffer_core_data;
 
     // Transaction Manager <-> Wishbone SD Controller
     wire    [31:0]      m_wb_dat_o_tm;
@@ -185,6 +186,8 @@ module piton_sd_top #(
         .req_wr                 (req_wr),
         .req_val                (req_val),
         .req_rdy                (req_rdy),
+        .req_addr_sd_f          (req_addr_sd),
+        .req_addr_dma_f         (req_addr_dma),
 
         .resp_ok                (resp_ok),
         .resp_val               (resp_val),

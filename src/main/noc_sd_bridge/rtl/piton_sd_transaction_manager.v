@@ -37,7 +37,6 @@
 //                  SD controller IP core with a simple val/rdy interface.
 //==================================================================================================
 
-// `include "define.tmp.h"
 `include "sd_defines.h"
 `include "piton_sd_define.vh"
 
@@ -52,6 +51,8 @@ module piton_sd_transaction_manager(
     input wire                       req_wr, // HIGH write; LOW read.
     input wire                       req_val,
     output wire                      req_rdy,
+    output reg [`SD_ADDR_WIDTH-1:0]  req_addr_sd_f,
+    output reg [`SD_ADDR_WIDTH-1:0]  req_addr_dma_f,
 
     // Response Master
     output wire                      resp_ok, // HIGH ok; LOW err.
@@ -119,9 +120,9 @@ module piton_sd_transaction_manager(
     (* dont_touch="true" *) st_t state;
     st_t state_next;
 
-    reg     [`SD_ADDR_WIDTH-1:0]    req_addr_sd_f, nxt_req_addr_sd_f;
-    reg     [`SD_ADDR_WIDTH-1:0]    req_addr_dma_f, nxt_req_addr_dma_f;
-    reg [`SD_ADDR_WIDTH-10:0]        blkcnt, nxtblkcnt;
+    reg     [`SD_ADDR_WIDTH-1:0]    nxt_req_addr_sd_f;
+    reg     [`SD_ADDR_WIDTH-1:0]    nxt_req_addr_dma_f;
+    reg     [`SD_ADDR_WIDTH-10:0]   blkcnt, nxtblkcnt;
 
     // compact FSM output
     reg     [41:0]      fsm; // {adr, dat, we, stb}
