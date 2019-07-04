@@ -259,6 +259,7 @@ always_comb
   end
 
    wire    tx_rd, rx_wr_en;
+ `ifdef LEGACY_SD
    wire       sd_data_busy, data_crc_ok, sd_dat_oe;
    wire [3:0] sd_dat_to_mem, sd_dat_to_host, sd_dat_to_host_maj;
    wire       sd_cmd_to_mem, sd_cmd_to_host, sd_cmd_to_host_maj, sd_cmd_oe;
@@ -305,7 +306,49 @@ logic [3:0] sd_irq_en_reg, sd_irq_stat_reg;
    logic [47:0] 	sd_cmd_packet, sd_cmd_packet_reg;
    logic [15:0] 	sd_transf_cnt, sd_transf_cnt_reg;
    logic            sd_detect_reg;
-   
+ 
+   sd_top sdtop(
+       .sd_clk     (sd_clk_o),
+       .cmd_rst    (~(sd_cmd_rst&rstn)),
+       .data_rst   (~(sd_data_rst&rstn)),
+       .setting_i  (sd_cmd_setting),
+       .timeout_i  (sd_cmd_timeout),
+       .cmd_i      (sd_cmd_i),
+       .arg_i      (sd_cmd_arg),
+       .start_i    (sd_cmd_start),
+       .sd_data_start_i(sd_data_start),
+       .sd_align_i(sd_align),
+       .sd_blkcnt_i(sd_blkcnt),
+       .sd_blksize_i(sd_blksize),
+       .sd_data_i(data_out_tx),
+       .sd_dat_to_host(sd_dat_to_host_maj),
+       .sd_cmd_to_host(sd_cmd_to_host_maj),
+       .finish_cmd_o(sd_cmd_finish),
+       .finish_data_o(sd_data_finish),
+       .response0_o(sd_cmd_response[38:7]),
+       .response1_o(sd_cmd_response[70:39]),
+       .response2_o(sd_cmd_response[102:71]),
+       .response3_o(sd_cmd_response[133:103]),
+       .crc_ok_o   (sd_cmd_crc_ok),
+       .index_ok_o (sd_cmd_index_ok),
+       .transf_cnt_o(sd_transf_cnt),
+       .wait_o(sd_cmd_wait),
+       .wait_data_o(sd_data_wait),
+       .status_o(sd_status[31:4]),
+       .packet0_o(sd_cmd_packet[31:0]),
+       .packet1_o(sd_cmd_packet[47:32]),
+       .crc_val_o(sd_cmd_crc_val),
+       .crc_actual_o(sd_cmd_response[6:0]),
+       .sd_rd_o(tx_rd),
+       .sd_we_o(rx_wr_en),
+       .sd_data_o(data_in_rx),    
+       .sd_dat_to_mem(sd_dat_to_mem),
+       .sd_cmd_to_mem(sd_cmd_to_mem),
+       .sd_dat_oe(sd_dat_oe),
+       .sd_cmd_oe(sd_cmd_oe),
+       .sd_xfr_addr(sd_xfr_addr)
+       );
+
 assign sd_clk_dclk = msoc_clk;
 
 always @(posedge msoc_clk or negedge rstn)
@@ -375,44 +418,7 @@ always @(posedge sd_clk_o)
    wire [31:0] data_in_rx;
    //Rx SD data
    wire [31:0] data_out_tx;
-   
-   // tri-state gate
-   io_buffer_fast IOBUF_cmd_inst (
-       .outg(sd_cmd_to_host),     // Buffer output
-       .inoutg(sd_cmd),   // Buffer inout port (connect directly to top-level port)
-       .ing(sd_cmd_to_mem),     // Buffer input
-       .ctrl(~sd_cmd_oe)      // 3-state enable input, high=input, low=output
-    );
-
-    rx_delay cmd_rx_dly(
-        .clk(clk_200MHz),
-        .in(sd_cmd_to_host),             
-        .maj(sd_cmd_to_host_maj));
-
-   io_buffer_fast IOBUF_clk_inst (
-        .outg(),     // Buffer output
-        .inoutg(sd_sclk),   // Buffer inout port (connect directly to top-level port)
-        .ing(~sd_clk_o),     // Buffer input
-        .ctrl(~sd_clk_rst)      // 3-state enable input, high=input, low=output
-   );
-
-    genvar sd_dat_ix;
-    generate for (sd_dat_ix = 0; sd_dat_ix < 4; sd_dat_ix=sd_dat_ix+1)
-        begin:sd_dat_gen
-         io_buffer_fast IOBUF_dat_inst (
-            .outg(sd_dat_to_host[sd_dat_ix]),     // Buffer output
-            .inoutg(sd_dat[sd_dat_ix]),   // Buffer inout port (connect directly to top-level port)
-            .ing(sd_dat_to_mem[sd_dat_ix]),     // Buffer input
-            .ctrl(~sd_dat_oe)      // 3-state enable input, high=input, low=output
-        );
-        rx_delay dat_rx_dly(
-            .clk(clk_200MHz),
-            .in(sd_dat_to_host[sd_dat_ix]),             
-            .maj(sd_dat_to_host_maj[sd_dat_ix]));
-        end
-        
-   endgenerate
-   
+      
    logic [7:0] rx_wr = rx_wr_en ? (sd_xfr_addr[0] ? 8'hF0 : 8'hF) : 8'b0;
    logic [63:0] douta, doutb;
    logic sd_xfr_addr_prev;
@@ -490,7 +496,7 @@ always @(posedge sd_clk_o)
    assign sd_status[3:0] = 4'b0;
 
    assign one_hot_rdata[2] = sd_cmd_resp_sel;
-
+  
 `ifdef FPGA_FULL
  
 clk_wiz_1 sd_clk_div
@@ -516,48 +522,157 @@ clk_wiz_1 sd_clk_div
    assign sd_clk_o = msoc_clk;
    
 `endif
-   
-sd_top sdtop(
-    .sd_clk     (sd_clk_o),
-    .cmd_rst    (~(sd_cmd_rst&rstn)),
-    .data_rst   (~(sd_data_rst&rstn)),
-    .setting_i  (sd_cmd_setting),
-    .timeout_i  (sd_cmd_timeout),
-    .cmd_i      (sd_cmd_i),
-    .arg_i      (sd_cmd_arg),
-    .start_i    (sd_cmd_start),
-    .sd_data_start_i(sd_data_start),
-    .sd_align_i(sd_align),
-    .sd_blkcnt_i(sd_blkcnt),
-    .sd_blksize_i(sd_blksize),
-    .sd_data_i(data_out_tx),
-    .sd_dat_to_host(sd_dat_to_host_maj),
-    .sd_cmd_to_host(sd_cmd_to_host_maj),
-    .finish_cmd_o(sd_cmd_finish),
-    .finish_data_o(sd_data_finish),
-    .response0_o(sd_cmd_response[38:7]),
-    .response1_o(sd_cmd_response[70:39]),
-    .response2_o(sd_cmd_response[102:71]),
-    .response3_o(sd_cmd_response[133:103]),
-    .crc_ok_o   (sd_cmd_crc_ok),
-    .index_ok_o (sd_cmd_index_ok),
-    .transf_cnt_o(sd_transf_cnt),
-    .wait_o(sd_cmd_wait),
-    .wait_data_o(sd_data_wait),
-    .status_o(sd_status[31:4]),
-    .packet0_o(sd_cmd_packet[31:0]),
-    .packet1_o(sd_cmd_packet[47:32]),
-    .crc_val_o(sd_cmd_crc_val),
-    .crc_actual_o(sd_cmd_response[6:0]),
-    .sd_rd_o(tx_rd),
-    .sd_we_o(rx_wr_en),
-    .sd_data_o(data_in_rx),    
-    .sd_dat_to_mem(sd_dat_to_mem),
-    .sd_cmd_to_mem(sd_cmd_to_mem),
-    .sd_dat_oe(sd_dat_oe),
-    .sd_cmd_oe(sd_cmd_oe),
-    .sd_xfr_addr(sd_xfr_addr)
+ 
+`else
+`include "piton_sd_define.vh"
+
+logic sys_clk, sd_clk, sys_rst, init_done;
+// 4-bit full SD interface
+wire [3:0]   sd_dat_to_host, sd_dat_to_mem, sd_dat_to_host_maj;
+wire         sd_cmd_to_host, sd_cmd_to_mem, sd_cmd_to_host_maj;
+wire         oeCmd, oeDat, sd_cmd_oe, sd_dat_oe, sd_clk_o;
+
+ // Request Slave
+ logic [`SD_ADDR_WIDTH-1:0]    req_addr_sd;    // addr in SD 
+ logic [`SD_ADDR_WIDTH-1:0]    req_addr_dma;   // addr in fake memory
+ logic [`SD_ADDR_WIDTH-10:0]   req_blkcnt;
+
+ logic                         req_wr;     // HIGH write; LOW read.
+ logic                         req_val;
+ logic [`SD_ADDR_WIDTH-1:0]    req_addr_sd_f;    // addr in SD 
+ logic [`SD_ADDR_WIDTH-1:0]    req_addr_dma_f;   // addr in fake memory
+ logic                         sd_irq_en;
+  logic   [31:0]      core_buffer_addr;
+  logic                core_buffer_ce;
+  logic                core_buffer_wr;
+  logic   [1:0]       core_buffer_sz;
+  logic   [`NOC_DATA_BITS]    core_buffer_data;
+  logic   [`NOC_DATA_BITS]    buffer_core_data;
+ 
+ wire                         req_rdy;
+
+ // Response Master
+ wire                         resp_ok;    // HIGH ok; LOW err.
+ wire                         resp_val;
+logic                         resp_rdy;
+reg [15:0]                    from_dip_reg;
+reg [63:0]                    resp_vec, resp_data;
+
+always @(posedge msoc_clk or negedge rstn)
+  if (!rstn)
+    begin
+       from_dip_reg <= 0;
+       sd_irq <= 0;
+       sd_irq_en <= 0;
+       resp_vec <= 0;
+	   to_led <= 0;
+   end
+   else
+     begin
+        if (resp_val)
+            resp_vec <= {resp_vec,resp_ok};
+        resp_rdy <= resp_val;
+        sd_irq <= sd_irq_en & req_rdy;
+        from_dip_reg <= from_dip;
+	 if (hid_en&(|hid_we)&one_hot_data_addr[2]&~hid_addr[14])
+	  case(hid_addr[6:3])
+	    0: req_addr_sd <= hid_wrdata;
+	    1: req_addr_dma <= hid_wrdata;
+	    2: req_blkcnt <= hid_wrdata;
+	    3: {sd_irq_en,req_wr,req_val} <= hid_wrdata;
+	   15: to_led <= hid_wrdata;
+	   default:;
+	  endcase
+	  case(hid_addr[6:3])
+	    0: resp_data <= req_addr_sd_f;
+	    1: resp_data <= req_addr_dma_f;
+        2: resp_data <= {sd_detect,req_rdy,sd_irq,sd_irq_en,req_wr,req_val};
+        3: resp_data <= resp_vec;
+       default:;
+      endcase
+    end
+
+   assign one_hot_rdata[2] = resp_data;
+
+piton_sd_top dut
+(
+    // Clock and reset
+    .sys_clk(msoc_clk),
+    .sd_clk(msoc_clk),
+    .sys_rst(!rstn),
+
+    // SD interface
+    .sd_cd(sd_detect),
+    .sd_reset,
+    .sd_clk_out(sd_clk_o),
+    .sd_cmd_dat_i(sd_cmd_to_host_maj),
+    .sd_cmd_out_o(sd_cmd_to_mem),
+    .sd_cmd_oe_o(sd_cmd_oe),
+    .sd_dat_dat_i(sd_dat_to_host_maj),
+    .sd_dat_out_o(sd_dat_to_mem),
+    .sd_dat_oe_o(sd_dat_oe),
+
+    .init_done,
+    .req_addr_sd            (req_addr_sd),
+    .req_addr_dma           (req_addr_dma),
+    .req_blkcnt             (req_blkcnt),
+    .req_wr                 (req_wr),
+    .req_val                (req_val),
+    .req_rdy                (req_rdy),
+    .req_addr_sd_f          (req_addr_sd_f),
+    .req_addr_dma_f         (req_addr_dma_f),
+
+    .resp_ok                (resp_ok),
+    .resp_val               (resp_val),
+    .resp_rdy               (resp_rdy),
+    
+    .core_buffer_addr(hid_addr),
+    .core_buffer_data(hid_wrdata),
+    .core_buffer_ce(hid_en),
+    .core_buffer_wr(|hid_we),
+    .core_buffer_sz(3),
+    .buffer_core_data(one_hot_rdata[3])
+    
     );
+
+`endif
+  
+   // tri-state gate
+io_buffer_fast IOBUF_cmd_inst (
+    .outg(sd_cmd_to_host),     // Buffer output
+    .inoutg(sd_cmd),   // Buffer inout port (connect directly to top-level port)
+    .ing(sd_cmd_to_mem),     // Buffer input
+    .ctrl(~sd_cmd_oe)      // 3-state enable input, high=input, low=output
+ );
+
+ rx_delay cmd_rx_dly(
+     .clk(clk_200MHz),
+     .in(sd_cmd_to_host),             
+     .maj(sd_cmd_to_host_maj));
+
+io_buffer_fast IOBUF_clk_inst (
+     .outg(),     // Buffer output
+     .inoutg(sd_sclk),   // Buffer inout port (connect directly to top-level port)
+     .ing(~sd_clk_o),     // Buffer input
+     .ctrl(!rstn)      // 3-state enable input, high=input, low=output
+);
+
+ genvar sd_dat_ix;
+ generate for (sd_dat_ix = 0; sd_dat_ix < 4; sd_dat_ix=sd_dat_ix+1)
+     begin:sd_dat_gen
+      io_buffer_fast IOBUF_dat_inst (
+         .outg(sd_dat_to_host[sd_dat_ix]),     // Buffer output
+         .inoutg(sd_dat[sd_dat_ix]),   // Buffer inout port (connect directly to top-level port)
+         .ing(sd_dat_to_mem[sd_dat_ix]),     // Buffer input
+         .ctrl(~sd_dat_oe)      // 3-state enable input, high=input, low=output
+     );
+     rx_delay dat_rx_dly(
+         .clk(clk_200MHz),
+         .in(sd_dat_to_host[sd_dat_ix]),             
+         .maj(sd_dat_to_host_maj[sd_dat_ix]));
+     end
+     
+endgenerate
 
 framing_top open
   (
