@@ -1,14 +1,12 @@
 # ../../../../chip/tile/ariane/src/axi_mem_if/src/axi2mem.sv
+#../../../../chip/tile/ariane/src/axi/src/axi_pkg.sv 
+#../../../../chip/tile/ariane/include/axi_intf.sv 
 V = \
-../../../../chip/tile/ariane/src/axi/src/axi_pkg.sv \
-../../../../chip/tile/ariane/include/axi_intf.sv \
 ../../rtl/piton_sd_top_tb.sv \
 ../../rtl/byte_en_reg.v \
 ../../rtl/cdc_bits.v \
 ../../rtl/cdc_pulse.v \
 ../../rtl/piton_sd_buffer.v \
-../../rtl/piton_sd_cache_manager.v \
-../../rtl/piton_sd_cache_tag.v \
 ../../rtl/piton_sd_init.v \
 ../../rtl/piton_sd_top.v \
 ../../rtl/piton_sd_transaction_manager.v \
@@ -30,7 +28,7 @@ ip_cores/sd_cache_bram/sd_cache_bram_sim_netlist.v \
 ../../rtl/sd_verilator_model.sv \
 
 simv: $V
-	vcs -full64 -sverilog -gui +incdir+../../../../include -timescale=1ns/1ps +incdir+../../rtl -y $(XILINX_VIVADO)/data/verilog/src/unisims/ +libext+.v -y $(XILINX_VIVADO)/data/verilog/src/retarget $V
+	vcs -full64 -sverilog +incdir+../../../../include -timescale=1ns/1ps +incdir+../../rtl -y $(XILINX_VIVADO)/data/verilog/src/unisims/ +libext+.v -y $(XILINX_VIVADO)/data/verilog/src/retarget $V
 
 clean:
 	rm -rf simv simv.daidir

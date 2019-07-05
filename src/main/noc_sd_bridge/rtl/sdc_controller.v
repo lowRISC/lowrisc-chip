@@ -596,4 +596,19 @@ assign int_data =  |(data_int_status_reg_wb_clk & data_int_enable_reg_wb_clk);
 assign m_wb_sel_o = m_wb_cyc_o & m_wb_we_o ? wr_wbm_sel : 4'b1111;
 assign m_wb_adr_o = {wbm_adr[31:2], 2'b00};
 
+`ifndef VCS
+
+ila_0 ila_sd (
+	.clk(sd_clk_o_pad), // input wire clk
+	.probe0(sd_cmd_dat_i), // input wire [0:0]  probe0  
+	.probe1(sd_cmd_out_o), // input wire [0:0]  probe1 
+	.probe2(sd_cmd_oe_o), // input wire [0:0]  probe2 
+	.probe3(sd_dat_dat_i), // input wire [3:0]  probe3 
+	.probe4(sd_dat_out_o), // input wire [3:0]  probe4 
+	.probe5(sd_dat_oe_o), // input wire [0:0]  probe5 
+	.probe6(int_cmd), // input wire [0:0]  probe6 
+	.probe7(int_data) // input wire [0:0]  probe7 
+);
+
+`endif
 endmodule

@@ -71,7 +71,13 @@ module piton_sd_transaction_manager(
 
     // SD controller interrupt  engine
     input wire                       sd_int_cmd,
-    input wire                       sd_int_data
+    input wire                       sd_int_data,
+    
+    // debug
+    output wire [5:0]                tran_state,
+    // compact FSM output
+    output reg     [41:0]      fsm // {adr, dat, we, stb}
+
     );
 
     // ------ Common Local Parameters ------ //
@@ -124,9 +130,6 @@ module piton_sd_transaction_manager(
     reg     [`SD_ADDR_WIDTH-1:0]    nxt_req_addr_dma_f;
     reg     [`SD_ADDR_WIDTH-10:0]   blkcnt, nxtblkcnt;
 
-    // compact FSM output
-    reg     [41:0]      fsm; // {adr, dat, we, stb}
-
     // ------ Static Logic ------ //
     assign  req_rdy     = state == ST_IDLE;
     assign  resp_ok     = state == ST_OK_RESP_PENDING;
@@ -138,7 +141,8 @@ module piton_sd_transaction_manager(
     assign  m_wb_dat_o  = fsm[33:2];
     assign  m_wb_we_o   = fsm[1];
     assign  m_wb_stb_o  = fsm[0];
-
+    assign  tran_state  = state;
+    
     // ------ Sequential Logic ------ //
     always @(posedge clk or posedge rst) begin
         if (rst) begin

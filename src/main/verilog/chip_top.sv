@@ -805,7 +805,7 @@ logic mig_sys_clk, clk_pixel;
    periph_soc #(.UBAUD_DEFAULT(`UBAUD_DEFAULT)) psoc
      (
       .msoc_clk   ( clk             ),
-      .sd_sclk    ( sd_sclk         ),
+      .sd_clk_out ( sd_sclk         ),
       .sd_detect  ( sd_detect       ),
       .sd_dat     ( sd_dat          ),
       .sd_cmd     ( sd_cmd          ),

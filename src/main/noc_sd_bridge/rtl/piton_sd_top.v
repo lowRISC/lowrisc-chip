@@ -61,7 +61,8 @@ module piton_sd_top #(
     output                           sd_cmd_oe_o,
 
     output                           init_done,
-   
+    output wire                      is_hcxc,     // output if the card is a SDHC/SDXC card
+
     // Request Slave
     input wire [`SD_ADDR_WIDTH-1:0]  req_addr_sd, // addr in SD 
     input wire [`SD_ADDR_WIDTH-1:0]  req_addr_dma, // addr in fake memory
@@ -69,8 +70,8 @@ module piton_sd_top #(
     input wire                       req_wr, // HIGH write; LOW read.
     input wire                       req_val,
     output wire                      req_rdy,
-    output reg [`SD_ADDR_WIDTH-1:0]  req_addr_sd_f,
-    output reg [`SD_ADDR_WIDTH-1:0]  req_addr_dma_f,
+    output wire [`SD_ADDR_WIDTH-1:0] req_addr_sd_f,
+    output wire [`SD_ADDR_WIDTH-1:0] req_addr_dma_f,
 
     // Response Master
     output wire                      resp_ok, // HIGH ok; LOW err.
@@ -83,8 +84,17 @@ module piton_sd_top #(
     input wire                core_buffer_wr,
     input wire    [1:0]       core_buffer_sz,
     input wire    [`NOC_DATA_BITS]    core_buffer_data,
-    output wire   [`NOC_DATA_BITS]    buffer_core_data
-    );
+    output wire   [`NOC_DATA_BITS]    buffer_core_data,
+    // init debug
+    output wire [7:0]                 init_state,
+    // init compact FSM output
+    output wire [23:0]               counter,
+    output wire [42:0]               init_fsm, // {adr, dat, we, stb, counter_en}
+    // tran debug
+    output wire [5:0]                tran_state,
+    // tran compact FSM output
+    output wire [41:0]               tran_fsm // {adr, dat, we, stb}
+   );
 
     // Aggregated reset signal
     wire    rst =   sys_rst | sd_cd;
@@ -110,9 +120,6 @@ module piton_sd_top #(
     // SD Card Interface
     wire                sd_int_cmd;
     wire                sd_int_data;
-
-    // Init <-> Others
-    wire                is_hcxc;
 
     // Init <-> Wishbone SD Controller
     wire    [31:0]      m_wb_dat_o_init;
@@ -173,7 +180,11 @@ module piton_sd_top #(
         .sd_int_data            (sd_int_data),
 
         .init_done              (init_done),
-        .is_hcxc                (is_hcxc)
+        .is_hcxc                (is_hcxc),
+        .init_state             (init_state),
+        // compact FSM output
+        .counter,
+        .fsm                     (init_fsm) // {adr, dat, we, stb, counter_en}
         );
 
     piton_sd_transaction_manager sd_tm (
@@ -186,8 +197,8 @@ module piton_sd_top #(
         .req_wr                 (req_wr),
         .req_val                (req_val),
         .req_rdy                (req_rdy),
-        .req_addr_sd_f          (req_addr_sd),
-        .req_addr_dma_f         (req_addr_dma),
+        .req_addr_sd_f          (req_addr_sd_f),
+        .req_addr_dma_f         (req_addr_dma_f),
 
         .resp_ok                (resp_ok),
         .resp_val               (resp_val),
@@ -203,7 +214,10 @@ module piton_sd_top #(
         .m_wb_ack_i             (m_wb_ack_i),
 
         .sd_int_cmd             (sd_int_cmd),
-        .sd_int_data            (sd_int_data)
+        .sd_int_data            (sd_int_data),
+        .tran_state             (tran_state),
+        // compact FSM output
+        .fsm                    (tran_fsm) // {adr, dat, we, stb, counter_en}
         );
 
     sdc_controller sdc_controller (
