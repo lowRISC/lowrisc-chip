@@ -341,7 +341,7 @@ always @(posedge msoc_clk or negedge rstn)
 	   15: to_led <= hid_wrdata;
 	   default:;
 	  endcase
-	  case(hid_addr[6:3])
+	  case(hid_addr[7:3])
 	    0: resp_data <= req_addr_sd_f;
 	    1: resp_data <= req_addr_dma_f;
         2: resp_data <= {sd_detect,is_hcxc,init_done,req_rdy,sd_irq,sd_irq_en,req_wr,req_val};
