@@ -64,6 +64,7 @@ src :=  $(filter-out ariane/src/ariane_regfile.sv, $(wildcard ariane/src/*.sv)) 
         ariane/src/common_cells/src/rstgen.sv                                         \
         ariane/src/common_cells/src/stream_mux.sv                                     \
         ariane/src/common_cells/src/stream_demux.sv                                   \
+ 	ariane/src/common_cells/src/exp_backoff.sv                                    \
         ariane/src/util/axi_master_connect.sv                                         \
         ariane/src/util/axi_slave_connect.sv                                          \
         ariane/src/util/axi_master_connect_rev.sv                                     \
