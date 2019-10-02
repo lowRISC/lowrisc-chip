@@ -48,6 +48,8 @@
 //////////////////////////////////////////////////////////////////////
 `include "sd_defines.h"
 
+`default_nettype wire
+
 module sd_data_master (
            input sd_clk,
            input rst,

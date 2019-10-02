@@ -102,7 +102,7 @@ module piton_sd_buffer(
         buf_data_o  =   bram_dout;
 
         if (buf_ce_i) begin
-            bram_ena    =   1'b1;
+            bram_ena    =   ~buf_addr_i[12];
             bram_addr   =   buf_addr_i[11:3];
             if (buf_we_i) begin
                 case (buf_data_sz)

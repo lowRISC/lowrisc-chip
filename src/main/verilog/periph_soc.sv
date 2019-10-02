@@ -357,7 +357,7 @@ always @(posedge msoc_clk or negedge rstn)
       endcase
     end
 
-`ifndef VCS
+`ifdef ILA_RESP
 
 ila_1 ila_resp (
 	.clk(msoc_clk), // input wire clk

@@ -596,7 +596,7 @@ assign int_data =  |(data_int_status_reg_wb_clk & data_int_enable_reg_wb_clk);
 assign m_wb_sel_o = m_wb_cyc_o & m_wb_we_o ? wr_wbm_sel : 4'b1111;
 assign m_wb_adr_o = {wbm_adr[31:2], 2'b00};
 
-`ifndef VCS
+`ifdef ILA_SD
 
 ila_0 ila_sd (
 	.clk(sd_clk_o_pad), // input wire clk
