@@ -54,7 +54,8 @@ package ariane_soc;
   localparam logic[63:0] SPILength      = 64'h10000;
   localparam logic[63:0] EthernetLength = 64'h10000;
   localparam logic[63:0] GPIOLength     = 64'h10000;
-  localparam logic[63:0] HIDLength     = 64'h100000;
+  localparam logic[63:0] HIDLength      = 64'h100000;
+  localparam logic[63:0] IOLength       = 64'h800_0000;
   // Instantiate AXI protocol checkers
   localparam bit GenProtocolChecker = 1'b0;
 
@@ -82,22 +83,27 @@ package ariane_soc;
     RASDepth: 2,
     BTBEntries: 32,
     BHTEntries: 128,
+    GHRLength: 4,
     // idempotent region
-    NrNonIdempotentRules:  0,
-    NonIdempotentAddrBase: {64'b0},
-    NonIdempotentLength:   {64'b0},
-    NrExecuteRegionRules:  3,
-    ExecuteRegionAddrBase: {DRAMBase,   BOOTBase,   DebugBase},
-    ExecuteRegionLength:   {DRAMLength, BOOTLength, DebugLength},
+    NrNonIdempotentRules:    0,
+    NonIdempotentAddrBase:   {64'b0},
+    NonIdempotentLength:     {64'b0},
+    NrExecuteRegionRules:    3,
+    ExecuteRegionAddrBase:   {DRAMBase,   BOOTBase,   DebugBase},
+    ExecuteRegionLength:     {DRAMLength, BOOTLength, DebugLength},
     // cached region
-    NrCachedRegionRules:    1,
-    CachedRegionAddrBase:  {DRAMBase},
-    CachedRegionLength:    {DRAMLength},
+    NrCachedRegionRules:     1,
+    CachedRegionAddrBase:    {DRAMBase},
+    CachedRegionLength:      {DRAMLength},
+    // physical region
+    NrPhysicalRegionRules:   3,
+    PhysicalRegionAddrBase:  {DRAMBase,   BOOTBase,   DebugBase},
+    PhysicalRegionLength:    {DRAMLength, IOLength, DebugLength},
     //  cache config
-    Axi64BitCompliant:      1'b1,
-    SwapEndianess:          1'b0,
+    Axi64BitCompliant:       1'b1,
+    SwapEndianess:           1'b0,
     // debug
-    DmBaseAddress:          DebugBase
+    DmBaseAddress:           DebugBase
   };
 
 endpackage
