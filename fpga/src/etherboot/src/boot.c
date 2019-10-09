@@ -19,14 +19,6 @@ volatile uint64_t *const sd_bram = (volatile uint64_t *)(SDBase + 0x8000);
 
 FATFS FatFs;   // Work area (file system object) for logical drive
 
-// max size of file image is 16M
-#define MAX_FILE_SIZE 0x1000000
-
-// 4K size read burst
-#define SD_READ_SIZE 4096
-
-//char md5buf[SD_READ_SIZE];
-
 void just_jump (int64_t entry)
 {
   extern uint8_t _dtb[];
