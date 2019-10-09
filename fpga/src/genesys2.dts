@@ -76,7 +76,6 @@
       interrupts = <2>;
       compatible = "lowrisc-pitonsd";
       };
-
     eth: lowrisc-eth@43000000 {
       compatible = "lowrisc-eth";
       device_type = "network";
