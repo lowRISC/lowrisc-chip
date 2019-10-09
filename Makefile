@@ -5,6 +5,7 @@ include sources.inc
 
 REMOTE=lowrisc5.sm
 LINUX=linux-5.1.3-lowrisc
+MD5INSTALL=$(shell md5sum riscv-pk/install/bbl | cut -d\  -f1)
 MD5SERIAL=$(shell md5sum riscv-pk/serial/bbl | cut -d\  -f1)
 MD5VT=$(shell md5sum riscv-pk/vt/bbl | cut -d\  -f1)
 export RISCV=/opt/riscv
@@ -20,6 +21,10 @@ tftp_serial: riscv-pk/serial/bbl
 tftp_vt: riscv-pk/vt/bbl
 	md5sum $<
 	echo -e bin \\n put $< $(MD5VT) \\n | tftp $(REMOTE)
+
+tftp_install: riscv-pk/install/bbl
+	md5sum $<
+	echo -e bin \\n put $< $(MD5INSTALL) \\n | tftp $(REMOTE)
 
 linux_serial: riscv-pk/serial/bbl
 
@@ -43,8 +48,21 @@ riscv-pk/vt/vmlinux-vt: riscv-pk/vt/Makefile $(LINUX)/.config
 	make -C $(LINUX) ARCH=riscv CROSS_COMPILE=$(RISCV)/bin/riscv64-unknown-elf- CONFIG_SERIAL_8250_CONSOLE=n CONFIG_VT_CONSOLE=y CONFIG_LOWRISC_VGA_CONSOLE=y -j 4
 	mv $(LINUX)/vmlinux $@
 
+linux_install: riscv-pk/install/bbl
+
+riscv-pk/install/bbl: $(LINUX)/drivers/net/ethernet/Makefile $(LINUX)/debian.cpio riscv-pk/install/vmlinux-install riscv-pk/install/Makefile
+	make -C riscv-pk/install PATH=$(RISCV)/bin:/usr/bin:/bin
+
+riscv-pk/install/Makefile:
+	mkdir -p riscv-pk/install
+	cd riscv-pk/install; env PATH=$(RISCV)/bin:/usr/bin:/bin ../configure --host=riscv64-unknown-elf --enable-print-device-tree --with-payload=vmlinux-install
+
 riscv-pk/serial/vmlinux-serial: riscv-pk/serial/Makefile $(LINUX)/.config
 	make -C $(LINUX) ARCH=riscv CROSS_COMPILE=$(RISCV)/bin/riscv64-unknown-elf- CONFIG_SERIAL_8250_CONSOLE=y CONFIG_VT_CONSOLE=n CONFIG_LOWRISC_VGA_CONSOLE=n -j 4
+	mv $(LINUX)/vmlinux $@
+
+riscv-pk/install/vmlinux-install: riscv-pk/install/Makefile $(LINUX)/.config $(LINUX)/debian.cpio
+	make -C $(LINUX) ARCH=riscv CROSS_COMPILE=$(RISCV)/bin/riscv64-unknown-elf- CONFIG_SERIAL_8250_CONSOLE=y CONFIG_VT_CONSOLE=n CONFIG_LOWRISC_VGA_CONSOLE=n CONFIG_INITRAMFS_SOURCE="debian.cpio" -j 4
 	mv $(LINUX)/vmlinux $@
 
 $(LINUX)/.config: $(LINUX)/arch/riscv/configs/defconfig

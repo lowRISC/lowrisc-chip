@@ -2,14 +2,16 @@
 ////                                                              ////
 //// WISHBONE SD Card Controller IP Core                          ////
 ////                                                              ////
-//// sd_clock_divider.v                                           ////
+//// sd_wb_sel_ctrl.v                                             ////
 ////                                                              ////
 //// This file is part of the WISHBONE SD Card                    ////
 //// Controller IP Core project                                   ////
 //// http://opencores.org/project,sd_card_controller              ////
 ////                                                              ////
 //// Description                                                  ////
-//// Control of sd card clock rate                                ////
+//// Module resposible for controlling wb_sel signal of the       ////
+//// master wishbone if. Handles unaligned access to wishbone     ////
+//// bus.                                                         ////
 ////                                                              ////
 //// Author(s):                                                   ////
 ////     - Marek Czerski, ma.czerski@gmail.com                    ////
@@ -17,11 +19,6 @@
 //////////////////////////////////////////////////////////////////////
 ////                                                              ////
 //// Copyright (C) 2013 Authors                                   ////
-////                                                              ////
-//// Based on original work by                                    ////
-////     Adam Edvardsson (adam.edvardsson@orsoc.se)               ////
-////                                                              ////
-////     Copyright (C) 2009 Authors                               ////
 ////                                                              ////
 //// This source file may be used and distributed without         ////
 //// restriction provided that this copyright statement is not    ////
@@ -45,37 +42,70 @@
 //// from http://www.opencores.org/lgpl.shtml                     ////
 ////                                                              ////
 //////////////////////////////////////////////////////////////////////
+`include "sd_defines.h"
 
-module sd_clock_divider (
-                         input       CLK,
-                         input [7:0] DIVIDER,
-                         input       RST,
-                         output      SD_CLK
-                         );
+module sd_wb_sel_ctrl(
+           input wb_clk,
+           input rst,
+           input ena,
+           input [31:0] base_adr_i,
+           input [31:0] wbm_adr_i,
+           input [`BLKSIZE_W+`BLKCNT_W-1:0] xfersize,
+           output [3:0] wbm_sel_o
+       );
 
-   reg [7:0]                         ClockDiv;
-   reg                               SD_CLK_O;
+function [3:0] get_first_sel;
+    input [1:0] byte_addr;
+    begin
+        case (byte_addr)
+            2'b00: get_first_sel = 4'b1111;
+            2'b01: get_first_sel = 4'b0111;
+            2'b10: get_first_sel = 4'b0011;
+            2'b11: get_first_sel = 4'b0001;
+        endcase
+    end
+endfunction
 
-   BUFG SD_CLK_buf_inst (
-                    .O(SD_CLK), // 1-bit output: Clock output
-                    .I(SD_CLK_O)  // 1-bit input: Clock input
-                    );
+function [3:0] get_last_sel;
+    input [1:0] byte_addr;
+    begin
+        case (byte_addr)
+            2'b00: get_last_sel = 4'b1111;
+            2'b01: get_last_sel = 4'b1000;
+            2'b10: get_last_sel = 4'b1100;
+            2'b11: get_last_sel = 4'b1110;
+        endcase
+    end
+endfunction
 
-   always @(posedge CLK or posedge RST)
-     begin
-        if (RST) begin
-           ClockDiv <= 8'b0000_0000;
-           SD_CLK_O <= 0;
+reg [31:0] base_adr_reg;
+reg [`BLKSIZE_W+`BLKCNT_W-1:0] xfersize_reg;
+wire [31:0] base_adr_plus_xfersize;
+
+wire [3:0] first_mask;
+wire [3:0] second_mask;
+
+assign base_adr_plus_xfersize = base_adr_reg + xfersize_reg;
+assign first_mask = base_adr_reg[31:2] == wbm_adr_i[31:2] ?
+                    get_first_sel(base_adr_reg[1:0]) :
+                    4'b1111;
+assign second_mask = base_adr_plus_xfersize[31:2] == wbm_adr_i[31:2] ?
+                   get_last_sel(base_adr_plus_xfersize[1:0]) :
+                   4'b1111;
+assign wbm_sel_o = first_mask & second_mask;
+
+always @(posedge wb_clk or posedge rst)
+    if (rst) begin
+        base_adr_reg <= 0;
+        xfersize_reg <= 0;
+    end
+    else begin
+        if (ena) begin
+            base_adr_reg <= base_adr_i;
+            xfersize_reg <= xfersize;
         end
-        else if (ClockDiv == DIVIDER) begin
-           ClockDiv <= 0;
-           SD_CLK_O <= ~SD_CLK_O;
-        end else begin
-           ClockDiv <= ClockDiv + 8'h1;
-           SD_CLK_O <= SD_CLK_O;
-        end
-     end
+    end
 
 endmodule
 
-
+    

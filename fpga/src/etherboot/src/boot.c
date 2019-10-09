@@ -14,6 +14,9 @@
 #include "elfriscv.h"
 #include "ariane.h"
 
+volatile uint64_t *const sd_base = (volatile uint64_t *)SDBase;
+volatile uint64_t *const sd_bram = (volatile uint64_t *)(SDBase + 0x8000);
+
 FATFS FatFs;   // Work area (file system object) for logical drive
 
 // max size of file image is 16M
@@ -56,13 +59,6 @@ void sd_elfn(void *dst, uint32_t off, uint32_t sz)
     sd_seek = ~0;
   fr = f_read(&fil, dst, sz, &len);  // Read a chunk of source file
   if (fr) sd_len_err = fr;
-  else
-      {
-        int cnt = off / SD_READ_SIZE;
-	write_serial('\b');
-	write_serial("|/-\\"[cnt&3]);
-        gpio_leds(cnt);
-      }
   if (len < sz)
     {
       printf("len required = %X, actual = %x\n", sz, len);
@@ -175,8 +171,6 @@ int init_mmc_standalone(int sd_base_addr);
 
 DSTATUS disk_initialize (uint8_t pdrv)
 {
-  printf("\nu-boot based first stage boot loader\n");
-  init_mmc_standalone(SPIBase);
   return 0;
 }
 
@@ -225,12 +219,27 @@ int do_size(void *cmdtp, int flag, int argc, char * const argv[], int fstype)
 
 DRESULT disk_read (uint8_t pdrv, uint8_t *buff, uint32_t sector, uint32_t count)
 {
-  while (count--)
+  uint64_t vec;
+  uint64_t stat = 0xDEADBEEF;
+  uint64_t mask = (1 << count) - 1;
+  sd_base[0] = sector;
+  sd_base[1] = 0;
+  sd_base[2] = count;
+  sd_base[3] = 1;
+  sd_base[15] = sector;
+  sd_base[3] = 0;
+  do
     {
-      read_block(buff, sector++);
-      buff += 512;
+      stat = sd_base[2];
     }
+  while (16 & ~stat);
+  sd_base[15] = 0;
+  vec = sd_base[3] & mask;
+  memcpy(buff, (void *)sd_bram, count*512);
+  if (vec==mask)
   return FR_OK;
+  printf("Sector = %d, count = %d, err = %x\n", sector, count, vec);
+  return FR_INT_ERR;
 }
 
 DRESULT disk_write (uint8_t pdrv, const uint8_t *buff, uint32_t sector, uint32_t count)
@@ -255,6 +264,7 @@ void part_init(void *bdesc)
 
 void part_print(void *desc)
 {
+
 
 }
 
