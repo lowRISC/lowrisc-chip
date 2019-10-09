@@ -89,7 +89,6 @@ int compare_regions(ulv *bufa, ulv *bufb, size_t count) {
     size_t i;
     ulv *p1 = bufa;
     ulv *p2 = bufb;
-    off_t physaddr;
 
     for (i = 0; i < count; i++, p1++, p2++) {
         if (*p1 != *p2) {
@@ -109,7 +108,6 @@ int test_stuck_address(ulv *bufa, size_t count) {
     ulv *p1 = bufa;
     unsigned int j;
     size_t i;
-    off_t physaddr;
 
     printf("           ");
     
@@ -602,15 +600,9 @@ void usage(char *me);
 
 int testrange(void volatile *aligned, size_t bufsize, ul loops, int narrow) {
     ul loop, i;
-    size_t pagesize, wantraw, halflen, count;
-    char *memsuffix, *addrsuffix, *loopsuffix;
+    size_t halflen, count;
     ulv *bufa, *bufb;
-    int do_mlock = 1, done_mem = 0;
     int exit_code = 0;
-    int memfd, opt, memshift;
-    size_t maxbytes = -1; /* addressable memory, in bytes */
-    size_t maxmb = (maxbytes >> 20) + 1; /* addressable memory, in MB */
-    int device_specified = 0;
     printf("test range is 0x%p to 0x%p\n", aligned, aligned+bufsize-1);
     
     halflen = bufsize / 2;
@@ -677,7 +669,6 @@ void dram_main(int sp)
 #if 1
 void external_interrupt(void)
 {
-  int i, claim, handled = 0;
 #ifdef VERBOSE
   printf("Hello external interrupt! "__TIMESTAMP__"\n");
 #endif  

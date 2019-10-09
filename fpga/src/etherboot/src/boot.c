@@ -202,21 +202,6 @@ void *memalign(size_t alignment, size_t size)
   return (void*)((-alignment) & (size_t)(ptr+alignment));
 }
 
-int do_load(void *cmdtp, int flag, int argc, char * const argv[], int fstype)
-{
-  return 1;
-}
-
-int do_ls(void *cmdtp, int flag, int argc, char * const argv[], int fstype)
-{
-  return 1;
-}
-
-int do_size(void *cmdtp, int flag, int argc, char * const argv[], int fstype)
-{
-                return 1;
-}
-
 DRESULT disk_read (uint8_t pdrv, uint8_t *buff, uint32_t sector, uint32_t count)
 {
   uint64_t vec;
@@ -257,35 +242,7 @@ DSTATUS disk_status (uint8_t pdrv)
   return FR_INT_ERR;
 }
 
-void part_init(void *bdesc)
-{
-
-}
-
-void part_print(void *desc)
-{
-
-
-}
-
-void dev_print(void *bdesc)
-{
-
-}
-
-unsigned long mmc_berase(void *dev, int start, int blkcnt)
-{
-        return 0;
-}
-
-unsigned long mmc_bwrite(void *dev, int start, int blkcnt, const void *src)
-{
-        return 0;
-}
-
 void puts(const char *str)
 {
   print_uart(str);
 }
-
-const char version_string[] = "LowRISC minimised u-boot for SD-Card";
