@@ -53,8 +53,9 @@ uint64_t qspi_send(uint8_t len, uint8_t quad, uint16_t data_in_count, uint16_t d
 }
 
 uint8_t *const qspi_base = (void *)0x84000000;
+uint32_t qspi_len;
 
-void qspi_read4(void)
+uint32_t qspi_read4(void)
       {
         uint32_t i = 0;
         uint64_t rslt;
@@ -85,11 +86,17 @@ void qspi_read4(void)
             i += 8;
           }
         while (blank < 512);
+        printf("Detected qspi becomes blank after %d bytes\n", i);
+        return i;
       }
 
 void qspi_elfn(void *dst, uint32_t off, uint32_t sz)
 {
   uint32_t i;
+  if (off >= qspi_len)
+    {
+      printf("elf read offset %x extended beyond end of QSPI %x\n", off, qspi_len);
+    }
   memcpy(dst, qspi_base+off, sz);
 #ifdef QSPI_VERBOSE
 #else  
@@ -114,7 +121,7 @@ void qspi_main(int sw)
   int64_t entry;
   // read elf
   printf("load QSPI to DDR memory\n");
-  qspi_read4();
+  qspi_len = qspi_read4();
   printf("load ELF to DDR memory\n");
   entry = load_elf(qspi_elfn);
   if (entry < 0)

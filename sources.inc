@@ -136,6 +136,7 @@ fpga_src := $(filter-out fpga/src/ariane_shell.sv \
                          fpga/src/boom_shell.sv, $(wildcard fpga/src/*.sv)) \
             $(wildcard fpga/src/apb_uart/src/*.sv) \
             $(wildcard fpga/src/ariane-ethernet/*.sv) \
+            $(wildcard fpga/src/noc_sd_bridge/rtl/*.sv) \
             $(wildcard fpga/src/spi_mem_programmer/*.sv)
 
 fpga_src := $(addprefix $(root-dir)/, $(fpga_src))

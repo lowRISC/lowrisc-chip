@@ -70,13 +70,12 @@
       reg-shift = <2>; // regs are spaced on 32 bit boundary
       reg-io-width = <4>; // only 32-bit access are supported
     };
-    mmc: lowrisc-mmc@42000000 {
+    sd: lowrisc-pitonsd@42000000 {
       reg = <0x0 0x42000000 0x0 0x10000>;
       interrupt-parent = <&PLIC0>;
       interrupts = <2>;
-      compatible = "lowrisc-mmc";
+      compatible = "lowrisc-pitonsd";
       };
-
     eth: lowrisc-eth@43000000 {
       compatible = "lowrisc-eth";
       device_type = "network";

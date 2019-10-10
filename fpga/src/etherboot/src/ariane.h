@@ -7,7 +7,7 @@ typedef enum {
         CLINTBase    = 0x02000000,
         PLICBase     = 0x0C000000,
         UARTBase     = 0x41000000,
-        SPIBase      = 0x42000000,
+        SDBase       = 0x42000000,
         EthernetBase = 0x43000000,
         GPIOBase     = 0x44000000,
         MouseBase    = 0x45028000,

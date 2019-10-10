@@ -1,8 +1,8 @@
 diff --git a/arch/riscv/configs/defconfig b/arch/riscv/configs/defconfig
-index 2fd3461..1ffbe77 100644
+index 2fd3461e5..6bffdd216 100644
 --- a/arch/riscv/configs/defconfig
 +++ b/arch/riscv/configs/defconfig
-@@ -1,83 +1,1684 @@
+@@ -1,83 +1,1669 @@
 +#
 +# Automatically generated file; DO NOT EDIT.
 +# Linux/riscv 5.1.3 Kernel Configuration
@@ -233,7 +233,7 @@ index 2fd3461..1ffbe77 100644
 +#
 +# Boot options
 +#
-+CONFIG_CMDLINE="swiotlb=noforce"
++CONFIG_CMDLINE="swiotlb=noforce root=/dev/rda2"
 +# CONFIG_CMDLINE_FALLBACK is not set
 +# CONFIG_CMDLINE_EXTEND is not set
 +CONFIG_CMDLINE_FORCE=y
@@ -559,6 +559,7 @@ index 2fd3461..1ffbe77 100644
 +# CONFIG_BLK_DEV_RAM is not set
 +# CONFIG_CDROM_PKTCDVD is not set
 +# CONFIG_ATA_OVER_ETH is not set
++CONFIG_LOWRISC_PITONSD=y
 +# CONFIG_BLK_DEV_RBD is not set
 +
 +#
@@ -1020,23 +1021,7 @@ index 2fd3461..1ffbe77 100644
 +CONFIG_USB_OHCI_LITTLE_ENDIAN=y
 +# CONFIG_USB_SUPPORT is not set
 +# CONFIG_UWB is not set
-+CONFIG_MMC=y
-+# CONFIG_PWRSEQ_EMMC is not set
-+# CONFIG_PWRSEQ_SIMPLE is not set
-+CONFIG_MMC_BLOCK=y
-+CONFIG_MMC_BLOCK_MINORS=8
-+# CONFIG_SDIO_UART is not set
-+# CONFIG_MMC_TEST is not set
-+
-+#
-+# MMC/SD/SDIO Host Controller Drivers
-+#
-+# CONFIG_MMC_DEBUG is not set
-+# CONFIG_MMC_SDHCI is not set
-+# CONFIG_MMC_USDHI6ROL0 is not set
-+# CONFIG_MMC_CQHCI is not set
-+CONFIG_MMC_LOWRISC=y
-+# CONFIG_MMC_MTK is not set
++# CONFIG_MMC is not set
 +# CONFIG_MEMSTICK is not set
 +# CONFIG_NEW_LEDS is not set
 +# CONFIG_ACCESSIBILITY is not set
@@ -1736,8 +1721,982 @@ index 2fd3461..1ffbe77 100644
 +# CONFIG_SAMPLES is not set
 +# CONFIG_UBSAN is not set
 +CONFIG_UBSAN_ALIGNMENT=y
+diff --git a/drivers/block/Kconfig b/drivers/block/Kconfig
+index 20bb4bfa4..a37da8bed 100644
+--- a/drivers/block/Kconfig
++++ b/drivers/block/Kconfig
+@@ -394,6 +394,12 @@ config XILINX_SYSACE
+ 	help
+ 	  Include support for the Xilinx SystemACE CompactFlash interface
+ 
++config LOWRISC_PITONSD
++	tristate "LowRISC PitonSD support"
++	depends on RISCV
++	help
++	  Include support for the LowRISC Piton SD-Card block device
++
+ config XEN_BLKDEV_FRONTEND
+ 	tristate "Xen virtual block device support"
+ 	depends on XEN
+diff --git a/drivers/block/Makefile b/drivers/block/Makefile
+index a53cc1e3a..d003fc465 100644
+--- a/drivers/block/Makefile
++++ b/drivers/block/Makefile
+@@ -17,6 +17,7 @@ obj-$(CONFIG_AMIGA_Z2RAM)	+= z2ram.o
+ obj-$(CONFIG_BLK_DEV_RAM)	+= brd.o
+ obj-$(CONFIG_BLK_DEV_LOOP)	+= loop.o
+ obj-$(CONFIG_XILINX_SYSACE)	+= xsysace.o
++obj-$(CONFIG_LOWRISC_PITONSD)	+= lowrisc_pitonsd.o
+ obj-$(CONFIG_CDROM_PKTCDVD)	+= pktcdvd.o
+ obj-$(CONFIG_SUNVDC)		+= sunvdc.o
+ obj-$(CONFIG_BLK_DEV_SKD)	+= skd.o
+diff --git a/drivers/block/lowrisc_pitonsd.c b/drivers/block/lowrisc_pitonsd.c
+new file mode 100644
+index 000000000..c27bdb23f
+--- /dev/null
++++ b/drivers/block/lowrisc_pitonsd.c
+@@ -0,0 +1,939 @@
++/*
++ * LowRISC_piton_sd device driver
++ *
++ * SD-Card block driver based on modified open piton FPGA driver
++ * This driver based on xsysace.c (Copyright 2007 Secret Lab Technologies Ltd.)
++ * Original copyright Grant Likely <grant.likely@secretlab.ca>
++ * Changes copyright LowRISC CIC
++ *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 as published
++ * by the Free Software Foundation.
++ */
++
++/*
++ * The LowRISC_piton_sd FPGA uses a hardware state-machine to make an SD-Card
++ * appear as a regular block device
++ * This driver is a block device driver for the LowRISC_piton_sd.
++ *
++ * Initialization:
++ *    The driver registers itself as a platform_device driver at module
++ *    load time.  The platform bus will take care of calling the
++ *    pitonsd_probe() method for all LowRISC_piton_sd instances in the system.  Any
++ *    number of LowRISC_piton_sd instances are supported.  pitonsd_probe() calls
++ *    pitonsd_setup() which initialized all data structures, reads the CF
++ *    id structure and registers the device. In practice the platform supports just one instance.
++ *
++ * Processing:
++ *    Just about all of the heavy lifting in this driver is performed by
++ *    a Finite State Machine (FSM).  The driver needs to wait on a number
++ *    of events; some raised by interrupts, some which need to be polled
++ *    for.  Describing all of the behaviour in a FSM seems to be the
++ *    easiest way to keep the complexity low and make it easy to
++ *    understand what the driver is doing.  If the block ops or the
++ *    request function need to interact with the hardware, then they
++ *    simply need to flag the request and kick of FSM processing.
++ *
++ *    The FSM itself is atomic-safe code which can be run from any
++ *    context.  The general process flow is:
++ *    1. obtain the sdpiton->lock spinlock.
++ *    2. loop on pitonsd_fsm_dostate() until the sdpiton->fsm_continue flag is
++ *       cleared.
++ *    3. release the lock.
++ *
++ *    Individual states do not sleep in any way.  If a condition needs to
++ *    be waited for then the state much clear the fsm_continue flag and
++ *    either schedule the FSM to be run again at a later time, or expect
++ *    an interrupt to call the FSM when the desired condition is met.
++ *
++ *    In normal operation, the FSM is processed at interrupt context
++ *    either when the driver's tasklet is scheduled, or when an irq is
++ *    raised by the hardware.  The tasklet can be scheduled at any time.
++ *    The request method in particular schedules the tasklet when a new
++ *    request has been indicated by the block layer.  Once started, the
++ *    FSM proceeds as far as it can processing the request until it
++ *    needs on a hardware event.  At this point, it must yield execution.
++ *
++ *    A state has two options when yielding execution:
++ *    1. pitonsd_fsm_yield()
++ *       - Call if need to poll for event.
++ *       - clears the fsm_continue flag to exit the processing loop
++ *       - reschedules the tasklet to run again as soon as possible
++ *    2. pitonsd_fsm_yieldirq()
++ *       - Call if an irq is expected from the HW
++ *       - clears the fsm_continue flag to exit the processing loop
++ *       - does not reschedule the tasklet so the FSM will not be processed
++ *         again until an irq is received.
++ *    After calling a yield function, the state must return control back
++ *    to the FSM main loop.
++ *
++ *    Additionally, the driver maintains a kernel timer which can process
++ *    the FSM.  If the FSM gets stalled, typically due to a missed
++ *    interrupt, then the kernel timer will expire and the driver can
++ *    continue where it left off.
++ *
++ */
++
++#undef DEBUG
++//#define DEBUG
++
++#define STALL_TIMER
++
++#include <linux/module.h>
++#include <linux/ctype.h>
++#include <linux/init.h>
++#include <linux/interrupt.h>
++#include <linux/errno.h>
++#include <linux/kernel.h>
++#include <linux/delay.h>
++#include <linux/slab.h>
++#include <linux/blk-mq.h>
++#include <linux/mutex.h>
++#include <linux/ata.h>
++#include <linux/hdreg.h>
++#include <linux/platform_device.h>
++#if defined(CONFIG_OF)
++#include <linux/of_address.h>
++#include <linux/of_device.h>
++#include <linux/of_platform.h>
++#endif
++
++#include "../../block/partitions/check.h"
++
++MODULE_AUTHOR("Jonathan Kimmitt <jrrk2@cam.ac.uk>");
++MODULE_DESCRIPTION("LowRISC_piton_sd device driver");
++MODULE_LICENSE("GPL");
++
++/* LowRISC_piton_sd register definitions */
++#define _piton_sd_ADDR_SD     (0x00)
++#define _piton_sd_ADDR_DMA    (0x01)
++#define _piton_sd_BLKCNT      (0x02)
++#define _piton_sd_CTRL        (0x3)
++#define _piton_sd_LED         (0xF)
++
++#define _piton_sd_CTRL_REQ_VALID          (0x00000001)
++#define _piton_sd_CTRL_REQ_WRITE          (0x00000002)
++#define _piton_sd_CTRL_IRQ_EN             (0x00000004)
++#define _piton_sd_CTRL_SD_RST_EN          (0x00000008)
++
++#define _piton_sd_ADDR_SD_F   (0x00)
++#define _piton_sd_ADDR_DMA_F  (0x01)
++#define _piton_sd_STATUS      (0x02)
++#define _piton_sd_ERROR       (0x03)
++#define _piton_sd_INIT_STATE  (0x04)
++#define _piton_sd_COUNTER     (0x05)
++#define _piton_sd_INIT_FSM    (0x06)
++#define _piton_sd_TRAN_STATE  (0x07)
++#define _piton_sd_TRAN_FSM    (0x08)
++
++#define _piton_sd_STATUS_REQ          (0x00000001)
++#define _piton_sd_STATUS_WR           (0x00000002)
++#define _piton_sd_STATUS_IRQ_EN       (0x00000004)
++#define _piton_sd_STATUS_IRQ          (0x00000008)
++#define _piton_sd_STATUS_RDYFORCFCMD  (0x00000010)
++#define _piton_sd_STATUS_CFGDONE      (0x00000020)
++#define _piton_sd_STATUS_SDHC         (0x00000040)
++#define _piton_sd_STATUS_CFDETECT     (0x00000080)
++
++#define _piton_sd_NUM_MINORS 16
++
++struct pitonsd_reg_ops;
++
++struct pitonsd_device {
++	/* driver state data */
++	int id;
++	int users;
++	struct list_head list;
++
++	/* finite state machine data */
++	struct tasklet_struct fsm_tasklet;
++	uint fsm_task;		/* Current activity (_piton_sd_TASK_*) */
++	uint fsm_state;		/* Current state (_piton_sd_FSM_STATE_*) */
++	uint fsm_continue_flag;	/* cleared to exit FSM mainloop */
++	uint fsm_iter_num;
++	struct timer_list stall_timer;
++
++	/* Transfer state/result, use for both id and block request */
++	struct request *req;	/* request being processed */
++        uint data_pos;          /* data (sector) position */
++	int data_result;	/* Result of transfer; 0 := success */
++        int blkcnt;             /* sectors in current transaction */
++	int in_irq;
++
++	/* Details of hardware device */
++        resource_size_t physaddr, physaddrend;
++        volatile u64 __iomem *baseaddr, *ioptr;
++	int irq;
++
++	/* Block device data structures */
++	spinlock_t lock;
++	struct device *dev;
++	struct request_queue *queue;
++	struct gendisk *gd;
++	struct blk_mq_tag_set tag_set;
++	struct list_head rq_list;
++
++        struct block_device *bdev;
++};
++
++static DEFINE_MUTEX(pitonsd_mutex);
++static int pitonsd_major;
++
++/* ---------------------------------------------------------------------
++ * Debug support functions
++ */
++
++static void pitonsd_dump_regs(struct pitonsd_device *sdpiton)
++{
++	printk(
++		 "    sd_f:  0x%llx  dma_f: 0x%llx   status: 0x%llx\n"
++		 "    resp_vec: 0x%llx  init_state: 0x%llx  counter: 0x%llx\n"
++		 "    init_fsm: 0x%llx  tran_state: 0x%llx  tran_fsm: 0x%llx\n",
++		 sdpiton->baseaddr[0],
++		 sdpiton->baseaddr[1],
++		 sdpiton->baseaddr[2],
++		 sdpiton->baseaddr[3],
++		 sdpiton->baseaddr[4],
++		 sdpiton->baseaddr[5],
++		 sdpiton->baseaddr[6],
++		 sdpiton->baseaddr[7],
++                 sdpiton->baseaddr[8]);
++}
++
++/* ---------------------------------------------------------------------
++ * Finite State Machine (FSM) implementation
++ */
++
++/* FSM tasks; used to direct state transitions */
++#define _piton_sd_TASK_IDLE      0
++#define _piton_sd_TASK_READ      2
++#define _piton_sd_TASK_WRITE     3
++
++/* FSM state definitions */
++#define _piton_sd_FSM_STATE_IDLE               0
++
++#define _piton_sd_FSM_STATE_WAIT_TRANSFER      2
++#define _piton_sd_FSM_STATE_WAIT_CFREADY       3
++#define _piton_sd_FSM_STATE_REQ_PREPARE        6
++#define _piton_sd_FSM_STATE_REQ_NEXT           7
++#define _piton_sd_FSM_STATE_REQ_TRANSFER       8
++#define _piton_sd_FSM_STATE_REQ_COMPLETE       9
++#define _piton_sd_FSM_STATE_ERROR             10
++#define _piton_sd_FSM_NUM_STATES              11
++
++#define TIMEOUT (HZ*10)
++
++static void write_transfer(struct pitonsd_device *sdpiton, int off, void *buf, int buflen)
++{
++#ifdef SIMPLE_DEBUG
++  printk("write_data 0x%llx 0x%llx 0x%x\n", (u64)((off >> SECTOR_SHIFT) + sdpiton->data_pos), (u64)buf, buflen);
++#endif
++  memcpy(off + (char*)(sdpiton->ioptr), buf, buflen);
++}
++
++static void read_transfer(struct pitonsd_device *sdpiton, int off, void *buf, int buflen)
++{
++#ifdef SIMPLE_DEBUG
++  printk("read_data 0x%llx 0x%llx 0x%x\n", (u64)((off >> SECTOR_SHIFT) + sdpiton->data_pos), (u64)buf, buflen);
++#endif
++  memcpy(buf, off + (char*)(sdpiton->ioptr), buflen);
++#ifdef DEBUG_VERBOSE
++  {
++    int j;
++    u8 *dbgptr = buf;
++    for (i = 0; i < 512; i+=32)
++      {
++        char tmpbuf[100];
++        for (j = 0; j < 32; j++) sprintf(tmpbuf+j*3, "%.2X ", dbgptr[i+j]);
++        pr_debug("%.3X: %s", i, tmpbuf);
++      }
++  }
++#endif
++}
++
++static void my_rq_foreach(struct pitonsd_device *sdpiton, void (*my_transfer)(struct pitonsd_device *, int, void *, int))
++{
++  int off = 0;
++  struct bio_vec bvec;        /* iteration control */
++  struct req_iterator iter;
++#ifdef DEBUG_VERBOSE
++  pitonsd_dump_regs(sdpiton);
++#endif
++  rq_for_each_segment(bvec, sdpiton->req, iter)
++    {
++      my_transfer(sdpiton, off, page_address(bvec.bv_page) + bvec.bv_offset, bvec.bv_len);
++      off += bvec.bv_len;
++    }
++  sdpiton->blkcnt = off >> SECTOR_SHIFT;
++}
++
++/* Set flag to exit FSM loop and reschedule tasklet */
++static inline void pitonsd_fsm_yield(struct pitonsd_device *sdpiton)
++{
++	pr_debug("pitonsd_fsm_yield()\n");
++	tasklet_schedule(&sdpiton->fsm_tasklet);
++	sdpiton->fsm_continue_flag = 0;
++}
++
++/* Set flag to exit FSM loop and wait for IRQ to reschedule tasklet */
++static inline void pitonsd_fsm_yieldirq(struct pitonsd_device *sdpiton)
++{
++	pr_debug("pitonsd_fsm_yieldirq()\n");
++
++	if (!sdpiton->irq)
++		/* No IRQ assigned, so need to poll */
++		tasklet_schedule(&sdpiton->fsm_tasklet);
++	sdpiton->fsm_continue_flag = 0;
++}
++
++static bool pitonsd_has_next_request(struct request_queue *q)
++{
++	struct pitonsd_device *sdpiton = q->queuedata;
++
++	return !list_empty(&sdpiton->rq_list);
++}
++
++/* Get the next read/write request; ending requests that we don't handle */
++static struct request *pitonsd_get_next_request(struct request_queue *q)
++{
++	struct pitonsd_device *sdpiton = q->queuedata;
++	struct request *rq;
++
++	rq = list_first_entry_or_null(&sdpiton->rq_list, struct request, queuelist);
++	if (rq) {
++		list_del_init(&rq->queuelist);
++		blk_mq_start_request(rq);
++                return rq;
++	}
++
++	return NULL;
++}
++
++static void pitonsd_fsm_dostate(struct pitonsd_device *sdpiton)
++{
++	u32 status;
++
++	/* Verify that there is actually a SD-Card in the slot. If not, then
++	 * bail out back to the idle state and wake up all the waiters */
++	status = sdpiton->baseaddr[_piton_sd_STATUS];
++	if ((_piton_sd_STATUS_CFDETECT & ~status) == 0) {
++		sdpiton->fsm_state = _piton_sd_FSM_STATE_IDLE;
++		set_capacity(sdpiton->gd, 0);
++		dev_info(sdpiton->dev, "No SD-Card in slot\n");
++
++		/* Drop all in-flight and pending requests */
++		if (sdpiton->req) {
++			blk_mq_end_request(sdpiton->req, BLK_STS_IOERR);
++			sdpiton->req = NULL;
++		}
++		while ((sdpiton->req = pitonsd_get_next_request(sdpiton->queue)) != NULL)
++			blk_mq_end_request(sdpiton->req, BLK_STS_IOERR);
++
++		/* Drop back to IDLE state and notify waiters */
++		sdpiton->fsm_state = _piton_sd_FSM_STATE_IDLE;
++	}
++
++	switch (sdpiton->fsm_state) {
++	case _piton_sd_FSM_STATE_IDLE:
++		/* See if there is anything to do */
++		if (pitonsd_has_next_request(sdpiton->queue)) {
++			sdpiton->fsm_iter_num++;
++			sdpiton->fsm_state = _piton_sd_FSM_STATE_WAIT_CFREADY;
++#ifdef STALL_TIMER
++			mod_timer(&sdpiton->stall_timer, jiffies + TIMEOUT);
++			if (!timer_pending(&sdpiton->stall_timer))
++				add_timer(&sdpiton->stall_timer);
++#endif
++			break;
++		}
++#ifdef STALL_TIMER
++		del_timer(&sdpiton->stall_timer);
++#endif
++		sdpiton->fsm_continue_flag = 0;
++		break;
++
++	case _piton_sd_FSM_STATE_WAIT_CFREADY:
++		status = sdpiton->baseaddr[_piton_sd_STATUS];
++		if (!(status & _piton_sd_STATUS_RDYFORCFCMD)) {
++			/* SD card isn't ready; it needs to be polled */
++			pitonsd_fsm_yield(sdpiton);
++			break;
++		}
++
++                sdpiton->fsm_state = _piton_sd_FSM_STATE_REQ_PREPARE;
++		break;
++
++	case _piton_sd_FSM_STATE_REQ_PREPARE:
++          {
++                uint data_pos;          /* data (sector) position */
++                int dir;                /* direction */
++		sdpiton->req = pitonsd_get_next_request(sdpiton->queue);
++
++		if (!sdpiton->req) {
++                        pr_debug("prepare was empty");
++                        sdpiton->fsm_state = _piton_sd_FSM_STATE_IDLE;
++			break;
++		}
++
++                data_pos = blk_rq_pos(sdpiton->req);
++                dir = rq_data_dir(sdpiton->req);
++
++		pr_debug(
++			"request: sec=0x%llx dir=0x%i\n",
++			(unsigned long long)data_pos,
++			dir);
++
++		if (dir) {
++                        /* copy buffers to be written */
++                        my_rq_foreach(sdpiton, write_transfer);
++                        /* Kick off write request */
++                        wmb();
++			sdpiton->fsm_task = _piton_sd_TASK_WRITE;
++                        /* SD sector address */
++                        sdpiton->baseaddr[ _piton_sd_ADDR_SD ] = data_pos;
++                        /* always start at beginning of DMA buffer */
++                        sdpiton->baseaddr[ _piton_sd_ADDR_DMA ] = 0;
++                        /* set sector count */
++                        sdpiton->baseaddr[ _piton_sd_BLKCNT ] = sdpiton->blkcnt;
++			sdpiton->baseaddr[ _piton_sd_CTRL ] = _piton_sd_CTRL_REQ_WRITE|_piton_sd_CTRL_REQ_VALID;
++                        sdpiton->baseaddr[ _piton_sd_LED ] = data_pos;
++                        wmb();
++			sdpiton->baseaddr[ _piton_sd_CTRL ] = _piton_sd_CTRL_IRQ_EN|_piton_sd_CTRL_REQ_WRITE;
++                        wmb();
++#ifdef SIMPLE_DEBUG
++                        printk("write_buffer 0x%llx 0x%llx\n", (u64)(data_pos), (u64)(sdpiton->blkcnt));
++#endif
++		} else {
++                        sdpiton->blkcnt = 8; /* assume read ahead might be possible */
++			/* Kick off read request */
++			sdpiton->fsm_task = _piton_sd_TASK_READ;
++                        /* SD sector address */
++                        sdpiton->baseaddr[ _piton_sd_ADDR_SD ] = data_pos;
++                        /* always start at beginning of DMA buffer */
++                        sdpiton->baseaddr[ _piton_sd_ADDR_DMA ] = 0;
++                        /* set sector count */
++                        sdpiton->baseaddr[ _piton_sd_BLKCNT ] = sdpiton->blkcnt;
++			sdpiton->baseaddr[ _piton_sd_CTRL ] = _piton_sd_CTRL_REQ_VALID;
++                        sdpiton->baseaddr[ _piton_sd_LED ] = data_pos;
++                        wmb();
++                        sdpiton->baseaddr[ _piton_sd_CTRL ] = _piton_sd_CTRL_IRQ_EN;
++                        wmb();
++#ifdef SIMPLE_DEBUG
++                        printk("read_buffer 0x%llx 0x%llx\n", (u64)(data_pos), (u64)(sdpiton->blkcnt));
++#endif
++		}
++
++		/* Move to the transfer state.  The pitonsd will raise
++		 * an interrupt once there is something to do
++		 */
++		sdpiton->fsm_state = _piton_sd_FSM_STATE_WAIT_TRANSFER;
++                //                if (sdpiton->fsm_task == _piton_sd_TASK_READ)
++                  pitonsd_fsm_yield(sdpiton);	/* wait for data ready */
++		break;
++          }
++	case _piton_sd_FSM_STATE_WAIT_TRANSFER:
++		status = sdpiton->baseaddr[_piton_sd_STATUS];
++		if (!(status & _piton_sd_STATUS_RDYFORCFCMD)) {
++			/* SD card isn't ready */
++			pitonsd_fsm_yieldirq(sdpiton);
++			break;
++		}
++
++                sdpiton->fsm_state = _piton_sd_FSM_STATE_REQ_TRANSFER;
++		break;
++
++	case _piton_sd_FSM_STATE_REQ_TRANSFER:
++
++                while (_piton_sd_STATUS_RDYFORCFCMD & ~(sdpiton->baseaddr[_piton_sd_STATUS]))
++                  printk("Transfer not ready!");
++
++                /* Transfer the next buffer */
++                if (sdpiton->fsm_task == _piton_sd_TASK_READ)
++                  {
++                    /* Copy the read buffers */
++                    my_rq_foreach(sdpiton, read_transfer);
++                  }
++
++                sdpiton->fsm_state = _piton_sd_FSM_STATE_REQ_COMPLETE;
++		break;
++
++	case _piton_sd_FSM_STATE_REQ_COMPLETE:
++
++                blk_mq_end_request(sdpiton->req, BLK_STS_OK);
++		sdpiton->req = NULL;
++
++		/* Finished request; go to idle state */
++		sdpiton->fsm_state = _piton_sd_FSM_STATE_IDLE;
++		break;
++
++	default:
++		sdpiton->fsm_state = _piton_sd_FSM_STATE_IDLE;
++		break;
++	}
++}
++
++static void pitonsd_fsm_tasklet(unsigned long data)
++{
++	struct pitonsd_device *sdpiton = (void *)data;
++	unsigned long flags;
++
++	spin_lock_irqsave(&sdpiton->lock, flags);
++
++	/* Loop over state machine until told to stop */
++	sdpiton->fsm_continue_flag = 1;
++	while (sdpiton->fsm_continue_flag)
++          {
++            pr_debug("fsm_state=%i\n", sdpiton->fsm_state);
++            pitonsd_fsm_dostate(sdpiton);
++          }
++
++        pr_debug("fsm_continue=%i\n", sdpiton->fsm_continue_flag);
++	spin_unlock_irqrestore(&sdpiton->lock, flags);
++}
++
++#ifdef STALL_TIMER
++static void pitonsd_stall_timer(struct timer_list *t)
++{
++	struct pitonsd_device *sdpiton = from_timer(sdpiton, t, stall_timer);
++	unsigned long flags;
++
++	dev_warn(sdpiton->dev,
++		 "kicking stalled fsm; state=%i task=%i iter=%i\n",
++		 sdpiton->fsm_state, sdpiton->fsm_task, sdpiton->fsm_iter_num);
++
++	spin_lock_irqsave(&sdpiton->lock, flags);
++
++	/* Rearm the stall timer *before* entering FSM (which may then
++	 * delete the timer) */
++	mod_timer(&sdpiton->stall_timer, jiffies + TIMEOUT);
++	/* Loop over state machine until told to stop */
++	sdpiton->fsm_continue_flag = 1;
++	while (sdpiton->fsm_continue_flag)
++		pitonsd_fsm_dostate(sdpiton);
++
++	spin_unlock_irqrestore(&sdpiton->lock, flags);
++}
++#endif
++
++/* ---------------------------------------------------------------------
++ * Interrupt handling routines
++ */
++static int pitonsd_interrupt_checkstate(struct pitonsd_device *sdpiton)
++{
++        u64 mask = (1 << sdpiton->blkcnt) - 1;
++	u64 creg = sdpiton->baseaddr[ _piton_sd_ERROR ] & mask;
++        u64 tstate = sdpiton->baseaddr[ _piton_sd_TRAN_STATE ];
++        pr_debug("tran state = %llx\n", tstate);
++        
++	/* Check for error occurrence */
++	if (mask != creg) {
++		dev_err(sdpiton->dev, "transfer failure\n");
++		pitonsd_dump_regs(sdpiton);
++		return -EIO;
++	}
++
++	return 0;
++}
++
++static irqreturn_t pitonsd_interrupt(int irq, void *dev_id)
++{
++	struct pitonsd_device *sdpiton = dev_id;
++
++	/* be safe and get the lock */
++	spin_lock(&sdpiton->lock);
++	sdpiton->in_irq = 1;
++
++	/* clear the interrupt */
++	sdpiton->baseaddr[ _piton_sd_CTRL ] = 0;
++
++	/* check for IO failures */
++	if (pitonsd_interrupt_checkstate(sdpiton))
++		sdpiton->data_result = -EIO;
++
++	if (sdpiton->fsm_task == 0) {
++		dev_err(sdpiton->dev,
++			"spurious irq; stat=0x%llx ctrl=0x%llx\n",
++			sdpiton->baseaddr[ _piton_sd_STATUS ], sdpiton->baseaddr[ _piton_sd_CTRL ]);
++
++		dev_err(sdpiton->dev, "fsm_task=%i fsm_state=%i\n",
++			sdpiton->fsm_task, sdpiton->fsm_state);
++	}
++
++	/* Loop over state machine until told to stop */
++	sdpiton->fsm_continue_flag = 1;
++	while (sdpiton->fsm_continue_flag)
++		pitonsd_fsm_dostate(sdpiton);
++
++	/* done with interrupt; drop the lock */
++	sdpiton->in_irq = 0;
++	spin_unlock(&sdpiton->lock);
++
++	return IRQ_HANDLED;
++}
++
++/* ---------------------------------------------------------------------
++ * Block ops
++ */
++static blk_status_t pitonsd_queue_rq(struct blk_mq_hw_ctx *hctx,
++				 const struct blk_mq_queue_data *bd)
++{
++	struct pitonsd_device *pitonsd = hctx->queue->queuedata;
++	struct request *req = bd->rq;
++
++        pr_debug("pitonsd_queue_rq");
++        
++	if (blk_rq_is_passthrough(req)) {
++		blk_mq_start_request(req);
++		return BLK_STS_IOERR;
++	}
++
++        
++	spin_lock_irq(&pitonsd->lock);
++	list_add_tail(&req->queuelist, &pitonsd->rq_list);
++	spin_unlock_irq(&pitonsd->lock);
++
++	tasklet_schedule(&pitonsd->fsm_tasklet);
++	return BLK_STS_OK;
++}
++
++static int pitonsd_open(struct block_device *bdev, fmode_t mode)
++{
++        struct gendisk *disk = bdev->bd_disk;
++	struct pitonsd_device *sdpiton = disk->private_data;
++        unsigned long flags;
++	sdpiton->bdev = bdev;
++
++	pr_debug("pitonsd_open() users=%i\n", sdpiton->users + 1);
++
++	mutex_lock(&pitonsd_mutex);
++	spin_lock_irqsave(&sdpiton->lock, flags);
++	sdpiton->users++;
++	spin_unlock_irqrestore(&sdpiton->lock, flags);
++
++	check_disk_change(bdev);
++	mutex_unlock(&pitonsd_mutex);
++
++	return 0;
++}
++
++static void pitonsd_release(struct gendisk *disk, fmode_t mode)
++{
++	struct pitonsd_device *sdpiton = disk->private_data;
++	unsigned long flags;
++
++	pr_debug("pitonsd_release() users=%i\n", sdpiton->users - 1);
++
++	mutex_lock(&pitonsd_mutex);
++	spin_lock_irqsave(&sdpiton->lock, flags);
++	sdpiton->users--;
++	spin_unlock_irqrestore(&sdpiton->lock, flags);
++	mutex_unlock(&pitonsd_mutex);
++}
++
++static void pitonsd_unlock_native_capacity(struct gendisk *disk)
++{
++        int p;
++	struct pitonsd_device *sdpiton = disk->private_data;
++	size_t inferred_capacity = 1;
++        struct parsed_partitions *mbr = check_partition(sdpiton->bdev->bd_disk, sdpiton->bdev);
++        printk("native partitions %d", mbr->limit);
++        for (p = 1; p < mbr->limit; p++) {
++                sector_t size, from;
++
++                size = mbr->parts[p].size;
++                if (!size)
++                        continue;
++
++                from = mbr->parts[p].from;
++                printk("%s: p%d start %llu size %llu",
++                       disk->disk_name, p,
++                       (unsigned long long) from,
++                       (unsigned long long) size);
++                if (from + size > inferred_capacity) {
++                  inferred_capacity = from + size;
++                }
++        }
++        printk("Inferred capacity %lu", inferred_capacity);
++        set_capacity(disk, inferred_capacity); // should come from hardware
++}
++
++static const struct block_device_operations pitonsd_fops = {
++	.owner = THIS_MODULE,
++	.open = pitonsd_open,
++	.release = pitonsd_release,
++        .unlock_native_capacity = pitonsd_unlock_native_capacity,
++};
++
++static const struct blk_mq_ops pitonsd_mq_ops = {
++	.queue_rq	= pitonsd_queue_rq,
++};
++
++/* --------------------------------------------------------------------
++ * LowRISC_piton_sd device setup/teardown code
++ */
++static int pitonsd_setup(struct pitonsd_device *sdpiton)
++{
++	int rc;
++        
++	printk("pitonsd_setup(sdpiton=0x%llx)\n", (u64)sdpiton);
++
++	spin_lock_init(&sdpiton->lock);
++	INIT_LIST_HEAD(&sdpiton->rq_list);
++
++	/*
++	 * Map the device
++	 */
++	sdpiton->baseaddr = ioremap(sdpiton->physaddr, sdpiton->physaddrend - sdpiton->physaddr);
++        sdpiton->ioptr = sdpiton->baseaddr+0x1000;
++	if (!sdpiton->baseaddr)
++		goto err_ioremap;
++
++	printk("physaddr=0x%llx, vstart=%llx, vsiz=%llx, irq=%i\n",
++		(unsigned long long)sdpiton->physaddr,
++		(unsigned long long)sdpiton->baseaddr,
++                (unsigned long long)(sdpiton->physaddrend - sdpiton->physaddr),
++                sdpiton->irq);
++
++	/*
++	 * Initialize the state machine tasklet and stall timer
++	 */
++	tasklet_init(&sdpiton->fsm_tasklet, pitonsd_fsm_tasklet, (unsigned long)sdpiton);
++#ifdef STALL_TIMER
++	timer_setup(&sdpiton->stall_timer, pitonsd_stall_timer, 0);
++#endif
++
++	/*
++	 * Initialize the request queue
++	 */
++	sdpiton->queue = blk_mq_init_sq_queue(&sdpiton->tag_set, &pitonsd_mq_ops, 2, BLK_MQ_F_SHOULD_MERGE);
++	if (IS_ERR(sdpiton->queue)) {
++		rc = PTR_ERR(sdpiton->queue);
++		sdpiton->queue = NULL;
++		goto err_blk_initq;
++        }
++        sdpiton->queue->queuedata = sdpiton;
++        
++	blk_queue_logical_block_size(sdpiton->queue, 512);
++	blk_queue_bounce_limit(sdpiton->queue, BLK_BOUNCE_HIGH);
++
++	/*
++	 * Allocate and initialize GD structure
++	 */
++	sdpiton->gd = alloc_disk(_piton_sd_NUM_MINORS);
++	if (!sdpiton->gd)
++		goto err_alloc_disk;
++
++	sdpiton->gd->major = pitonsd_major;
++	sdpiton->gd->first_minor = sdpiton->id * _piton_sd_NUM_MINORS;
++	sdpiton->gd->fops = &pitonsd_fops;
++	sdpiton->gd->queue = sdpiton->queue;
++	sdpiton->gd->private_data = sdpiton;
++	snprintf(sdpiton->gd->disk_name, 32, "rd%c", sdpiton->id + 'a');
++        set_capacity(sdpiton->gd, 255*1023*31); // dummy (255 heads, 1023 cyl, 31 sectors)
++        /* Tell the block layer that this is not a rotational device */
++        blk_queue_flag_set(QUEUE_FLAG_NONROT, sdpiton->queue);
++        //        blk_queue_flag_clear(QUEUE_FLAG_ADD_RANDOM, sdpiton->queue);
++        blk_queue_max_hw_sectors(sdpiton->queue, 8);
++        sdpiton->queue->limits.max_sectors = queue_max_hw_sectors(sdpiton->queue);
++        blk_queue_max_segments(sdpiton->queue, USHRT_MAX);
++        blk_queue_max_segment_size(sdpiton->queue, UINT_MAX);
++        
++	/* Now we can hook up the irq handler */
++	if (sdpiton->irq) {
++		rc = request_irq(sdpiton->irq, pitonsd_interrupt, 0, "pitonsd", sdpiton);
++		if (rc) {
++			/* Failure - fall back to polled mode */
++			dev_err(sdpiton->dev, "request_irq failed\n");
++			sdpiton->irq = 0;
++		}
++	}
++
++	printk("LowRISC_piton_sd physaddr 0x%llx, mapped to 0x%llx, irq=%i\n",
++               (u64) sdpiton->physaddr, (u64) sdpiton->baseaddr, sdpiton->irq);
++
++	/* Make the device 'live' */
++	add_disk(sdpiton->gd);
++
++	return 0;
++
++err_alloc_disk:
++	blk_cleanup_queue(sdpiton->queue);
++        blk_mq_free_tag_set(&sdpiton->tag_set);
++err_blk_initq:
++	iounmap(sdpiton->baseaddr);
++err_ioremap:
++	dev_info(sdpiton->dev, "pitonsd: error initializing device at 0x%llx\n",
++		 (unsigned long long) sdpiton->physaddr);
++	return -ENOMEM;
++}
++
++static void pitonsd_teardown(struct pitonsd_device *sdpiton)
++{
++	if (sdpiton->gd) {
++		del_gendisk(sdpiton->gd);
++		put_disk(sdpiton->gd);
++	}
++
++	if (sdpiton->queue) {
++		blk_cleanup_queue(sdpiton->queue);
++		blk_mq_free_tag_set(&sdpiton->tag_set);
++	}
++
++	tasklet_kill(&sdpiton->fsm_tasklet);
++
++	if (sdpiton->irq)
++		free_irq(sdpiton->irq, sdpiton);
++
++	iounmap(sdpiton->baseaddr);
++}
++
++static int pitonsd_alloc(struct device *dev, int id, resource_size_t physaddr, resource_size_t physaddrend, int irq)
++{
++	struct pitonsd_device *sdpiton;
++	int rc;
++	dev_dbg(dev, "pitonsd_alloc(%llx)\n", (u64)dev);
++
++	if (!physaddr) {
++		rc = -ENODEV;
++		goto err_noreg;
++	}
++
++	/* Allocate and initialize the sdpiton device structure */
++	sdpiton = kzalloc(sizeof(struct pitonsd_device), GFP_KERNEL);
++	if (!sdpiton) {
++		rc = -ENOMEM;
++		goto err_alloc;
++	}
++
++	sdpiton->dev = dev;
++	sdpiton->id = id;
++	sdpiton->physaddr = physaddr;
++	sdpiton->physaddrend = physaddrend;
++	sdpiton->irq = irq;
++
++	/* Call the setup code */
++	rc = pitonsd_setup(sdpiton);
++	if (rc)
++		goto err_setup;
++
++	dev_set_drvdata(dev, sdpiton);
++        pr_debug("pitonsd_alloc returned success\n");
++	return 0;
++
++err_setup:
++	dev_set_drvdata(dev, NULL);
++	kfree(sdpiton);
++err_alloc:
++err_noreg:
++	dev_err(dev, "could not initialize device, err=%i\n", rc);
++	return rc;
++}
++
++static void pitonsd_free(struct device *dev)
++{
++	struct pitonsd_device *sdpiton = dev_get_drvdata(dev);
++	dev_dbg(dev, "pitonsd_free(%llx)\n", (u64)dev);
++
++	if (sdpiton) {
++		pitonsd_teardown(sdpiton);
++		dev_set_drvdata(dev, NULL);
++		kfree(sdpiton);
++	}
++}
++
++/* ---------------------------------------------------------------------
++ * Platform Bus Support
++ */
++
++static int pitonsd_probe(struct platform_device *dev)
++{
++	resource_size_t physaddr = 0;
++	resource_size_t physaddrend = 0;
++	u32 id = dev->id;
++	int irq = 0;
++	int i;
++
++	printk("pitonsd_probe(%llx)\n", (u64)dev);
++
++	/* device id and bus width */
++	if (of_property_read_u32(dev->dev.of_node, "port-number", &id))
++		id = 0;
++
++	for (i = 0; i < dev->num_resources; i++) {
++		if (dev->resource[i].flags & IORESOURCE_MEM)
++                  {
++                    physaddr = dev->resource[i].start;
++                    physaddrend = dev->resource[i].end;
++                  }
++		if (dev->resource[i].flags & IORESOURCE_IRQ)
++			irq = dev->resource[i].start;
++	}
++
++	/* Call the bus-independent setup code */
++	return pitonsd_alloc(&dev->dev, id, physaddr, physaddrend, irq);
++}
++
++/*
++ * Platform bus remove() method
++ */
++static int pitonsd_remove(struct platform_device *dev)
++{
++	pitonsd_free(&dev->dev);
++	return 0;
++}
++
++#if defined(CONFIG_OF)
++/* Match table for of_platform binding */
++static const struct of_device_id pitonsd_of_match[] = {
++	{ .compatible = "lowrisc-pitonsd" },
++	{},
++};
++MODULE_DEVICE_TABLE(of, pitonsd_of_match);
++#else /* CONFIG_OF */
++#define pitonsd_of_match NULL
++#endif /* CONFIG_OF */
++
++static struct platform_driver pitonsd_platform_driver = {
++	.probe = pitonsd_probe,
++	.remove = pitonsd_remove,
++	.driver = {
++		.name = "lowrisc-pitonsd",
++		.of_match_table = pitonsd_of_match,
++	},
++};
++
++/* ---------------------------------------------------------------------
++ * Module init/exit routines
++ */
++static int __init pitonsd_init(void)
++{
++	int rc;
++
++	pitonsd_major = register_blkdev(pitonsd_major, "pitonsd");
++	if (pitonsd_major <= 0) {
++		rc = -ENOMEM;
++		goto err_blk;
++	}
++
++	rc = platform_driver_register(&pitonsd_platform_driver);
++	if (rc)
++		goto err_plat;
++
++	pr_info("LowRISC_piton_sd device driver, major=%i\n", pitonsd_major);
++	return 0;
++
++err_plat:
++	unregister_blkdev(pitonsd_major, "pitonsd");
++err_blk:
++	printk(KERN_ERR "pitonsd: registration failed; err=%i\n", rc);
++	return rc;
++}
++module_init(pitonsd_init);
++
++static void __exit pitonsd_exit(void)
++{
++	pr_debug("Unregistering LowRISC_piton_sd driver\n");
++	platform_driver_unregister(&pitonsd_platform_driver);
++	unregister_blkdev(pitonsd_major, "pitonsd");
++}
++module_exit(pitonsd_exit);
 diff --git a/drivers/input/keyboard/Kconfig b/drivers/input/keyboard/Kconfig
-index 52d7f55..5f9ce38 100644
+index 52d7f55fc..5f9ce385c 100644
 --- a/drivers/input/keyboard/Kconfig
 +++ b/drivers/input/keyboard/Kconfig
 @@ -757,3 +757,19 @@ config KEYBOARD_MTK_PMIC
@@ -1761,7 +2720,7 @@ index 52d7f55..5f9ce38 100644
 +	  Say Y here if you want to use a serial device as a fake keyboard input device.
 +	  If unsure, say N.
 diff --git a/drivers/input/keyboard/Makefile b/drivers/input/keyboard/Makefile
-index 182e929..f04c3d6 100644
+index 182e92985..f04c3d65a 100644
 --- a/drivers/input/keyboard/Makefile
 +++ b/drivers/input/keyboard/Makefile
 @@ -67,3 +67,5 @@ obj-$(CONFIG_KEYBOARD_TM2_TOUCHKEY)	+= tm2-touchkey.o
@@ -1772,7 +2731,7 @@ index 182e929..f04c3d6 100644
 +obj-$(CONFIG_KEYBOARD_LOWRISC_FAKE)	+= lowrisc-fake-keys.o
 diff --git a/drivers/input/keyboard/lowrisc-fake-keys.c b/drivers/input/keyboard/lowrisc-fake-keys.c
 new file mode 100644
-index 0000000..11ef08c
+index 000000000..11ef08ca9
 --- /dev/null
 +++ b/drivers/input/keyboard/lowrisc-fake-keys.c
 @@ -0,0 +1,273 @@
@@ -2051,7 +3010,7 @@ index 0000000..11ef08c
 +MODULE_DESCRIPTION("Dummy Keyboard input events for Lowrisc");
 diff --git a/drivers/input/keyboard/lowrisc-kbd.c b/drivers/input/keyboard/lowrisc-kbd.c
 new file mode 100644
-index 0000000..6a473b3
+index 000000000..6a473b3c5
 --- /dev/null
 +++ b/drivers/input/keyboard/lowrisc-kbd.c
 @@ -0,0 +1,168 @@
@@ -2225,7 +3184,7 @@ index 0000000..6a473b3
 +MODULE_DESCRIPTION("Keyboard driver for Lowrisc Keyboard Lowrisc_controller");
 diff --git a/drivers/input/keyboard/lowrisc-scancode.h b/drivers/input/keyboard/lowrisc-scancode.h
 new file mode 100644
-index 0000000..8711843
+index 000000000..871184347
 --- /dev/null
 +++ b/drivers/input/keyboard/lowrisc-scancode.h
 @@ -0,0 +1,282 @@
@@ -2512,7 +3471,7 @@ index 0000000..8711843
 +[254] = {0xfe,0x00,0x00},
 +[255] = {0xff,0x00,0x00},
 diff --git a/drivers/input/mouse/Kconfig b/drivers/input/mouse/Kconfig
-index 566a1e3..571c7bf 100644
+index 566a1e3aa..571c7bf49 100644
 --- a/drivers/input/mouse/Kconfig
 +++ b/drivers/input/mouse/Kconfig
 @@ -393,6 +393,15 @@ config MOUSE_GPIO
@@ -2532,7 +3491,7 @@ index 566a1e3..571c7bf 100644
  	tristate "PXA930 Trackball mouse"
  	depends on CPU_PXA930 || CPU_PXA935
 diff --git a/drivers/input/mouse/Makefile b/drivers/input/mouse/Makefile
-index e49f085..e211709 100644
+index e49f08565..e21170928 100644
 --- a/drivers/input/mouse/Makefile
 +++ b/drivers/input/mouse/Makefile
 @@ -14,6 +14,7 @@ obj-$(CONFIG_MOUSE_ELAN_I2C)		+= elan_i2c.o
@@ -2545,7 +3504,7 @@ index e49f085..e211709 100644
  obj-$(CONFIG_MOUSE_PC110PAD)		+= pc110pad.o
 diff --git a/drivers/input/mouse/lowrisc_mouse.c b/drivers/input/mouse/lowrisc_mouse.c
 new file mode 100644
-index 0000000..ad0d2e3
+index 000000000..ad0d2e3fa
 --- /dev/null
 +++ b/drivers/input/mouse/lowrisc_mouse.c
 @@ -0,0 +1,192 @@
@@ -2742,7 +3701,7 @@ index 0000000..ad0d2e3
 +MODULE_LICENSE("GPL");
 +MODULE_ALIAS("platform:lowrisc_mouse"); /* work with hotplug and coldplug */
 diff --git a/drivers/mmc/host/Kconfig b/drivers/mmc/host/Kconfig
-index 28fcd8f..fbff935 100644
+index 28fcd8f58..fbff935af 100644
 --- a/drivers/mmc/host/Kconfig
 +++ b/drivers/mmc/host/Kconfig
 @@ -938,6 +938,12 @@ config MMC_BCM2835
@@ -2759,7 +3718,7 @@ index 28fcd8f..fbff935 100644
  	tristate "MediaTek SD/MMC Card Interface support"
  	depends on HAS_DMA
 diff --git a/drivers/mmc/host/Makefile b/drivers/mmc/host/Makefile
-index 7357871..2656d1a 100644
+index 73578718f..2656d1a40 100644
 --- a/drivers/mmc/host/Makefile
 +++ b/drivers/mmc/host/Makefile
 @@ -73,6 +73,7 @@ obj-$(CONFIG_MMC_SUNXI)		+= sunxi-mmc.o
@@ -2772,7 +3731,7 @@ index 7357871..2656d1a 100644
  obj-$(CONFIG_MMC_REALTEK_USB)	+= rtsx_usb_sdmmc.o
 diff --git a/drivers/mmc/host/lowrisc_sd.c b/drivers/mmc/host/lowrisc_sd.c
 new file mode 100644
-index 0000000..d2570eb
+index 000000000..d2570eb8a
 --- /dev/null
 +++ b/drivers/mmc/host/lowrisc_sd.c
 @@ -0,0 +1,803 @@
@@ -3581,7 +4540,7 @@ index 0000000..d2570eb
 +MODULE_LICENSE("GPL");
 diff --git a/drivers/mmc/host/lowrisc_sd.h b/drivers/mmc/host/lowrisc_sd.h
 new file mode 100644
-index 0000000..8aa18fa
+index 000000000..8aa18fa0e
 --- /dev/null
 +++ b/drivers/mmc/host/lowrisc_sd.h
 @@ -0,0 +1,52 @@
@@ -3638,7 +4597,7 @@ index 0000000..8aa18fa
 +  int int_en, width_setting;
 +};
 diff --git a/drivers/net/ethernet/Kconfig b/drivers/net/ethernet/Kconfig
-index 885e00d..5d18ddf 100644
+index 885e00d17..5d18ddf22 100644
 --- a/drivers/net/ethernet/Kconfig
 +++ b/drivers/net/ethernet/Kconfig
 @@ -115,6 +115,7 @@ config LANTIQ_XRX200
@@ -3650,7 +4609,7 @@ index 885e00d..5d18ddf 100644
  source "drivers/net/ethernet/mediatek/Kconfig"
  source "drivers/net/ethernet/mellanox/Kconfig"
 diff --git a/drivers/net/ethernet/Makefile b/drivers/net/ethernet/Makefile
-index 7b5bf96..06beeb5 100644
+index 7b5bf9682..06beeb577 100644
 --- a/drivers/net/ethernet/Makefile
 +++ b/drivers/net/ethernet/Makefile
 @@ -50,6 +50,7 @@ obj-$(CONFIG_JME) += jme.o
@@ -3663,7 +4622,7 @@ index 7b5bf96..06beeb5 100644
  obj-$(CONFIG_NET_VENDOR_MELLANOX) += mellanox/
 diff --git a/drivers/net/ethernet/lowrisc/Kconfig b/drivers/net/ethernet/lowrisc/Kconfig
 new file mode 100644
-index 0000000..cccdadc
+index 000000000..cccdadc16
 --- /dev/null
 +++ b/drivers/net/ethernet/lowrisc/Kconfig
 @@ -0,0 +1,26 @@
@@ -3695,7 +4654,7 @@ index 0000000..cccdadc
 +endif # NET_VENDOR_LOWRISC
 diff --git a/drivers/net/ethernet/lowrisc/Makefile b/drivers/net/ethernet/lowrisc/Makefile
 new file mode 100644
-index 0000000..4eb3ade
+index 000000000..4eb3adee1
 --- /dev/null
 +++ b/drivers/net/ethernet/lowrisc/Makefile
 @@ -0,0 +1,6 @@
@@ -3707,10 +4666,10 @@ index 0000000..4eb3ade
 +CFLAGS_lowrisc_100MHz.o := -DDEBUG
 diff --git a/drivers/net/ethernet/lowrisc/lowrisc_100MHz.c b/drivers/net/ethernet/lowrisc/lowrisc_100MHz.c
 new file mode 100644
-index 0000000..b07a6d9
+index 000000000..8f2adf0c9
 --- /dev/null
 +++ b/drivers/net/ethernet/lowrisc/lowrisc_100MHz.c
-@@ -0,0 +1,839 @@
+@@ -0,0 +1,845 @@
 +/*
 + * Lowrisc Ether100MHz Linux driver for the Lowrisc Ethernet 100MHz device.
 + *
@@ -3978,10 +4937,11 @@ index 0000000..b07a6d9
 +        mutex_lock(&priv->lock);
 +	eth_disable_irq(priv);
 +        mutex_unlock(&priv->lock);
++
 +	if (priv->irq)
 +		free_irq(priv->irq, priv);
-+	priv->irq = 0;
-+        printk("Close device, free interrupt\n");
++
++        pr_debug("Close device, free interrupt\n");
 +        
 +	if (priv->phy_dev)
 +		phy_disconnect(priv->phy_dev);
@@ -4004,6 +4964,7 @@ index 0000000..b07a6d9
 +	}
 +}
 +
++#ifdef CONFIG_LOWRISC_MII_INIT
 +static void lowrisc_phy_adjust_link(struct net_device *ndev)
 +{
 +	struct net_local *priv = netdev_priv(ndev);
@@ -4176,6 +5137,8 @@ index 0000000..b07a6d9
 +err_out_1:
 +	return err;
 +}
++#endif
++
 +/**********************/
 +/* Interrupt Handlers */
 +/**********************/
@@ -4497,9 +5460,11 @@ index 0000000..b07a6d9
 +
 +	/* Set the MAC address in the Ether100MHz device */
 +	lowrisc_update_address(priv, ndev->dev_addr);
-+
++#ifdef CONFIG_LOWRISC_MII_INIT
 +	lowrisc_mii_init(ndev);
-+
++#else
++        /* skip MMI init */
++#endif
 +	/* Finally, register the device */
 +	rc = register_netdev(ndev);
 +	if (rc) {
@@ -4552,7 +5517,7 @@ index 0000000..b07a6d9
 +MODULE_LICENSE("GPL");
 diff --git a/drivers/net/ethernet/lowrisc/lowrisc_100MHz.h b/drivers/net/ethernet/lowrisc/lowrisc_100MHz.h
 new file mode 100644
-index 0000000..9d227c1
+index 000000000..9d227c10d
 --- /dev/null
 +++ b/drivers/net/ethernet/lowrisc/lowrisc_100MHz.h
 @@ -0,0 +1,55 @@
@@ -4612,7 +5577,7 @@ index 0000000..9d227c1
 +
 +#endif
 diff --git a/drivers/video/console/Kconfig b/drivers/video/console/Kconfig
-index 787792c..7186e30 100644
+index 787792c3d..7186e30cc 100644
 --- a/drivers/video/console/Kconfig
 +++ b/drivers/video/console/Kconfig
 @@ -90,6 +90,11 @@ config SGI_NEWPORT_CONSOLE
@@ -4628,7 +5593,7 @@ index 787792c..7186e30 100644
  	bool
  	depends on VGA_CONSOLE!=y || SGI_NEWPORT_CONSOLE!=y 
 diff --git a/drivers/video/console/Makefile b/drivers/video/console/Makefile
-index db07b78..81c59f5 100644
+index db07b784b..81c59f553 100644
 --- a/drivers/video/console/Makefile
 +++ b/drivers/video/console/Makefile
 @@ -4,6 +4,7 @@
@@ -4641,7 +5606,7 @@ index db07b78..81c59f5 100644
  obj-$(CONFIG_VGA_CONSOLE)         += vgacon.o
 diff --git a/drivers/video/console/lowrisc-con.c b/drivers/video/console/lowrisc-con.c
 new file mode 100644
-index 0000000..c3c782f
+index 000000000..c3c782f24
 --- /dev/null
 +++ b/drivers/video/console/lowrisc-con.c
 @@ -0,0 +1,303 @@
@@ -4949,7 +5914,7 @@ index 0000000..c3c782f
 +MODULE_DESCRIPTION("Lowrisc VGA-compatible console driver");
 +MODULE_LICENSE("GPL");
 diff --git a/drivers/video/fbdev/Kconfig b/drivers/video/fbdev/Kconfig
-index 58a9590..098b9bb 100644
+index 58a9590c9..098b9bb0a 100644
 --- a/drivers/video/fbdev/Kconfig
 +++ b/drivers/video/fbdev/Kconfig
 @@ -2272,6 +2272,15 @@ config FB_SIMPLE
@@ -4969,7 +5934,7 @@ index 58a9590..098b9bb 100644
  	tristate "Solomon SSD1307 framebuffer support"
  	depends on FB && I2C
 diff --git a/drivers/video/fbdev/Makefile b/drivers/video/fbdev/Makefile
-index 846b0c9..2f2173d 100644
+index 846b0c9ea..2f2173db5 100644
 --- a/drivers/video/fbdev/Makefile
 +++ b/drivers/video/fbdev/Makefile
 @@ -136,6 +136,7 @@ obj-$(CONFIG_FB_DA8XX)		  += da8xx-fb.o
@@ -4982,7 +5947,7 @@ index 846b0c9..2f2173d 100644
  obj-$(CONFIG_FB_VIRTUAL)          += vfb.o
 diff --git a/drivers/video/fbdev/lowrisc_fb.c b/drivers/video/fbdev/lowrisc_fb.c
 new file mode 100644
-index 0000000..1c9b4bd
+index 000000000..1c9b4bdcf
 --- /dev/null
 +++ b/drivers/video/fbdev/lowrisc_fb.c
 @@ -0,0 +1,282 @@
