@@ -136,3 +136,10 @@ nexys4_ddr_ariane_new: riscv-pk/serial/bbl
 
 nexys4_ddr_rocket_new: riscv-pk/serial/bbl
 	make -C fpga BOARD=nexys4_ddr BITSIZE=0x400000 CPU=rocket COMPATIBLE="sifive,rocket0" BBL=$(root-dir)$< new newmcs
+
+sdcard-install: riscv-pk/serial/bbl lowrisc-quickstart/rootfs.tar.xz
+	cp $< lowrisc-quickstart/boot.bin
+	make -C lowrisc-quickstart/ install USB=$(USB)
+
+lowrisc-quickstart/rootfs.tar.xz:
+	make -C debian-riscv64 image

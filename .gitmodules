@@ -28,3 +28,6 @@
 [submodule "ariane"]
 	path = ariane
 	url = https://github.com/pulp-platform/ariane.git
+[submodule "lowrisc-quickstart"]
+	path = lowrisc-quickstart
+	url = https://github.com/lowRISC/lowrisc-quickstart.git
