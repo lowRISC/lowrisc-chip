@@ -30,7 +30,7 @@ module sd_bus
  output wire [63:0] spisd_rddata
  );
 
- reg [15:0]         spisd_addr_0, to_led, from_dip;
+ reg [15:0]         spisd_addr_0;
                                   
 `include "piton_sd_define.vh"
 
@@ -50,10 +50,14 @@ module sd_bus
  logic [`SD_ADDR_WIDTH-1:0]    req_addr_dma;   // addr in fake memory
  logic [`SD_ADDR_WIDTH-10:0]   req_blkcnt;
 
- logic                         req_wr;     // HIGH write; LOW read.
- logic                         req_val;
- logic [`SD_ADDR_WIDTH-1:0]    req_addr_sd_f;    // addr in SD 
- logic [`SD_ADDR_WIDTH-1:0]    req_addr_dma_f;   // addr in fake memory
+ logic                         req_wr;         // HIGH write
+ logic                         req_rd;         // HIGH read
+ logic                         req_wr_0;       // HIGH write delayed
+ logic                         req_rd_0;       // HIGH read delayed
+ logic                         req_wr_1;       // HIGH write delayed
+ logic                         req_rd_1;       // HIGH read delayed
+ logic [`SD_ADDR_WIDTH-1:0]    req_addr_sd_f;  // addr in SD 
+ logic [`SD_ADDR_WIDTH-1:0]    req_addr_dma_f; // addr in fake DMA memory
  logic                         sd_irq_en;
   logic   [31:0]      core_buffer_addr;
   logic                core_buffer_ce;
@@ -70,7 +74,6 @@ module sd_bus
  wire                         resp_ok;    // HIGH ok; LOW err.
  wire                         resp_val;
 logic                         resp_rdy;
-reg [15:0]                    from_dip_reg;
 logic [63:0]                  resp_vec, resp_data, spisd_wrdata_rev, spisd_rddata_norev, spisd_rddata_rev;
 wire [7:0]                    init_state;
 // compact FSM output
@@ -89,12 +92,18 @@ for (genvar i = 0; i < 64; i += 8)
 always @(posedge msoc_clk or negedge rstn)
   if (!rstn)
     begin
-       from_dip_reg <= 0;
        sd_irq <= 0;
        sd_irq_en <= 0;
        resp_vec <= 0;
-	   to_led <= 0;
-	   sys_rst_reg <= 0;
+       sys_rst_reg <= 0;
+       req_rd_0 <= 0;
+       req_wr_0 <= 0;
+       req_rd_1 <= 0;
+       req_wr_1 <= 0;
+       req_rd <= 0;
+       req_wr <= 0;
+       req_addr_sd <= 0;
+       req_addr_dma <= 0;
    end
    else
      begin
@@ -103,32 +112,36 @@ always @(posedge msoc_clk or negedge rstn)
         if (resp_val)
             resp_vec <= {resp_vec,resp_ok};
         resp_rdy <= resp_val;
-        sd_irq <= sd_irq_en & req_rdy;
-        from_dip_reg <= from_dip;
-	 if (spisd_en&(|spisd_we)&(spisd_addr[15:14]==2'b00))
+        sd_irq <= sd_irq_en & req_rdy & (req_wr|req_rd);
+        sys_rst_reg <= 0;
+        req_rd_0 <= req_rd;
+        req_wr_0 <= req_wr;
+        req_rd_1 <= req_rd & ~req_rd_0;
+        req_wr_1 <= req_wr & ~req_wr_0;
+        
+        if (spisd_en&(|spisd_we)&(spisd_addr[15:14]==2'b00))
 	  case(spisd_addr[6:3])
 	    0: req_addr_sd <= spisd_wrdata;
 	    1: req_addr_dma <= spisd_wrdata;
-	    2: req_blkcnt <= spisd_wrdata;
-	    3: {sys_rst_reg,sd_irq_en,req_wr,req_val} <= spisd_wrdata;
-       // Not strictly related, but can indicate SD-card activity and so on
-	   15: to_led <= spisd_wrdata;
-	   default:;
+	    2: begin resp_vec <= 0; req_blkcnt <= spisd_wrdata; end
+	    3: req_rd <= spisd_wrdata;
+	    4: req_wr <= spisd_wrdata;
+	    5: sd_irq_en <= spisd_wrdata;
+	    6: sys_rst_reg <= spisd_wrdata;
+	    default:;
 	  endcase
-	  case(spisd_addr[7:3])
+	case(spisd_addr[7:3])
 	    0: resp_data <= req_addr_sd_f;
 	    1: resp_data <= req_addr_dma_f;
-        2: resp_data <= {sd_detect,is_hcxc,init_done,req_rdy,sd_irq,sd_irq_en,req_wr,req_val};
-        3: resp_data <= resp_vec;
-        4: resp_data <= init_state;
-        5: resp_data <= counter;
-        6: resp_data <= init_fsm;
-        7: resp_data <= tran_state;
-        8: resp_data <= tran_fsm;
-        // not really related but we can decide if we want to autoboot, and so on.
-       31: resp_data <= from_dip_reg;
-       default: resp_data <= 32'HDEADBEEF;
-      endcase
+            2: resp_data <= {sd_detect,is_hcxc,init_done,req_rdy,sd_irq,sd_irq_en,req_wr,req_rd};
+            3: resp_data <= resp_vec;
+            4: resp_data <= init_state;
+            5: resp_data <= counter;
+            6: resp_data <= init_fsm;
+            7: resp_data <= tran_state;
+            8: resp_data <= tran_fsm;
+            default: resp_data <= 32'HDEADBEEF;
+        endcase
     end
 
 `ifdef ILA_RESP
@@ -137,14 +150,14 @@ ila_1 ila_resp (
 	.clk(msoc_clk), // input wire clk
 	.probe0(req_addr_sd_f), // input wire [0:0]  probe0  
 	.probe1(req_addr_dma_f), // input wire [0:0]  probe1 
-	.probe2({sd_detect,is_hcxc,init_done,req_rdy,sd_irq,sd_irq_en,req_wr,req_val}), // input wire [0:0]  probe2 
+	.probe2({sd_detect,is_hcxc,init_done,req_rdy,sd_irq,sd_irq_en,req_wr,req_rd}), // input wire [0:0]  probe2 
 	.probe3(resp_vec), // input wire [3:0]  probe3 
 	.probe4(init_state), // input wire [3:0]  probe4 
 	.probe5(counter), // input wire [0:0]  probe5 
 	.probe6(init_fsm), // input wire [0:0]  probe6 
 	.probe7(tran_state), // input wire [0:0]  probe7 
 	.probe8(tran_fsm), // input wire [0:0]  probe6 
-	.probe9({sys_rst_reg,sd_irq_en,req_wr,req_val}) // input wire [0:0]  probe6 
+	.probe9({sys_rst_reg,sd_irq_en,req_wr,req_rd}) // input wire [0:0]  probe6 
 );
 
 `endif
@@ -189,8 +202,8 @@ piton_sd_top dut
     .req_addr_sd            (req_addr_sd),
     .req_addr_dma           (req_addr_dma),
     .req_blkcnt             (req_blkcnt),
-    .req_wr                 (req_wr),
-    .req_val                (req_val),
+    .req_wr                 (req_wr_1),
+    .req_val                (req_wr_1|req_rd_1),
     .req_rdy                (req_rdy),
     .req_addr_sd_f          (req_addr_sd_f),
     .req_addr_dma_f         (req_addr_dma_f),
@@ -221,4 +234,5 @@ piton_sd_top dut
    assign             sd_sclk = sd_clk_out;
    
 endmodule // chip_top
+
 `default_nettype wire

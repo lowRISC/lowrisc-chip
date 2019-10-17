@@ -197,10 +197,10 @@ module piton_sd_transaction_manager(
             end
             ST_CLR_DAT_ISR: begin
                if (m_wb_ack_i) begin
+                  nxt_req_addr_sd_f = req_addr_sd_f + 1;
+                  nxt_req_addr_dma_f = req_addr_dma_f + 512;
                   if (blkcnt > 1) begin
                      nxtblkcnt = blkcnt-1;
-                     nxt_req_addr_sd_f = req_addr_sd_f + 1;
-                     nxt_req_addr_dma_f = req_addr_dma_f + 512;
                      if (req_wr) begin
                         state_next  =   ST_CMD24_DMA;
                      end
