@@ -79,7 +79,6 @@ module fstore2(
    
    parameter graphmax = 18;
    
-   genvar                        r;
    logic [63:0]                  fstore_rddata, doutfb[graphmax-1:0], doutpix[graphmax-1:0];
    logic [7:0]                   doutpix8;
    logic [18:4]                  gaddra_1, gaddra = offgreg[18:4]+offgpixel[11:3];
@@ -91,17 +90,17 @@ module fstore2(
         fstore_rddata = 64'b0;
         for (i = 0; i < graphmax; i++)
           begin
-	     doutg |= addrb_1[18:15] == r ? doutfb[i] : 64'b0;
-	     fstore_rddata |= (gaddra_1[18:15] == i) && (offgpixel_1[11:3] < ghlimit) ? doutpix[i] : 64'b0;
+	     doutg |= addrb_1[18:14] == i ? doutfb[i] : 64'b0;
+	     fstore_rddata |= (gaddra_1[18:14] == i) && (offgpixel_1[11:3] < ghlimit) ? doutpix[i] : 64'b0;
           end
      end
-   generate for (r = 0; r < graphmax; r=r+1)
+     for (genvar r = 0; r < graphmax; r=r+1)
      dualmem ram1(.clka(pxl_clk),
                   .dina(8'b0),
                   .addra(gaddra[14:4]),
                   .wea(8'b0),
                   .douta(doutpix[r]),
-                  .ena(gaddra[18:15]==r),
+                  .ena(gaddra[18:14]==r),
                   .clkb(clk_i),
                   .dinb(hid_wrdata),
                   .addrb(hid_addr[13:3]),

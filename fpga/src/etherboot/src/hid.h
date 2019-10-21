@@ -35,6 +35,7 @@
 #define LOWRISC_REGS_PALETTE   (256)
 
 extern volatile uint64_t *const hid_reg_ptr;
+extern volatile uint64_t *const hid_plt_ptr;
 extern volatile uint64_t *const hid_fb_ptr;
 extern volatile uint32_t *const keyb_base;
 extern volatile uint64_t *const mouse_base;

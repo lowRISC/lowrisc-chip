@@ -36,5 +36,5 @@ void draw_logo(int ghlimit)
           image_ptr++;
     }
   for (i = 0; i < sizeof(palette_logo2)/sizeof(*palette_logo2); i++)
-    hid_reg_ptr[LOWRISC_REGS_PALETTE + i] = ((palette_logo2[i] & 0xFF) << 16) | ((palette_logo2[i] & 0xFF00)) | ((palette_logo2[i] & 0xFF0000) >> 16);
+    hid_plt_ptr[i] = ((palette_logo2[i] & 0xFF) << 16) | ((palette_logo2[i] & 0xFF00)) | ((palette_logo2[i] & 0xFF0000) >> 16);
 }

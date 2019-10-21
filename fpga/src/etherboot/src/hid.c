@@ -30,11 +30,14 @@ void hid_init(void)
   enum {width=1024, height=768, xpixels=768, ypixels=682};
   int i, ghlimit = xpixels/8;
   unsigned char *fb_ptr = (unsigned char *)hid_fb_ptr;
-  for (i = 0; i < 256; i++)
+  for (i = 1; i < 256; i++)
     hid_plt_ptr[i] = rand32();
-
-  for (i = 0; i < ghlimit*8; i++)
-    fb_ptr[i*ghlimit*8 + i] = i;
+  
+  for (i = 0; i < 0x40000; i++)
+    {
+      if (i & 255)
+        fb_ptr[i] = rand32();
+    }
   
   hid_reg_ptr[LOWRISC_REGS_CURSV] = 10;
   hid_reg_ptr[LOWRISC_REGS_XCUR] = 0;
@@ -45,10 +48,11 @@ void hid_init(void)
   hid_reg_ptr[LOWRISC_REGS_VSTART] = height;
   hid_reg_ptr[LOWRISC_REGS_VSTOP] = height+19;
   hid_reg_ptr[LOWRISC_REGS_VPIXSTART ] = 16;
-  hid_reg_ptr[LOWRISC_REGS_VPIXSTOP ] = ypixels+16;
+  hid_reg_ptr[LOWRISC_REGS_VPIXSTOP ] = 500;
   hid_reg_ptr[LOWRISC_REGS_HPIXSTART ] = 378;
   hid_reg_ptr[LOWRISC_REGS_HPIXSTOP ] = xpixels*2 + 378;
-  hid_reg_ptr[LOWRISC_REGS_HPIX ] = 5;
+  hid_reg_ptr[LOWRISC_REGS_HDIV ] = 1;
+  hid_reg_ptr[LOWRISC_REGS_HPIX ] = 1;
   hid_reg_ptr[LOWRISC_REGS_VPIX ] = 11; // squashed vertical display uses 10
   hid_reg_ptr[LOWRISC_REGS_GHLIMIT] = ghlimit / 2;
   
