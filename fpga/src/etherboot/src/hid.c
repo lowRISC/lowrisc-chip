@@ -1,6 +1,7 @@
 // See LICENSE.Cambridge for license details.
 
 #include <stddef.h>
+#include <string.h>
 #include "uart.h"
 #include "hid.h"
 #include "mini-printf.h"
@@ -11,6 +12,7 @@ const struct { char scan,lwr,upr; } scancode[] = {
 
 // VGA tuning registers
 volatile uint64_t *const hid_reg_ptr = (volatile uint64_t *)(VgaBase+16384);
+volatile uint64_t *const hid_plt_ptr = (volatile uint64_t *)(VgaBase+16384+2048);
 // VGA frame buffer
 volatile uint64_t *const hid_fb_ptr = (volatile uint64_t *)(FbBase);
 // HID keyboard
@@ -26,8 +28,13 @@ void uart_console_putchar(unsigned char ch)
 void hid_init(void)
 {
   enum {width=1024, height=768, xpixels=768, ypixels=682};
-  int i, j, ghlimit = xpixels/8;
+  int i, ghlimit = xpixels/8;
   unsigned char *fb_ptr = (unsigned char *)hid_fb_ptr;
+  for (i = 0; i < 256; i++)
+    hid_plt_ptr[i] = rand32();
+
+  for (i = 0; i < ghlimit*8; i++)
+    fb_ptr[i*ghlimit*8 + i] = i;
   
   hid_reg_ptr[LOWRISC_REGS_CURSV] = 10;
   hid_reg_ptr[LOWRISC_REGS_XCUR] = 0;
@@ -44,28 +51,12 @@ void hid_init(void)
   hid_reg_ptr[LOWRISC_REGS_HPIX ] = 5;
   hid_reg_ptr[LOWRISC_REGS_VPIX ] = 11; // squashed vertical display uses 10
   hid_reg_ptr[LOWRISC_REGS_GHLIMIT] = ghlimit / 2;
-  hid_reg_ptr[LOWRISC_REGS_PALETTE +     0] = 0x20272D;
-  hid_reg_ptr[LOWRISC_REGS_PALETTE +     1] = 0xE0354F;
-  hid_reg_ptr[LOWRISC_REGS_PALETTE +     2] = 0xE9374F;
-  hid_reg_ptr[LOWRISC_REGS_PALETTE +     3] = 0xE1E6E8;
-  hid_reg_ptr[LOWRISC_REGS_PALETTE +     4] = 0xAA0000;
-  hid_reg_ptr[LOWRISC_REGS_PALETTE +     5] = 0xAA00AA;
-  hid_reg_ptr[LOWRISC_REGS_PALETTE +     6] = 0xAA5500;
-  hid_reg_ptr[LOWRISC_REGS_PALETTE +     7] = 0xAAAAAA;
-  hid_reg_ptr[LOWRISC_REGS_PALETTE +     8] = 0x555555;
-  hid_reg_ptr[LOWRISC_REGS_PALETTE +     9] = 0x5555FF;
-  hid_reg_ptr[LOWRISC_REGS_PALETTE +    10] = 0x55FF55;
-  hid_reg_ptr[LOWRISC_REGS_PALETTE +    11] = 0x55FFFF;
-  hid_reg_ptr[LOWRISC_REGS_PALETTE +    12] = 0xFF5555;
-  hid_reg_ptr[LOWRISC_REGS_PALETTE +    13] = 0xFF55FF;
-  hid_reg_ptr[LOWRISC_REGS_PALETTE +    14] = 0xFFFF55;
-  hid_reg_ptr[LOWRISC_REGS_PALETTE +    15] = 0xFFFFFF;
-
+  
   draw_logo(ghlimit);
-  for (i = 0; i < ghlimit*8; i++)
-    fb_ptr[i*ghlimit*8 + i] = i;
+  /*  
   for (i = 0; i < ypixels; i++)
     {
+      int j;
       for (j = 0; j < xpixels; j += 100)
         {
         fb_ptr[i*ghlimit*8 + j + 4] = 15;
@@ -73,6 +64,7 @@ void hid_init(void)
         }
       fb_ptr[i*ghlimit*8 + xpixels-1] = 15;
     }
+  */
 }
 
 void hid_send_irq(uint8_t data)

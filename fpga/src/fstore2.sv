@@ -69,7 +69,7 @@ module fstore2(
    
    reg [7:0]                     red_in, green_in, blue_in;
 
-   reg [23:0]                    palette0[0:15], palette[0:15];
+   reg [23:0]                    palette0[0:255], palette[0:255];
 
 /*   
    dualmem ram1(.clka(pxl_clk),
@@ -77,12 +77,12 @@ module fstore2(
                 .clkb(~clk_i), .dinb(hid_wrdata), .addrb(hid_addr[13:3]), .web(hid_we), .doutb(dout0), .enb(hid_en & one_hot_data_addr[7] & ~hid_addr[14]));
 */
    
-   parameter graphmax = 15;
+   parameter graphmax = 18;
    
    genvar                        r;
    logic [63:0]                  fstore_rddata, doutfb[graphmax-1:0], doutpix[graphmax-1:0];
-   logic [3:0]                   doutpix4;
-   logic [18:4]                  gaddra_1, gaddra = offgreg[18:4]+offgpixel[11:4];
+   logic [7:0]                   doutpix8;
+   logic [18:4]                  gaddra_1, gaddra = offgreg[18:4]+offgpixel[11:3];
                  
    always_comb
      begin:onehot
@@ -92,11 +92,11 @@ module fstore2(
         for (i = 0; i < graphmax; i++)
           begin
 	     doutg |= addrb_1[18:15] == r ? doutfb[i] : 64'b0;
-	     fstore_rddata |= (gaddra_1[18:15] == i) && (offgpixel_1[11:4] < ghlimit) ? doutpix[i] : 64'b0;
+	     fstore_rddata |= (gaddra_1[18:15] == i) && (offgpixel_1[11:3] < ghlimit) ? doutpix[i] : 64'b0;
           end
      end
    generate for (r = 0; r < graphmax; r=r+1)
-     dualmem4 ram1(.clka(pxl_clk),
+     dualmem ram1(.clka(pxl_clk),
                   .dina(8'b0),
                   .addra(gaddra[14:4]),
                   .wea(8'b0),
@@ -104,10 +104,10 @@ module fstore2(
                   .ena(gaddra[18:15]==r),
                   .clkb(clk_i),
                   .dinb(hid_wrdata),
-                  .addrb(hid_addr[14:3]),
+                  .addrb(hid_addr[13:3]),
                   .web(hid_we),
                   .doutb(doutfb[r]),
-                  .enb(hid_en && (hid_addr[18:15]==r) && hid_addr[19]));
+                  .enb(hid_en && (hid_addr[18:14]==r) && hid_addr[19]));
    endgenerate
 
    always @(posedge clk_i)
@@ -155,34 +155,9 @@ module fstore2(
             6'd18: ghlimit0 <= hid_wrdata[7:0];
             default:;
           endcase
-        if (hid_we && hid_en & one_hot_data_addr[7] && hid_addr[14] && ~hid_addr[13] && hid_addr[8])
-            palette0[hid_addr[6:3]] <= hid_wrdata[23:0];
+        if (hid_we && hid_en & one_hot_data_addr[7] && hid_addr[14] && ~hid_addr[13] && hid_addr[11])
+            palette0[hid_addr[10:3]] <= hid_wrdata[23:0];
      end
-
-`ifdef LASTMSG
-   
-   parameter msgwid = 32;
-   
-   reg [msgwid*8-1:0]            last_msg;
-               
-   reg [7:0]                     crnt, msgi;
-                     
-   // This section generates a message in simulation, it gets trimmed in hardware.
-   always @(posedge clk_i)
-     if (~rst_ni)
-       last_msg = {msgwid{8'h20}};
-     else
-     begin
-        if (hid_en & one_hot_data_addr[7]) for (msgi = 0; msgi < 8; msgi=msgi+1)
-          if (hid_we[msgi])
-            begin
-               crnt = hid_wrdata >> msgi*8;
-               $write("%c", crnt);
-               if (crnt==10 || crnt==13) $fflush();
-               last_msg = {last_msg[msgwid*8-9:0],crnt};
-            end
-     end
-`endif
    
    always @(posedge pxl_clk) // or posedge reset) // JRRK - does this need async ?
    if (~rst_ni)
@@ -206,13 +181,12 @@ module fstore2(
      end
    else
      begin
-        doutpix4 <= fstore_rddata >> {offgpixel_1[3:0],2'b00};
+        doutpix8 <= fstore_rddata >> {offgpixel_1[2:0],3'b000};
         modereg <= modereg0;
         offhreg1 <= offhreg;
         offgpixel_1 <= offgpixel;
         gaddra_1 <= gaddra;
         offpixel1 <= offpixel;
-//        dout16_1 <= dout16;
         bitmapped_pixel1 <= bitmapped_pixel;
         cursorvreg <= cursorvreg0;
 	xcursor <= xcursor0;
@@ -230,7 +204,7 @@ module fstore2(
         vpixreg <= vpixreg0;
         divreg <= divreg0;
         ghlimit <= ghlimit0;
-        for (i = 0; i < 16; i=i+1)
+        for (i = 0; i < 256; i=i+1)
           palette[i] = palette0[i];
         hreg <= (hstop) ? 0: hreg + 1;
         hstart <= hreg == hstartreg;      
@@ -345,6 +319,6 @@ module fstore2(
 */
      
      assign
-       {blue_in,green_in,red_in} = bitmapped_pixel1 ? palette[doutpix4] : 24'b0;
+       {blue_in,green_in,red_in} = bitmapped_pixel1 ? palette[doutpix8] : 24'b0;
    
 endmodule

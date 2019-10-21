@@ -32,7 +32,7 @@
 #define LOWRISC_REGS_VPIX      (16)
 #define LOWRISC_REGS_HDIV      (17)
 #define LOWRISC_REGS_GHLIMIT   (18)
-#define LOWRISC_REGS_PALETTE   (32)
+#define LOWRISC_REGS_PALETTE   (256)
 
 extern volatile uint64_t *const hid_reg_ptr;
 extern volatile uint64_t *const hid_fb_ptr;
