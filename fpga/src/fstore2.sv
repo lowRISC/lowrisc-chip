@@ -95,7 +95,7 @@ module fstore2(
           end
      end
      for (genvar r = 0; r < graphmax; r=r+1)
-     dualmem ram1(.clka(pxl_clk),
+       dualmem ram1(.clka(pxl_clk),
                   .dina(8'b0),
                   .addra(gaddra[14:4]),
                   .wea(8'b0),
@@ -107,7 +107,6 @@ module fstore2(
                   .web(hid_we),
                   .doutb(doutfb[r]),
                   .enb(hid_en && (hid_addr[18:14]==r) && hid_addr[19]));
-   endgenerate
 
    always @(posedge clk_i)
    if (~rst_ni)
