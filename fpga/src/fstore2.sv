@@ -77,7 +77,7 @@ module fstore2(
                 .clkb(~clk_i), .dinb(hid_wrdata), .addrb(hid_addr[13:3]), .web(hid_we), .doutb(dout0), .enb(hid_en & one_hot_data_addr[7] & ~hid_addr[14]));
 */
    
-   parameter graphmax = 19;
+   parameter graphmax = 20;
    
    logic [63:0]                  fstore_rddata, doutfb[graphmax-1:0], doutpix[graphmax-1:0];
    logic [7:0]                   doutpix8;
