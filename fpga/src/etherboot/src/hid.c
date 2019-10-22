@@ -27,7 +27,7 @@ void uart_console_putchar(unsigned char ch)
 
 void hid_init(void)
 {
-  enum {width=1024, height=768, xpixels=768, ypixels=682};
+  enum {ghlimit=40, width=1024, height=768, xpixels=1400, ypixels=682, xpixoff = 450};
   int i;
   unsigned char *fb_ptr = (unsigned char *)hid_fb_ptr;
   for (i = 1; i < 256; i++)
@@ -49,12 +49,12 @@ void hid_init(void)
   hid_reg_ptr[LOWRISC_REGS_VSTOP] = height+19;
   hid_reg_ptr[LOWRISC_REGS_VPIXSTART ] = 16;
   hid_reg_ptr[LOWRISC_REGS_VPIXSTOP ] = ypixels+16;
-  hid_reg_ptr[LOWRISC_REGS_HPIXSTART ] = 378;
-  hid_reg_ptr[LOWRISC_REGS_HPIXSTOP ] = xpixels + 378;
-  hid_reg_ptr[LOWRISC_REGS_HDIV ] = 3;
+  hid_reg_ptr[LOWRISC_REGS_HPIXSTART ] = xpixoff;
+  hid_reg_ptr[LOWRISC_REGS_HPIXSTOP ] = xpixels + xpixoff;
+  hid_reg_ptr[LOWRISC_REGS_HDIV ] = 8;
   hid_reg_ptr[LOWRISC_REGS_HPIX ] = 5;
   hid_reg_ptr[LOWRISC_REGS_VPIX ] = 11; // squashed vertical display uses 10
-  hid_reg_ptr[LOWRISC_REGS_GHLIMIT] = 32;
+  hid_reg_ptr[LOWRISC_REGS_GHLIMIT] = ghlimit;
   
 #ifdef BIGROM
   draw_logo(ghlimit);

@@ -43,7 +43,7 @@ module fstore2(
    reg [5:3]                     offpixel, offpixel1;
    reg [11:5]                    offvreg;
    reg [11:0]                    offgpixel, offgpixel_1;
-   reg [18:4]                    offgreg, offgreg_1;
+   reg [18:3]                    offgreg, offgreg_1;
    reg [4:1]                     vrow;
    reg [4:0]                     divreg, divreg0, hdiv;
    reg [6:0]                     xcursor, ycursor, xcursor0, ycursor0, cursorvreg, cursorvreg0, modereg, modereg0;
@@ -81,7 +81,7 @@ module fstore2(
    
    logic [63:0]                  fstore_rddata, doutfb[graphmax-1:0], doutpix[graphmax-1:0];
    logic [7:0]                   doutpix8;
-   logic [18:4]                  gaddra_1, gaddra = offgreg[18:4]+offgpixel[11:3];
+   logic [18:3]                  gaddra_1, gaddra = offgreg[18:3]+offgpixel[11:3];
                  
    always_comb
      begin:onehot
@@ -97,7 +97,7 @@ module fstore2(
      for (genvar r = 0; r < graphmax; r=r+1)
        dualmem ram1(.clka(pxl_clk),
                   .dina(8'b0),
-                  .addra(gaddra[14:4]),
+                  .addra(gaddra[13:3]),
                   .wea(8'b0),
                   .douta(doutpix[r]),
                   .ena(gaddra[18:14]==r),
