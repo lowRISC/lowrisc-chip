@@ -20,3 +20,4 @@ uint64_t qspi_send(uint8_t len, uint8_t quad, uint16_t data_in_count, uint16_t d
 void gpio_leds(uint32_t arg);
 uint32_t gpio_sw(void);
 uint32_t hwrnd(void);
+uint32_t qspi_read4(uint8_t *dest, uint32_t start, uint32_t max);

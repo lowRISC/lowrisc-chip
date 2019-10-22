@@ -34,6 +34,8 @@
 #define LOWRISC_REGS_GHLIMIT   (18)
 #define LOWRISC_REGS_PALETTE   (256)
 
+enum {ghwords=80, ghlimit=ghwords*8, gvlimit=480, width=1024, height=768, xpixels=1400, ypixels=682, xpixoff = 450};
+  
 extern volatile uint64_t *const hid_reg_ptr;
 extern volatile uint64_t *const hid_plt_ptr;
 extern volatile uint64_t *const hid_fb_ptr;

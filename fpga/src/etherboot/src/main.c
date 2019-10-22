@@ -55,7 +55,7 @@ uint64_t qspi_send(uint8_t len, uint8_t quad, uint16_t data_in_count, uint16_t d
 uint8_t *const qspi_base = (void *)0x84000000;
 uint32_t qspi_len;
 
-uint32_t qspi_read4(void)
+uint32_t qspi_read4(uint8_t *dest, uint32_t start, uint32_t max)
       {
         uint32_t i = 0;
         uint64_t rslt;
@@ -63,30 +63,31 @@ uint32_t qspi_read4(void)
         int data_in_count = 39;
         int data_out_count = 65;
         data[0] = CMD_4READ;
+        printf("dest=0x%x, start=0x%x, max=%d\n", dest, start, max);
         do
           {
             data[1] = i + BITSIZE; // Should locate start of BBL
             rslt = qspi_send(2, 0, data_in_count, data_out_count, data);
-            if (rslt == 0xFFFFFFFFFFFFFFFF)
+            if ((rslt == 0xFFFFFFFFFFFFFFFF) && !max)
               ++blank;
             else
               blank = 0;
             for (j = 0; j < 8; j++)
               {
-                qspi_base[i+j] = rslt >> (7-j)*8;
+                dest[i+j] = rslt >> (7-j)*8;
               }
 #ifdef QSPI_VERBOSE
             for (j = 0; j < 8; j++)
               {
-                puthex(qspi_base[i+j], 2);
+                puthex(dest[i+j], 2);
                 printf(" ");
               }
             printf("\n");
 #endif                
             i += 8;
           }
-        while (blank < 512);
-        printf("Detected qspi becomes blank after %d bytes\n", i);
+        while (((i < max) || !max) && (blank < 512));
+        if (!max) printf("Detected qspi becomes blank after %d bytes\n", i);
         return i;
       }
 
@@ -121,7 +122,7 @@ void qspi_main(int sw)
   int64_t entry;
   // read elf
   printf("load QSPI to DDR memory\n");
-  qspi_len = qspi_read4();
+  qspi_len = qspi_read4(qspi_base, BITSIZE, 0);
   printf("load ELF to DDR memory\n");
   entry = load_elf(qspi_elfn);
   if (entry < 0)
@@ -154,6 +155,7 @@ int main()
       printf("Random seed = %X\n", rnd);
       sw = sw2 & 0xFF;
     }
+  
   switch (sw >> 5)
     {
     case 0x0: printf("SD boot\n"); sd_main(sw); break;

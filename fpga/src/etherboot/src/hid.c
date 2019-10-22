@@ -4,6 +4,7 @@
 #include <string.h>
 #include "uart.h"
 #include "hid.h"
+#include "qspi.h"
 #include "mini-printf.h"
 
 const struct { char scan,lwr,upr; } scancode[] = {
@@ -27,18 +28,27 @@ void uart_console_putchar(unsigned char ch)
 
 void hid_init(void)
 {
-  enum {ghlimit=40, width=1024, height=768, xpixels=1400, ypixels=682, xpixoff = 450};
   int i;
   unsigned char *fb_ptr = (unsigned char *)hid_fb_ptr;
-  for (i = 1; i < 256; i++)
+  for (i = 1; i < 255; i++)
     hid_plt_ptr[i] = rand32();
+  hid_plt_ptr[255] = 0xFFFFFF;
   
-  for (i = 0; i < 0x50000; i++)
+  for (i = 0; i < gvlimit; i++)
     {
-      if (i & 255)
-        fb_ptr[i] = rand32();
+      fb_ptr[i*ghlimit + i] = 128;
     }
   
+  for (i = 0; i < gvlimit; i++)
+    {
+      int j;
+      for (j = 0; j < ghlimit; j += 100)
+        {
+        fb_ptr[i*ghlimit + j] = 255;
+        }
+      fb_ptr[(i+1)*ghlimit - 1] = 255;
+    }
+
   hid_reg_ptr[LOWRISC_REGS_CURSV] = 10;
   hid_reg_ptr[LOWRISC_REGS_XCUR] = 0;
   hid_reg_ptr[LOWRISC_REGS_YCUR] = 32;
@@ -51,26 +61,14 @@ void hid_init(void)
   hid_reg_ptr[LOWRISC_REGS_VPIXSTOP ] = ypixels+16;
   hid_reg_ptr[LOWRISC_REGS_HPIXSTART ] = xpixoff;
   hid_reg_ptr[LOWRISC_REGS_HPIXSTOP ] = xpixels + xpixoff;
-  hid_reg_ptr[LOWRISC_REGS_HDIV ] = 8;
+  hid_reg_ptr[LOWRISC_REGS_HDIV ] = 1;
   hid_reg_ptr[LOWRISC_REGS_HPIX ] = 5;
   hid_reg_ptr[LOWRISC_REGS_VPIX ] = 11; // squashed vertical display uses 10
-  hid_reg_ptr[LOWRISC_REGS_GHLIMIT] = ghlimit;
+  hid_reg_ptr[LOWRISC_REGS_GHLIMIT] = ghwords;
   
 #ifdef BIGROM
-  draw_logo(ghlimit);
+  draw_logo(ghwords);
 #endif
-  /*  
-  for (i = 0; i < ypixels; i++)
-    {
-      int j;
-      for (j = 0; j < xpixels; j += 100)
-        {
-        fb_ptr[i*ghlimit*8 + j + 4] = 15;
-        fb_ptr[i*ghlimit*8 + j] = 15;
-        }
-      fb_ptr[i*ghlimit*8 + xpixels-1] = 15;
-    }
-  */
 }
 
 void hid_send_irq(uint8_t data)
