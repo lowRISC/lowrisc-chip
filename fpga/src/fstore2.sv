@@ -69,13 +69,20 @@ module fstore2(
    
    reg [7:0]                     red_in, green_in, blue_in;
 
-   reg [23:0]                    palette0[0:255], palette[0:255];
+   reg [31:0]                    red_green_blue_palette;
 
-/*   
-   dualmem ram1(.clka(pxl_clk),
-                .dina(8'b0), .addra({offvreg[10:5],offhreg[12:8]}), .wea(8'b0), .douta(dout), .ena(1'b1),
-                .clkb(~clk_i), .dinb(hid_wrdata), .addrb(hid_addr[13:3]), .web(hid_we), .doutb(dout0), .enb(hid_en & one_hot_data_addr[7] & ~hid_addr[14]));
-*/
+   palette_mem ram1(.clka(clk_i),
+                    .dina(hid_wrdata[31:0]),
+                    .addra(hid_addr[11:3]),
+                    .wea(hid_we),
+                    .douta(),
+                    .ena(hid_en & one_hot_data_addr[7] && hid_addr[14] && ~hid_addr[13] && hid_addr[11]),
+                    .clkb(~pxl_clk),
+                    .dinb(32'b0),
+                    .addrb(doutpix8),
+                    .web(1'b0),
+                    .doutb(red_green_blue_palette),
+                    .enb(1'b1));
    
    parameter graphmax = 20;
    
@@ -153,8 +160,6 @@ module fstore2(
             6'd18: ghlimit0 <= hid_wrdata[7:0];
             default:;
           endcase
-        if (hid_we && hid_en & one_hot_data_addr[7] && hid_addr[14] && ~hid_addr[13] && hid_addr[11])
-            palette0[hid_addr[10:3]] <= hid_wrdata[23:0];
      end
    
    always @(posedge pxl_clk) // or posedge reset) // JRRK - does this need async ?
@@ -202,8 +207,6 @@ module fstore2(
         vpixreg <= vpixreg0;
         divreg <= divreg0;
         ghlimit <= ghlimit0;
-        for (i = 0; i < 256; i=i+1)
-          palette[i] = palette0[i];
         hreg <= (hstop) ? 0: hreg + 1;
         hstart <= hreg == hstartreg;      
         if (hstart) hsyn <= 1; else if (hreg == hsynreg) hsyn <= 0;
@@ -317,6 +320,6 @@ module fstore2(
 */
      
      assign
-       {blue_in,green_in,red_in} = bitmapped_pixel1 ? palette[doutpix8] : 24'b0;
+       {blue_in,green_in,red_in} = bitmapped_pixel1 ? red_green_blue_palette[23:0] : 24'b0;
    
 endmodule
