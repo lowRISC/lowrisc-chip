@@ -56,7 +56,9 @@ void hid_init(void)
   hid_reg_ptr[LOWRISC_REGS_VPIX ] = 11; // squashed vertical display uses 10
   hid_reg_ptr[LOWRISC_REGS_GHLIMIT] = ghlimit / 2;
   
+#ifdef BIGROM
   draw_logo(ghlimit);
+#endif
   /*  
   for (i = 0; i < ypixels; i++)
     {

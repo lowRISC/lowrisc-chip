@@ -160,6 +160,7 @@ void free(void *ptr)
 
 }
 
+#ifdef BIGROM
 static void pitonsd_dump_regs(void)
 {
   const char *init_state, *tran_state;
@@ -315,6 +316,7 @@ static void pitonsd_dump_regs(void)
         tran_state,
         sd_base[_piton_sd_TRAN_FSM]);
 }
+#endif
 
 DSTATUS disk_initialize (uint8_t pdrv)
 {
@@ -336,11 +338,15 @@ DSTATUS disk_initialize (uint8_t pdrv)
         while (_piton_sd_STATUS_INIT_DONE & ~sd_base[_piton_sd_STATUS])
           {
             int init_state = sd_base[_piton_sd_INIT_STATE];
+#ifdef BIGROM  
             if (old_init_state != init_state)
               pitonsd_dump_regs();
+#endif
             old_init_state = init_state;
           }
+#ifdef BIGROM  
         pitonsd_dump_regs();
+#endif
         return 0;
 }
 
@@ -394,7 +400,9 @@ DRESULT disk_read (uint8_t pdrv, uint8_t *buff, uint32_t sector, uint32_t count)
   memcpy(buff, (void *)sd_bram, count*512);
   if (vec==mask)
     return FR_OK;
+#ifdef BIGROM  
   pitonsd_dump_regs();
+#endif  
   return FR_INT_ERR;
 }
 

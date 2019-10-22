@@ -3,6 +3,9 @@
 #include <stdlib.h>
 #include <memory.h>
 #include "hid.h"
+
+#ifdef BIGROM
+
 #include "logo.h"
 
 void draw_logo(int ghlimit)
@@ -38,3 +41,5 @@ void draw_logo(int ghlimit)
   for (i = 0; i < sizeof(palette_logo2)/sizeof(*palette_logo2); i++)
     hid_plt_ptr[i] = ((palette_logo2[i] & 0xFF) << 16) | ((palette_logo2[i] & 0xFF00)) | ((palette_logo2[i] & 0xFF0000) >> 16);
 }
+
+#endif

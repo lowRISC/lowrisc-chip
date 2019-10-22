@@ -141,6 +141,8 @@ int test_stuck_address(ulv *bufa, size_t count) {
     return 0;
 }
 
+#ifdef BIGROM
+
 int test_random_value(ulv *bufa, ulv *bufb, size_t count) {
     ulv *p1 = bufa;
     ulv *p2 = bufb;
@@ -559,6 +561,8 @@ int test_16bit_wide_random(ulv* bufa, ulv* bufb, size_t count) {
     
     return 0;
 }
+
+#endif
 
 struct test tests[] = {
 #if 0
