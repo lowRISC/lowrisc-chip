@@ -92,7 +92,7 @@ module cnvmem;
         $fdisplay(fd, "");
         $fdisplay(fd, "   reg   [BRAM_WIDTH-1:0]         ram [0 : BRAM_LINE-1] = {");
         for (i = 0; i < words; i=i+1)
-        $fdisplay(fd, "128'h%32x%s /* %d */", mem2[i], i < 'hfff ? "," : "", i[11:0]);
+        $fdisplay(fd, "128'h%32x%s /* %d */", mem2[i], i < (words-1) ? "," : "", i[11:0]);
         $fdisplay(fd, "    };");
         $fdisplay(fd, "");
         $fdisplay(fd, "   logic [BRAM_ADDR_BLK_BITS-1:0] ram_block_addr, ram_block_addr_delay;");
