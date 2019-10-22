@@ -63,7 +63,7 @@ $(work-dir)/search-ramb.log: scripts/search_ramb.tcl $(work-dir)/$(CPU)_xilinx_r
 	vivado -mode batch -source $< -tclargs $(work-dir)/$(CPU)_xilinx_routed > $@
 
 boot.bmm: $(work-dir)/search-ramb.log
-	python scripts/bmm_gen.py $< $@ 128 65536
+	python scripts/bmm_gen.py $< $@ 128 32768
 
 clean:
 	rm -rf *.log *.jou *.str *.mif *.xpr $(work-dir) $(CPU).cache $(CPU).hw $(CPU).ip_user_files

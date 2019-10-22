@@ -73,7 +73,7 @@ module fstore2(
 
    palette_mem ram1(.clka(clk_i),
                     .dina(hid_wrdata[31:0]),
-                    .addra(hid_addr[11:3]),
+                    .addra({1'b0,hid_addr[10:3]}),
                     .wea(hid_we),
                     .douta(),
                     .ena(hid_en & one_hot_data_addr[7] && hid_addr[14] && ~hid_addr[13] && hid_addr[11]),
