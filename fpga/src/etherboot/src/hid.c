@@ -13,7 +13,7 @@ const struct { char scan,lwr,upr; } scancode[] = {
 
 // VGA tuning registers
 volatile uint64_t *const hid_reg_ptr = (volatile uint64_t *)(VgaBase+16384);
-volatile uint64_t *const hid_plt_ptr = (volatile uint64_t *)(VgaBase+16384+2048);
+volatile uint64_t *const hid_plt_ptr = (volatile uint64_t *)(VgaBase+16384+8192);
 // VGA frame buffer
 volatile uint64_t *const hid_fb_ptr = (volatile uint64_t *)(FbBase);
 // HID keyboard
