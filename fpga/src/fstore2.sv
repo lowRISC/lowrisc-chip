@@ -56,8 +56,6 @@ module fstore2(
    reg [7:0]                     ghlimit, ghlimit0;
    reg [18:0]                    addrb_1;
    wire [63:0]                   dout, dout0;
-//   wire [15:0]                   dout16 = dout >> {offhreg1[7:6],4'b0000};
-//   reg [15:0]                    dout16_1;
    wire                          cursor = (offvreg[10:5] == ycursor[6:0]) && (offhreg[12:6] == xcursor[6:0]) && (vrow==cursorvreg);
    
    // 100 MHz / 2100 is 47.6kHz.  Divide by further 788 to get 60.4 Hz.
@@ -73,10 +71,10 @@ module fstore2(
 
    palette_mem ram1(.clka(clk_i),
                     .dina(hid_wrdata[31:0]),
-                    .addra({1'b0,hid_addr[10:3]}),
+                    .addra(hid_addr[11:3]),
                     .wea(hid_we),
-                    .douta(),
-                    .ena(hid_en & one_hot_data_addr[7] && hid_addr[14] && ~hid_addr[13] && hid_addr[11]),
+                    .douta(doutb),
+                    .ena(hid_en & one_hot_data_addr[7] && hid_addr[14] && hid_addr[13]),
                     .clkb(~pxl_clk),
                     .dinb(32'b0),
                     .addrb(doutpix8),
@@ -282,42 +280,6 @@ module fstore2(
      end
 
    assign vsyn = vstart;
-
-/*                  
-   wire [7:0] pixels_out, fout;
-   reg [3:0]  faddr;
-
-   always @(hid_we)
-     case(hid_we)
-       8'h01: faddr = 0;
-       8'h02: faddr = 1;
-       8'h04: faddr = 2;
-       8'h08: faddr = 3;
-       8'h10: faddr = 4;
-       8'h20: faddr = 5;
-       8'h40: faddr = 6;
-       8'h80: faddr = 7;
-       default: faddr = 8;
-   endcase // case (hid_we)
-   
-   assign doutb = addrb_1[14] ? {fout,fout,fout,fout,fout,fout,fout,fout} : dout0;
-   wire [7:0] font_in = hid_wrdata >> {faddr[2:0],3'b000};
-
-   chargen_7x5_rachel the_rachel(
-    .clk(pxl_clk),
-    .ascii(dout16[7:0]),
-    .row(vrow),
-    .pixels_out(pixels_out),
-    .font_clk(~clk_i),
-    .font_out(fout),
-    .font_addr({hid_addr[10:3],faddr[2:0]}),
-    .font_in(font_in),
-    .font_en(hid_en & one_hot_data_addr[7] & hid_addr[14] & hid_addr[13]),
-    .font_we(~faddr[3]));
-   
-     wire pixel = pixels_out[3'd7 ^ offpixel1] || cursor;
-     wire [3:0] colour = pixel ? dout16_1[11:8]: dout16_1[14:12];
-*/
      
      assign
        {blue_in,green_in,red_in} = bitmapped_pixel1 ? red_green_blue_palette[23:0] : 24'b0;
