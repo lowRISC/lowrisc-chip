@@ -1816,10 +1816,10 @@ index a53cc1e3a..d003fc465 100644
  obj-$(CONFIG_BLK_DEV_SKD)	+= skd.o
 diff --git a/drivers/block/lowrisc_pitonsd.c b/drivers/block/lowrisc_pitonsd.c
 new file mode 100644
-index 000000000..6e5689764
+index 000000000..50ef9cc49
 --- /dev/null
 +++ b/drivers/block/lowrisc_pitonsd.c
-@@ -0,0 +1,1005 @@
+@@ -0,0 +1,990 @@
 +/*
 + * LowRISC_piton_sd device driver
 + *
@@ -1842,9 +1842,10 @@ index 000000000..6e5689764
 + *    The driver registers itself as a platform_device driver at module
 + *    load time.  The platform bus will take care of calling the
 + *    pitonsd_probe() method for all LowRISC_piton_sd instances in the system.  Any
-+ *    number of LowRISC_piton_sd instances are supported.  pitonsd_probe() calls
-+ *    pitonsd_setup() which initialized all data structures, reads the CF
-+ *    id structure and registers the device. In practice the platform supports just one instance.
++ *    number of LowRISC_piton_sd instances are supported in principle, but available
++ *    hardware only allows for one.  pitonsd_probe() calls
++ *    pitonsd_setup() which initialized all data structures and registers the device.
++ *    In practice the platform supports just one instance.
 + *
 + * Processing:
 + *    Just about all of the heavy lifting in this driver is performed by
@@ -1857,43 +1858,19 @@ index 000000000..6e5689764
 + *    simply need to flag the request and kick of FSM processing.
 + *
 + *    The FSM itself is atomic-safe code which can be run from any
-+ *    context.  The general process flow is:
++ *    context. It is always called when the hardware is idle.
++ *    The general process flow is:
 + *    1. obtain the sdpiton->lock spinlock.
-+ *    2. loop on pitonsd_fsm_dostate() until the sdpiton->fsm_continue flag is
-+ *       cleared.
-+ *    3. release the lock.
++ *    2. Switch on the previous activity that occurred before idle.
++ *    3. Copy or verify the buffers.
++ *    4. Check for new requests.
 + *
-+ *    Individual states do not sleep in any way.  If a condition needs to
-+ *    be waited for then the state much clear the fsm_continue flag and
-+ *    either schedule the FSM to be run again at a later time, or expect
-+ *    an interrupt to call the FSM when the desired condition is met.
++ *    Additionally, the driver maintains a kernel timer which can kick in
++ *    if the state machine fails to return to idle. This could happen if
++ *    the user foolishly removes the disk whilst it is mounted, for example.
 + *
-+ *    In normal operation, the FSM is processed at interrupt context
-+ *    either when the driver's tasklet is scheduled, or when an irq is
-+ *    raised by the hardware.  The tasklet can be scheduled at any time.
-+ *    The request method in particular schedules the tasklet when a new
-+ *    request has been indicated by the block layer.  Once started, the
-+ *    FSM proceeds as far as it can processing the request until it
-+ *    needs on a hardware event.  At this point, it must yield execution.
-+ *
-+ *    A state has two options when yielding execution:
-+ *    1. pitonsd_fsm_yield()
-+ *       - Call if need to poll for event.
-+ *       - clears the fsm_continue flag to exit the processing loop
-+ *       - reschedules the tasklet to run again as soon as possible
-+ *    2. pitonsd_fsm_yieldirq()
-+ *       - Call if an irq is expected from the HW
-+ *       - clears the fsm_continue flag to exit the processing loop
-+ *       - does not reschedule the tasklet so the FSM will not be processed
-+ *         again until an irq is received.
-+ *    After calling a yield function, the state must return control back
-+ *    to the FSM main loop.
-+ *
-+ *    Additionally, the driver maintains a kernel timer which can process
-+ *    the FSM.  If the FSM gets stalled, typically due to a missed
-+ *    interrupt, then the kernel timer will expire and the driver can
-+ *    continue where it left off.
-+ *
++ *    A quirk of the hardware architecture is that it forgets to inquire the SD-Card
++ *    capacity. This is worked around by reading the partition table, and taking it as read.
 + */
 +
 +#undef DEBUG
@@ -1912,11 +1889,7 @@ index 000000000..6e5689764
 +#include <linux/ata.h>
 +#include <linux/hdreg.h>
 +#include <linux/platform_device.h>
-+#if defined(CONFIG_OF)
-+#include <linux/of_address.h>
 +#include <linux/of_device.h>
-+#include <linux/of_platform.h>
-+#endif
 +
 +#include "../../block/partitions/check.h"
 +#include "lowrisc_pitonsd.h"
@@ -1926,16 +1899,15 @@ index 000000000..6e5689764
 +MODULE_LICENSE("GPL");
 +
 +/* FSM tasks; used to direct state transitions */
-+#define _piton_sd_TASK_IDLE      0
-+#define _piton_sd_TASK_VERIFY    1
-+#define _piton_sd_TASK_READ      2
-+#define _piton_sd_TASK_WRITE     3
 +
-+struct pitonsd_reg_ops;
++enum {
++  _piton_sd_TASK_IDLE      ,
++  _piton_sd_TASK_VERIFY    ,
++  _piton_sd_TASK_READ      ,
++  _piton_sd_TASK_WRITE     };
 +
 +struct pitonsd_device {
 +	/* driver state data */
-+	int id;
 +	struct list_head list;
 +
 +	/* finite state machine data */
@@ -1963,9 +1935,12 @@ index 000000000..6e5689764
 +	struct gendisk *gd;
 +	struct blk_mq_tag_set tag_set;
 +	struct list_head rq_list;
++
++        /* error status */
++        blk_status_t iostat;
 +};
 +
-+static int pitonsd_major;
++static int pitonsd_major, pitonsd_nxt_devid;
 +
 +/* ---------------------------------------------------------------------
 + * Debug support functions
@@ -2229,6 +2204,7 @@ index 000000000..6e5689764
 +#endif
 +  if (my_cmp(dbgptr, ioptr, buflen))
 +    {
++#ifdef VERIFY_DEBUG      
 +      int i, j;
 +      for (i = 0; i < 512; i+=32)
 +        {
@@ -2238,6 +2214,8 @@ index 000000000..6e5689764
 +          for (j = 0; j < 32; j++) sprintf(tmpbuf+j*3, "%.2X ", ioptr[i+j]);
 +          printk("%.3X: %s\n", i, tmpbuf);
 +        }
++#endif      
++      sdpiton->iostat = BLK_STS_IOERR;
 +    }
 +}
 +
@@ -2289,6 +2267,8 @@ index 000000000..6e5689764
 +
 +        if (sdpiton->req)
 +          {
++            u64 mask, creg;
++            sdpiton->iostat = BLK_STS_OK;
 +            /* Transfer the next buffer */
 +            switch (sdpiton->fsm_task)
 +              {
@@ -2296,7 +2276,16 @@ index 000000000..6e5689764
 +                sdpiton->baseaddr[ _piton_sd_REQ_RD ] = 0;
 +                /* Copy the read buffers */
 +                my_rq_foreach(sdpiton, read_transfer);
-+                blk_mq_end_request(sdpiton->req, BLK_STS_OK);
++                mask = (1 << sdpiton->blkcnt) - 1;
++                creg = sdpiton->baseaddr[ _piton_sd_ERROR ] & mask;
++                /* Check for error occurrence */
++                if (mask != creg)
++                  {
++                    dev_err(sdpiton->dev, "transfer failure (mask=%llx, creg=%llx)\n", mask, creg);
++                    pitonsd_dump_regs(sdpiton);
++                    sdpiton->iostat = BLK_STS_IOERR;
++                  }
++                blk_mq_end_request(sdpiton->req, sdpiton->iostat);
 +		sdpiton->req = NULL;
 +                tasklet_schedule(&sdpiton->fsm_tasklet);
 +                break;
@@ -2329,7 +2318,13 @@ index 000000000..6e5689764
 +              case _piton_sd_TASK_VERIFY:
 +                sdpiton->baseaddr[ _piton_sd_REQ_RD ] = 0;
 +                my_rq_foreach(sdpiton, verify_transfer);
-+                blk_mq_end_request(sdpiton->req, BLK_STS_OK);
++                /* Check for error occurrence */
++                if (sdpiton->iostat != BLK_STS_OK)
++                  {
++                    dev_err(sdpiton->dev, "SD-Card verify failure\n");
++                    pitonsd_dump_regs(sdpiton);
++                  }
++                blk_mq_end_request(sdpiton->req, sdpiton->iostat);
 +		sdpiton->req = NULL;
 +                tasklet_schedule(&sdpiton->fsm_tasklet);
 +                break;
@@ -2536,7 +2531,7 @@ index 000000000..6e5689764
 +/* --------------------------------------------------------------------
 + * LowRISC_piton_sd device setup/teardown code
 + */
-+static int pitonsd_setup(struct pitonsd_device *sdpiton)
++static int pitonsd_setup(struct pitonsd_device *sdpiton, int sdpiton_id)
 +{
 +        int rc, old_init_state = -1;
 +        
@@ -2610,11 +2605,11 @@ index 000000000..6e5689764
 +		goto err_alloc_disk;
 +
 +	sdpiton->gd->major = pitonsd_major;
-+	sdpiton->gd->first_minor = sdpiton->id * _piton_sd_NUM_MINORS;
++	sdpiton->gd->first_minor = sdpiton_id * _piton_sd_NUM_MINORS;
 +	sdpiton->gd->fops = &pitonsd_fops;
 +	sdpiton->gd->queue = sdpiton->queue;
 +	sdpiton->gd->private_data = sdpiton;
-+	snprintf(sdpiton->gd->disk_name, 32, "rd%c", sdpiton->id + 'a');
++	snprintf(sdpiton->gd->disk_name, 32, "rd%c", sdpiton_id + 'a');
 +        // We haven't read the partition table yet, so return a legacy capacity value
 +        set_capacity(sdpiton->gd, 255*1023*31); // dummy (255 heads, 1023 cyl, 31 sectors)
 +        /* Tell the block layer that this is not a rotational device */
@@ -2694,13 +2689,12 @@ index 000000000..6e5689764
 +	}
 +
 +	sdpiton->dev = dev;
-+	sdpiton->id = id;
 +	sdpiton->physaddr = physaddr;
 +	sdpiton->physaddrend = physaddrend;
 +	sdpiton->irq = irq;
 +
 +	/* Call the setup code */
-+	rc = pitonsd_setup(sdpiton);
++	rc = pitonsd_setup(sdpiton, id);
 +	if (rc)
 +		goto err_setup;
 +
@@ -2737,15 +2731,10 @@ index 000000000..6e5689764
 +{
 +	resource_size_t physaddr = 0;
 +	resource_size_t physaddrend = 0;
-+	u32 id = dev->id;
 +	int irq = 0;
 +	int i;
 +
 +	printk("pitonsd_probe(%llx)\n", (u64)dev);
-+
-+	/* device id and bus width */
-+	if (of_property_read_u32(dev->dev.of_node, "port-number", &id))
-+		id = 0;
 +
 +	for (i = 0; i < dev->num_resources; i++) {
 +		if (dev->resource[i].flags & IORESOURCE_MEM)
@@ -2758,7 +2747,7 @@ index 000000000..6e5689764
 +	}
 +
 +	/* Call the bus-independent setup code */
-+	return pitonsd_alloc(&dev->dev, id, physaddr, physaddrend, irq);
++	return pitonsd_alloc(&dev->dev, pitonsd_nxt_devid++, physaddr, physaddrend, irq);
 +}
 +
 +/*
@@ -2770,16 +2759,12 @@ index 000000000..6e5689764
 +	return 0;
 +}
 +
-+#if defined(CONFIG_OF)
 +/* Match table for of_platform binding */
 +static const struct of_device_id pitonsd_of_match[] = {
 +	{ .compatible = "lowrisc-pitonsd" },
 +	{},
 +};
 +MODULE_DEVICE_TABLE(of, pitonsd_of_match);
-+#else /* CONFIG_OF */
-+#define pitonsd_of_match NULL
-+#endif /* CONFIG_OF */
 +
 +static struct platform_driver pitonsd_platform_driver = {
 +	.probe = pitonsd_probe,
@@ -2827,40 +2812,64 @@ index 000000000..6e5689764
 +module_exit(pitonsd_exit);
 diff --git a/drivers/block/lowrisc_pitonsd.h b/drivers/block/lowrisc_pitonsd.h
 new file mode 100644
-index 000000000..3850e0fe3
+index 000000000..57e2c3473
 --- /dev/null
 +++ b/drivers/block/lowrisc_pitonsd.h
-@@ -0,0 +1,30 @@
-+/* LowRISC_piton_sd register definitions */
+@@ -0,0 +1,54 @@
++/* LowRISC_piton_sd register definitions
++ *
++ * Copyright 2019 University of Cambridge
 +
-+#define _piton_sd_ADDR_SD     (0x00)
-+#define _piton_sd_ADDR_DMA    (0x01)
-+#define _piton_sd_BLKCNT      (0x02)
-+#define _piton_sd_REQ_RD      (0x03)
-+#define _piton_sd_REQ_WR      (0x04)
-+#define _piton_sd_IRQ_EN      (0x05)
-+#define _piton_sd_SYS_RST     (0x06)
++Licensed under the Apache License, Version 2.0 (the "License");
++you may not use this file except in compliance with the License.
++You may obtain a copy of the License at
 +
-+#define _piton_sd_ADDR_SD_F   (0x00)
-+#define _piton_sd_ADDR_DMA_F  (0x01)
-+#define _piton_sd_STATUS      (0x02)
-+#define _piton_sd_ERROR       (0x03)
-+#define _piton_sd_INIT_STATE  (0x04)
-+#define _piton_sd_COUNTER     (0x05)
-+#define _piton_sd_INIT_FSM    (0x06)
-+#define _piton_sd_TRAN_STATE  (0x07)
-+#define _piton_sd_TRAN_FSM    (0x08)
++    http://www.apache.org/licenses/LICENSE-2.0
 +
-+#define _piton_sd_STATUS_REQ_RD       (0x00000001)
-+#define _piton_sd_STATUS_REQ_WR       (0x00000002)
-+#define _piton_sd_STATUS_IRQ_EN       (0x00000004)
-+#define _piton_sd_STATUS_SD_IRQ       (0x00000008)
-+#define _piton_sd_STATUS_REQ_RDY      (0x00000010)
-+#define _piton_sd_STATUS_INIT_DONE    (0x00000020)
-+#define _piton_sd_STATUS_HCXC         (0x00000040)
-+#define _piton_sd_STATUS_SD_DETECT    (0x00000080)
++Unless required by applicable law or agreed to in writing, software
++distributed under the License is distributed on an "AS IS" BASIS,
++WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++See the License for the specific language governing permissions and
++limitations under the License.
 +
-+#define _piton_sd_NUM_MINORS 16
++This header file is designed to also be usable outside Linux in which case
++it is not covered by the GPL. When linked with the rest of Linux it is covered
++by the GPL.
++ *
++ */
++
++enum {
++  _piton_sd_ADDR_SD     ,
++  _piton_sd_ADDR_DMA    ,
++  _piton_sd_BLKCNT      ,
++  _piton_sd_REQ_RD      ,
++  _piton_sd_REQ_WR      ,
++  _piton_sd_IRQ_EN      ,
++  _piton_sd_SYS_RST     };
++
++enum {
++  _piton_sd_ADDR_SD_F   ,
++  _piton_sd_ADDR_DMA_F  ,
++  _piton_sd_STATUS      ,
++  _piton_sd_ERROR       ,
++  _piton_sd_INIT_STATE  ,
++  _piton_sd_COUNTER     ,
++  _piton_sd_INIT_FSM    ,
++  _piton_sd_TRAN_STATE  ,
++  _piton_sd_TRAN_FSM    };
++
++enum {
++  _piton_sd_STATUS_REQ_RD       = (0x00000001),
++  _piton_sd_STATUS_REQ_WR       = (0x00000002),
++  _piton_sd_STATUS_IRQ_EN       = (0x00000004),
++  _piton_sd_STATUS_SD_IRQ       = (0x00000008),
++  _piton_sd_STATUS_REQ_RDY      = (0x00000010),
++  _piton_sd_STATUS_INIT_DONE    = (0x00000020),
++  _piton_sd_STATUS_HCXC         = (0x00000040),
++  _piton_sd_STATUS_SD_DETECT    = (0x00000080)
++  };
++
++enum { _piton_sd_NUM_MINORS = 16 };
 diff --git a/drivers/input/keyboard/Kconfig b/drivers/input/keyboard/Kconfig
 index 52d7f55fc..5f9ce385c 100644
 --- a/drivers/input/keyboard/Kconfig
@@ -4832,10 +4841,10 @@ index 000000000..4eb3adee1
 +CFLAGS_lowrisc_100MHz.o := -DDEBUG
 diff --git a/drivers/net/ethernet/lowrisc/lowrisc_100MHz.c b/drivers/net/ethernet/lowrisc/lowrisc_100MHz.c
 new file mode 100644
-index 000000000..8f2adf0c9
+index 000000000..430665bc3
 --- /dev/null
 +++ b/drivers/net/ethernet/lowrisc/lowrisc_100MHz.c
-@@ -0,0 +1,845 @@
+@@ -0,0 +1,841 @@
 +/*
 + * Lowrisc Ether100MHz Linux driver for the Lowrisc Ethernet 100MHz device.
 + *
@@ -4871,11 +4880,7 @@ index 000000000..8f2adf0c9
 +#include <linux/skbuff.h>
 +#include <linux/io.h>
 +#include <linux/slab.h>
-+#include <linux/of_address.h>
 +#include <linux/of_device.h>
-+#include <linux/of_platform.h>
-+#include <linux/of_mdio.h>
-+#include <linux/of_net.h>
 +#include <linux/phy.h>
 +#include <linux/interrupt.h>
 +#include <linux/timer.h>
@@ -6113,10 +6118,10 @@ index 846b0c9ea..2f2173db5 100644
  obj-$(CONFIG_FB_VIRTUAL)          += vfb.o
 diff --git a/drivers/video/fbdev/lowrisc_fb.c b/drivers/video/fbdev/lowrisc_fb.c
 new file mode 100644
-index 000000000..1c9b4bdcf
+index 000000000..2d8d093ce
 --- /dev/null
 +++ b/drivers/video/fbdev/lowrisc_fb.c
-@@ -0,0 +1,282 @@
+@@ -0,0 +1,352 @@
 +/* lowrisc_fb.c, based on Sun XVR-1000 fb driver for sparc64 systems by David S. Miller (davem@davemloft.net)
 + *
 + * License: GPL
@@ -6130,11 +6135,39 @@ index 000000000..1c9b4bdcf
 +#include <linux/init.h>
 +#include <linux/of_device.h>
 +
++#define LOWRISC_REGS_MODE      (0)
++#define LOWRISC_REGS_CURSV     (1)
++#define LOWRISC_REGS_XCUR      (2)
++#define LOWRISC_REGS_YCUR      (3)
++#define LOWRISC_REGS_HSTART    (4)
++#define LOWRISC_REGS_HSYN      (5)
++#define LOWRISC_REGS_HSTOP     (6)
++#define LOWRISC_REGS_VSTART    (7)
++#define LOWRISC_REGS_VSTOP     (8)
++#define LOWRISC_REGS_VPIXSTART (11)
++#define LOWRISC_REGS_VPIXSTOP  (12)
++#define LOWRISC_REGS_HPIXSTART (13)
++#define LOWRISC_REGS_HPIXSTOP  (14)
++#define LOWRISC_REGS_HPIX      (15)
++#define LOWRISC_REGS_VPIX      (16)
++#define LOWRISC_REGS_HDIV      (17)
++#define LOWRISC_REGS_GHLIMIT   (18)
++#define LOWRISC_REGS_LIMIT     (19)
++
++enum {ghwords=80, ghlimit=ghwords*8, gvlimit=480, width=1024, height=768, xpixels=1400, ypixels=682, xpixoff = 450};
++
++struct lowrisc_fbcon_struct
++{
++    uint64_t __iomem *hid_reg_base;
++    uint64_t __iomem *plt_reg_base;
++    uint64_t hid_reg_dflt[LOWRISC_REGS_LIMIT];
++};
++  
 +static int lowrisc_fb_setcmap(struct fb_cmap *cmap, struct fb_info *info)
 +{
 +  int i, start = cmap->start;
-+  uint64_t *hid_reg_ptr = (uint64_t *)(info->fix.mmio_start);
-+  if (hid_reg_ptr)
++  struct lowrisc_fbcon_struct *fbcon = info->fbcon_par;
++  if (fbcon->plt_reg_base)
 +    {
 +      pr_debug("Palette index %d..%d set\n", start, start+cmap->len-1);
 +      for (i = 0; i < cmap->len; i++)
@@ -6143,10 +6176,16 @@ index 000000000..1c9b4bdcf
 +          unsigned red = cmap->red[i];
 +          unsigned green = cmap->green[i];
 +          unsigned blue = cmap->blue[i];
-+          if (regno < 16)
++          if (regno < 256)
 +            {
-+              enum {LOWRISC_REGS_PALETTE=32};
-+              hid_reg_ptr[LOWRISC_REGS_PALETTE+regno] = ((blue&0xFF00) << 8) | (green&0xFF00) | ((red&0xFF00) >> 8);
++              uint64_t colour = ((blue&0xFF00) << 8) | (green&0xFF00) | ((red&0xFF00) >> 8);
++              pr_debug("palette[%d] = %llx (base=%llx)\n", regno, colour, (u64)(fbcon->plt_reg_base));
++              fbcon->plt_reg_base[regno] = colour;
++#if 0
++              /* work around an addressing bug ?? */
++              if ((regno&63) < LOWRISC_REGS_LIMIT)
++                fbcon->hid_reg_base[regno&63] = fbcon->hid_reg_dflt[regno&63];
++#endif              
 +            }
 +          else
 +            return -EINVAL;
@@ -6283,12 +6322,33 @@ index 000000000..1c9b4bdcf
 +
 +static int lowrisc_fb_set_fbinfo(struct fb_info *info, struct resource *lowrisc_fb, char __iomem *fb_base)
 +{
++        int i;
 +	struct fb_var_screeninfo *var = &info->var;
++        struct lowrisc_fbcon_struct *fbcon = info->fbcon_par;
++        uint64_t *hid_reg_dflt = fbcon->hid_reg_dflt;
++        
++        hid_reg_dflt[LOWRISC_REGS_CURSV] = 10;
++        hid_reg_dflt[LOWRISC_REGS_XCUR] = 0;
++        hid_reg_dflt[LOWRISC_REGS_YCUR] = 32;
++        hid_reg_dflt[LOWRISC_REGS_HSTART] = width*2;
++        hid_reg_dflt[LOWRISC_REGS_HSYN] = width*2+20;
++        hid_reg_dflt[LOWRISC_REGS_HSTOP] = width*2+51;
++        hid_reg_dflt[LOWRISC_REGS_VSTART] = height;
++        hid_reg_dflt[LOWRISC_REGS_VSTOP] = height+19;
++        hid_reg_dflt[LOWRISC_REGS_VPIXSTART ] = 16;
++        hid_reg_dflt[LOWRISC_REGS_VPIXSTOP ] = ypixels+16;
++        hid_reg_dflt[LOWRISC_REGS_HPIXSTART ] = xpixoff;
++        hid_reg_dflt[LOWRISC_REGS_HPIXSTOP ] = xpixels + xpixoff;
++        hid_reg_dflt[LOWRISC_REGS_HPIX ] = 5;
++        hid_reg_dflt[LOWRISC_REGS_VPIX ] = 11; // squashed vertical display uses 10
++        hid_reg_dflt[LOWRISC_REGS_HDIV ] = 1;
++        hid_reg_dflt[LOWRISC_REGS_GHLIMIT] = ghwords;
 +
++        for (i = 0; i < LOWRISC_REGS_LIMIT; i++)
++          fbcon->hid_reg_base[i] = fbcon->hid_reg_dflt[i];
++        
 +	info->flags = FBINFO_DEFAULT;
 +	info->fbops = &lowrisc_fb_ops;
-+	info->screen_base = fb_base + 0x48000;
-+	info->screen_size = lowrisc_fb[0].end - lowrisc_fb[0].start - 0x48000;
 +
 +	/* Fill fix common fields */
 +	strlcpy(info->fix.id, "lowrisc_fb", sizeof(info->fix.id));
@@ -6296,10 +6356,10 @@ index 000000000..1c9b4bdcf
 +        info->fix.smem_len = info->screen_size;
 +        info->fix.type = FB_TYPE_PACKED_PIXELS;
 +	info->fix.visual = FB_VISUAL_PSEUDOCOLOR;
-+	info->fix.line_length = 768;
-+        info->fix.mmio_start = (unsigned long)(fb_base + 0x4000);
++	info->fix.line_length = 640;
++        info->fix.mmio_start = lowrisc_fb[0].start;
 +	var->xres = info->fix.line_length;
-+	var->yres = 682;
++	var->yres = 512;
 +	var->xres_virtual = var->xres;
 +	var->yres_virtual = var->yres;
 +	var->bits_per_pixel = 8;
@@ -6314,7 +6374,7 @@ index 000000000..1c9b4bdcf
 +	var->transp.offset = 0;
 +	var->transp.length = 0;
 +
-+	if (fb_alloc_cmap(&info->cmap, 16, 0)) {
++	if (fb_alloc_cmap(&info->cmap, 256, 0)) {
 +		printk(KERN_ERR "lowrisc_fb: Cannot allocate color map.\n");
 +		return -ENOMEM;
 +	}
@@ -6327,6 +6387,8 @@ index 000000000..1c9b4bdcf
 +	struct device_node *dp = ofdev->dev.of_node;
 +	struct fb_info *info;
 +        struct resource *lowrisc_fb;
++        struct lowrisc_fbcon_struct *fbcon;
++        
 +	char __iomem *fb_base;
 +	int err;
 +
@@ -6348,6 +6410,19 @@ index 000000000..1c9b4bdcf
 +		goto err_release_fb;
 +	}
 +
++        fbcon = kzalloc(sizeof(struct lowrisc_fbcon_struct), GFP_KERNEL);
++	if (!fbcon) {
++		err = -ENOMEM;
++		goto err_release_fb;
++	}
++
++        info->fbcon_par = fbcon;
++        
++        fbcon->hid_reg_base = (uint64_t __iomem *)(fb_base + 0x4000);
++        fbcon->plt_reg_base = (uint64_t __iomem *)(fb_base + 0x6000);
++        info->screen_base = fb_base + 0x48000;
++        info->screen_size = 0x80000;
++        
 +	err = lowrisc_fb_set_fbinfo(info, lowrisc_fb, fb_base);
 +	if (err)
 +		goto err_unmap_fb;
