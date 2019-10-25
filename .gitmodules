@@ -4,9 +4,6 @@
 [submodule "debian-riscv64"]
 	path = debian-riscv64
 	url = https://github.com/lowRISC/debian-riscv64.git
-[submodule "qemu"]
-	path = qemu
-	url = https://github.com/lowrisc/qemu.git
 [submodule "src/OpenIP"]
 	path = src/OpenIP
 	url = https://github.com/lowRISC/OpenIP.git
@@ -31,3 +28,6 @@
 [submodule "lowrisc-quickstart"]
 	path = lowrisc-quickstart
 	url = https://github.com/lowRISC/lowrisc-quickstart.git
+[submodule "qemu"]
+	path = qemu
+	url = https://github.com/qemu/qemu
