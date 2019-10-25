@@ -53,5 +53,6 @@ extern uint8_t hid_check_read_irq();
 extern void hid_enable_read_irq();
 extern void hid_disable_read_irq();
 extern void draw_logo(int);
+extern char zifu[];
 
 #endif

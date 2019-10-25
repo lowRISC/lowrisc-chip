@@ -56,6 +56,7 @@ module fstore2(
    reg [7:0]                     ghlimit, ghlimit0;
    reg [18:0]                    addrb_1;
    wire [63:0]                   dout, dout0;
+   reg [15:0]                    dout16_1;
    wire                          cursor = (offvreg[10:5] == ycursor[6:0]) && (offhreg[12:6] == xcursor[6:0]) && (vrow==cursorvreg);
    
    // 100 MHz / 2100 is 47.6kHz.  Divide by further 788 to get 60.4 Hz.
@@ -77,7 +78,7 @@ module fstore2(
                     .ena(hid_en & one_hot_data_addr[7] && hid_addr[14] && hid_addr[13]),
                     .clkb(~pxl_clk),
                     .dinb(32'b0),
-                    .addrb(doutpix8),
+                    .addrb(modereg[0] ? {modereg[1],doutpix8} : {dout16[6:0],vrow[3]}),
                     .web(1'b0),
                     .doutb(red_green_blue_palette),
                     .enb(1'b1));
@@ -86,8 +87,10 @@ module fstore2(
    
    logic [63:0]                  fstore_rddata, doutfb[graphmax-1:0], doutpix[graphmax-1:0];
    logic [7:0]                   doutpix8;
-   logic [18:3]                  gaddra_1, gaddra = offgreg[18:3]+offgpixel[11:3];
-                 
+   wire  [18:3]                  gaddra = modereg[2] ? offgreg[18:3]+offgpixel[11:3] : {offvreg[10:5],offhreg[12:8]};
+   logic [18:3]                  gaddra_1;
+   wire [15:0]                   dout16 = doutpix[0] >> {offhreg1[7:6],4'b0000};
+            
    always_comb
      begin:onehot
         integer i;
@@ -136,6 +139,7 @@ module fstore2(
      end
    else
      begin
+        dout16_1 <= dout16;
         addrb_1 <= hid_addr;
         if (hid_we && hid_en & one_hot_data_addr[7] && hid_addr[14] && ~hid_addr[13])
           casez (hid_addr[8:3])
@@ -280,8 +284,13 @@ module fstore2(
      end
 
    assign vsyn = vstart;
+                 
+     wire [7:0] pixels_out = red_green_blue_palette >> {vrow[3:1],3'b000};
+
+     wire pixel = pixels_out[3'd7 ^ offpixel1] || cursor;
+     wire [23:0] colour = pixel || modereg[3] ? {dout16_1[15:13],5'b0,dout16_1[12:10],5'b0,dout16_1[9:7],5'b0} : 24'b0;
      
      assign
-       {blue_in,green_in,red_in} = bitmapped_pixel1 ? red_green_blue_palette[23:0] : 24'b0;
+       {blue_in,green_in,red_in} = bitmapped_pixel1 ? (modereg[4] ? red_green_blue_palette[23:0] : colour) : 24'b0;
    
 endmodule

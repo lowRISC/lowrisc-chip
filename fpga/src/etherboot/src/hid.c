@@ -21,276 +21,29 @@ volatile uint32_t *const keyb_base = (volatile uint32_t *)KeybBase;
 // HID mouse
 volatile uint64_t *const mouse_base = (volatile uint64_t *)MouseBase;
 
-uint32_t def_palette[] = {
-  0x0,
-  0xffffff,
-0x550000,
-0xaa0000,
-0xff0000,
-0x5500,
-0x555500,
-0xaa5500,
-0xff5500,
-0xaa00,
-0x55aa00,
-0xaaaa00,
-0xffaa00,
-0xff00,
-0x55ff00,
-0xaaff00,
-0xffff00,
-0x55,
-0x550055,
-0xaa0055,
-0xff0055,
-0x5555,
-0x555555,
-0xaa5555,
-0xff5555,
-0xaa55,
-0x55aa55,
-0xaaaa55,
-0xffaa55,
-0xff55,
-0x55ff55,
-0xaaff55,
-0xffff55,
-0xaa,
-0x5500aa,
-0xaa00aa,
-0xff00aa,
-0x55aa,
-0x5555aa,
-0xaa55aa,
-0xff55aa,
-0xaaaa,
-0x55aaaa,
-0xaaaaaa,
-0xffaaaa,
-0xffaa,
-0x55ffaa,
-0xaaffaa,
-0xffffaa,
-0xff,
-0x5500ff,
-0xaa00ff,
-0xff00ff,
-0x55ff,
-0x5555ff,
-0xaa55ff,
-0xff55ff,
-0xaaff,
-0x55aaff,
-0xaaaaff,
-0xffaaff,
-0xffff,
-0x55ffff,
-0xaaffff,
-0x151515,
-0x2a2a2a,
-0x404040,
-0x6a6a6a,
-0x808080,
-0x959595,
-0xbfbfbf,
-0xd5d5d5,
-0xeaeaea,
-0x908070,
-0x99aa22,
-0xd9d9d9,
-0xb3b3b3,
-0x53ff,
-0x5eff,
-0x48ff,
-0x42ff,
-0x40ff,
-0x4bff,
-0x52ff,
-0x54ff,
-0x35ff,
-0x51ff,
-0x5cff,
-0x30ff,
-0x45ff,
-0x20ff,
-0x3ff,
-0x16ff,
-0x5dff,
-0x38ff,
-0x2ff,
-0x9ff,
-0x2bff,
-0x33ff,
-0x1aff,
-0x13ff,
-0x12ff,
-0x57ff,
-0xba7745,
-0x784e87,
-0x777588,
-0x777e88,
-0x777988,
-0x785087,
-0xa96c56,
-0xa1705e,
-0x774e88,
-0x777688,
-0x835b7c,
-0x865679,
-0xfe8d00,
-0xf31200,
-0xf20b00,
-0xfe8f00,
-0xfa6c00,
-0xf10000,
-0xf10100,
-0xf42000,
-0xf64000,
-0xf05909,
-0xe85811,
-0xe85911,
-0xf95800,
-0xf41d00,
-0xf42300,
-0xfa5b00,
-0xfa6000,
-0xeb580e,
-0xf35106,
-0xf53300,
-0xf20e00,
-0xfa6e00,
-0xff9200,
-0xf41f00,
-0xf20f00,
-0xec510c,
-0xc96a32,
-0x83657a,
-0x3462ca,
-0x35ffc,
-0x58ff,
-0x8ff,
-0xb06f4,
-0xfb7c00,
-0xf31300,
-0xfb7e00,
-0x18ff,
-0xc59f3,
-0x5261ab,
-0xad4e4f,
-0xe45c17,
-0xf53600,
-0xf42200,
-0xfd9500,
-0xfd8400,
-0xf10400,
-0xf85100,
-0xc75a34,
-0x1915e6,
-0x59ff,
-0x46ff,
-0x1ff,
-0xb96e44,
-0xf63400,
-0xf53200,
-0x22ff,
-0xfa6f00,
-0xf52d00,
-0xfd8600,
-0xf74600,
-0xf31500,
-0xfc7600,
-0x4ff,
-0x23ff,
-0x29ff,
-0x613e9e,
-0xf63900,
-0x2aff,
-0x43ff,
-0xfb7100,
-0xf95e00,
-0xf74d00,
-0xfe8c00,
-0xf20800,
-0xf31d00,
-0xfb7d00,
-0x41ff,
-0x5bff,
-0x5c42a3,
-0x664c99,
-0x11ff,
-0xfb7200,
-0xf20a00,
-0xfc6e00,
-0xf31700,
-0xfb7f00,
-0x6ff,
-0x56ff,
-0x5a6aa5,
-0x5a3ba5,
-0x4fff,
-0xfb7600,
-0xfa7600,
-0xff9300,
-0xfc7d00,
-0x1cff,
-0x5a76a5,
-0x5a5da5,
-0xfb6f00,
-0xf52c00,
-0xfd8a00,
-0xf96b00,
-0x3aff,
-0x50ff,
-0xfb7b00,
-0xfd8b00,
-0x5a75a5,
-0x65559a,
-0x5b3aa4,
-0x4dff,
-0x7f5080,
-0xfff,
-0x85547a,
-0x5a55a5,
-0xaff,
-0x5a3da5,
-0x5b51a4,
-0x5a68a5,
-0x5a73a5,
-0x7ff,
-0x2eff,
-0x15ff,
-0x5c70a3,
-0x5ff,
-0x65499a,
-0xeff,
-0x3bff,
-0x2dff,
-0x5e3ca1,
-0x4cff,
-0x9d6462,
-0xbff,
-0x47ff,
-0x1dff,
-0x5a6da5,
-0x2cff,
-0x5b46a4,
-0x14ff,
-0x613ea0,
-0x31ff,
-0x1bff
-};
+#define GRAPHTEST
 
 void uart_console_putchar(unsigned char ch)
 {
   write_serial(ch);
 }  
 
+
 void hid_init(void)
 {
   int i;
+#ifdef GRAPHTEST
   unsigned char *fb_ptr = (unsigned char *)hid_fb_ptr;
-  for (i = 0; i < 255; i++)
-    hid_plt_ptr[i] = def_palette[i];
+
+  for (i = 0; i < 512; i++)
+    {
+      hid_plt_ptr[i] = rand32();
+    }
+  
+  for (i = 0; i < 16384; i++)
+    {
+      fb_ptr[i] = rand32();
+    }
 
   for (i = 0; i < 255; i++)
     memset(fb_ptr+i*ghlimit, i, ghlimit);
@@ -309,10 +62,10 @@ void hid_init(void)
         }
       fb_ptr[(i+1)*ghlimit - 1] = 1;
     }
-
-  hid_reg_ptr[LOWRISC_REGS_CURSV] = 10;
+  hid_reg_ptr[LOWRISC_REGS_MODE] = 0x77;
+  hid_reg_ptr[LOWRISC_REGS_CURSV] = 0;
   hid_reg_ptr[LOWRISC_REGS_XCUR] = 0;
-  hid_reg_ptr[LOWRISC_REGS_YCUR] = 32;
+  hid_reg_ptr[LOWRISC_REGS_YCUR] = 0;
   hid_reg_ptr[LOWRISC_REGS_HSTART] = width*2;
   hid_reg_ptr[LOWRISC_REGS_HSYN] = width*2+20;
   hid_reg_ptr[LOWRISC_REGS_HSTOP] = width*2+51;
@@ -324,8 +77,78 @@ void hid_init(void)
   hid_reg_ptr[LOWRISC_REGS_HPIXSTOP ] = xpixels + xpixoff;
   hid_reg_ptr[LOWRISC_REGS_HDIV ] = 1;
   hid_reg_ptr[LOWRISC_REGS_HPIX ] = 5;
-  hid_reg_ptr[LOWRISC_REGS_VPIX ] = 11; // squashed vertical display uses 10
+  hid_reg_ptr[LOWRISC_REGS_VPIX ] = 7;
   hid_reg_ptr[LOWRISC_REGS_GHLIMIT] = ghwords;
+
+#else
+  uint16_t *fb_ptr = (uint16_t *)hid_fb_ptr;
+  for (i = ' '; i <= '~'; i++)
+    {
+      int j;
+      uint64_t tmp[2];
+      char *zptr = zifu + (i - ' ') * 12 + 2;
+      memset(tmp, 0, sizeof(tmp));
+      for (j = 0; j < 8; j++)
+        {
+          tmp[j/4] |= ((0xFC & *zptr++) >> 1) << (j&3)*8;
+        }
+      for (j = 0; j < 2; j++)
+        hid_plt_ptr[2*i+j] = tmp[j];
+    }
+
+  hid_reg_ptr[LOWRISC_REGS_MODE] = 0x00;
+  hid_reg_ptr[LOWRISC_REGS_CURSV] = 0;
+  hid_reg_ptr[LOWRISC_REGS_XCUR] = 0;
+  hid_reg_ptr[LOWRISC_REGS_YCUR] = 0;
+  hid_reg_ptr[LOWRISC_REGS_HSTART] = width*2;
+  hid_reg_ptr[LOWRISC_REGS_HSYN] = width*2+20;
+  hid_reg_ptr[LOWRISC_REGS_HSTOP] = width*2+51;
+  hid_reg_ptr[LOWRISC_REGS_VSTART] = height;
+  hid_reg_ptr[LOWRISC_REGS_VSTOP] = height+19;
+  hid_reg_ptr[LOWRISC_REGS_VPIXSTART ] = 16;
+  hid_reg_ptr[LOWRISC_REGS_VPIXSTOP ] = ypixels+16;
+  hid_reg_ptr[LOWRISC_REGS_HPIXSTART ] = xpixoff;
+  hid_reg_ptr[LOWRISC_REGS_HPIXSTOP ] = xpixels + xpixoff;
+  hid_reg_ptr[LOWRISC_REGS_HDIV ] = 1;
+  hid_reg_ptr[LOWRISC_REGS_HPIX ] = 6;
+  hid_reg_ptr[LOWRISC_REGS_VPIX ] = 7;
+  hid_reg_ptr[LOWRISC_REGS_GHLIMIT] = ghwords;
+
+  for (i = 10; i < 40; i++) if (i&1)
+    {
+      int j, colour = 0xBB00;
+      switch(i)
+        {
+        case 11: colour = 0xBB00; break;
+        case 13: colour = 0xFF00; break;
+        case 15: colour = 0xE000; break;
+        case 17: colour = 0x1C00; break;
+        case 19: colour = 0x0380; break;
+        case 21: colour = 0xFC00; break;
+        case 23: colour = 0x1F80; break;
+        case 25: colour = 0xE380; break;
+        case 27: colour = 0x7000; break;
+        case 29: colour = 0x0E00; break;
+        case 31: colour = 0x5500; break;
+        case 33: colour = 0xAA00; break;
+        case 35: colour = 0x3300; break;
+        case 37: colour = 0x6600; break;
+        case 39: colour = 0x7700; break;
+        default: colour = 0xFF80; break;
+        }
+      for (j = ' '; j <= '~'; j++)
+        {
+          fb_ptr[i*128+j-' '] = colour | j;
+        }
+      while (j < 128+' ')
+        {
+          fb_ptr[i*128+j-' '] = colour | '*';
+          ++j;
+        }
+    }
+  
+#endif
+  
   
 #ifdef BIGROM
   draw_logo(ghwords);
