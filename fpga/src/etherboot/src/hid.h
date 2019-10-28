@@ -42,7 +42,7 @@ extern volatile uint64_t *const hid_fb_ptr;
 extern volatile uint32_t *const keyb_base;
 extern volatile uint64_t *const mouse_base;
 
-extern void hid_init(void);
+extern void hid_init(uint32_t);
 extern void hid_send(uint8_t);
 extern void hid_send_irq(uint8_t);
 extern void hid_send_string(const char *str);

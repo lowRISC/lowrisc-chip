@@ -135,10 +135,12 @@ void qspi_main(int sw)
 
 int main()
 {
-  uint32_t i, rnd, sw, sw2;
+  uint32_t i, rnd;
+  uint32_t sw = gpio_sw();
+  uint32_t sw2 = gpio_sw();
   init_uart();
   print_uart("Hello World!\r\n");
-  hid_init();
+  hid_init(sw);
   for (i = 0; i < 5; i++)
     {
       volatile uint64_t *swp = (volatile uint64_t *)GPIOBase;
@@ -148,8 +150,6 @@ int main()
   for (i = 0; i < 4; i++)
     {
       gpio_leds(pattern[i]);
-      sw = gpio_sw();
-      sw2 = gpio_sw();
       printf("Switch setting = %X,%X\n", sw, sw2);
       rnd = hwrnd();
       printf("Random seed = %X\n", rnd);
@@ -163,7 +163,9 @@ int main()
     case 0x2: printf("DRAM test\n"); dram_main(sw); break;
     case 0x4: printf("TFTP boot\n"); eth_main(); break;
     case 0x6: printf("Cache test\n"); cache_main(); break;
+#ifdef BIGROM
     case 0x7: printf("Keyboard test\n"); keyb_main(); break;
+#endif      
     }
   while (1)
     {
