@@ -643,6 +643,19 @@ logic [ariane_soc::NumSources-1:0] irq_sources;
 // ---------------
 // Peripherals
 // ---------------
+
+`ifdef NEXYS4DDR
+`ifdef ARIANE_SHELL
+   localparam graphmax = 19;
+`elsif ROCKET_SHELL
+   localparam graphmax = 20;
+`else
+   if (1) $error("NEXYS4_DDR requires ARIANE_SHELL or ROCKET_SHELL to be defined");
+`endif
+`else
+   localparam graphmax = 32;
+`endif
+
 ariane_peripherals_xilinx #(
     .AxiAddrWidth ( AxiAddrWidth     ),
     .AxiDataWidth ( AxiDataWidth     ),
@@ -651,7 +664,8 @@ ariane_peripherals_xilinx #(
     .InclUART     ( 1'b1             ),
     .InclGPIO     ( 1'b1             ),
     .InclSPI      ( 1'b1             ),
-    .InclEthernet ( 1'b1             )
+    .InclEthernet ( 1'b1             ),
+    .graphmax     ( graphmax         )
 ) i_ariane_peripherals (
     .clk_i         ( clk             ),
     .clk_200MHz_i  ( mig_sys_clk     ),

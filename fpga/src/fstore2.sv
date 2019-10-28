@@ -12,7 +12,10 @@ specific language governing permissions and limitations under the License.
 
 // A simple monitor (LCD display) driver with glass TTY behaviour in text mode
 
-module fstore2(
+module fstore2 #(
+   parameter graphmax = 20
+)
+(
                input wire         pxl_clk,
                output reg [7:0]   red,
                output reg [7:0]   green,
@@ -31,8 +34,6 @@ module fstore2(
                input wire         clk_i,
                input wire         rst_ni
                );
-
-   parameter rwidth = 14;
 
    integer                       i;
    
@@ -82,8 +83,6 @@ module fstore2(
                     .web(1'b0),
                     .doutb(red_green_blue_palette),
                     .enb(1'b1));
-   
-   parameter graphmax = 20;
    
    logic [63:0]                  fstore_rddata, doutfb[graphmax-1:0], doutpix[graphmax-1:0];
    logic [7:0]                   doutpix8;
