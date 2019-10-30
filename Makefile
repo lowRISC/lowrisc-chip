@@ -15,9 +15,10 @@ tftp: riscv-pk/build/bbl
 	md5sum $<
 	echo -e bin \\n put $< $(MD5) \\n | tftp $(REMOTE)
 
-linux: riscv-pk/build/bbl
+linux: $(LINUX)/vmlinux
+	make -C $(LINUX) ARCH=riscv CROSS_COMPILE=$(RISCV)/bin/riscv64-unknown-elf- -j 4
 
-riscv-pk/build/bbl: $(LINUX)/drivers/net/ethernet/Makefile $(LINUX)/initramfs.cpio $(LINUX)/vmlinux riscv-pk/build/Makefile
+riscv-pk/build/bbl: $(LINUX)/drivers/net/ethernet/Makefile $(LINUX)/vmlinux riscv-pk/build/Makefile
 	make -C riscv-pk/build PATH=$(RISCV)/bin:/usr/bin:/bin
 
 riscv-pk/build/Makefile:
@@ -29,9 +30,6 @@ $(LINUX)/vmlinux: $(LINUX)/.config
 
 $(LINUX)/.config: $(LINUX)/arch/riscv/configs/defconfig
 	make -C $(LINUX) defconfig ARCH=riscv CROSS_COMPILE=$(RISCV)/bin/riscv64-unknown-elf-
-
-$(LINUX)/initramfs.cpio:
-	make -C debian-riscv64 cpio
 
 #We don't want to download the entire revision history of Linux, but we do want to track any changes we make
 #So we do it this way ...

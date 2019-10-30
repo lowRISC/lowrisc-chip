@@ -27,7 +27,7 @@ void hid_console_putchar(unsigned char ch)
 {
   enum {lines=30};
   int blank = ' '|0xFF80;
-  uint16_t *hid_vga_ptr = 1280 + (uint16_t *)hid_fb_ptr;
+  uint16_t *hid_vga_ptr = (uint16_t *)hid_fb_ptr;
   switch(ch)
     {
     case 8: case 127: if (addr_int & 127) hid_vga_ptr[--addr_int] = blank; break;
@@ -49,8 +49,8 @@ void hid_console_putchar(unsigned char ch)
           hid_vga_ptr[addr_int] = blank;
       addr_int = (lines-1)*128;
     }
-  hid_vga_ptr[LOWRISC_REGS+LOWRISC_REGS_XCUR] = addr_int & 127;
-  hid_vga_ptr[LOWRISC_REGS+LOWRISC_REGS_YCUR] = (addr_int >> 7) + 10;
+  hid_reg_ptr[LOWRISC_REGS_XCUR] = addr_int & 127;
+  hid_reg_ptr[LOWRISC_REGS_YCUR] = (addr_int >> 7);
 }
 
 void uart_console_putchar(unsigned char ch)
@@ -114,10 +114,10 @@ void hid_init(uint32_t sw)
 
       hid_reg_ptr[LOWRISC_REGS_MODE] = 0x00;
       hid_reg_ptr[LOWRISC_REGS_HPIX ] = 6;
-      hid_reg_ptr[LOWRISC_REGS_VPIX ] = 7;
+      hid_reg_ptr[LOWRISC_REGS_VPIX ] = 9;
 
 #if 0
-      for (i = 10; i < 40; i++) // if (i&1)
+      for (i = 10; i < 40; i++)
         {
           int j, colour = 0xBB00;
           uint16_t *fb_ptr = (uint16_t *)hid_fb_ptr;
@@ -150,12 +150,9 @@ void hid_init(uint32_t sw)
               ++j;
             }
         }
-#else
-      for (char *ptr = "Hello, LowRISC"; *ptr; ptr++)
-        hid_console_putchar(*ptr);
 #endif
     }
-  hid_reg_ptr[LOWRISC_REGS_CURSV] = 0;
+  hid_reg_ptr[LOWRISC_REGS_CURSV] = 8;
   hid_reg_ptr[LOWRISC_REGS_XCUR] = 0;
   hid_reg_ptr[LOWRISC_REGS_YCUR] = 0;
   hid_reg_ptr[LOWRISC_REGS_HSTART] = width*2;

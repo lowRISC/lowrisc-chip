@@ -26,6 +26,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <string.h>
 #include <unistd.h>
 #include "eth.h"
+#include "hid.h"
 #include "uart.h"
 #include "ariane.h"
 #include "hash-md5.h"
@@ -80,7 +81,7 @@ Error Codes
 void myputn(int wid, unsigned n)
 {
   if ((wid > 0) || (n > 9)) myputn(wid-1, n / 10);
-  write_serial(n % 10 + '0');
+  hid_send(n % 10 + '0');
 }
 
 enum {verbose=0, md5sum = 1};
@@ -197,9 +198,9 @@ void handle_data_packet(int sock, struct tftpx_packet *rcv_packet, int r_size) {
         printf("Send ACK=%d\n", block);
       else
         {
-          write_serial('\r');
+          hid_send('\r');
           myputn(5, block);
-          write_serial(' ');
+          hid_send(' ');
         }
       block++;
     }
