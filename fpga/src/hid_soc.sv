@@ -11,8 +11,10 @@
 
 `default_nettype none
 
-module hid_soc
-  (
+module hid_soc #(
+   parameter graphmax = 20
+)
+(
 `ifdef GENESYSII
     // display
     output wire [4:0]  VGA_RED_O,
@@ -226,7 +228,7 @@ u_display(.clk       (clk_i),
   
     wire [7:0] red,  green, blue;
  
-    fstore2 the_fstore(
+    fstore2 #(.graphmax(graphmax)) the_fstore(
       .pxl_clk,
       .vsyn(VGA_VS_O),
       .hsyn(VGA_HS_O),

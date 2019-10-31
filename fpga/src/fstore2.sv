@@ -12,7 +12,10 @@ specific language governing permissions and limitations under the License.
 
 // A simple monitor (LCD display) driver with glass TTY behaviour in text mode
 
-module fstore2(
+module fstore2 #(
+   parameter graphmax = 20
+)
+(
                input wire         pxl_clk,
                output reg [7:0]   red,
                output reg [7:0]   green,
@@ -31,8 +34,6 @@ module fstore2(
                input wire         clk_i,
                input wire         rst_ni
                );
-
-   parameter rwidth = 14;
 
    integer                       i;
    
@@ -82,8 +83,6 @@ module fstore2(
                     .web(1'b0),
                     .doutb(red_green_blue_palette),
                     .enb(1'b1));
-   
-   parameter graphmax = 20;
    
    logic [63:0]                  fstore_rddata, doutfb[graphmax-1:0], doutpix[graphmax-1:0];
    logic [7:0]                   doutpix8;
@@ -285,10 +284,10 @@ module fstore2(
 
    assign vsyn = vstart;
                  
-     wire [7:0] pixels_out = red_green_blue_palette >> {vrow[3:1],3'b000};
+     wire [7:0] pixels_out = red_green_blue_palette >> {vrow[2:1],3'b000};
 
-     wire pixel = pixels_out[3'd7 ^ offpixel1] || cursor;
-     wire [23:0] colour = pixel || modereg[3] ? {dout16_1[15:13],5'b0,dout16_1[12:10],5'b0,dout16_1[9:7],5'b0} : 24'b0;
+     wire pixel = (pixels_out[3'd7 ^ offpixel1] & !vrow[4]) || cursor;
+     wire [23:0] colour = pixel ? {dout16_1[15:13],5'b0,dout16_1[12:10],5'b0,dout16_1[9:7],5'b0} : 24'b0;
      
      assign
        {blue_in,green_in,red_in} = bitmapped_pixel1 ? (modereg[4] ? red_green_blue_palette[23:0] : colour) : 24'b0;

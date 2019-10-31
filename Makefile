@@ -15,9 +15,26 @@ tftp: riscv-pk/build/bbl
 	md5sum $<
 	echo -e bin \\n put $< $(MD5) \\n | tftp $(REMOTE)
 
-linux: riscv-pk/build/bbl
+linux: $(LINUX)/.config
+	make -C $(LINUX) ARCH=riscv CROSS_COMPILE=$(RISCV)/bin/riscv64-unknown-elf- -j 4
 
-riscv-pk/build/bbl: $(LINUX)/drivers/net/ethernet/Makefile $(LINUX)/initramfs.cpio $(LINUX)/vmlinux riscv-pk/build/Makefile
+rescue: $(LINUX)/.config
+	make -C debian-riscv64 ../linux-5.1.3-lowrisc/initramfs.cpio
+	rm -f $(LINUX)/vmlinux
+	make -C $(LINUX) ARCH=riscv CROSS_COMPILE=$(RISCV)/bin/riscv64-unknown-elf- CONFIG_BLK_DEV_INITRD=y CONFIG_INITRAMFS_SOURCE="initramfs.cpio" -j 4
+	make -C riscv-pk/build PATH=$(RISCV)/bin:/usr/bin:/bin
+
+install: $(LINUX)/.config
+	curl http://cdn-fastly.deb.debian.org/debian-ports/pool-riscv64/main/d/debian-installer/debian-installer-images_20190410_riscv64.tar.gz | tar xzf -
+	gzip -d < installer-riscv64/20190410/images/netboot/initrd.gz > $(LINUX)/debian.cpio
+	rm -rf installer-riscv64
+	make -C $(LINUX) ARCH=riscv CROSS_COMPILE=$(RISCV)/bin/riscv64-unknown-elf- CONFIG_BLK_DEV_INITRD=y CONFIG_INITRAMFS_SOURCE="debian.cpio" -j 4
+	make -C riscv-pk/build PATH=$(RISCV)/bin:/usr/bin:/bin
+
+$(LINUX)/initramfs.cpio:
+	make -C debian-riscv64 ../linux-5.1.3-lowrisc/initramfs.cpio
+
+riscv-pk/build/bbl: $(LINUX)/drivers/net/ethernet/Makefile $(LINUX)/vmlinux riscv-pk/build/Makefile
 	make -C riscv-pk/build PATH=$(RISCV)/bin:/usr/bin:/bin
 
 riscv-pk/build/Makefile:
@@ -30,13 +47,10 @@ $(LINUX)/vmlinux: $(LINUX)/.config
 $(LINUX)/.config: $(LINUX)/arch/riscv/configs/defconfig
 	make -C $(LINUX) defconfig ARCH=riscv CROSS_COMPILE=$(RISCV)/bin/riscv64-unknown-elf-
 
-$(LINUX)/initramfs.cpio:
-	make -C debian-riscv64 cpio
-
 #We don't want to download the entire revision history of Linux, but we do want to track any changes we make
 #So we do it this way ...
 
-$(LINUX)/drivers/net/ethernet/Makefile: linux-5.1.3.patch
+$(LINUX)/arch/riscv/configs/defconfig: linux-5.1.3.patch
 	rm -rf linux-5.1.3
 	curl https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-5.1.3.tar.xz|tar xJf -
 	(cd linux-5.1.3; git init; git checkout -b linux-5.1.3; git add .; git commit -a -m linux-5.1.3; git status)

@@ -22,12 +22,12 @@
 [submodule "riscv-gnu-toolchain"]
 	path = riscv-gnu-toolchain
 	url = https://github.com/jrrk/riscv-gnu-toolchain-1.git
-[submodule "ariane"]
-	path = ariane
-	url = https://github.com/pulp-platform/ariane.git
 [submodule "lowrisc-quickstart"]
 	path = lowrisc-quickstart
 	url = https://github.com/lowRISC/lowrisc-quickstart.git
 [submodule "qemu"]
 	path = qemu
 	url = https://github.com/qemu/qemu
+[submodule "ariane"]
+	path = ariane
+	url = https://github.com/lowRISC/ariane.git

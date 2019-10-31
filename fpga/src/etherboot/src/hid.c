@@ -21,7 +21,37 @@ volatile uint32_t *const keyb_base = (volatile uint32_t *)KeybBase;
 // HID mouse
 volatile uint64_t *const mouse_base = (volatile uint64_t *)MouseBase;
 
-#define GRAPHTEST
+static int addr_int = 0;
+
+void hid_console_putchar(unsigned char ch)
+{
+  enum {lines=30};
+  int blank = ' '|0xFF80;
+  uint16_t *hid_vga_ptr = (uint16_t *)hid_fb_ptr;
+  switch(ch)
+    {
+    case 8: case 127: if (addr_int & 127) hid_vga_ptr[--addr_int] = blank; break;
+    case 13: addr_int = addr_int & -128; break;
+    case 10:
+      {
+        int lmt = (addr_int|127)+1; while (addr_int < lmt) hid_vga_ptr[(addr_int++)] = blank;
+        break;
+      }
+    default: hid_vga_ptr[addr_int++] = ch|0x1C00;
+    }
+  if (addr_int >= lines*128)
+    {
+      // this is where we scroll
+      for (addr_int = 0; addr_int < LOWRISC_MEM; addr_int++)
+        if (addr_int < (lines-1)*128)
+          hid_vga_ptr[addr_int] = hid_vga_ptr[addr_int+128];
+        else
+          hid_vga_ptr[addr_int] = blank;
+      addr_int = (lines-1)*128;
+    }
+  hid_reg_ptr[LOWRISC_REGS_XCUR] = addr_int & 127;
+  hid_reg_ptr[LOWRISC_REGS_YCUR] = (addr_int >> 7);
+}
 
 void uart_console_putchar(unsigned char ch)
 {
@@ -29,126 +59,113 @@ void uart_console_putchar(unsigned char ch)
 }  
 
 
-void hid_init(void)
+void hid_init(uint32_t sw)
 {
   int i;
-#ifdef GRAPHTEST
-  unsigned char *fb_ptr = (unsigned char *)hid_fb_ptr;
-
-  for (i = 0; i < 512; i++)
+  if (sw&16)
     {
-      hid_plt_ptr[i] = rand32();
-    }
-  
-  for (i = 0; i < 16384; i++)
-    {
-      fb_ptr[i] = rand32();
-    }
-
-  for (i = 0; i < 255; i++)
-    memset(fb_ptr+i*ghlimit, i, ghlimit);
-  
-  for (i = 0; i < gvlimit; i++)
-    {
-      fb_ptr[i*ghlimit + i] = 3;
-    }
-  
-  for (i = 0; i < gvlimit; i++)
-    {
-      int j;
-      for (j = 0; j < ghlimit; j += 100)
+      unsigned char *fb_ptr = (unsigned char *)hid_fb_ptr;
+      for (i = 0; i < 512; i++)
         {
-        fb_ptr[i*ghlimit + j] = 1;
+          hid_plt_ptr[i] = rand32();
         }
-      fb_ptr[(i+1)*ghlimit - 1] = 1;
-    }
-  hid_reg_ptr[LOWRISC_REGS_MODE] = 0x77;
-  hid_reg_ptr[LOWRISC_REGS_CURSV] = 0;
-  hid_reg_ptr[LOWRISC_REGS_XCUR] = 0;
-  hid_reg_ptr[LOWRISC_REGS_YCUR] = 0;
-  hid_reg_ptr[LOWRISC_REGS_HSTART] = width*2;
-  hid_reg_ptr[LOWRISC_REGS_HSYN] = width*2+20;
-  hid_reg_ptr[LOWRISC_REGS_HSTOP] = width*2+51;
-  hid_reg_ptr[LOWRISC_REGS_VSTART] = height;
-  hid_reg_ptr[LOWRISC_REGS_VSTOP] = height+19;
-  hid_reg_ptr[LOWRISC_REGS_VPIXSTART ] = 16;
-  hid_reg_ptr[LOWRISC_REGS_VPIXSTOP ] = ypixels+16;
-  hid_reg_ptr[LOWRISC_REGS_HPIXSTART ] = xpixoff;
-  hid_reg_ptr[LOWRISC_REGS_HPIXSTOP ] = xpixels + xpixoff;
-  hid_reg_ptr[LOWRISC_REGS_HDIV ] = 1;
-  hid_reg_ptr[LOWRISC_REGS_HPIX ] = 5;
-  hid_reg_ptr[LOWRISC_REGS_VPIX ] = 7;
-  hid_reg_ptr[LOWRISC_REGS_GHLIMIT] = ghwords;
 
-#else
-  uint16_t *fb_ptr = (uint16_t *)hid_fb_ptr;
-  for (i = ' '; i <= '~'; i++)
+      for (i = 0; i < 16384; i++)
+        {
+          fb_ptr[i] = rand32();
+        }
+
+      for (i = 0; i < 255; i++)
+        memset(fb_ptr+i*ghlimit, i, ghlimit);
+
+      for (i = 0; i < gvlimit; i++)
+        {
+          fb_ptr[i*ghlimit + i] = 3;
+        }
+
+      for (i = 0; i < gvlimit; i++)
+        {
+          int j;
+          for (j = 0; j < ghlimit; j += 100)
+            {
+            fb_ptr[i*ghlimit + j] = 1;
+            }
+          fb_ptr[(i+1)*ghlimit - 1] = 1;
+        }
+      hid_reg_ptr[LOWRISC_REGS_MODE] = 0x77;
+      hid_reg_ptr[LOWRISC_REGS_HPIX ] = 5;
+      hid_reg_ptr[LOWRISC_REGS_VPIX ] = 7;
+    }
+  else
     {
-      int j;
-      uint64_t tmp[2];
-      char *zptr = zifu + (i - ' ') * 12 + 2;
-      memset(tmp, 0, sizeof(tmp));
-      for (j = 0; j < 8; j++)
+      for (i = ' '; i <= '~'; i++)
         {
-          tmp[j/4] |= ((0xFC & *zptr++) >> 1) << (j&3)*8;
+          int j;
+          uint64_t tmp[2];
+          char *zptr = zifu + (i - ' ') * 8;
+          memset(tmp, 0, sizeof(tmp));
+          for (j = 0; j < 8; j++)
+            {
+              tmp[j/4] |= ((0xFC & *zptr++) >> 1) << (j&3)*8;
+            }
+          for (j = 0; j < 2; j++)
+            hid_plt_ptr[2*i+j] = tmp[j];
         }
-      for (j = 0; j < 2; j++)
-        hid_plt_ptr[2*i+j] = tmp[j];
-    }
 
-  hid_reg_ptr[LOWRISC_REGS_MODE] = 0x00;
-  hid_reg_ptr[LOWRISC_REGS_CURSV] = 0;
-  hid_reg_ptr[LOWRISC_REGS_XCUR] = 0;
-  hid_reg_ptr[LOWRISC_REGS_YCUR] = 0;
-  hid_reg_ptr[LOWRISC_REGS_HSTART] = width*2;
-  hid_reg_ptr[LOWRISC_REGS_HSYN] = width*2+20;
-  hid_reg_ptr[LOWRISC_REGS_HSTOP] = width*2+51;
-  hid_reg_ptr[LOWRISC_REGS_VSTART] = height;
-  hid_reg_ptr[LOWRISC_REGS_VSTOP] = height+19;
-  hid_reg_ptr[LOWRISC_REGS_VPIXSTART ] = 16;
-  hid_reg_ptr[LOWRISC_REGS_VPIXSTOP ] = ypixels+16;
-  hid_reg_ptr[LOWRISC_REGS_HPIXSTART ] = xpixoff;
-  hid_reg_ptr[LOWRISC_REGS_HPIXSTOP ] = xpixels + xpixoff;
-  hid_reg_ptr[LOWRISC_REGS_HDIV ] = 1;
-  hid_reg_ptr[LOWRISC_REGS_HPIX ] = 6;
-  hid_reg_ptr[LOWRISC_REGS_VPIX ] = 7;
-  hid_reg_ptr[LOWRISC_REGS_GHLIMIT] = ghwords;
+      hid_reg_ptr[LOWRISC_REGS_MODE] = 0x00;
+      hid_reg_ptr[LOWRISC_REGS_HPIX ] = 6;
+      hid_reg_ptr[LOWRISC_REGS_VPIX ] = 9;
 
-  for (i = 10; i < 40; i++) if (i&1)
-    {
-      int j, colour = 0xBB00;
-      switch(i)
+#if 0
+      for (i = 10; i < 40; i++)
         {
-        case 11: colour = 0xBB00; break;
-        case 13: colour = 0xFF00; break;
-        case 15: colour = 0xE000; break;
-        case 17: colour = 0x1C00; break;
-        case 19: colour = 0x0380; break;
-        case 21: colour = 0xFC00; break;
-        case 23: colour = 0x1F80; break;
-        case 25: colour = 0xE380; break;
-        case 27: colour = 0x7000; break;
-        case 29: colour = 0x0E00; break;
-        case 31: colour = 0x5500; break;
-        case 33: colour = 0xAA00; break;
-        case 35: colour = 0x3300; break;
-        case 37: colour = 0x6600; break;
-        case 39: colour = 0x7700; break;
-        default: colour = 0xFF80; break;
+          int j, colour = 0xBB00;
+          uint16_t *fb_ptr = (uint16_t *)hid_fb_ptr;
+          switch(i)
+            {
+            case 11: colour = 0xBB00; break;
+            case 13: colour = 0xFF00; break;
+            case 15: colour = 0xE000; break;
+            case 17: colour = 0x1C00; break;
+            case 19: colour = 0x0380; break;
+            case 21: colour = 0xFC00; break;
+            case 23: colour = 0x1F80; break;
+            case 25: colour = 0xE380; break;
+            case 27: colour = 0x7000; break;
+            case 29: colour = 0x0E00; break;
+            case 31: colour = 0x5500; break;
+            case 33: colour = 0xAA00; break;
+            case 35: colour = 0x3300; break;
+            case 37: colour = 0x6600; break;
+            case 39: colour = 0x7700; break;
+            default: colour = 0xFF80; break;
+            }
+          for (j = ' '; j <= '~'; j++)
+            {
+              fb_ptr[i*128+j-' '] = 0xFF80 | j;
+            }
+          while (j < 128+' ')
+            {
+              fb_ptr[i*128+j-' '] = colour | '*';
+              ++j;
+            }
         }
-      for (j = ' '; j <= '~'; j++)
-        {
-          fb_ptr[i*128+j-' '] = colour | j;
-        }
-      while (j < 128+' ')
-        {
-          fb_ptr[i*128+j-' '] = colour | '*';
-          ++j;
-        }
-    }
-  
 #endif
-  
+    }
+  hid_reg_ptr[LOWRISC_REGS_CURSV] = 8;
+  hid_reg_ptr[LOWRISC_REGS_XCUR] = 0;
+  hid_reg_ptr[LOWRISC_REGS_YCUR] = 0;
+  hid_reg_ptr[LOWRISC_REGS_HSTART] = width*2;
+  hid_reg_ptr[LOWRISC_REGS_HSYN] = width*2+20;
+  hid_reg_ptr[LOWRISC_REGS_HSTOP] = width*2+51;
+  hid_reg_ptr[LOWRISC_REGS_VSTART] = height;
+  hid_reg_ptr[LOWRISC_REGS_VSTOP] = height+19;
+  hid_reg_ptr[LOWRISC_REGS_VPIXSTART ] = 16;
+  hid_reg_ptr[LOWRISC_REGS_VPIXSTOP ] = ypixels+16;
+  hid_reg_ptr[LOWRISC_REGS_HPIXSTART ] = xpixoff;
+  hid_reg_ptr[LOWRISC_REGS_HPIXSTOP ] = xpixels + xpixoff;
+  hid_reg_ptr[LOWRISC_REGS_HDIV ] = 1;
+  hid_reg_ptr[LOWRISC_REGS_GHLIMIT] = ghwords;
   
 #ifdef BIGROM
   draw_logo(ghwords);
@@ -163,6 +180,7 @@ void hid_send_irq(uint8_t data)
 void hid_send(uint8_t data)
 {
   uart_console_putchar(data);
+  hid_console_putchar(data);
 }
 
 void hid_send_string(const char *str) {
@@ -211,6 +229,7 @@ int hid_puts(const char *str) {
   return 0;
 }
 
+#ifdef BIGROM
 void keyb_main(void)
 {
   int i;
@@ -257,3 +276,4 @@ void keyb_main(void)
         }
     }
 }
+#endif

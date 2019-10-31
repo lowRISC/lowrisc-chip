@@ -19,7 +19,8 @@ module ariane_peripherals_xilinx #(
     parameter bit InclUART     = 1,
     parameter bit InclSPI      = 0,
     parameter bit InclEthernet = 0,
-    parameter bit InclGPIO     = 0
+    parameter bit InclGPIO     = 0,
+    parameter int graphmax     = 20
 ) (
     input  logic       clk_i           , // Clock
     input  logic       clk_200MHz_i    ,
@@ -647,7 +648,7 @@ axi_bram_ctrl #(
 
 `ifndef NEXYS_VIDEO
 
-hid_soc hid1
+hid_soc #(.graphmax(graphmax)) hid1
   (
  // clock and reset
  .pxl_clk,
