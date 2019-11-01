@@ -22,26 +22,26 @@ rescue: lowrisc-quickstart/rescue.bin
 install: lowrisc-quickstart/install.bin
 
 lowrisc-quickstart/boot.bin: $(LINUX)/arch/riscv/configs/defconfig
-	sed -e 's/\(CONFIG_BLK_DEV_INITRD\)=y/\1=n/' < $(LINUX)/arch/riscv/configs/defconfig > $(LINUX)/$@.cfg
-	make -C $(LINUX) ARCH=riscv KCONFIG_CONFIG=$@.cfg CROSS_COMPILE=$(RISCV)/bin/riscv64-unknown-elf- -j 4
+	sed -e 's/\(CONFIG_BLK_DEV_INITRD\)=y/\1=n/' < $(LINUX)/arch/riscv/configs/defconfig > $(LINUX)/boot.cfg
+	make -C $(LINUX) ARCH=riscv KCONFIG_CONFIG=boot.cfg CROSS_COMPILE=$(RISCV)/bin/riscv64-unknown-elf- -j 4
 	make -C riscv-pk/build PATH=$(RISCV)/bin:/usr/bin:/bin
 	cp -p riscv-pk/build/bbl $@
 
 lowrisc-quickstart/visual.bin: $(LINUX)/arch/riscv/configs/defconfig
-	sed -e 's/\(CONFIG_BLK_DEV_INITRD\)=y/\1=n/' -e 's/# \(CONFIG_VT_CONSOLE\) is not set/\1=y/' < $(LINUX)/arch/riscv/configs/defconfig > $(LINUX)/$@.cfg
-	make -C $(LINUX) ARCH=riscv KCONFIG_CONFIG=$@.cfg CROSS_COMPILE=$(RISCV)/bin/riscv64-unknown-elf- CONFIG_VT_CONSOLE=y -j 4
+	sed -e 's/\(CONFIG_BLK_DEV_INITRD\)=y/\1=n/' -e 's/# \(CONFIG_VT_CONSOLE\) is not set/\1=y/' < $(LINUX)/arch/riscv/configs/defconfig > $(LINUX)/visual.cfg
+	make -C $(LINUX) ARCH=riscv KCONFIG_CONFIG=visual.cfg CROSS_COMPILE=$(RISCV)/bin/riscv64-unknown-elf- CONFIG_VT_CONSOLE=y -j 4
 	make -C riscv-pk/build PATH=$(RISCV)/bin:/usr/bin:/bin
 	cp -p riscv-pk/build/bbl lowrisc-quickstart/$@.bin
 
 lowrisc-quickstart/rescue.bin: $(LINUX)/arch/riscv/configs/defconfig $(LINUX)/initramfs.cpio
-	sed -e 's/\(CONFIG_INITRAMFS_SOURCE\)=""/\1="initramfs.cpio"/' < $(LINUX)/arch/riscv/configs/defconfig > $(LINUX)/$@.cfg
-	make -C $(LINUX) ARCH=riscv KCONFIG_CONFIG=$@.cfg CROSS_COMPILE=$(RISCV)/bin/riscv64-unknown-elf- -j 4
+	sed -e 's/\(CONFIG_INITRAMFS_SOURCE\)=""/\1="initramfs.cpio"/' < $(LINUX)/arch/riscv/configs/defconfig > $(LINUX)/rescue.cfg
+	make -C $(LINUX) ARCH=riscv KCONFIG_CONFIG=rescue.cfg CROSS_COMPILE=$(RISCV)/bin/riscv64-unknown-elf- -j 4
 	make -C riscv-pk/build PATH=$(RISCV)/bin:/usr/bin:/bin
 	cp -p riscv-pk/build/bbl $@
 
 lowrisc-quickstart/install.bin: $(LINUX)/arch/riscv/configs/defconfig $(LINUX)/debian.cpio
-	sed -e 's/\(CONFIG_INITRAMFS_SOURCE\)=""/\1="debian.cpio"/' < $(LINUX)/arch/riscv/configs/defconfig > $(LINUX)/$@.cfg
-	make -C $(LINUX) ARCH=riscv KCONFIG_CONFIG=$@.cfg CROSS_COMPILE=$(RISCV)/bin/riscv64-unknown-elf- -j 4
+	sed -e 's/\(CONFIG_INITRAMFS_SOURCE\)=""/\1="debian.cpio"/' < $(LINUX)/arch/riscv/configs/defconfig > $(LINUX)/install.cfg
+	make -C $(LINUX) ARCH=riscv KCONFIG_CONFIG=install.cfg CROSS_COMPILE=$(RISCV)/bin/riscv64-unknown-elf- -j 4
 	make -C riscv-pk/build PATH=$(RISCV)/bin:/usr/bin:/bin
 	cp -p riscv-pk/build/bbl $@
 
