@@ -5,31 +5,50 @@ include sources.inc
 REMOTE=lowrisc5.sm
 LINUX=linux-5.1.3-lowrisc
 MD5=$(shell md5sum riscv-pk/build/bbl | cut -d\  -f1)
+KERNEL=riscv-pk/build/bbl
 export RISCV=/opt/riscv
 
 default: nexys4_ddr_ariane
 
 all: nexys4_ddr_ariane nexys4_ddr_rocket genesys2_ariane genesys2_rocket
 
-tftp: riscv-pk/build/bbl
+tftp: $(KERNEL)
 	md5sum $<
 	echo -e bin \\n put $< $(MD5) \\n | tftp $(REMOTE)
 
-linux: $(LINUX)/.config
-	make -C $(LINUX) ARCH=riscv CROSS_COMPILE=$(RISCV)/bin/riscv64-unknown-elf- -j 4
+linux: lowrisc-quickstart/boot.bin
+visual: lowrisc-quickstart/visual.bin
+rescue: lowrisc-quickstart/rescue.bin
+install: lowrisc-quickstart/install.bin
 
-rescue: $(LINUX)/.config
-	make -C debian-riscv64 ../linux-5.1.3-lowrisc/initramfs.cpio
-	rm -f $(LINUX)/vmlinux
-	make -C $(LINUX) ARCH=riscv CROSS_COMPILE=$(RISCV)/bin/riscv64-unknown-elf- CONFIG_BLK_DEV_INITRD=y CONFIG_INITRAMFS_SOURCE="initramfs.cpio" -j 4
+lowrisc-quickstart/boot.bin: $(LINUX)/arch/riscv/configs/defconfig
+	sed -e 's/\(CONFIG_BLK_DEV_INITRD\)=y/\1=n/' < $(LINUX)/arch/riscv/configs/defconfig > $(LINUX)/$@.cfg
+	make -C $(LINUX) ARCH=riscv KCONFIG_CONFIG=$@.cfg CROSS_COMPILE=$(RISCV)/bin/riscv64-unknown-elf- -j 4
 	make -C riscv-pk/build PATH=$(RISCV)/bin:/usr/bin:/bin
+	cp -p riscv-pk/build/bbl $@
 
-install: $(LINUX)/.config
+lowrisc-quickstart/visual.bin: $(LINUX)/arch/riscv/configs/defconfig
+	sed -e 's/\(CONFIG_BLK_DEV_INITRD\)=y/\1=n/' -e 's/# \(CONFIG_VT_CONSOLE\) is not set/\1=y/' < $(LINUX)/arch/riscv/configs/defconfig > $(LINUX)/$@.cfg
+	make -C $(LINUX) ARCH=riscv KCONFIG_CONFIG=$@.cfg CROSS_COMPILE=$(RISCV)/bin/riscv64-unknown-elf- CONFIG_VT_CONSOLE=y -j 4
+	make -C riscv-pk/build PATH=$(RISCV)/bin:/usr/bin:/bin
+	cp -p riscv-pk/build/bbl lowrisc-quickstart/$@.bin
+
+lowrisc-quickstart/rescue.bin: $(LINUX)/arch/riscv/configs/defconfig $(LINUX)/initramfs.cpio
+	sed -e 's/\(CONFIG_INITRAMFS_SOURCE\)=""/\1="initramfs.cpio"/' < $(LINUX)/arch/riscv/configs/defconfig > $(LINUX)/$@.cfg
+	make -C $(LINUX) ARCH=riscv KCONFIG_CONFIG=$@.cfg CROSS_COMPILE=$(RISCV)/bin/riscv64-unknown-elf- -j 4
+	make -C riscv-pk/build PATH=$(RISCV)/bin:/usr/bin:/bin
+	cp -p riscv-pk/build/bbl $@
+
+lowrisc-quickstart/install.bin: $(LINUX)/arch/riscv/configs/defconfig $(LINUX)/debian.cpio
+	sed -e 's/\(CONFIG_INITRAMFS_SOURCE\)=""/\1="debian.cpio"/' < $(LINUX)/arch/riscv/configs/defconfig > $(LINUX)/$@.cfg
+	make -C $(LINUX) ARCH=riscv KCONFIG_CONFIG=$@.cfg CROSS_COMPILE=$(RISCV)/bin/riscv64-unknown-elf- -j 4
+	make -C riscv-pk/build PATH=$(RISCV)/bin:/usr/bin:/bin
+	cp -p riscv-pk/build/bbl $@
+
+$(LINUX)/debian.cpio:
 	curl http://cdn-fastly.deb.debian.org/debian-ports/pool-riscv64/main/d/debian-installer/debian-installer-images_20190410_riscv64.tar.gz | tar xzf -
 	gzip -d < installer-riscv64/20190410/images/netboot/initrd.gz > $(LINUX)/debian.cpio
 	rm -rf installer-riscv64
-	make -C $(LINUX) ARCH=riscv CROSS_COMPILE=$(RISCV)/bin/riscv64-unknown-elf- CONFIG_BLK_DEV_INITRD=y CONFIG_INITRAMFS_SOURCE="debian.cpio" -j 4
-	make -C riscv-pk/build PATH=$(RISCV)/bin:/usr/bin:/bin
 
 $(LINUX)/initramfs.cpio:
 	make -C debian-riscv64 ../linux-5.1.3-lowrisc/initramfs.cpio
@@ -44,7 +63,7 @@ riscv-pk/build/Makefile:
 $(LINUX)/vmlinux: $(LINUX)/.config
 	make -C $(LINUX) ARCH=riscv CROSS_COMPILE=$(RISCV)/bin/riscv64-unknown-elf- -j 4
 
-$(LINUX)/.config: $(LINUX)/arch/riscv/configs/defconfig
+$(LINUX)/.config:
 	make -C $(LINUX) defconfig ARCH=riscv CROSS_COMPILE=$(RISCV)/bin/riscv64-unknown-elf-
 
 #We don't want to download the entire revision history of Linux, but we do want to track any changes we make
@@ -77,22 +96,22 @@ fpga/work-fpga/$(BOARD)_rocket/rocket_xilinx.bit: $(ariane_pkg) $(util) $(src) $
 	@echo "[FPGA] Generate Bitstream"
 	make -C fpga BOARD=$(BOARD) BITSIZE=$(BITSIZE) XILINX_PART=$(XILINX_PART) XILINX_BOARD=$(XILINX_BOARD) CPU=$(CPU) CLK_PERIOD_NS="20"
 
-nexys4_ddr_ariane: riscv-pk/build/bbl
+nexys4_ddr_ariane: $(KERNEL)
 	make fpga/work-fpga/nexys4_ddr_ariane/ariane_xilinx.bit BOARD=nexys4_ddr CPU="ariane" BITSIZE=0x400000 XILINX_PART=xc7a100tcsg324-1 XILINX_BOARD="digilentinc.com:nexys4_ddr:part0:1.1" COMPATIBLE="ethz, ariane" BBL=$(root-dir)$< |& tee nexys4_ddr_ariane.log
 
-nexys4_ddr_rocket: riscv-pk/build/bbl
+nexys4_ddr_rocket: $(KERNEL)
 	make fpga/work-fpga/nexys4_ddr_rocket/rocket_xilinx.bit BOARD="nexys4_ddr" CPU="rocket" BITSIZE=0x400000 XILINX_PART="xc7a100tcsg324-1" XILINX_BOARD="digilentinc.com:nexys4_ddr:part0:1.1" COMPATIBLE="sifive,rocket0" BBL=$(root-dir)$< |& tee nexys4_ddr_rocket.log
 
-nexys_video_ariane: riscv-pk/build/bbl
+nexys_video_ariane: $(KERNEL)
 	make fpga/work-fpga/nexys4_video_ariane/ariane_xilinx.bit BOARD="nexys_video" CPU="ariane" BITSIZE=0x800000 XILINX_PART="xc7a200tsbg484-1" XILINX_BOARD="digilentinc.com:nexys_video:part0:1.1" COMPATIBLE="ethz, ariane" BBL=$(root-dir)$< |& tee nexys_video_ariane.log
 
-nexys_video_rocket: riscv-pk/build/bbl
+nexys_video_rocket: $(KERNEL)
 	make fpga/work-fpga/nexys4_video_rocket/rocket_xilinx.bit BOARD="nexys_video" CPU="rocket" BITSIZE=0x800000 XILINX_PART="xc7a200tsbg484-1" XILINX_BOARD="digilentinc.com:nexys_video:part0:1.1" COMPATIBLE="sifive,rocket0" BBL=$(root-dir)$< |& tee nexys_video_rocket.log
 
-genesys2_ariane: riscv-pk/build/bbl
+genesys2_ariane: $(KERNEL)
 	make fpga/work-fpga/genesys2_ariane/ariane_xilinx.bit BOARD="genesys2" CPU="ariane" BITSIZE=0xB00000 XILINX_PART="xc7k325tffg900-2" XILINX_BOARD="digilentinc.com:genesys2:part0:1.1" COMPATIBLE="ethz, ariane" BBL=$(root-dir)$< |& tee genesys2_ariane.log
 
-genesys2_rocket: riscv-pk/build/bbl
+genesys2_rocket: $(KERNEL)
 	make fpga/work-fpga/genesys2_rocket/rocket_xilinx.bit BOARD="genesys2" CPU="rocket" BITSIZE=0xB00000 XILINX_PART="xc7k325tffg900-2" XILINX_BOARD="digilentinc.com:genesys2:part0:1.1" COMPATIBLE="sifive,rocket0" BBL=$(root-dir)$< |& tee genesys2_rocket.log
 
 $(rocket_src): rocket-chip/vsim/Makefile
@@ -101,19 +120,19 @@ $(rocket_src): rocket-chip/vsim/Makefile
 rocket-chip/vsim/Makefile:
 	git submodule update --init --recursive rocket-chip
 
-genesys2_ariane_new: riscv-pk/build/bbl
+genesys2_ariane_new: $(KERNEL)
 	make -C fpga BOARD=genesys2 BITSIZE=0xB00000 CPU=ariane COMPATIBLE="ethz, ariane" BBL=$(root-dir)$< new newmcs
 
-genesys2_rocket_new: riscv-pk/build/bbl
+genesys2_rocket_new: $(KERNEL)
 	make -C fpga BOARD=genesys2 BITSIZE=0xB00000 CPU=rocket COMPATIBLE="sifive,rocket0" BBL=$(root-dir)$< new newmcs
 
-nexys4_ddr_ariane_new: riscv-pk/build/bbl
+nexys4_ddr_ariane_new: $(KERNEL)
 	make -C fpga BOARD=nexys4_ddr BITSIZE=0x400000 CPU=ariane COMPATIBLE="ethz, ariane" BBL=$(root-dir)$< new newmcs
 
-nexys4_ddr_rocket_new: riscv-pk/build/bbl
+nexys4_ddr_rocket_new: $(KERNEL)
 	make -C fpga BOARD=nexys4_ddr BITSIZE=0x400000 CPU=rocket COMPATIBLE="sifive,rocket0" BBL=$(root-dir)$< new newmcs
 
-sdcard-install: riscv-pk/build/bbl lowrisc-quickstart/rootfs.tar.xz
+sdcard-install: $(KERNEL) lowrisc-quickstart/rootfs.tar.xz
 	cp $< lowrisc-quickstart/boot.bin
 	make -C lowrisc-quickstart/ install USB=$(USB)
 
