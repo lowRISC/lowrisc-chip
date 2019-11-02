@@ -31,7 +31,7 @@ lowrisc-quickstart/visual.bin: $(LINUX)/arch/riscv/configs/defconfig
 	sed -e 's/\(CONFIG_BLK_DEV_INITRD\)=y/\1=n/' -e 's/# \(CONFIG_VT_CONSOLE\) is not set/\1=y/' < $(LINUX)/arch/riscv/configs/defconfig > $(LINUX)/visual.cfg
 	make -C $(LINUX) ARCH=riscv KCONFIG_CONFIG=visual.cfg CROSS_COMPILE=$(RISCV)/bin/riscv64-unknown-elf- CONFIG_VT_CONSOLE=y -j 4
 	make -C riscv-pk/build PATH=$(RISCV)/bin:/usr/bin:/bin
-	cp -p riscv-pk/build/bbl lowrisc-quickstart/$@.bin
+	cp -p riscv-pk/build/bbl $@
 
 lowrisc-quickstart/rescue.bin: $(LINUX)/arch/riscv/configs/defconfig $(LINUX)/initramfs.cpio
 	sed -e 's/\(CONFIG_INITRAMFS_SOURCE\)=""/\1="initramfs.cpio"/' < $(LINUX)/arch/riscv/configs/defconfig > $(LINUX)/rescue.cfg
