@@ -3,10 +3,14 @@
 include sources.inc
 
 REMOTE=lowrisc5.sm
-LINUX=linux-5.1.3-lowrisc
+LINUXVER=5.3.8
+LINUX=linux-$(LINUXVER)-lowrisc
 MD5=$(shell md5sum riscv-pk/build/bbl | cut -d\  -f1)
 KERNEL=riscv-pk/build/bbl
-export RISCV=/opt/riscv
+#export RISCV=/opt/riscv
+export RISCV=/usr
+export HOST=riscv64-linux-gnu
+export CROSS_COMPILE=$(RISCV)/bin/$(HOST)-
 
 default: nexys4_ddr_ariane
 
@@ -21,27 +25,27 @@ visual: lowrisc-quickstart/visual.bin
 rescue: lowrisc-quickstart/rescue.bin
 install: lowrisc-quickstart/install.bin
 
-lowrisc-quickstart/boot.bin: $(LINUX)/arch/riscv/configs/defconfig
+lowrisc-quickstart/boot.bin: $(LINUX)/arch/riscv/configs/defconfig riscv-pk/build/Makefile
 	sed -e 's/\(CONFIG_BLK_DEV_INITRD\)=y/\1=n/' < $(LINUX)/arch/riscv/configs/defconfig > $(LINUX)/boot.cfg
-	make -C $(LINUX) ARCH=riscv KCONFIG_CONFIG=boot.cfg CROSS_COMPILE=$(RISCV)/bin/riscv64-unknown-elf- -j 4
+	make -C $(LINUX) ARCH=riscv KCONFIG_CONFIG=boot.cfg CROSS_COMPILE=$(CROSS_COMPILE) -j 4
 	make -C riscv-pk/build PATH=$(RISCV)/bin:/usr/bin:/bin
 	cp -p riscv-pk/build/bbl $@
 
-lowrisc-quickstart/visual.bin: $(LINUX)/arch/riscv/configs/defconfig
+lowrisc-quickstart/visual.bin: $(LINUX)/arch/riscv/configs/defconfig riscv-pk/build/Makefile
 	sed -e 's/\(CONFIG_BLK_DEV_INITRD\)=y/\1=n/' -e 's/# \(CONFIG_VT_CONSOLE\) is not set/\1=y/' < $(LINUX)/arch/riscv/configs/defconfig > $(LINUX)/visual.cfg
-	make -C $(LINUX) ARCH=riscv KCONFIG_CONFIG=visual.cfg CROSS_COMPILE=$(RISCV)/bin/riscv64-unknown-elf- CONFIG_VT_CONSOLE=y -j 4
+	make -C $(LINUX) ARCH=riscv KCONFIG_CONFIG=visual.cfg CROSS_COMPILE=$(CROSS_COMPILE) CONFIG_VT_CONSOLE=y -j 4
 	make -C riscv-pk/build PATH=$(RISCV)/bin:/usr/bin:/bin
 	cp -p riscv-pk/build/bbl $@
 
-lowrisc-quickstart/rescue.bin: $(LINUX)/arch/riscv/configs/defconfig $(LINUX)/initramfs.cpio
+lowrisc-quickstart/rescue.bin: $(LINUX)/arch/riscv/configs/defconfig $(LINUX)/initramfs.cpio riscv-pk/build/Makefile
 	sed -e 's/\(CONFIG_INITRAMFS_SOURCE\)=""/\1="initramfs.cpio"/' < $(LINUX)/arch/riscv/configs/defconfig > $(LINUX)/rescue.cfg
-	make -C $(LINUX) ARCH=riscv KCONFIG_CONFIG=rescue.cfg CROSS_COMPILE=$(RISCV)/bin/riscv64-unknown-elf- -j 4
+	make -C $(LINUX) ARCH=riscv KCONFIG_CONFIG=rescue.cfg CROSS_COMPILE=$(CROSS_COMPILE) -j 4
 	make -C riscv-pk/build PATH=$(RISCV)/bin:/usr/bin:/bin
 	cp -p riscv-pk/build/bbl $@
 
-lowrisc-quickstart/install.bin: $(LINUX)/arch/riscv/configs/defconfig $(LINUX)/debian.cpio
+lowrisc-quickstart/install.bin: $(LINUX)/arch/riscv/configs/defconfig $(LINUX)/debian.cpio riscv-pk/build/Makefile
 	sed -e 's/\(CONFIG_INITRAMFS_SOURCE\)=""/\1="debian.cpio"/' < $(LINUX)/arch/riscv/configs/defconfig > $(LINUX)/install.cfg
-	make -C $(LINUX) ARCH=riscv KCONFIG_CONFIG=install.cfg CROSS_COMPILE=$(RISCV)/bin/riscv64-unknown-elf- -j 4
+	make -C $(LINUX) ARCH=riscv KCONFIG_CONFIG=install.cfg CROSS_COMPILE=$(CROSS_COMPILE) -j 4
 	make -C riscv-pk/build PATH=$(RISCV)/bin:/usr/bin:/bin
 	cp -p riscv-pk/build/bbl $@
 
@@ -51,32 +55,32 @@ $(LINUX)/debian.cpio:
 	rm -rf installer-riscv64
 
 $(LINUX)/initramfs.cpio:
-	make -C debian-riscv64 ../linux-5.1.3-lowrisc/initramfs.cpio
+	make -C debian-riscv64 ../linux-$(LINUXVER)-lowrisc/initramfs.cpio LINUX=$(LINUX)
 
 riscv-pk/build/bbl: $(LINUX)/drivers/net/ethernet/Makefile $(LINUX)/vmlinux riscv-pk/build/Makefile
 	make -C riscv-pk/build PATH=$(RISCV)/bin:/usr/bin:/bin
 
 riscv-pk/build/Makefile:
 	mkdir -p riscv-pk/build
-	cd riscv-pk/build; env PATH=$(RISCV)/bin:/usr/bin:/bin ../configure --host=riscv64-unknown-elf --enable-print-device-tree --with-payload=../../$(LINUX)/vmlinux
+	cd riscv-pk/build; env PATH=$(RISCV)/bin:/usr/bin:/bin ../configure --host=$(HOST) --enable-print-device-tree --with-payload=../../$(LINUX)/vmlinux
 
 $(LINUX)/vmlinux: $(LINUX)/.config
-	make -C $(LINUX) ARCH=riscv CROSS_COMPILE=$(RISCV)/bin/riscv64-unknown-elf- -j 4
+	make -C $(LINUX) ARCH=riscv CROSS_COMPILE=$(CROSS_COMPILE) -j 4
 
 $(LINUX)/.config:
-	make -C $(LINUX) defconfig ARCH=riscv CROSS_COMPILE=$(RISCV)/bin/riscv64-unknown-elf-
+	make -C $(LINUX) defconfig ARCH=riscv CROSS_COMPILE=$(CROSS_COMPILE)
 
 #We don't want to download the entire revision history of Linux, but we do want to track any changes we make
 #So we do it this way ...
 
-$(LINUX)/arch/riscv/configs/defconfig: linux-5.1.3.patch
-	rm -rf linux-5.1.3
-	curl https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-5.1.3.tar.xz|tar xJf -
-	(cd linux-5.1.3; git init; git checkout -b linux-5.1.3; git add .; git commit -a -m linux-5.1.3; git status)
-	patch -d linux-5.1.3 -p1 < linux-5.1.3.patch
+$(LINUX)/arch/riscv/configs/defconfig: linux-$(LINUXVER).patch
+	rm -rf linux-$(LINUXVER)
+	curl https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-$(LINUXVER).tar.xz|tar xJf -
+	(cd linux-$(LINUXVER); git init; git checkout -b linux-$(LINUXVER); git add .; git commit -a -m linux-$(LINUXVER); git status)
+	patch -d linux-$(LINUXVER) -p1 < linux-$(LINUXVER).patch
 	mkdir -p $(LINUX)
 	mv -f $(LINUX) $(LINUX).`date -I`
-	mv linux-5.1.3 $(LINUX)
+	mv linux-$(LINUXVER) $(LINUX)
 	(cd $(LINUX); git checkout -b $(LINUX); git add .; git commit -a -m $(LINUX); git status)
 
 fpga/src/etherboot/$(BOARD)_$(CPU).sv: fpga/src/$(BOARD).dts
