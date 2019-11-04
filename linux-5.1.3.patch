@@ -1805,7 +1805,7 @@ index a53cc1e3a..d003fc465 100644
  obj-$(CONFIG_BLK_DEV_SKD)	+= skd.o
 diff --git a/drivers/block/lowrisc_pitonsd.c b/drivers/block/lowrisc_pitonsd.c
 new file mode 100644
-index 000000000..ab2f69d65
+index 000000000..c9872fed7
 --- /dev/null
 +++ b/drivers/block/lowrisc_pitonsd.c
 @@ -0,0 +1,991 @@
@@ -4787,10 +4787,10 @@ index 7b5bf9682..06beeb577 100644
  obj-$(CONFIG_NET_VENDOR_MELLANOX) += mellanox/
 diff --git a/drivers/net/ethernet/lowrisc/Kconfig b/drivers/net/ethernet/lowrisc/Kconfig
 new file mode 100644
-index 000000000..cccdadc16
+index 000000000..802422de6
 --- /dev/null
 +++ b/drivers/net/ethernet/lowrisc/Kconfig
-@@ -0,0 +1,26 @@
+@@ -0,0 +1,33 @@
 +#
 +# Xilink device configuration
 +#
@@ -4815,6 +4815,13 @@ index 000000000..cccdadc16
 +	select PHYLIB
 +	---help---
 +	  This driver supports the 100MHz Ethernet for Nexys4_DDR Digilent boards from Lowrisc.
++
++config LOWRISC_MII_INIT
++       bool "Make PHY visible to Ethernet driver"
++       default y
++       depends on RISCV
++       ---help---
++         If you have software that interferes with correct PHY operation, disable this option.
 +
 +endif # NET_VENDOR_LOWRISC
 diff --git a/drivers/net/ethernet/lowrisc/Makefile b/drivers/net/ethernet/lowrisc/Makefile
