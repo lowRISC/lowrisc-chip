@@ -156,17 +156,7 @@ logic mig_sys_clk, mig_ui_clk, mig_ui_rst, sys_rst,
       clk, clk_rmii, clk_rmii_quad, clk_pixel, phy_tx_clk, eth_clk, pll_locked;
 logic rst_n, tdo_oe, tdo_data, ndmreset_n;
 
-IOBUF #(
-          .DRIVE(12), // Specify the output drive strength
-          .IBUF_LOW_PWR("TRUE"),  // Low Power - "TRUE", High Performance = "FALSE"
-          .IOSTANDARD("DEFAULT"), // Specify the I/O standard
-          .SLEW("SLOW") // Specify the output slew rate
-       ) IOBUF_inst (
-          .O(),     // Buffer output
-          .IO(tdo),      // Buffer inout port (connect directly to top-level port)
-          .I(tdo_data),     // Buffer input
-          .T(~tdo_oe)    // 3-state enable input, high=input, low=output
-       );
+assign tdo = tdo_data; // no tri-stating for now
 
 `ifdef GENESYSII
 
