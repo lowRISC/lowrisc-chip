@@ -19,9 +19,6 @@
 [submodule "riscv-pk"]
 	path = riscv-pk
 	url = https://github.com/lowRISC/riscv-pk.git
-[submodule "riscv-gnu-toolchain"]
-	path = riscv-gnu-toolchain
-	url = https://github.com/jrrk/riscv-gnu-toolchain-1.git
 [submodule "lowrisc-quickstart"]
 	path = lowrisc-quickstart
 	url = https://github.com/lowRISC/lowrisc-quickstart.git
@@ -31,3 +28,6 @@
 [submodule "ariane"]
 	path = ariane
 	url = https://github.com/lowRISC/ariane.git
+[submodule "riscv-gnu-toolchain"]
+	path = riscv-gnu-toolchain
+	url = https://github.com/riscv/riscv-gnu-toolchain

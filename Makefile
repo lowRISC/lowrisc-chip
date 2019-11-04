@@ -7,9 +7,9 @@ LINUXVER=5.3.8
 LINUX=linux-$(LINUXVER)-lowrisc
 MD5=$(shell md5sum riscv-pk/build/bbl | cut -d\  -f1)
 KERNEL=riscv-pk/build/bbl
-#export RISCV=/opt/riscv
-export RISCV=/usr
-export HOST=riscv64-linux-gnu
+export RISCV=/opt/riscv
+#export RISCV=/usr
+export HOST=riscv64-unknown-linux-gnu
 export CROSS_COMPILE=$(RISCV)/bin/$(HOST)-
 
 default: nexys4_ddr_ariane
