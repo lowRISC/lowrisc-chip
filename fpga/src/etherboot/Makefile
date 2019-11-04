@@ -1,4 +1,4 @@
-CROSSCOMPILE ?= riscv64-unknown-elf-
+export CROSSCOMPILE=riscv64-linux-gnu-
 CC = ${CROSSCOMPILE}gcc
 PYTHON=python
 
