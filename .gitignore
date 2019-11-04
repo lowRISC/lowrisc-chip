@@ -8,7 +8,7 @@ riscv/
 tools/
 lib/
 rootfs.tar.xz
-linux-5.1.3-lowrisc/
+linux-5.3.8-lowrisc/
 .Xil/
 asic/
 vivado*
