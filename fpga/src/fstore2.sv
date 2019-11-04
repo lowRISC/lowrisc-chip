@@ -287,7 +287,7 @@ module fstore2 #(
      wire [7:0] pixels_out = red_green_blue_palette >> {vrow[2:1],3'b000};
 
      wire pixel = (pixels_out[3'd7 ^ offpixel1] & !vrow[4]) || cursor;
-     wire [23:0] colour = pixel ? {dout16_1[15:13],5'b0,dout16_1[12:10],5'b0,dout16_1[9:7],5'b0} : 24'b0;
+     wire [23:0] colour = pixel ? {dout16_1[8],dout16_1[11],6'b0,dout16_1[9],dout16_1[11],6'b0,dout16_1[10],dout16_1[11],6'b0} : 24'b0;
      
      assign
        {blue_in,green_in,red_in} = bitmapped_pixel1 ? (modereg[4] ? red_green_blue_palette[23:0] : colour) : 24'b0;
