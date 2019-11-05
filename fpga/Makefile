@@ -56,14 +56,14 @@ $(work-dir)/$(CPU)_xilinx.new.mcs: $(work-dir)/$(CPU)_xilinx.new.bit $(BBL)
 	$(STRIP) $(BBL)
 	env XILINX_PART="xc7a100t-csg324-1" XILINX_BOARD="digilentinc.com:nexys4_ddr:part0:1.1" vivado -nojournal -mode batch -source scripts/prologue.tcl -source scripts/write_cfgmem.tcl -tclargs $@ $< $(BBL)
 
-new: $(work-dir)/$(CPU)_xilinx.bit $(work-dir)/search-ramb.log scripts/cnvmem.v boot.bmm 
+new: $(work-dir)/$(CPU)_xilinx.bit $(work-dir)/search-ramb.log scripts/cnvmem.v $(work-dir)/boot.bmm 
 	make BOARD=$(BOARD) COMPATIBLE="$(COMPATIBLE)" -C src/etherboot
-	data2mem -bm boot.bmm -bd src/etherboot/$(BOARD)_$(CPU).mem -bt $< -o b $(work-dir)/$(CPU)_xilinx.new.bit
+	data2mem -bm $(work-dir)/boot.bmm -bd src/etherboot/$(BOARD)_$(CPU).mem -bt $< -o b $(work-dir)/$(CPU)_xilinx.new.bit
 
 $(work-dir)/search-ramb.log: scripts/search_ramb.tcl $(work-dir)/$(CPU)_xilinx_routed.dcp
 	vivado -mode batch -source $< -tclargs $(work-dir)/$(CPU)_xilinx_routed > $@
 
-boot.bmm: $(work-dir)/search-ramb.log
+$(work-dir)/boot.bmm: $(work-dir)/search-ramb.log
 	python scripts/bmm_gen.py $< $@ 128 32768
 
 clean:
