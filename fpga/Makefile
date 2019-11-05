@@ -1,4 +1,4 @@
-export CROSSCOMPILE=riscv64-linux-gnu-
+export STRIP=riscv64-unknown-elf-strip
 export XILINX_VER=2018.2
 export XILINX_ROOT=/opt/Xilinx
 export XILINX_VIVADO=$(XILINX_ROOT)/Vivado/$(XILINX_VER)
@@ -31,7 +31,7 @@ ips:
 # Generate mcs from bitstream
 
 $(mcs): $(bit) $(BBL)
-	$(CROSS_COMPILE)strip $(BBL)
+	$(STRIP) $(BBL)
 	$(VIVADO) $(VIVADOFLAGS) -source scripts/write_cfgmem.tcl -tclargs $@ $^ $(BBL)
 
 $(bit): $(ips)
@@ -53,7 +53,7 @@ program:
 newmcs: $(work-dir)/$(CPU)_xilinx.new.mcs
 
 $(work-dir)/$(CPU)_xilinx.new.mcs: $(work-dir)/$(CPU)_xilinx.new.bit $(BBL)
-	$(CROSS_COMPILE)strip $(BBL)
+	$(STRIP) $(BBL)
 	env XILINX_PART="xc7a100t-csg324-1" XILINX_BOARD="digilentinc.com:nexys4_ddr:part0:1.1" vivado -nojournal -mode batch -source scripts/prologue.tcl -source scripts/write_cfgmem.tcl -tclargs $@ $< $(BBL)
 
 new: $(work-dir)/$(CPU)_xilinx.bit $(work-dir)/search-ramb.log scripts/cnvmem.v boot.bmm 
