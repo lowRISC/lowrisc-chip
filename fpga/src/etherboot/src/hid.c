@@ -26,7 +26,7 @@ static int addr_int = 0;
 void hid_console_putchar(unsigned char ch)
 {
   enum {lines=30};
-  int blank = ' '|0xFF80;
+  int blank = ' '|0x0A00;
   uint16_t *hid_vga_ptr = (uint16_t *)hid_fb_ptr;
   switch(ch)
     {
@@ -37,7 +37,7 @@ void hid_console_putchar(unsigned char ch)
         int lmt = (addr_int|127)+1; while (addr_int < lmt) hid_vga_ptr[(addr_int++)] = blank;
         break;
       }
-    default: hid_vga_ptr[addr_int++] = ch|0x1C00;
+    default: hid_vga_ptr[addr_int++] = ch|0x0A00;
     }
   if (addr_int >= lines*128)
     {
@@ -119,7 +119,7 @@ void hid_init(uint32_t sw)
 #if 0
       for (i = 10; i < 40; i++)
         {
-          int j, colour = 0xBB00;
+          int j, colour = 0x0A00;
           uint16_t *fb_ptr = (uint16_t *)hid_fb_ptr;
           switch(i)
             {

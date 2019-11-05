@@ -26,15 +26,47 @@ module rocket_shell (
   output logic tdo_data ,
   output logic tdo_oe
 );
-   
+ 
+   wire CAPTURE, DRCK, RESET, RUNTEST, SEL, SHIFT, TCK, TDI, TMS, UPDATE, TDO, TCK_unbuf, TDO_driven;
+
+   /* This block is just used to feed the JTAG clock into the parts of Rocket that need it */
+      
+   BSCANE2 #(
+      .JTAG_CHAIN(2)  // Value for USER command.
+   )
+   BSCANE2_inst1 (
+      .CAPTURE(CAPTURE), // 1-bit output: CAPTURE output from TAP controller.
+      .DRCK(DRCK),       // 1-bit output: Gated TCK output. When SEL is asserted, DRCK toggles when CAPTURE or
+                         // SHIFT are asserted.
+
+      .RESET(RESET),     // 1-bit output: Reset output for TAP controller.
+      .RUNTEST(RUNTEST), // 1-bit output: Output asserted when TAP controller is in Run Test/Idle state.
+      .SEL(SEL),         // 1-bit output: USER instruction active output.
+      .SHIFT(SHIFT),     // 1-bit output: SHIFT output from TAP controller.
+      .TCK(TCK_unbuf),   // 1-bit output: Test Clock output. Fabric connection to TAP Clock pin.
+      .TDI(TDI),         // 1-bit output: Test Data Input (TDI) output from TAP controller.
+      .TMS(TMS),         // 1-bit output: Test Mode Select output. Fabric connection to TAP.
+      .UPDATE(UPDATE),   // 1-bit output: UPDATE output from TAP controller
+      .TDO(TDO)          // 1-bit input: Test Data Output (TDO) input for USER function.
+   );
+
+   // BUFH: HROW Clock Buffer for a Single Clocking Region
+   //       Artix-7
+   // Xilinx HDL Language Template, version 2016.1
+
+   BUFH BUFH_inst (
+      .O(TCK), // 1-bit output: Clock output
+      .I(TCK_unbuf)  // 1-bit input: Clock input
+   );
+
    ExampleRocketSystem Rocket
      (
-      .debug_systemjtag_jtag_TCK(tck),
-      .debug_systemjtag_jtag_TMS(tms),
-      .debug_systemjtag_jtag_TDI(tdi),
-      .debug_systemjtag_jtag_TDO_data(tdo),
-      .debug_systemjtag_jtag_TDO_driven(tdo_oe),
-      .debug_systemjtag_reset(~trst_n),
+      .debug_systemjtag_jtag_TCK(TCK),
+      .debug_systemjtag_jtag_TMS(TMS),
+      .debug_systemjtag_jtag_TDI(TDI),
+      .debug_systemjtag_jtag_TDO_data(TDO),
+      .debug_systemjtag_jtag_TDO_driven(TDO_driven),
+      .debug_systemjtag_reset(RESET),
       .debug_systemjtag_mfr_id(11'h5AA),
       .debug_ndreset(),
       .debug_dmactive(),

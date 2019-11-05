@@ -7,9 +7,9 @@ LINUXVER=5.3.8
 LINUX=linux-$(LINUXVER)-lowrisc
 MD5=$(shell md5sum riscv-pk/build/bbl | cut -d\  -f1)
 KERNEL=riscv-pk/build/bbl
-#export RISCV=/opt/riscv
-export RISCV=/usr
-export HOST=riscv64-linux-gnu
+export RISCV=/opt/riscv
+#export RISCV=/usr
+export HOST=riscv64-unknown-linux-gnu
 export CROSS_COMPILE=$(RISCV)/bin/$(HOST)-
 
 default: nexys4_ddr_ariane
@@ -25,7 +25,7 @@ visual: lowrisc-quickstart/visual.bin
 rescue: lowrisc-quickstart/rescue.bin
 install: lowrisc-quickstart/install.bin
 
-lowrisc-quickstart/boot.bin: $(LINUX)/arch/riscv/configs/defconfig riscv-pk/build/Makefile
+lowrisc-quickstart/boot.bin: $(CROSS_COMPILE)gcc $(LINUX)/arch/riscv/configs/defconfig riscv-pk/build/Makefile
 	sed -e 's/\(CONFIG_BLK_DEV_INITRD\)=y/\1=n/' < $(LINUX)/arch/riscv/configs/defconfig > $(LINUX)/boot.cfg
 	make -C $(LINUX) ARCH=riscv KCONFIG_CONFIG=boot.cfg CROSS_COMPILE=$(CROSS_COMPILE) -j 4
 	make -C riscv-pk/build PATH=$(RISCV)/bin:/usr/bin:/bin
@@ -142,3 +142,13 @@ sdcard-install: $(KERNEL) lowrisc-quickstart/rootfs.tar.xz
 
 lowrisc-quickstart/rootfs.tar.xz:
 	make -C debian-riscv64 image
+
+toolchain: $(CROSS_COMPILE)gcc
+
+$(CROSS_COMPILE)gcc: riscv-gnu-toolchain/Makefile
+	make -s -C riscv-gnu-toolchain
+	make -s -C riscv-gnu-toolchain linux
+
+riscv-gnu-toolchain/Makefile:
+	(cd riscv-gnu-toolchain; git submodule update --init --recursive; ./configure --prefix=$(RISCV))
+

@@ -3,6 +3,9 @@ set_property PACKAGE_PIN E3 [get_ports clk_p]
 set_property IOSTANDARD LVCMOS33 [get_ports clk_p]
 create_clock -period 10.000 -waveform {0.000 5.000} [get_ports clk_p]
 
+# JTAG clock
+create_clock -period 100.000 -name shell1/BSCANE2_inst1/TCK -waveform {0.000 50.000} [get_pins shell1/BSCANE2_inst1/TCK]
+
 ## Buttons
 set_property -dict {PACKAGE_PIN C12 IOSTANDARD LVCMOS33} [get_ports cpu_resetn]
 
