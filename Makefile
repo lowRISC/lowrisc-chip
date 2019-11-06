@@ -14,7 +14,9 @@ export CROSS_COMPILE=$(RISCV)/bin/$(HOST)-
 
 default: nexys4_ddr_ariane
 
-all: nexys4_ddr_ariane nexys4_ddr_rocket genesys2_ariane genesys2_rocket
+all: nexys4_ddr_ariane nexys4_ddr_rocket genesys2_ariane genesys2_rocket \
+	nexys4_ddr_ariane_new nexys4_ddr_rocket_new genesys2_ariane_new genesys2_rocket_new
+	for j in bit mcs; do for i in `cd fpga/work-fpga; find . -name \*.$$j`; do cp fpga/work-fpga/$$i lowrisc-quickstart/`echo $$i|sed -e 's=ariane/ariane=ariane=' -e 's=rocket/rocket=rocket='`; done; done
 
 tftp: $(KERNEL)
 	md5sum $<
@@ -86,37 +88,37 @@ $(LINUX)/arch/riscv/configs/defconfig: linux-$(LINUXVER).patch
 fpga/src/etherboot/$(BOARD)_$(CPU).sv: fpga/src/$(BOARD).dts
 	make -C fpga/src/etherboot BOARD=$(BOARD) CPU=$(CPU) PATH=$(RISCV)/bin:/usr/local/bin:/usr/bin:/bin
 
-fpga/work-fpga/$(BOARD)_ariane/ariane_xilinx.bit: $(ariane_pkg) $(util) $(src) $(fpga_src) \
+fpga/work-fpga/$(BOARD)_ariane/ariane_xilinx.mcs: $(ariane_pkg) $(util) $(src) $(fpga_src) \
         fpga/src/etherboot/$(BOARD)_$(CPU).sv
 	@echo "[FPGA] Generate source list"
 	@echo read_verilog -sv { $(ariane_pkg) $(filter-out $(fpga_filter), $(util) $(src)) $(fpga_src) $(open_src) $(addprefix $(root-dir)/,fpga/src/etherboot/$(BOARD)_$(CPU).sv) } > fpga/scripts/add_sources.tcl
 	@echo "[FPGA] Generate Bitstream"
-	make -C fpga BOARD=$(BOARD) BITSIZE=$(BITSIZE) XILINX_PART=$(XILINX_PART) XILINX_BOARD=$(XILINX_BOARD) CPU=$(CPU) CLK_PERIOD_NS="20"
+	make -C fpga mcs BOARD=$(BOARD) BITSIZE=$(BITSIZE) XILINX_PART=$(XILINX_PART) XILINX_BOARD=$(XILINX_BOARD) CPU=$(CPU) CLK_PERIOD_NS="20"
 
-fpga/work-fpga/$(BOARD)_rocket/rocket_xilinx.bit: $(ariane_pkg) $(util) $(src) $(fpga_src) \
+fpga/work-fpga/$(BOARD)_rocket/rocket_xilinx.mcs: $(ariane_pkg) $(util) $(src) $(fpga_src) \
 	$(rocket_src) fpga/src/etherboot/$(BOARD)_$(CPU).sv
 	@echo "[FPGA] Generate source list"
 	@echo read_verilog -sv { $(ariane_pkg) $(filter-out $(fpga_filter), $(util) $(src)) $(fpga_src) $(open_src) $(rocket_src) $(addprefix $(root-dir)/,fpga/src/etherboot/$(BOARD)_$(CPU).sv) } > fpga/scripts/add_sources.tcl
 	@echo "[FPGA] Generate Bitstream"
-	make -C fpga BOARD=$(BOARD) BITSIZE=$(BITSIZE) XILINX_PART=$(XILINX_PART) XILINX_BOARD=$(XILINX_BOARD) CPU=$(CPU) CLK_PERIOD_NS="20"
+	make -C fpga mcs BOARD=$(BOARD) BITSIZE=$(BITSIZE) XILINX_PART=$(XILINX_PART) XILINX_BOARD=$(XILINX_BOARD) CPU=$(CPU) CLK_PERIOD_NS="20"
 
 nexys4_ddr_ariane: $(KERNEL)
-	make fpga/work-fpga/nexys4_ddr_ariane/ariane_xilinx.bit BOARD=nexys4_ddr CPU="ariane" BITSIZE=0x400000 XILINX_PART=xc7a100tcsg324-1 XILINX_BOARD="digilentinc.com:nexys4_ddr:part0:1.1" COMPATIBLE="ethz, ariane" BBL=$(root-dir)$< |& tee nexys4_ddr_ariane.log
+	make fpga/work-fpga/nexys4_ddr_ariane/ariane_xilinx.mcs BOARD=nexys4_ddr CPU="ariane" BITSIZE=0x400000 XILINX_PART=xc7a100tcsg324-1 XILINX_BOARD="digilentinc.com:nexys4_ddr:part0:1.1" COMPATIBLE="ethz, ariane" BBL=$(root-dir)$< |& tee nexys4_ddr_ariane.log
 
 nexys4_ddr_rocket: $(KERNEL)
-	make fpga/work-fpga/nexys4_ddr_rocket/rocket_xilinx.bit BOARD="nexys4_ddr" CPU="rocket" BITSIZE=0x400000 XILINX_PART="xc7a100tcsg324-1" XILINX_BOARD="digilentinc.com:nexys4_ddr:part0:1.1" COMPATIBLE="sifive,rocket0" BBL=$(root-dir)$< |& tee nexys4_ddr_rocket.log
+	make fpga/work-fpga/nexys4_ddr_rocket/rocket_xilinx.mcs BOARD="nexys4_ddr" CPU="rocket" BITSIZE=0x400000 XILINX_PART="xc7a100tcsg324-1" XILINX_BOARD="digilentinc.com:nexys4_ddr:part0:1.1" COMPATIBLE="sifive,rocket0" BBL=$(root-dir)$< |& tee nexys4_ddr_rocket.log
 
 nexys_video_ariane: $(KERNEL)
-	make fpga/work-fpga/nexys4_video_ariane/ariane_xilinx.bit BOARD="nexys_video" CPU="ariane" BITSIZE=0x800000 XILINX_PART="xc7a200tsbg484-1" XILINX_BOARD="digilentinc.com:nexys_video:part0:1.1" COMPATIBLE="ethz, ariane" BBL=$(root-dir)$< |& tee nexys_video_ariane.log
+	make fpga/work-fpga/nexys4_video_ariane/ariane_xilinx.mcs BOARD="nexys_video" CPU="ariane" BITSIZE=0x800000 XILINX_PART="xc7a200tsbg484-1" XILINX_BOARD="digilentinc.com:nexys_video:part0:1.1" COMPATIBLE="ethz, ariane" BBL=$(root-dir)$< |& tee nexys_video_ariane.log
 
 nexys_video_rocket: $(KERNEL)
-	make fpga/work-fpga/nexys4_video_rocket/rocket_xilinx.bit BOARD="nexys_video" CPU="rocket" BITSIZE=0x800000 XILINX_PART="xc7a200tsbg484-1" XILINX_BOARD="digilentinc.com:nexys_video:part0:1.1" COMPATIBLE="sifive,rocket0" BBL=$(root-dir)$< |& tee nexys_video_rocket.log
+	make fpga/work-fpga/nexys4_video_rocket/rocket_xilinx.mcs BOARD="nexys_video" CPU="rocket" BITSIZE=0x800000 XILINX_PART="xc7a200tsbg484-1" XILINX_BOARD="digilentinc.com:nexys_video:part0:1.1" COMPATIBLE="sifive,rocket0" BBL=$(root-dir)$< |& tee nexys_video_rocket.log
 
 genesys2_ariane: $(KERNEL)
-	make fpga/work-fpga/genesys2_ariane/ariane_xilinx.bit BOARD="genesys2" CPU="ariane" BITSIZE=0xB00000 XILINX_PART="xc7k325tffg900-2" XILINX_BOARD="digilentinc.com:genesys2:part0:1.1" COMPATIBLE="ethz, ariane" BBL=$(root-dir)$< |& tee genesys2_ariane.log
+	make fpga/work-fpga/genesys2_ariane/ariane_xilinx.mcs BOARD="genesys2" CPU="ariane" BITSIZE=0xB00000 XILINX_PART="xc7k325tffg900-2" XILINX_BOARD="digilentinc.com:genesys2:part0:1.1" COMPATIBLE="ethz, ariane" BBL=$(root-dir)$< |& tee genesys2_ariane.log
 
 genesys2_rocket: $(KERNEL)
-	make fpga/work-fpga/genesys2_rocket/rocket_xilinx.bit BOARD="genesys2" CPU="rocket" BITSIZE=0xB00000 XILINX_PART="xc7k325tffg900-2" XILINX_BOARD="digilentinc.com:genesys2:part0:1.1" COMPATIBLE="sifive,rocket0" BBL=$(root-dir)$< |& tee genesys2_rocket.log
+	make fpga/work-fpga/genesys2_rocket/rocket_xilinx.mcs BOARD="genesys2" CPU="rocket" BITSIZE=0xB00000 XILINX_PART="xc7k325tffg900-2" XILINX_BOARD="digilentinc.com:genesys2:part0:1.1" COMPATIBLE="sifive,rocket0" BBL=$(root-dir)$< |& tee genesys2_rocket.log
 
 $(rocket_src): rocket-chip/vsim/Makefile
 	make -C rocket-chip/vsim verilog
