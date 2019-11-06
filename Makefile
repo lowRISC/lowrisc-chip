@@ -152,3 +152,18 @@ $(CROSS_COMPILE)gcc: riscv-gnu-toolchain/Makefile
 riscv-gnu-toolchain/Makefile:
 	(cd riscv-gnu-toolchain; git submodule update --init --recursive; ./configure --prefix=$(RISCV))
 
+openocd: $(RISCV)/bin/openocd
+
+$(RISCV)/bin/openocd: riscv-openocd/Makefile
+	(mkdir riscv-openocd/build; cd riscv-openocd/build; ../configure --prefix=$(RISCV) --enable-remote-bitbang --enable-jtag_vpi --disable-werror)
+	make -s -C riscv-openocd/build
+	make -s -C riscv-openocd/build install
+
+riscv-openocd/Makefile:
+	(cd riscv-openocd; find . -iname configure.ac | sed s/configure.ac/m4/ | xargs mkdir -p; autoreconf -i)
+
+gdb: $(KERNEL)
+	riscv64-unknown-elf-gdb -tui $(KERNEL)
+
+debug:
+	make -C lowrisc-quickstart debug
