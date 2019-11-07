@@ -24,10 +24,11 @@ void just_jump (int64_t entry)
 {
   extern uint8_t _dtb[];
   void (*fun_ptr)(uint64_t, void *) = (void*)entry;
-  printf("Boot the loaded program at address %p...\n", fun_ptr);
+  uint32_t hart = read_csr(mhartid);
+  printf("Boot the loaded program at address $pc=%p $a0=%x $a1=%p...\n", fun_ptr, hart, _dtb);
   asm volatile ("fence.i");
   asm volatile ("fence");
-  fun_ptr(read_csr(mhartid), _dtb);
+  fun_ptr(hart, _dtb);
 }
 
 static int sd_len_err;
