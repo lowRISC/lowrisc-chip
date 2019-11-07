@@ -16,9 +16,6 @@
 [submodule "fpga/src/spi_mem_programmer"]
 	path = fpga/src/spi_mem_programmer
 	url = https://github.com/jrrk/spi_mem_programmer.git
-[submodule "riscv-pk"]
-	path = riscv-pk
-	url = https://github.com/lowRISC/riscv-pk.git
 [submodule "lowrisc-quickstart"]
 	path = lowrisc-quickstart
 	url = https://github.com/lowRISC/lowrisc-quickstart.git
@@ -34,3 +31,6 @@
 [submodule "riscv-openocd"]
 	path = riscv-openocd
 	url = https://github.com/riscv/riscv-openocd.git
+[submodule "riscv-pk"]
+	path = riscv-pk
+	url = https://github.com/riscv/riscv-pk.git
