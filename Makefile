@@ -22,10 +22,12 @@ tftp: $(KERNEL)
 	md5sum $<
 	echo -e bin \\n put $< $(MD5) \\n | tftp $(REMOTE)
 
-linux: lowrisc-quickstart/boot.bin
-visual: lowrisc-quickstart/visual.bin
-rescue: lowrisc-quickstart/rescue.bin
-install: lowrisc-quickstart/install.bin
+#Linux target variants:
+linux: lowrisc-quickstart/boot.bin # plain linux with serial console and SD-Card root
+visual: lowrisc-quickstart/visual.bin # VGA console, SD-Card root
+rescue: lowrisc-quickstart/rescue.bin # serial console, miniroot with fsck, busybox, and network access
+install: lowrisc-quickstart/install.bin # serial console with Debian installer root
+vinstall: lowrisc-quickstart/vinstall.bin # VGA console, Debian installer root
 
 lowrisc-quickstart/boot.bin: $(CROSS_COMPILE)gcc $(LINUX)/arch/riscv/configs/defconfig riscv-pk/build/Makefile
 	sed -e 's/\(CONFIG_BLK_DEV_INITRD\)=y/\1=n/' < $(LINUX)/arch/riscv/configs/defconfig > $(LINUX)/boot.cfg
@@ -46,7 +48,13 @@ lowrisc-quickstart/rescue.bin: $(LINUX)/arch/riscv/configs/defconfig $(LINUX)/in
 	cp -p riscv-pk/build/bbl $@
 
 lowrisc-quickstart/install.bin: $(LINUX)/arch/riscv/configs/defconfig $(LINUX)/debian.cpio riscv-pk/build/Makefile
-	sed -e 's/\(CONFIG_INITRAMFS_SOURCE\)=""/\1="debian.cpio"/' < $(LINUX)/arch/riscv/configs/defconfig > $(LINUX)/install.cfg
+	sed -e 's/\(CONFIG_LOWRISC_MII_INIT\)=y/\1=n/' -e 's/\(CONFIG_INITRAMFS_SOURCE\)=""/\1="debian.cpio"/' < $(LINUX)/arch/riscv/configs/defconfig > $(LINUX)/install.cfg
+	make -C $(LINUX) ARCH=riscv KCONFIG_CONFIG=install.cfg CROSS_COMPILE=$(CROSS_COMPILE) -j 4
+	make riscv-pk/build/bbl
+	cp -p riscv-pk/build/bbl $@
+
+lowrisc-quickstart/vinstall.bin: $(LINUX)/arch/riscv/configs/defconfig $(LINUX)/debian.cpio riscv-pk/build/Makefile
+	sed -e 's/\(CONFIG_LOWRISC_MII_INIT\)=y/\1=n/' -e 's/\(CONFIG_INITRAMFS_SOURCE\)=""/\1="debian.cpio"/' -e 's/# \(CONFIG_VT_CONSOLE\) is not set/\1=y/' < $(LINUX)/arch/riscv/configs/defconfig > $(LINUX)/install.cfg
 	make -C $(LINUX) ARCH=riscv KCONFIG_CONFIG=install.cfg CROSS_COMPILE=$(CROSS_COMPILE) -j 4
 	make riscv-pk/build/bbl
 	cp -p riscv-pk/build/bbl $@
