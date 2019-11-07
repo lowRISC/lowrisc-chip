@@ -30,25 +30,25 @@ install: lowrisc-quickstart/install.bin
 lowrisc-quickstart/boot.bin: $(CROSS_COMPILE)gcc $(LINUX)/arch/riscv/configs/defconfig riscv-pk/build/Makefile
 	sed -e 's/\(CONFIG_BLK_DEV_INITRD\)=y/\1=n/' < $(LINUX)/arch/riscv/configs/defconfig > $(LINUX)/boot.cfg
 	make -C $(LINUX) ARCH=riscv KCONFIG_CONFIG=boot.cfg CROSS_COMPILE=$(CROSS_COMPILE) -j 4
-	make -C riscv-pk/build PATH=$(RISCV)/bin:/usr/bin:/bin
+	make riscv-pk/build/bbl
 	cp -p riscv-pk/build/bbl $@
 
 lowrisc-quickstart/visual.bin: $(LINUX)/arch/riscv/configs/defconfig riscv-pk/build/Makefile
 	sed -e 's/\(CONFIG_BLK_DEV_INITRD\)=y/\1=n/' -e 's/# \(CONFIG_VT_CONSOLE\) is not set/\1=y/' < $(LINUX)/arch/riscv/configs/defconfig > $(LINUX)/visual.cfg
 	make -C $(LINUX) ARCH=riscv KCONFIG_CONFIG=visual.cfg CROSS_COMPILE=$(CROSS_COMPILE) CONFIG_VT_CONSOLE=y -j 4
-	make -C riscv-pk/build PATH=$(RISCV)/bin:/usr/bin:/bin
+	make riscv-pk/build/bbl
 	cp -p riscv-pk/build/bbl $@
 
 lowrisc-quickstart/rescue.bin: $(LINUX)/arch/riscv/configs/defconfig $(LINUX)/initramfs.cpio riscv-pk/build/Makefile
 	sed -e 's/\(CONFIG_INITRAMFS_SOURCE\)=""/\1="initramfs.cpio"/' < $(LINUX)/arch/riscv/configs/defconfig > $(LINUX)/rescue.cfg
 	make -C $(LINUX) ARCH=riscv KCONFIG_CONFIG=rescue.cfg CROSS_COMPILE=$(CROSS_COMPILE) -j 4
-	make -C riscv-pk/build PATH=$(RISCV)/bin:/usr/bin:/bin
+	make riscv-pk/build/bbl
 	cp -p riscv-pk/build/bbl $@
 
 lowrisc-quickstart/install.bin: $(LINUX)/arch/riscv/configs/defconfig $(LINUX)/debian.cpio riscv-pk/build/Makefile
 	sed -e 's/\(CONFIG_INITRAMFS_SOURCE\)=""/\1="debian.cpio"/' < $(LINUX)/arch/riscv/configs/defconfig > $(LINUX)/install.cfg
 	make -C $(LINUX) ARCH=riscv KCONFIG_CONFIG=install.cfg CROSS_COMPILE=$(CROSS_COMPILE) -j 4
-	make -C riscv-pk/build PATH=$(RISCV)/bin:/usr/bin:/bin
+	make riscv-pk/build/bbl
 	cp -p riscv-pk/build/bbl $@
 
 $(LINUX)/debian.cpio:
@@ -60,11 +60,11 @@ $(LINUX)/initramfs.cpio:
 	make -C debian-riscv64 ../linux-$(LINUXVER)-lowrisc/initramfs.cpio LINUX=$(LINUX)
 
 riscv-pk/build/bbl: $(LINUX)/drivers/net/ethernet/Makefile $(LINUX)/vmlinux riscv-pk/build/Makefile
-	make -C riscv-pk/build PATH=$(RISCV)/bin:/usr/bin:/bin
+	make -C riscv-pk/build PATH=$(RISCV)/bin:/usr/bin:/bin # CC="riscv-unknown-elf-gcc -g"
 
 riscv-pk/build/Makefile:
 	mkdir -p riscv-pk/build
-	cd riscv-pk/build; env PATH=$(RISCV)/bin:/usr/bin:/bin ../configure --host=$(HOST) --enable-print-device-tree --with-payload=../../$(LINUX)/vmlinux
+	cd riscv-pk/build; env PATH=$(RISCV)/bin:/usr/bin:/bin ../configure --host=riscv64-unknown-elf --enable-print-device-tree --with-payload=../../$(LINUX)/vmlinux
 
 $(LINUX)/vmlinux: $(LINUX)/.config
 	make -C $(LINUX) ARCH=riscv CROSS_COMPILE=$(CROSS_COMPILE) -j 4
