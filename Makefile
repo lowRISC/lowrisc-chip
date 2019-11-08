@@ -67,7 +67,7 @@ $(LINUX)/debian.cpio:
 $(LINUX)/initramfs.cpio:
 	make -C debian-riscv64 ../linux-$(LINUXVER)-lowrisc/initramfs.cpio LINUX=$(LINUX)
 
-riscv-pk/build/bbl: $(LINUX)/drivers/net/ethernet/Makefile $(LINUX)/vmlinux riscv-pk/build/Makefile
+riscv-pk/build/bbl: $(LINUX)/arch/riscv/configs/defconfig $(LINUX)/vmlinux riscv-pk/build/Makefile
 	make -C riscv-pk/build PATH=$(RISCV)/bin:/usr/bin:/bin # CC="riscv-unknown-elf-gcc -g"
 
 riscv-pk/build/Makefile:
