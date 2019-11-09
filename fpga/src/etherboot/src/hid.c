@@ -62,6 +62,10 @@ void uart_console_putchar(unsigned char ch)
 void hid_init(uint32_t sw)
 {
   int i;
+  hid_reg_ptr[LOWRISC_REGS_MODE] = 0x00;
+  hid_reg_ptr[LOWRISC_REGS_HPIX ] = 6;
+  hid_reg_ptr[LOWRISC_REGS_VPIX ] = 9;
+#ifdef ZIFU
   if (sw&16)
     {
       unsigned char *fb_ptr = (unsigned char *)hid_fb_ptr;
@@ -109,12 +113,12 @@ void hid_init(uint32_t sw)
               tmp[j/4] |= ((0xFC & *zptr++) >> 1) << (j&3)*8;
             }
           for (j = 0; j < 2; j++)
-            hid_plt_ptr[2*i+j] = tmp[j];
+	    {
+	      volatile uint64_t *plt = hid_plt_ptr+2*i+j;
+	      if (*plt != tmp[j]) printf("ix=%d, old = %X, new= %X\n", 2*i+j, *plt, tmp[j]);
+	      *plt = tmp[j];
+	    }
         }
-
-      hid_reg_ptr[LOWRISC_REGS_MODE] = 0x00;
-      hid_reg_ptr[LOWRISC_REGS_HPIX ] = 6;
-      hid_reg_ptr[LOWRISC_REGS_VPIX ] = 9;
 
 #if 0
       for (i = 10; i < 40; i++)
@@ -152,6 +156,7 @@ void hid_init(uint32_t sw)
         }
 #endif
     }
+#endif
   hid_reg_ptr[LOWRISC_REGS_CURSV] = 8;
   hid_reg_ptr[LOWRISC_REGS_XCUR] = 0;
   hid_reg_ptr[LOWRISC_REGS_YCUR] = 0;
