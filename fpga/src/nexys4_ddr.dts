@@ -87,6 +87,10 @@
       compatible = "lowrisc-gpio";
       reg = <0x0 0x44000000 0x0 0x1000 >;
     };
+    rtc: lowrisc-rtc@44000000 {
+      compatible = "lowrisc-rtc";
+      reg = <0x0 0x44000000 0x0 0x1000 >;
+    };
     mouse: lowrisc-mouse@45028000 {
             reg = <0x0 0x45028000 0x0 0x8000>;
             reg-io-width = <8>;

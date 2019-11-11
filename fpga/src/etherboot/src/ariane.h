@@ -38,5 +38,8 @@ uint32_t hwrnd(void);
 void gpio_leds(uint32_t arg);
 uint32_t gpio_sw(void);
 unsigned int rand32(void);
+void rtc_write(uint64_t secs, uint32_t usecs);
+uint64_t rtc_secs(void);
+uint32_t rtc_usecs(void);
 
 #endif

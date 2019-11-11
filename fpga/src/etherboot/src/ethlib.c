@@ -58,6 +58,9 @@ uip_eth_addr mac_addr;
 const uip_ipaddr_t uip_broadcast_addr =
   { { 0xff, 0xff, 0xff, 0xff } };
 
+const uip_ipaddr_t uip_ntp_addr =
+  { { 192, 168, 0, 22 } };
+
 const uip_ipaddr_t uip_all_zeroes_addr = { { 0x0, /* rest is 0 */ } };
 
 uip_lladdr_t uip_lladdr;
@@ -73,7 +76,8 @@ void *mysbrk_(size_t len)
 }
 
 
-#define PORT 69   //The TFTP well-known port on which to send data
+#define TFTP_PORT 69   //The TFTP well-known port on which to send data
+#define NTP_PORT 123  //The TFTP well-known port on which to send data
 
 #define min(x,y) (x) < (y) ? (x) : (y)
 
@@ -336,16 +340,28 @@ void recog_packet(int proto_type, uint32_t *alloc32, int xlength)
                            dport,
                            ulen, xlength);
 #endif                        
-                    if (dport == PORT)
+                    if (dport == TFTP_PORT)
                       {
                         saved_peer_port = peer_port;
                         saved_peer_ip = peer_ip;
                         memcpy(saved_peer_addr, peer_addr, sizeof(saved_peer_addr));
-                        process_udp_packet(0, udp_hdr->body, ulen-sizeof(struct udphdr), peer_port, peer_ip, peer_addr);
+                        process_tftp_packet(0, udp_hdr->body, ulen-sizeof(struct udphdr), peer_port, peer_ip, peer_addr);
+                      }
+                    else if (dport == NTP_PORT)
+                      {
+			printf("IP Proto = NTP, source port = %d, dest port = %d, length = %d, ethlen = %d\n",
+                           ntohs(udp_hdr->uh_sport),
+                           dport,
+                           ulen, xlength);
+                        saved_peer_port = peer_port;
+                        saved_peer_ip = peer_ip;
+                        memcpy(saved_peer_addr, peer_addr, sizeof(saved_peer_addr));
+                        process_ntp_packet(0, udp_hdr->body, ulen-sizeof(struct udphdr), peer_port, peer_ip, peer_addr);
                       }
                     else if (peer_port == DHCP_SERVER_PORT)
                       {
                         saved_peer_ip = peer_ip;
+                        memcpy(saved_peer_addr, peer_addr, sizeof(saved_peer_addr));
                         if (!(dhcp_off_cnt && dhcp_ack_cnt))
                           dhcp_input((dhcp_t *)(udp_hdr->body), mac_addr.addr, &dhcp_off_cnt, &dhcp_ack_cnt);
                       }
@@ -372,7 +388,7 @@ void recog_packet(int proto_type, uint32_t *alloc32, int xlength)
 #else
                         //        print_uart_short(dport);
 #endif
-                        //        udp_send(mac_addr.addr, (void *)(udp_hdr->body), ulen, PORT, peer_port, srcaddr, peer_ip, peer_addr);
+                        //        udp_send(mac_addr.addr, (void *)(udp_hdr->body), ulen, TFTP_PORT, peer_port, srcaddr, peer_ip, peer_addr);
                       }
                   }
                   break;
@@ -470,10 +486,19 @@ void recog_packet(int proto_type, uint32_t *alloc32, int xlength)
           }
 }
 
-int mysend(int sock, void *buf, int ulen) {
+int tftp_send(int sock, void *buf, int ulen) {
   uint32_t srcaddr;
   memcpy(&srcaddr, &uip_hostaddr, 4);
-  udp_send(mac_addr.addr, buf, ulen, PORT, saved_peer_port, srcaddr, saved_peer_ip, saved_peer_addr);
+  udp_send(mac_addr.addr, buf, ulen, TFTP_PORT, saved_peer_port, srcaddr, saved_peer_ip, saved_peer_addr);
+  return ulen;
+}
+
+int ntp_send(int sock, void *buf, int ulen) {
+  uint32_t srcaddr, dstaddr;
+  printf("ntp_send, len = %d, server=%d.%d.%d.%d\n", ulen, uip_ipaddr_to_quad(&uip_ntp_addr));
+  memcpy(&srcaddr, &uip_hostaddr, 4);
+  memcpy(&dstaddr, &uip_ntp_addr, 4);
+  udp_send(mac_addr.addr, buf, ulen, NTP_PORT, NTP_PORT, srcaddr, dstaddr, saved_peer_addr);
   return ulen;
 }
 
@@ -575,8 +600,14 @@ void eth_main(void) {
           }
         else if (dhcp_ack_cnt)
           {
-            tftps_tick(0);
-            cnt = 10000;       
+            if (tftps_tick(0))
+	      cnt = 10000;
+	    else
+	      {
+		ntp_snd(0);
+		cnt = 50000000;
+	      }
+            
           }
       }
 #ifndef INTERRUPT_MODE

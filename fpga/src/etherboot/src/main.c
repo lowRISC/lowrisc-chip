@@ -52,6 +52,24 @@ uint64_t qspi_send(uint8_t len, uint8_t quad, uint16_t data_in_count, uint16_t d
   return swp[4];
 }
 
+void rtc_write(uint64_t secs, uint32_t usecs)
+{
+  volatile uint64_t *swp = (volatile uint64_t *)GPIOBase;
+  swp[7] = (secs << 26) | (usecs & ((1 << 26) - 1));
+}
+
+uint64_t rtc_secs(void)
+{
+  volatile uint64_t *swp = (volatile uint64_t *)GPIOBase;
+  return swp[7] >> 26;
+}
+
+uint32_t rtc_usecs(void)
+{
+  volatile uint64_t *swp = (volatile uint64_t *)GPIOBase;
+  return swp[7] & ((1 << 26) - 1);
+}
+
 uint8_t *const qspi_base = (void *)0x84000000;
 uint32_t qspi_len;
 

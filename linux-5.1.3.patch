@@ -1,8 +1,8 @@
 diff --git a/arch/riscv/configs/defconfig b/arch/riscv/configs/defconfig
-index 2fd3461e5..e19334be8 100644
+index 2fd3461..0475746 100644
 --- a/arch/riscv/configs/defconfig
 +++ b/arch/riscv/configs/defconfig
-@@ -1,83 +1,1726 @@
+@@ -1,83 +1,1786 @@
 +#
 +# Automatically generated file; DO NOT EDIT.
 +# Linux/riscv 5.1.3 Kernel Configuration
@@ -1070,7 +1070,67 @@ index 2fd3461e5..e19334be8 100644
 +# CONFIG_NEW_LEDS is not set
 +# CONFIG_ACCESSIBILITY is not set
 +# CONFIG_INFINIBAND is not set
-+# CONFIG_RTC_CLASS is not set
++CONFIG_RTC_LIB=y
++CONFIG_RTC_CLASS=y
++CONFIG_RTC_HCTOSYS=y
++CONFIG_RTC_HCTOSYS_DEVICE="rtc0"
++CONFIG_RTC_SYSTOHC=y
++CONFIG_RTC_SYSTOHC_DEVICE="rtc0"
++CONFIG_RTC_DEBUG=y
++CONFIG_RTC_NVMEM=y
++
++#
++# RTC interfaces
++#
++CONFIG_RTC_INTF_SYSFS=y
++CONFIG_RTC_INTF_PROC=y
++CONFIG_RTC_INTF_DEV=y
++# CONFIG_RTC_INTF_DEV_UIE_EMUL is not set
++CONFIG_RTC_DRV_TEST=n
++
++#
++# I2C RTC drivers
++#
++
++#
++# SPI RTC drivers
++#
++
++#
++# SPI and I2C RTC drivers
++#
++
++#
++# Platform RTC drivers
++#
++# CONFIG_RTC_DRV_DS1286 is not set
++# CONFIG_RTC_DRV_DS1511 is not set
++# CONFIG_RTC_DRV_DS1553 is not set
++# CONFIG_RTC_DRV_DS1685_FAMILY is not set
++# CONFIG_RTC_DRV_DS1742 is not set
++# CONFIG_RTC_DRV_DS2404 is not set
++# CONFIG_RTC_DRV_STK17TA8 is not set
++# CONFIG_RTC_DRV_M48T86 is not set
++# CONFIG_RTC_DRV_M48T35 is not set
++# CONFIG_RTC_DRV_M48T59 is not set
++# CONFIG_RTC_DRV_MSM6242 is not set
++# CONFIG_RTC_DRV_BQ4802 is not set
++# CONFIG_RTC_DRV_RP5C01 is not set
++# CONFIG_RTC_DRV_V3020 is not set
++# CONFIG_RTC_DRV_ZYNQMP is not set
++
++#
++# on-CPU RTC drivers
++#
++# CONFIG_RTC_DRV_CADENCE is not set
++# CONFIG_RTC_DRV_FTRTC010 is not set
++CONFIG_RTC_DRV_LOWRISC=y
++# CONFIG_RTC_DRV_SNVS is not set
++# CONFIG_RTC_DRV_R7301 is not set
++
++#
++# HID Sensor RTC drivers
++#
 +# CONFIG_DMADEVICES is not set
 +
 +#
@@ -1775,7 +1835,7 @@ index 2fd3461e5..e19334be8 100644
 +# CONFIG_UBSAN is not set
 +CONFIG_UBSAN_ALIGNMENT=y
 diff --git a/drivers/block/Kconfig b/drivers/block/Kconfig
-index 20bb4bfa4..a37da8bed 100644
+index 20bb4bf..a37da8b 100644
 --- a/drivers/block/Kconfig
 +++ b/drivers/block/Kconfig
 @@ -394,6 +394,12 @@ config XILINX_SYSACE
@@ -1792,7 +1852,7 @@ index 20bb4bfa4..a37da8bed 100644
  	tristate "Xen virtual block device support"
  	depends on XEN
 diff --git a/drivers/block/Makefile b/drivers/block/Makefile
-index a53cc1e3a..d003fc465 100644
+index a53cc1e..d003fc4 100644
 --- a/drivers/block/Makefile
 +++ b/drivers/block/Makefile
 @@ -17,6 +17,7 @@ obj-$(CONFIG_AMIGA_Z2RAM)	+= z2ram.o
@@ -1805,7 +1865,7 @@ index a53cc1e3a..d003fc465 100644
  obj-$(CONFIG_BLK_DEV_SKD)	+= skd.o
 diff --git a/drivers/block/lowrisc_pitonsd.c b/drivers/block/lowrisc_pitonsd.c
 new file mode 100644
-index 000000000..ab2f69d65
+index 0000000..c9872fe
 --- /dev/null
 +++ b/drivers/block/lowrisc_pitonsd.c
 @@ -0,0 +1,991 @@
@@ -2802,7 +2862,7 @@ index 000000000..ab2f69d65
 +module_exit(pitonsd_exit);
 diff --git a/drivers/block/lowrisc_pitonsd.h b/drivers/block/lowrisc_pitonsd.h
 new file mode 100644
-index 000000000..57e2c3473
+index 0000000..57e2c34
 --- /dev/null
 +++ b/drivers/block/lowrisc_pitonsd.h
 @@ -0,0 +1,54 @@
@@ -2861,7 +2921,7 @@ index 000000000..57e2c3473
 +
 +enum { _piton_sd_NUM_MINORS = 16 };
 diff --git a/drivers/input/keyboard/Kconfig b/drivers/input/keyboard/Kconfig
-index 52d7f55fc..5f9ce385c 100644
+index 52d7f55..5f9ce38 100644
 --- a/drivers/input/keyboard/Kconfig
 +++ b/drivers/input/keyboard/Kconfig
 @@ -757,3 +757,19 @@ config KEYBOARD_MTK_PMIC
@@ -2885,7 +2945,7 @@ index 52d7f55fc..5f9ce385c 100644
 +	  Say Y here if you want to use a serial device as a fake keyboard input device.
 +	  If unsure, say N.
 diff --git a/drivers/input/keyboard/Makefile b/drivers/input/keyboard/Makefile
-index 182e92985..f04c3d65a 100644
+index 182e929..f04c3d6 100644
 --- a/drivers/input/keyboard/Makefile
 +++ b/drivers/input/keyboard/Makefile
 @@ -67,3 +67,5 @@ obj-$(CONFIG_KEYBOARD_TM2_TOUCHKEY)	+= tm2-touchkey.o
@@ -2896,7 +2956,7 @@ index 182e92985..f04c3d65a 100644
 +obj-$(CONFIG_KEYBOARD_LOWRISC_FAKE)	+= lowrisc-fake-keys.o
 diff --git a/drivers/input/keyboard/lowrisc-fake-keys.c b/drivers/input/keyboard/lowrisc-fake-keys.c
 new file mode 100644
-index 000000000..11ef08ca9
+index 0000000..11ef08c
 --- /dev/null
 +++ b/drivers/input/keyboard/lowrisc-fake-keys.c
 @@ -0,0 +1,273 @@
@@ -3175,7 +3235,7 @@ index 000000000..11ef08ca9
 +MODULE_DESCRIPTION("Dummy Keyboard input events for Lowrisc");
 diff --git a/drivers/input/keyboard/lowrisc-kbd.c b/drivers/input/keyboard/lowrisc-kbd.c
 new file mode 100644
-index 000000000..6a473b3c5
+index 0000000..6a473b3
 --- /dev/null
 +++ b/drivers/input/keyboard/lowrisc-kbd.c
 @@ -0,0 +1,168 @@
@@ -3349,7 +3409,7 @@ index 000000000..6a473b3c5
 +MODULE_DESCRIPTION("Keyboard driver for Lowrisc Keyboard Lowrisc_controller");
 diff --git a/drivers/input/keyboard/lowrisc-scancode.h b/drivers/input/keyboard/lowrisc-scancode.h
 new file mode 100644
-index 000000000..871184347
+index 0000000..8711843
 --- /dev/null
 +++ b/drivers/input/keyboard/lowrisc-scancode.h
 @@ -0,0 +1,282 @@
@@ -3636,7 +3696,7 @@ index 000000000..871184347
 +[254] = {0xfe,0x00,0x00},
 +[255] = {0xff,0x00,0x00},
 diff --git a/drivers/input/mouse/Kconfig b/drivers/input/mouse/Kconfig
-index 566a1e3aa..571c7bf49 100644
+index 566a1e3..571c7bf 100644
 --- a/drivers/input/mouse/Kconfig
 +++ b/drivers/input/mouse/Kconfig
 @@ -393,6 +393,15 @@ config MOUSE_GPIO
@@ -3656,7 +3716,7 @@ index 566a1e3aa..571c7bf49 100644
  	tristate "PXA930 Trackball mouse"
  	depends on CPU_PXA930 || CPU_PXA935
 diff --git a/drivers/input/mouse/Makefile b/drivers/input/mouse/Makefile
-index e49f08565..e21170928 100644
+index e49f085..e211709 100644
 --- a/drivers/input/mouse/Makefile
 +++ b/drivers/input/mouse/Makefile
 @@ -14,6 +14,7 @@ obj-$(CONFIG_MOUSE_ELAN_I2C)		+= elan_i2c.o
@@ -3669,7 +3729,7 @@ index e49f08565..e21170928 100644
  obj-$(CONFIG_MOUSE_PC110PAD)		+= pc110pad.o
 diff --git a/drivers/input/mouse/lowrisc_mouse.c b/drivers/input/mouse/lowrisc_mouse.c
 new file mode 100644
-index 000000000..ad0d2e3fa
+index 0000000..ad0d2e3
 --- /dev/null
 +++ b/drivers/input/mouse/lowrisc_mouse.c
 @@ -0,0 +1,192 @@
@@ -3866,7 +3926,7 @@ index 000000000..ad0d2e3fa
 +MODULE_LICENSE("GPL");
 +MODULE_ALIAS("platform:lowrisc_mouse"); /* work with hotplug and coldplug */
 diff --git a/drivers/mmc/host/Kconfig b/drivers/mmc/host/Kconfig
-index 28fcd8f58..fbff935af 100644
+index 28fcd8f..fbff935 100644
 --- a/drivers/mmc/host/Kconfig
 +++ b/drivers/mmc/host/Kconfig
 @@ -938,6 +938,12 @@ config MMC_BCM2835
@@ -3883,7 +3943,7 @@ index 28fcd8f58..fbff935af 100644
  	tristate "MediaTek SD/MMC Card Interface support"
  	depends on HAS_DMA
 diff --git a/drivers/mmc/host/Makefile b/drivers/mmc/host/Makefile
-index 73578718f..2656d1a40 100644
+index 7357871..2656d1a 100644
 --- a/drivers/mmc/host/Makefile
 +++ b/drivers/mmc/host/Makefile
 @@ -73,6 +73,7 @@ obj-$(CONFIG_MMC_SUNXI)		+= sunxi-mmc.o
@@ -3896,7 +3956,7 @@ index 73578718f..2656d1a40 100644
  obj-$(CONFIG_MMC_REALTEK_USB)	+= rtsx_usb_sdmmc.o
 diff --git a/drivers/mmc/host/lowrisc_sd.c b/drivers/mmc/host/lowrisc_sd.c
 new file mode 100644
-index 000000000..d2570eb8a
+index 0000000..d2570eb
 --- /dev/null
 +++ b/drivers/mmc/host/lowrisc_sd.c
 @@ -0,0 +1,803 @@
@@ -4705,7 +4765,7 @@ index 000000000..d2570eb8a
 +MODULE_LICENSE("GPL");
 diff --git a/drivers/mmc/host/lowrisc_sd.h b/drivers/mmc/host/lowrisc_sd.h
 new file mode 100644
-index 000000000..8aa18fa0e
+index 0000000..8aa18fa
 --- /dev/null
 +++ b/drivers/mmc/host/lowrisc_sd.h
 @@ -0,0 +1,52 @@
@@ -4762,7 +4822,7 @@ index 000000000..8aa18fa0e
 +  int int_en, width_setting;
 +};
 diff --git a/drivers/net/ethernet/Kconfig b/drivers/net/ethernet/Kconfig
-index 885e00d17..5d18ddf22 100644
+index 885e00d..5d18ddf 100644
 --- a/drivers/net/ethernet/Kconfig
 +++ b/drivers/net/ethernet/Kconfig
 @@ -115,6 +115,7 @@ config LANTIQ_XRX200
@@ -4774,7 +4834,7 @@ index 885e00d17..5d18ddf22 100644
  source "drivers/net/ethernet/mediatek/Kconfig"
  source "drivers/net/ethernet/mellanox/Kconfig"
 diff --git a/drivers/net/ethernet/Makefile b/drivers/net/ethernet/Makefile
-index 7b5bf9682..06beeb577 100644
+index 7b5bf96..06beeb5 100644
 --- a/drivers/net/ethernet/Makefile
 +++ b/drivers/net/ethernet/Makefile
 @@ -50,6 +50,7 @@ obj-$(CONFIG_JME) += jme.o
@@ -4787,7 +4847,7 @@ index 7b5bf9682..06beeb577 100644
  obj-$(CONFIG_NET_VENDOR_MELLANOX) += mellanox/
 diff --git a/drivers/net/ethernet/lowrisc/Kconfig b/drivers/net/ethernet/lowrisc/Kconfig
 new file mode 100644
-index 000000000..cccdadc16
+index 0000000..cccdadc
 --- /dev/null
 +++ b/drivers/net/ethernet/lowrisc/Kconfig
 @@ -0,0 +1,26 @@
@@ -4819,7 +4879,7 @@ index 000000000..cccdadc16
 +endif # NET_VENDOR_LOWRISC
 diff --git a/drivers/net/ethernet/lowrisc/Makefile b/drivers/net/ethernet/lowrisc/Makefile
 new file mode 100644
-index 000000000..4eb3adee1
+index 0000000..4eb3ade
 --- /dev/null
 +++ b/drivers/net/ethernet/lowrisc/Makefile
 @@ -0,0 +1,6 @@
@@ -4831,7 +4891,7 @@ index 000000000..4eb3adee1
 +CFLAGS_lowrisc_100MHz.o := -DDEBUG
 diff --git a/drivers/net/ethernet/lowrisc/lowrisc_100MHz.c b/drivers/net/ethernet/lowrisc/lowrisc_100MHz.c
 new file mode 100644
-index 000000000..430665bc3
+index 0000000..430665b
 --- /dev/null
 +++ b/drivers/net/ethernet/lowrisc/lowrisc_100MHz.c
 @@ -0,0 +1,841 @@
@@ -5678,7 +5738,7 @@ index 000000000..430665bc3
 +MODULE_LICENSE("GPL");
 diff --git a/drivers/net/ethernet/lowrisc/lowrisc_100MHz.h b/drivers/net/ethernet/lowrisc/lowrisc_100MHz.h
 new file mode 100644
-index 000000000..9d227c10d
+index 0000000..9d227c1
 --- /dev/null
 +++ b/drivers/net/ethernet/lowrisc/lowrisc_100MHz.h
 @@ -0,0 +1,55 @@
@@ -5737,9 +5797,171 @@ index 000000000..9d227c10d
 +#define HEADER_IP_LENGTH_OFFSET     16      /* IP Length Offset */
 +
 +#endif
+diff --git a/drivers/rtc/Kconfig b/drivers/rtc/Kconfig
+index f933c06..f886e84 100644
+--- a/drivers/rtc/Kconfig
++++ b/drivers/rtc/Kconfig
+@@ -1695,6 +1695,12 @@ config RTC_DRV_LOONGSON1
+ 	  This driver can also be built as a module. If so, the module
+ 	  will be called rtc-ls1x.
+ 
++config RTC_DRV_LOWRISC
++	tristate "LowRISC Real Time Clock"
++	depends on RISCV
++	help
++	  Say yes to enable RTC driver for the LowRISC based FPGA platform.
++
+ config RTC_DRV_MXC
+ 	tristate "Freescale MXC Real Time Clock"
+ 	depends on ARCH_MXC
+diff --git a/drivers/rtc/Makefile b/drivers/rtc/Makefile
+index fe39624..607a158 100644
+--- a/drivers/rtc/Makefile
++++ b/drivers/rtc/Makefile
+@@ -83,6 +83,7 @@ obj-$(CONFIG_RTC_DRV_ISL12026)	+= rtc-isl12026.o
+ obj-$(CONFIG_RTC_DRV_ISL1208)	+= rtc-isl1208.o
+ obj-$(CONFIG_RTC_DRV_JZ4740)	+= rtc-jz4740.o
+ obj-$(CONFIG_RTC_DRV_LOONGSON1)	+= rtc-ls1x.o
++obj-$(CONFIG_RTC_DRV_LOWRISC)	+= rtc-lowrisc.o
+ obj-$(CONFIG_RTC_DRV_LP8788)	+= rtc-lp8788.o
+ obj-$(CONFIG_RTC_DRV_LPC24XX)	+= rtc-lpc24xx.o
+ obj-$(CONFIG_RTC_DRV_LPC32XX)	+= rtc-lpc32xx.o
+diff --git a/drivers/rtc/rtc-lowrisc.c b/drivers/rtc/rtc-lowrisc.c
+new file mode 100644
+index 0000000..34d55ef
+--- /dev/null
++++ b/drivers/rtc/rtc-lowrisc.c
+@@ -0,0 +1,127 @@
++/*
++ * LowRISC RTC interface driver.
++ *
++ * Based on rtc-au1xxx.c
++ * Copyright (C) 2008 Manuel Lauss <mano@roarinelk.homelinux.net>
++ *
++ * This file is subject to the terms and conditions of the GNU General Public
++ * License.  See the file "COPYING" in the main directory of this archive
++ * for more details.
++ */
++
++#include <linux/module.h>
++#include <linux/kernel.h>
++#include <linux/rtc.h>
++#include <linux/init.h>
++#include <linux/platform_device.h>
++#include <linux/of_device.h>
++#include <linux/io.h>
++
++struct lowrisc_rtc_device {
++  struct rtc_device *rtcdev;
++  struct device *dev;
++  resource_size_t physaddr, physaddrend;
++  uint64_t *iobase;
++  int irq;
++};
++
++static int lowrisc_rtc_read_time(struct device *dev, struct rtc_time *tm)
++{
++	struct lowrisc_rtc_device *rtc = dev_get_drvdata(dev);
++	uint64_t t = rtc->iobase[7] >> 26;
++	printk("lowrisc_rtc_read_time returned %llX\n", t);
++	rtc_time_to_tm(t, tm);
++
++	return 0;
++}
++
++static int lowrisc_rtc_set_time(struct device *dev, struct rtc_time *tm)
++{
++	struct lowrisc_rtc_device *rtc = dev_get_drvdata(dev);
++	long unsigned int t;
++	uint64_t traw;
++	rtc_tm_to_time(tm, &t);
++	traw = t << 26;
++	printk("lowrisc_rtc_set_time to %llX\n", traw);
++	rtc->iobase[7] = traw;
++
++	return 0;
++}
++
++static const struct rtc_class_ops lowrisc_rtc_ops = {
++	.read_time	= lowrisc_rtc_read_time,
++	.set_time	= lowrisc_rtc_set_time,
++};
++
++static int lowrisc_rtc_probe(struct platform_device *pdev)
++{
++	resource_size_t physaddr = 0;
++	resource_size_t physaddrend = 0;
++	int ret = -ETIMEDOUT;
++	int i, irq = 0;
++	struct lowrisc_rtc_device *rtc = kzalloc(sizeof(struct lowrisc_rtc_device), GFP_KERNEL);
++	
++	printk("lowrisc_rtc_probe(%llx)\n", (u64)pdev);
++
++	for (i = 0; i < pdev->num_resources; i++) {
++		if (pdev->resource[i].flags & IORESOURCE_MEM)
++                  {
++                    physaddr = pdev->resource[i].start;
++                    physaddrend = pdev->resource[i].end;
++                  }
++		if (pdev->resource[i].flags & IORESOURCE_IRQ)
++			irq = pdev->resource[i].start;
++	}
++
++	rtc->dev = &pdev->dev;
++	rtc->physaddr = physaddr;
++	rtc->physaddrend = physaddrend;
++	rtc->iobase = ioremap(rtc->physaddr, rtc->physaddrend - rtc->physaddr);
++	rtc->irq = irq;
++	printk("physaddr=0x%llx, vstart=%llx, vsiz=%llx, irq=%i\n",
++		(unsigned long long)rtc->physaddr,
++		(unsigned long long)rtc->iobase,
++                (unsigned long long)(rtc->physaddrend - rtc->physaddr),
++                rtc->irq);
++	platform_set_drvdata(pdev, rtc);
++	rtc->rtcdev = devm_rtc_device_register(&pdev->dev, "rtc-lowrisc",
++				     &lowrisc_rtc_ops, THIS_MODULE);
++	if (IS_ERR(rtc->rtcdev)) {
++		ret = PTR_ERR(rtc->rtcdev);
++		goto out_err;
++	}	
++
++	return 0;
++
++out_err:
++	return ret;
++}
++
++/* Match table for of_platform binding */
++static const struct of_device_id lowrisc_of_match[] = {
++	{ .compatible = "lowrisc-rtc" },
++	{},
++};
++MODULE_DEVICE_TABLE(of, lowrisc_of_match);
++
++static struct platform_driver lowrisc_driver = {
++        .probe          = lowrisc_rtc_probe,
++	.driver		= {
++                           .name = "lowrisc-rtc",
++			   .of_match_table = lowrisc_of_match,
++	},
++};
++
++static int __init pitonsd_init(void)
++{
++  int rc = platform_driver_register(&lowrisc_driver);
++  if (!rc) pr_info("LowRISC-rtc device driver\n");
++  return rc;
++}
++
++module_init(pitonsd_init);
++
++MODULE_DESCRIPTION("LowRISC counter-based RTC driver");
++MODULE_AUTHOR("Jonathan Kimmitt <jrrk2@cam.ac.uk>");
++MODULE_LICENSE("GPL");
++MODULE_ALIAS("platform:rtc-lowrisc");
 diff --git a/drivers/video/console/lowrisc-con.c b/drivers/video/console/lowrisc-con.c
 new file mode 100644
-index 000000000..c3c782f24
+index 0000000..c3c782f
 --- /dev/null
 +++ b/drivers/video/console/lowrisc-con.c
 @@ -0,0 +1,303 @@
@@ -6047,7 +6269,7 @@ index 000000000..c3c782f24
 +MODULE_DESCRIPTION("Lowrisc VGA-compatible console driver");
 +MODULE_LICENSE("GPL");
 diff --git a/drivers/video/fbdev/Kconfig b/drivers/video/fbdev/Kconfig
-index 58a9590c9..9172875c7 100644
+index 58a9590..9172875 100644
 --- a/drivers/video/fbdev/Kconfig
 +++ b/drivers/video/fbdev/Kconfig
 @@ -2272,6 +2272,12 @@ config FB_SIMPLE
@@ -6064,7 +6286,7 @@ index 58a9590c9..9172875c7 100644
  	tristate "Solomon SSD1307 framebuffer support"
  	depends on FB && I2C
 diff --git a/drivers/video/fbdev/Makefile b/drivers/video/fbdev/Makefile
-index 846b0c9ea..2f2173db5 100644
+index 846b0c9..2f2173d 100644
 --- a/drivers/video/fbdev/Makefile
 +++ b/drivers/video/fbdev/Makefile
 @@ -136,6 +136,7 @@ obj-$(CONFIG_FB_DA8XX)		  += da8xx-fb.o
@@ -6077,7 +6299,7 @@ index 846b0c9ea..2f2173db5 100644
  obj-$(CONFIG_FB_VIRTUAL)          += vfb.o
 diff --git a/drivers/video/fbdev/lowrisc_fb.c b/drivers/video/fbdev/lowrisc_fb.c
 new file mode 100644
-index 000000000..f0f21592d
+index 0000000..f0f2159
 --- /dev/null
 +++ b/drivers/video/fbdev/lowrisc_fb.c
 @@ -0,0 +1,738 @@
@@ -6821,7 +7043,7 @@ index 000000000..f0f21592d
 +MODULE_LICENSE("GPL");
 diff --git a/drivers/video/fbdev/lowrisc_logo.h b/drivers/video/fbdev/lowrisc_logo.h
 new file mode 100644
-index 000000000..a99a1bf2f
+index 0000000..a99a1bf
 --- /dev/null
 +++ b/drivers/video/fbdev/lowrisc_logo.h
 @@ -0,0 +1,660 @@
@@ -7487,7 +7709,7 @@ index 000000000..a99a1bf2f
 +0x83, 0x05, 0x98, 0x00, 0x8A, 0x05, 0x01, 0x00,
 diff --git a/drivers/video/fbdev/lowrisc_mini_font.h b/drivers/video/fbdev/lowrisc_mini_font.h
 new file mode 100644
-index 000000000..fff234be7
+index 0000000..fff234b
 --- /dev/null
 +++ b/drivers/video/fbdev/lowrisc_mini_font.h
 @@ -0,0 +1,190 @@
@@ -7683,7 +7905,7 @@ index 000000000..fff234be7
 +0x40,0xA4,0x18,0x00,0x00,0x00,0x00,0x00,
 diff --git a/drivers/video/fbdev/lowrisc_palette.h b/drivers/video/fbdev/lowrisc_palette.h
 new file mode 100644
-index 000000000..59b0a9a71
+index 0000000..59b0a9a
 --- /dev/null
 +++ b/drivers/video/fbdev/lowrisc_palette.h
 @@ -0,0 +1,256 @@

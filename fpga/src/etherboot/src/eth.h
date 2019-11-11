@@ -331,17 +331,20 @@ void loopback_test(int loops, int sim);
 void process_ip_packet(const u_char *, int);
 void print_ip_packet(const u_char * , int);
 void print_tcp_packet(const u_char * , int);
-void process_udp_packet(int sock, const u_char *, int, uint16_t, uint32_t, const u_char *);
+void process_tftp_packet(int sock, const u_char *, int, uint16_t, uint32_t, const u_char *);
+void process_ntp_packet(int sock, const u_char *, int, uint16_t, uint32_t, const u_char *);
 void PrintData (const u_char * , int);
 unsigned short csum(uint8_t *buf, int nbytes);
 void lite_queue(int sock, const void *buf, int length);
 void eth_interrupt(void);
 void recog_packet(int proto_type, uint32_t *alloc32, int xlength);
 void *mysbrk(size_t len);
-int mysend(int sock, void *buf, int ulen);
-void tftps_tick(int sock);
+int tftp_send(int sock, void *buf, int ulen);
+int ntp_send(int sock, void *buf, int ulen);
+int tftps_tick(int sock);
 void ethboot(void);
 void set_dummy_mac(void);
+void ntp_snd(int sockfd);
 
 static inline void eth_write(size_t addr, uint64_t data)
 {

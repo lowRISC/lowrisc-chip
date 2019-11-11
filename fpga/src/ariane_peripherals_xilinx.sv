@@ -521,6 +521,8 @@ axi2mem #(
        logic [31:0]        data_from_host;
        wire                spi_busy, spi_error;
        wire [63:0]         spi_readout;
+       reg  [63:26]        rtc_hi;
+       reg  [25:0]         rtc_lo;
 
 `ifdef HWRNG
        
@@ -570,15 +572,21 @@ axi2mem #(
                 begin
                    gpio_rdata = {spi_busy, spi_error};
                 end
-              default:
+              3'b111:
                 begin
-                   gpio_rdata = 32'hDEADBEEF;
+                   gpio_rdata = {rtc_hi,rtc_lo};
                 end
             endcase // case (gpio_addr[5:3])
          end
 
        always @(posedge clk_i)
          begin
+	    rtc_lo <= rtc_lo+1;
+	    if (rtc_lo == (50000000-1))
+	      begin
+		 rtc_lo <= 0;
+		 rtc_hi <= rtc_hi+1;
+	      end
             spi_wr <= 0;
             rdfifo <= 0;
             gpio_addr_prev <= gpio_addr;
@@ -597,6 +605,10 @@ axi2mem #(
                      data_from_host <= gpio_wrdata;
                      spi_wr <= 1;
                   end
+		3'b111:
+		  begin
+		     {rtc_hi,rtc_lo} <= gpio_wrdata;
+		  end
                 default:;
               endcase // case (gpio_addr[5:3])
          end
