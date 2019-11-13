@@ -90,9 +90,11 @@ module ariane_peripherals_xilinx #(
   // keyboard
     inout wire         PS2_CLK     ,
     inout wire         PS2_DATA    ,
-  // mouse
-    inout wire         PS2_MCLK    ,
-    inout wire         PS2_MDATA   ,
+  // Bluetooth mouse module
+    output wire        bt_rx,
+    output wire        bt_cts,
+    input wire         bt_rts,
+    input wire         bt_tx,
   // display
     output wire        VGA_HS_O    ,
     output wire        VGA_VS_O    ,
@@ -662,9 +664,12 @@ hid_soc #(.graphmax(graphmax)) hid1
  // keyboard
  .PS2_CLK,
  .PS2_DATA,
- // mouse
- .PS2_MCLK,
- .PS2_MDATA,
+ // Bluetooth mouse module
+ .uart_tx  ( bt_rx ),
+ .uart_cts ( bt_cts ),
+ .uart_rts ( bt_rts ),
+ .uart_irq ( irq_sources[3] ),
+ .uart_rx  ( bt_tx ),
 `ifdef NEXYS4DDR
  .CA,
  .CB,

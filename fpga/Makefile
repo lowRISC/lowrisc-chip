@@ -16,6 +16,7 @@ ips := xlnx_axi_clock_converter.xci  \
        xlnx_axi_gpio.xci             \
        xlnx_clk_$(BOARD).xci         \
        xlnx_clk_sd.xci               \
+       xlnx_char_fifo.xci            \
        xlnx_ila_4.xci                \
        xlnx_ila_qspi.xci             \
        xlnx_ila_perf.xci             \

@@ -10,7 +10,7 @@ typedef enum {
         SDBase       = 0x42000000,
         EthernetBase = 0x43000000,
         GPIOBase     = 0x44000000,
-        MouseBase    = 0x45028000,
+        BTBase       = 0x45028000,
         KeybBase     = 0x45030000,
         VgaBase      = 0x45038000,
         FbBase       = 0x45080000,
@@ -31,6 +31,7 @@ enum {
 
 void eth_main(void);
 void sd_main(int sw);
+void bt_main(int sw);
 void dram_main(int sw);
 void cache_main(void);
 void keyb_main(void);

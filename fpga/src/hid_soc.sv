@@ -12,7 +12,8 @@
 `default_nettype none
 
 module hid_soc #(
-   parameter graphmax = 20
+   parameter graphmax = 20,
+   parameter UBAUD_DEFAULT=54
 )
 (
 `ifdef GENESYSII
@@ -35,14 +36,17 @@ module hid_soc #(
    output wire [7:0]  AN,
 `endif
   // keyboard
-    inout wire         PS2_CLK     ,
-    inout wire         PS2_DATA    ,
-  // mouse
-    inout wire         PS2_MCLK    ,
-    inout wire         PS2_MDATA   ,
+    inout wire         PS2_CLK,
+    inout wire         PS2_DATA,
+  // Bluetooth mouse module
+    output wire        uart_tx,
+    output wire        uart_irq,
+    output wire        uart_cts,
+    input wire         uart_rts,
+    input wire         uart_rx,
   // display
-    output wire        VGA_HS_O    ,
-    output wire        VGA_VS_O    ,
+    output wire        VGA_HS_O,
+    output wire        VGA_VS_O,
  // clock and reset
  input wire         pxl_clk,
  input wire         clk_i,
@@ -63,7 +67,7 @@ module hid_soc #(
  // signals from/to core
 logic [7:0] one_hot_data_addr, one_hot_data_addr_dly;
 logic [63:0] doutg, one_hot_rdata[7:0];
-logic haddr19;
+logic haddr13, haddr19;
 logic [7:0] rx_scan_code, rx_mouse_data;
    
     ps2 keyb_mouse(
@@ -83,150 +87,136 @@ logic [7:0] rx_scan_code, rx_mouse_data;
     begin
         keyb_scan_ready_dly <= keyb_scan_ready;
     end
-       
-FIFO18E1 #(
-      .ALMOST_EMPTY_OFFSET(13'h0080),    // Sets the almost empty threshold
-      .ALMOST_FULL_OFFSET(13'h0080),     // Sets almost full threshold
-      .DATA_WIDTH(9),                    // Sets data width to 4-36
-      .DO_REG(0),                        // Enable output register (1-0) Must be 1 if EN_SYN = FALSE
-      .EN_SYN("TRUE"),                   // Specifies FIFO as dual-clock (FALSE) or Synchronous (TRUE)
-      .FIFO_MODE("FIFO18"),              // Sets mode to FIFO18 or FIFO18_36
-      .FIRST_WORD_FALL_THROUGH("FALSE"), // Sets the FIFO FWFT to FALSE, TRUE
-      .INIT(36'h000000000),              // Initial values on output port
-      .SIM_DEVICE("7SERIES"),            // Must be set to "7SERIES" for simulation behavior
-      .SRVAL(36'h000000000)              // Set/Reset value for output port
-      )
-      FIFO18E1_inst_keyboard (
-                        // Read Data: 32-bit (each) output: Read output data
-                        .DO(keyb_fifo_out[7:0]),   // 32-bit output: Data output
-                        .DOP(keyb_fifo_out[8]),    // 4-bit output: Parity data output
-                        // Status: 1-bit (each) output: Flags and other FIFO status outputs
-                        .ALMOSTEMPTY(),            // 1-bit output: Almost empty flag
-                        .ALMOSTFULL(),             // 1-bit output: Almost full flag
-                        .EMPTY(keyb_empty),        // 1-bit output: Empty flag
-                        .FULL(),                   // 1-bit output: Full flag
-                        .RDCOUNT(),                // 12-bit output: Read count
-                        .RDERR(),                  // 1-bit output: Read error
-                        .WRCOUNT(),                // 12-bit output: Write count
-                        .WRERR(),                  // 1-bit output: Write error
-                        // Read Control Signals: 1-bit (each) input: Read clock, enable and reset input signals
-                        .RDCLK(~clk_i),         // 1-bit input: Read clock
-                        .RDEN(hid_en&(|hid_we)&one_hot_data_addr[6]&~hid_addr[14]), // 1-bit input: Read enable
-                        .REGCE(1'b1),              // 1-bit input: Clock enable
-                        .RST(~rst_ni),               // 1-bit input: Asynchronous Reset
-                        .RSTREG(1'b0),             // 1-bit input: Output register set/reset
-                        // Write Control Signals: 1-bit (each) input: Write clock and enable input signals
-                        .WRCLK(~clk_i),         // 1-bit input: Write clock
-                        .WREN(keyb_scan_ready & ~keyb_scan_ready_dly),               // 1-bit input: Write enable
-                        // Write Data: 32-bit (each) input: Write input data
-                        .DI(keyb_scan_code),                   // 32-bit input: Data input
-                        .DIP(keyb_scan_released)                  // 4-bit input: Parity input
-                        );
 
-// =======================================================================================
-// 							  	      Mouse Implementation
-// =======================================================================================
+xlnx_char_fifo fifo_keyboard (
+  .clk(~clk_i),      // input wire clk
+  .srst(~rst_ni),    // input wire srst
+  .din({keyb_scan_released,keyb_scan_code}),      // input wire [8 : 0] din
+  .wr_en(keyb_scan_ready & ~keyb_scan_ready_dly),  // input wire wr_en
+  .rd_en(hid_en&(|hid_we)&one_hot_data_addr[6]&~hid_addr[14]),  // input wire rd_en
+  .dout(keyb_fifo_out[8:0]),    // output wire [8 : 0] dout
+  .full(),    // output wire full
+  .empty(keyb_empty)  // output wire empty
+);
 
-wire [9:0]   X, Y;
-wire [3:0]   Z;
+// Bluetooth HID interface UART
 
-wire [8*7-1:0] digits;
-wire           left, middle, right, new_event, mouse_empty;
-logic [31:0] mouse_scan_code_dly, mouse_fifo_out;
-wire [31:0] mouse_scan_code = {left, middle, right, new_event, Z,2'b0,Y,2'b0,X};
-logic rst;
+   reg         u_trans, u_recv, uart_rx_full, uart_rx_empty, uart_tx_empty, uart_tx_full;   
+   reg [15:0]  u_baud;
+   wire        received, recv_err, is_recv, is_trans, uart_maj;
+   wire [11:0] uart_rx_wrcount, uart_rx_rdcount, uart_tx_wrcount, uart_tx_rdcount;
+   wire [8:0]  uart_rx_fifo_data_out, uart_tx_fifo_data_out;
+   reg [7:0]   u_rx_byte, u_tx_byte;
+
+   assign uart_irq = ~uart_rx_empty;
+   assign uart_cts = uart_rx_full;
    
-assign one_hot_rdata[5] = {mouse_empty,mouse_fifo_out};
+   assign one_hot_rdata[5] = haddr13 ?
+                               {4'b0,uart_tx_wrcount,
+                                4'b0,uart_tx_rdcount,
+                                4'b0,uart_rx_wrcount,
+                                4'b0,uart_rx_rdcount} : 
+                             {4'b0,uart_rx_full,uart_tx_full,uart_rx_empty,uart_rx_fifo_data_out};
 
+typedef enum {UTX_IDLE, UTX_EMPTY, UTX_INUSE, UTX_POP, UTX_START} utx_t;
+
+   utx_t utxstate_d, utxstate_q;
+   
 always @(posedge clk_i)
-     begin
-	mouse_scan_code_dly <= mouse_scan_code;
-        rst <= hid_en&(&hid_we)&one_hot_data_addr[5]&hid_addr[14];
-     end
+    if (~rst_ni)
+    begin
+    u_baud = UBAUD_DEFAULT;
+    u_recv = 0;
+    u_trans = 0;
+    u_tx_byte = 0;
+    utxstate_q = UTX_IDLE;
+    end
+  else
+    begin
+    u_recv = 0;
+    u_trans = 0;
+    utxstate_q = utxstate_d;
+    if (hid_en & (|hid_we) & one_hot_data_addr[5] & hid_addr[14])
+        casez (hid_addr[13:12])
+         2'b00: begin u_trans = 1; u_tx_byte = hid_wrdata[7:0]; end
+         2'b01: begin u_recv = 1; end
+         2'b10: begin u_baud = hid_wrdata; end
+         2'b11: begin end
+        endcase
+    end // else: !if(~rst_ni)
 
-FIFO18E1 #(
-      .ALMOST_EMPTY_OFFSET(13'h0080),    // Sets the almost empty threshold
-      .ALMOST_FULL_OFFSET(13'h0080),     // Sets almost full threshold
-      .DATA_WIDTH(36),                   // Sets data width to 4-36
-      .DO_REG(0),                        // Enable output register (1-0) Must be 1 if EN_SYN = FALSE
-      .EN_SYN("TRUE"),                   // Specifies FIFO as dual-clock (FALSE) or Synchronous (TRUE)
-      .FIFO_MODE("FIFO18_36"),           // Sets mode to FIFO18 or FIFO18_36
-      .FIRST_WORD_FALL_THROUGH("FALSE"), // Sets the FIFO FWFT to FALSE, TRUE
-      .INIT(36'h000000000),              // Initial values on output port
-      .SIM_DEVICE("7SERIES"),            // Must be set to "7SERIES" for simulation behavior
-      .SRVAL(36'h000000000)              // Set/Reset value for output port
-      )
-      FIFO18E1_inst_mouse (
-                        // Read Data: 32-bit (each) output: Read output data
-                        .DO(mouse_fifo_out),       // 32-bit output: Data output
-                        .DOP(),                    // 4-bit output: Parity data output
-                        // Status: 1-bit (each) output: Flags and other FIFO status outputs
-                        .ALMOSTEMPTY(),            // 1-bit output: Almost empty flag
-                        .ALMOSTFULL(),             // 1-bit output: Almost full flag
-                        .EMPTY(mouse_empty),       // 1-bit output: Empty flag
-                        .FULL(),                   // 1-bit output: Full flag
-                        .RDCOUNT(),                // 12-bit output: Read count
-                        .RDERR(),                  // 1-bit output: Read error
-                        .WRCOUNT(),                // 12-bit output: Write count
-                        .WRERR(),                  // 1-bit output: Write error
-                        // Read Control Signals: 1-bit (each) input: Read clock, enable and reset input signals
-                        .RDCLK(~clk_i),         // 1-bit input: Read clock
-                        .RDEN(hid_en&(|hid_we)&one_hot_data_addr[5]&~hid_addr[14]), // 1-bit input: Read enable
-                        .REGCE(1'b1),              // 1-bit input: Clock enable
-                        .RST(rst || ~rst_ni),               // 1-bit input: Asynchronous Reset
-                        .RSTREG(1'b0),             // 1-bit input: Output register set/reset
-                        // Write Control Signals: 1-bit (each) input: Write clock and enable input signals
-                        .WRCLK(~clk_i),         // 1-bit input: Write clock
-                        .WREN(new_event),               // 1-bit input: Write enable
-                        // Write Data: 32-bit (each) input: Write input data
-                        .DI(mouse_scan_code),                   // 32-bit input: Data input
-                        .DIP(1'b0)                  // 4-bit input: Parity input
-                        );
+always @*
+  begin
+     utxstate_d = utxstate_q;
+     casez(utxstate_q)
+       UTX_IDLE:
+         utxstate_d = UTX_EMPTY;
+       UTX_EMPTY:
+         if ((~uart_rts) && (~uart_tx_empty))
+           utxstate_d = UTX_POP;
+       UTX_INUSE:
+         if (~is_trans)
+           utxstate_d = UTX_IDLE;
+       UTX_POP:
+         utxstate_d = UTX_START;
+       UTX_START:
+         utxstate_d = UTX_INUSE;
+       default:;
+     endcase
+  end
+   
+//----------------------------------------------------------------------------//
+rx_delay uart_rx_dly(
+.clk(clk_i),
+.in(uart_rx),		     
+.maj(uart_maj));
+// Core Instantiation
+uart i_uart(
+    .clk(clk_i), // The master clock for this module
+    .rst(~rst_ni), // Synchronous reset.
+    .rx(uart_maj), // Incoming serial line
+    .tx(uart_tx), // Outgoing serial line
+    .transmit(utxstate_q==UTX_START), // Signal to transmit
+    .tx_byte(uart_tx_fifo_data_out[7:0]), // Byte to transmit
+    .received(received), // Indicated that a byte has been received.
+    .rx_byte(u_rx_byte), // Byte received
+    .is_receiving(is_recv), // Low when receive line is idle.
+    .is_transmitting(is_trans), // Low when transmit line is idle.
+    .recv_error(recv_err), // Indicates error in receiving packet.
+    .baud(u_baud),
+    .recv_ack(received)
+    );
 
-`ifdef NEXYS4DDR
-   for (genvar i = 0; i < 8; i = i + 1) begin
-      sevensegment
-                   u_seg(.in  (mouse_scan_code[(i+1)*4-1:i*4]),
-                         .out (digits[(i+1)*7-1:i*7]));
-   end
+ my_fifo #(.width(9)) uart_rx_fifo (
+       .clk(clk_i),      // input wire read clk
+       .rst(~rst_ni),      // input wire rst
+       .din({recv_err,u_rx_byte}),      // input wire [8 : 0] din
+       .wr_en(received),  // input wire wr_en
+       .rd_en(u_recv),  // input wire rd_en
+       .dout(uart_rx_fifo_data_out),    // output wire [8 : 0] dout
+       .rdcount(uart_rx_rdcount),         // 12-bit output: Read count
+       .wrcount(uart_rx_wrcount),         // 12-bit output: Write count
+       .full(uart_rx_full),    // output wire full
+       .empty(uart_rx_empty)  // output wire empty
+     );
 
-nexys4ddr_display
-  #(.FREQ(50000000))
-u_display(.clk       (clk_i),
-          .rst       (!rst_ni),
-          .digits    (digits),
-          .decpoints (8'b00000000),
-          .CA        (CA),
-          .CB        (CB),
-          .CC        (CC),
-          .CD        (CD),
-          .CE        (CE),
-          .CF        (CF),
-          .CG        (CG),
-          .DP        (DP),
-          .AN        (AN));
-`endif //  `ifdef NEXYS4DDR
-
-	//--------------------------------------
-	//			Mouse Reference Component
-	//--------------------------------------
-   MouseRefComp C0(
-				.CLK(clk_i),
-				.RESOLUTION(1'b0),
-				.SWITCH(1'b0),
-				.RST(rst || ~rst_ni),
-				.LEFT(left),
-				.MIDDLE(middle),
-				.NEW_EVENT(new_event),
-				.RIGHT(right),
-				.XPOS(X),
-				.YPOS(Y),
-				.ZPOS(Z),
-				.PS2_CLK(PS2_MCLK),
-				.PS2_DATA(PS2_MDATA)
-	);
-  
-    wire [7:0] red,  green, blue;
+ my_fifo #(.width(9)) uart_tx_fifo (
+       .clk(clk_i),      // input wire read clk
+       .rst(~rst_ni),      // input wire rst
+       .din({1'b0,u_tx_byte}),      // input wire [8 : 0] din
+       .wr_en(u_trans),  // input wire wr_en
+       .rd_en(utxstate_q==UTX_POP),  // input wire rd_en
+       .dout(uart_tx_fifo_data_out),    // output wire [8 : 0] dout
+       .rdcount(uart_tx_rdcount),         // 12-bit output: Read count
+       .wrcount(uart_tx_wrcount),         // 12-bit output: Write count
+       .full(uart_tx_full),    // output wire full
+       .empty(uart_tx_empty)  // output wire empty
+     );
+   
+//
+// Frame store
+//   
+    wire [7:0] red, green, blue;
  
     fstore2 #(.graphmax(graphmax)) the_fstore(
       .pxl_clk,
@@ -263,6 +253,7 @@ u_display(.clk       (clk_i),
    always @(posedge clk_i)
      begin
         haddr19 <= hid_addr[19];
+        haddr13 <= hid_addr[13];
 	one_hot_data_addr_dly <= one_hot_data_addr;
      end
    
