@@ -70,6 +70,7 @@ module fstore2 #(
    reg [7:0]                     red_in, green_in, blue_in;
 
    reg [31:0]                    red_green_blue_palette;
+   logic [7:0]                   doutpix8;
 
    palette_mem ram1(.clka(clk_i),
                     .dina(hid_wrdata[31:0]),
@@ -85,7 +86,6 @@ module fstore2 #(
                     .enb(1'b1));
    
    logic [63:0]                  fstore_rddata, doutfb[graphmax-1:0], doutpix[graphmax-1:0];
-   logic [7:0]                   doutpix8;
    wire  [18:3]                  gaddra = modereg[2] ? offgreg[18:3]+offgpixel[11:3] : {offvreg[10:5],offhreg[12:8]};
    logic [18:3]                  gaddra_1;
    wire [15:0]                   dout16 = doutpix[0] >> {offhreg1[7:6],4'b0000};

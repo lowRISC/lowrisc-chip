@@ -1,14 +1,16 @@
 CROSSCOMPILE ?= riscv64-unknown-elf-
 CC = ${CROSSCOMPILE}gcc
 PYTHON=python
+MODEL=medany
+#MODEL=medlow
 
-CFLAGS = -Os -ggdb -march=rv64imac -mabi=lp64 -Wall -mcmodel=medany -fno-builtin-printf -fno-builtin-memcpy -fno-builtin -ffreestanding -fshort-wchar -DBITSIZE=$(BITSIZE) # -mexplicit-relocs
-CCASFLAGS = -mcmodel=medany # -mexplicit-relocs
+CFLAGS = -Os -ggdb -march=rv64imac -mabi=lp64 -Wall -mcmodel=$(MODEL) -fno-builtin-printf -fno-builtin-memcpy -fno-builtin -ffreestanding -fshort-wchar -DBITSIZE=$(BITSIZE) # -mexplicit-relocs
+CCASFLAGS = -mcmodel=$(MODEL) # -mexplicit-relocs
 LDFLAGS = -nostdlib -nodefaultlibs -nostartfiles -Wl,-Map=mapfile
 
 INCLUDES = -I./ -I./src
 
-SRCS_C = src/dhcp-client.c src/elf.c src/ethlib.c src/ff.c src/hash-md5.c src/mini-printf.c src/random.c src/string.c src/tftp_c.c src/uart.c src/boot.c src/dram.c src/cachetest.c src/hid.c src/logo.c src/zifu.c src/queryTimeServer.c
+SRCS_C = src/dhcp-client.c src/elf.c src/ethlib.c src/ff.c src/hash-md5.c src/mini-printf.c src/random.c src/string.c src/tftp_c.c src/uart.c src/boot.c src/dram.c src/cachetest.c src/hid.c src/logo.c src/queryTimeServer.c src/bt.c
 
 SRCS_ASM = startup.S $(BOARD)_$(CPU).S 
 OBJS_C = $(SRCS_C:.c=.o)

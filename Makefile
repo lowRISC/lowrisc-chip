@@ -23,25 +23,25 @@ install: lowrisc-quickstart/install.bin
 
 lowrisc-quickstart/boot.bin: $(LINUX)/arch/riscv/configs/defconfig
 	sed -e 's/\(CONFIG_BLK_DEV_INITRD\)=y/\1=n/' < $(LINUX)/arch/riscv/configs/defconfig > $(LINUX)/boot.cfg
-	make -C $(LINUX) ARCH=riscv KCONFIG_CONFIG=boot.cfg CROSS_COMPILE=$(RISCV)/bin/riscv64-unknown-elf- -j 4
+	make -C $(LINUX) ARCH=riscv KCONFIG_CONFIG=boot.cfg CROSS_COMPILE=$(RISCV)/bin/riscv64-unknown-linux-gnu- -j 4
 	make -C riscv-pk/build PATH=$(RISCV)/bin:/usr/bin:/bin
 	cp -p riscv-pk/build/bbl $@
 
 lowrisc-quickstart/visual.bin: $(LINUX)/arch/riscv/configs/defconfig
 	sed -e 's/\(CONFIG_BLK_DEV_INITRD\)=y/\1=n/' -e 's/# \(CONFIG_VT_CONSOLE\) is not set/\1=y/' < $(LINUX)/arch/riscv/configs/defconfig > $(LINUX)/visual.cfg
-	make -C $(LINUX) ARCH=riscv KCONFIG_CONFIG=visual.cfg CROSS_COMPILE=$(RISCV)/bin/riscv64-unknown-elf- CONFIG_VT_CONSOLE=y -j 4
+	make -C $(LINUX) ARCH=riscv KCONFIG_CONFIG=visual.cfg CROSS_COMPILE=$(RISCV)/bin/riscv64-unknown-linux-gnu- CONFIG_VT_CONSOLE=y -j 4
 	make -C riscv-pk/build PATH=$(RISCV)/bin:/usr/bin:/bin
 	cp -p riscv-pk/build/bbl $@
 
 lowrisc-quickstart/rescue.bin: $(LINUX)/arch/riscv/configs/defconfig $(LINUX)/initramfs.cpio
 	sed -e 's/\(CONFIG_INITRAMFS_SOURCE\)=""/\1="initramfs.cpio"/' < $(LINUX)/arch/riscv/configs/defconfig > $(LINUX)/rescue.cfg
-	make -C $(LINUX) ARCH=riscv KCONFIG_CONFIG=rescue.cfg CROSS_COMPILE=$(RISCV)/bin/riscv64-unknown-elf- -j 4
+	make -C $(LINUX) ARCH=riscv KCONFIG_CONFIG=rescue.cfg CROSS_COMPILE=$(RISCV)/bin/riscv64-unknown-linux-gnu- -j 4
 	make -C riscv-pk/build PATH=$(RISCV)/bin:/usr/bin:/bin
 	cp -p riscv-pk/build/bbl $@
 
 lowrisc-quickstart/install.bin: $(LINUX)/arch/riscv/configs/defconfig $(LINUX)/debian.cpio
 	sed -e 's/\(CONFIG_INITRAMFS_SOURCE\)=""/\1="debian.cpio"/' < $(LINUX)/arch/riscv/configs/defconfig > $(LINUX)/install.cfg
-	make -C $(LINUX) ARCH=riscv KCONFIG_CONFIG=install.cfg CROSS_COMPILE=$(RISCV)/bin/riscv64-unknown-elf- -j 4
+	make -C $(LINUX) ARCH=riscv KCONFIG_CONFIG=install.cfg CROSS_COMPILE=$(RISCV)/bin/riscv64-unknown-linux-gnu- -j 4
 	make -C riscv-pk/build PATH=$(RISCV)/bin:/usr/bin:/bin
 	cp -p riscv-pk/build/bbl $@
 
@@ -61,10 +61,10 @@ riscv-pk/build/Makefile:
 	cd riscv-pk/build; env PATH=$(RISCV)/bin:/usr/bin:/bin ../configure --host=riscv64-unknown-elf --enable-print-device-tree --with-payload=../../$(LINUX)/vmlinux
 
 $(LINUX)/vmlinux: $(LINUX)/.config
-	make -C $(LINUX) ARCH=riscv CROSS_COMPILE=$(RISCV)/bin/riscv64-unknown-elf- -j 4
+	make -C $(LINUX) ARCH=riscv CROSS_COMPILE=$(RISCV)/bin/riscv64-unknown-linux-gnu- -j 4
 
 $(LINUX)/.config:
-	make -C $(LINUX) defconfig ARCH=riscv CROSS_COMPILE=$(RISCV)/bin/riscv64-unknown-elf-
+	make -C $(LINUX) defconfig ARCH=riscv CROSS_COMPILE=$(RISCV)/bin/riscv64-unknown-linux-gnu-
 
 #We don't want to download the entire revision history of Linux, but we do want to track any changes we make
 #So we do it this way ...

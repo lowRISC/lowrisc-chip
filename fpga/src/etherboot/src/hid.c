@@ -7,9 +7,11 @@
 #include "qspi.h"
 #include "mini-printf.h"
 
+#ifdef BIGROM
 const struct { char scan,lwr,upr; } scancode[] = {
 #include "scancode.h"
   };
+#endif
 
 // VGA tuning registers
 volatile uint64_t *const hid_reg_ptr = (volatile uint64_t *)(VgaBase+16384);
@@ -18,8 +20,8 @@ volatile uint64_t *const hid_plt_ptr = (volatile uint64_t *)(VgaBase+16384+8192)
 volatile uint64_t *const hid_fb_ptr = (volatile uint64_t *)(FbBase);
 // HID keyboard
 volatile uint32_t *const keyb_base = (volatile uint32_t *)KeybBase;
-// HID mouse
-volatile uint64_t *const mouse_base = (volatile uint64_t *)MouseBase;
+// Bluetooth mouse
+volatile uint64_t *const bt_base = (volatile uint64_t *)BTBase;
 
 static int addr_int = 0;
 

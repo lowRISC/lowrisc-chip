@@ -33,12 +33,13 @@ package ariane_soc;
 
   typedef enum int unsigned {
     HID      = 0,
-    GPIO     = 1,
-    Ethernet = 2,
-    SPI      = 3,
-    UART     = 4,
-    BOOT     = 5,
-    ExtLast  = 6
+    MOUSE    = 1,
+    GPIO     = 2,
+    Ethernet = 3,
+    SPI      = 4,
+    UART     = 5,
+    BOOT     = 6,
+    ExtLast  = 7
   } axi_extio_t;
 
   localparam NB_PERIPHERALS = Debug + 1;
@@ -54,6 +55,7 @@ package ariane_soc;
   localparam logic[63:0] SPILength      = 64'h10000;
   localparam logic[63:0] EthernetLength = 64'h10000;
   localparam logic[63:0] GPIOLength     = 64'h10000;
+  localparam logic[63:0] MOUSELength    = 64'h10000;
   localparam logic[63:0] HIDLength     = 64'h100000;
   // Instantiate AXI protocol checkers
   localparam bit GenProtocolChecker = 1'b0;
@@ -72,7 +74,8 @@ package ariane_soc;
     SPIBase      = 64'h4200_0000,
     EthernetBase = 64'h4300_0000,
     GPIOBase     = 64'h4400_0000,
-    HIDBase      = 64'h4500_0000
+    MOUSEBase    = 64'h4500_0000,
+    HIDBase      = 64'h4600_0000
   } soc_iobus_start_t;
 
   localparam NrRegion = 1;

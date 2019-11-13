@@ -125,9 +125,13 @@ boom_xilinx
   // keyboard
   inout wire         PS2_CLK     ,
   inout wire         PS2_DATA    ,
-  // mouse
-  inout wire         PS2_MCLK    ,
-  inout wire         PS2_MDATA   ,
+  // Bluetooth mouse module
+  output wire        bt_rx,
+  output wire        bt_rstn,
+  output wire        bt_cts,
+  input wire         bt_rts,
+  input wire         bt_sts,
+  input wire         bt_tx,
   // display
   output wire        VGA_HS_O    ,
   output wire        VGA_VS_O    ,
@@ -151,6 +155,18 @@ localparam AxiIdWidthMaster = 4;
 localparam AxiIdWidthSlaves = AxiIdWidthMaster + $clog2(NBSlave); // 5
 localparam AxiUserWidth = 1;
 
+   wire              tx_internal, bt_rx_internal, bt_tx_internal, bt_rts_internal, bt_cts_internal;
+   
+   assign bt_rx = sw[4] ? rx : bt_rx_internal;
+   
+   assign tx = sw[4] ? bt_tx : tx_internal;
+
+   assign bt_cts = sw[4] ? 1'b0 : bt_cts_internal;
+
+   assign bt_rts_internal = sw[4] ? 1'b0 : bt_rts;
+   
+   assign bt_rstn = cpu_resetn;
+   
 // MIG clock
 logic mig_sys_clk, mig_ui_clk, mig_ui_rst, sys_rst,
       clk, clk_rmii, clk_rmii_quad, clk_pixel, phy_tx_clk, eth_clk, pll_locked;
@@ -673,7 +689,7 @@ ariane_peripherals_xilinx #(
     .iobus,
     .irq_sources,
     .rx_i          ( rx              ),
-    .tx_o          ( tx              ),
+    .tx_o          ( tx_internal     ),
 `ifdef RGMII                        
     .eth_clk_i     ( eth_clk         ),
     .phy_tx_clk_i  ( phy_tx_clk      ),
@@ -712,9 +728,11 @@ ariane_peripherals_xilinx #(
     // keyboard
     .PS2_CLK,
     .PS2_DATA,
-    // mouse
-    .PS2_MCLK,
-    .PS2_MDATA,
+    // Bluetooth mouse module
+    .bt_tx(bt_tx_internal),
+    .bt_rx(bt_rx_internal),
+    .bt_rts(bt_rts_internal),
+    .bt_cts(bt_cts_internal),
 `ifdef NEXYS4DDR
     .CA,
     .CB,
