@@ -146,6 +146,30 @@ nexys4_ddr_ariane_new: $(KERNEL)
 nexys4_ddr_rocket_new: $(KERNEL)
 	make -C fpga BOARD=nexys4_ddr BITSIZE=0x400000 CPU=rocket COMPATIBLE="sifive,rocket0" BBL=$(root-dir)$< new newmcs
 
+genesys2_ariane_program: $(KERNEL)
+	make -C fpga BOARD=genesys2 CPU=ariane JTAG_PART="xc7k325t_0" program
+
+genesys2_rocket_program: $(KERNEL)
+	make -C fpga BOARD=genesys2 CPU=rocket JTAG_PART="xc7k325t_0" program
+
+nexys4_ddr_ariane_program: $(KERNEL)
+	make -C fpga BOARD=nexys4_ddr CPU=ariane JTAG_PART="xc7a100t_0" program
+
+nexys4_ddr_rocket_program: $(KERNEL)
+	make -C fpga BOARD=nexys4_ddr CPU=rocket JTAG_PART="xc7a100t_0" program
+
+genesys2_ariane_cfgmem: $(KERNEL)
+	make -C fpga BOARD=genesys2 CPU=ariane JTAG_PART="xc7k325t_0" JTAG_MEMORY="s25fl256sxxxxxx0-spi-x1_x2_x4" cfgmem
+
+genesys2_rocket_cfgmem: $(KERNEL)
+	make -C fpga BOARD=genesys2 CPU=rocket JTAG_PART="xc7k325t_0" JTAG_MEMORY="s25fl256sxxxxxx0-spi-x1_x2_x4" cfgmem
+
+nexys4_ddr_ariane_cfgmem: $(KERNEL)
+	make -C fpga BOARD=nexys4_ddr CPU=ariane JTAG_PART="xc7a100t_0" JTAG_MEMORY="s25fl128sxxxxxx0-spi-x1_x2_x4" cfgmem
+
+nexys4_ddr_rocket_cfgmem: $(KERNEL)
+	make -C fpga BOARD=nexys4_ddr CPU=rocket JTAG_PART="xc7a100t_0" JTAG_MEMORY="s25fl128sxxxxxx0-spi-x1_x2_x4" cfgmem
+
 sdcard-install: $(KERNEL) lowrisc-quickstart/rootfs.tar.xz
 	cp $< lowrisc-quickstart/boot.bin
 	make -C lowrisc-quickstart/ install USB=$(USB)

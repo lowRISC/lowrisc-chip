@@ -18,9 +18,28 @@
 open_hw
 
 connect_hw_server -url localhost:3121
-open_hw_target {localhost:3121/xilinx_tcf/Digilent/200300A8CD43B}
-
-current_hw_device [get_hw_devices xc7k325t_0]
-set_property PROGRAM.FILE {work-fpga/$::env(BOARD)_$::env(CPU)/ariane_xilinx.bit} [get_hw_devices xc7k325t_0]
-program_hw_devices [get_hw_devices xc7k325t_0]
-refresh_hw_device [lindex [get_hw_devices xc7k325t_0] 0]
+set board ""
+set device $::env(JTAG_PART)
+puts $device
+set bit $::env(JTAG_BITFILE)
+foreach { target } [get_hw_targets] {
+    current_hw_target $target
+    open_hw_target
+    set devices [get_hw_devices]
+    puts $device
+    if { $devices == $device } {
+        set board [current_hw_target]
+        break
+    } else {
+        puts [format "%s %s" ignoring $devices]
+    }
+    close_hw_target
+}
+if { $board == "" } {
+    puts "Did not find board"
+    exit 1
+}
+current_hw_device $device
+set_property PROGRAM.FILE $bit [current_hw_device]
+program_hw_devices [current_hw_device]
+disconnect_hw_server

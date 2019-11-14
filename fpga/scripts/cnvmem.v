@@ -23,9 +23,9 @@ module cnvmem;
 	while ((i >= `vstrt) && (1'bx === ^mem[i]))
 	  i=i-16;
         last = (i+16);
-        if (last < first + 'H8000)
+        if (last <= first + 'H8000)
              last = first + 'H8000;
-        else if (last < first + 'H10000)
+        else if (last <= first + 'H10000)
              last = first + 'H10000;
         for (i = i+1; i < last; i=i+1)
           mem[i] = 0;
