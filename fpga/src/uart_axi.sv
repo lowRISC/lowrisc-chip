@@ -23,7 +23,9 @@ module uart_axi #(
     output logic                        tx_o,
     input  logic                        cts_i,
     output logic                        rts_o,
-
+    output logic                        irq_o
+);
+   
     logic         uart_penable;
     logic         uart_pwrite;
     logic [31:0]  uart_paddr;
@@ -34,11 +36,11 @@ module uart_axi #(
     logic         uart_pslverr;
 
     axi2apb_64_32 #(
-        .AXI4_ADDRESS_WIDTH ( AxiAddrWidth ),
-        .AXI4_RDATA_WIDTH   ( AxiDataWidth ),
-        .AXI4_WDATA_WIDTH   ( AxiDataWidth ),
-        .AXI4_ID_WIDTH      ( AxiIdWidth   ),
-        .AXI4_USER_WIDTH    ( AxiUserWidth ),
+        .AXI4_ADDRESS_WIDTH ( AXI_ADDR_WIDTH ),
+        .AXI4_RDATA_WIDTH   ( AXI_DATA_WIDTH ),
+        .AXI4_WDATA_WIDTH   ( AXI_DATA_WIDTH ),
+        .AXI4_ID_WIDTH      ( AXI_ID_WIDTH   ),
+        .AXI4_USER_WIDTH    ( AXI_USER_WIDTH ),
         .BUFF_DEPTH_SLAVE   ( 2            ),
         .APB_ADDR_WIDTH     ( 32           )
     ) i_axi2apb_64_32_uart (

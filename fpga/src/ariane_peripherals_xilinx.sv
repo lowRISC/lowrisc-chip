@@ -121,7 +121,8 @@ assign BASE = {
         ariane_soc::SPIBase,
         ariane_soc::EthernetBase,
         ariane_soc::GPIOBase,
-        ariane_soc::HIDBase
+        ariane_soc::HIDBase,
+        ariane_soc::MouseBase
       };
       
 assign MASK = {
@@ -130,7 +131,8 @@ assign MASK = {
               ariane_soc::SPILength - 1,
               ariane_soc::EthernetLength -1,
               ariane_soc::GPIOLength - 1,
-              ariane_soc::HIDLength - 1
+              ariane_soc::HIDLength - 1,
+              ariane_soc::MouseLength - 1
             };
 
 axi_demux_raw #(
@@ -176,7 +178,7 @@ bootram i_bootram (
 );
 
     // ---------------
-    // 2. UART
+    // 2. Host UART
     // ---------------
    
 uart_axi #(
@@ -185,7 +187,7 @@ uart_axi #(
     .AXI_DATA_WIDTH ( AxiDataWidth     ),
     .AXI_USER_WIDTH ( AxiUserWidth     ),
     .InclUART       ( InclUART         )
-) i_axi2spi (
+) i_uart_axi_host (
     .clk_i  ( clk_i                    ),
     .rst_ni ( rst_ni                   ),
     .slave  ( master[ariane_soc::UART] ),
@@ -544,7 +546,7 @@ uart_axi #(
     .AXI_DATA_WIDTH ( AxiDataWidth      ),
     .AXI_USER_WIDTH ( AxiUserWidth      ),
     .InclUART       ( InclMOUSE         )
-) i_axi2spi (
+) i_uart_axi_mouse (
     .clk_i  ( clk_i                     ),
     .rst_ni ( rst_ni                    ),
     .slave  ( master[ariane_soc::MOUSE] ),

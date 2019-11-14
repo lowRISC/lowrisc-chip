@@ -166,6 +166,8 @@ localparam AxiUserWidth = 1;
    assign bt_rts_internal = sw[4] ? 1'b0 : bt_rts;
    
    assign bt_rstn = cpu_resetn;
+
+   assign bt_tx_internal = sw[4] ? 1'b1 : bt_tx;
    
 // MIG clock
 logic mig_sys_clk, mig_ui_clk, mig_ui_rst, sys_rst,

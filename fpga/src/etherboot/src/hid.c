@@ -57,7 +57,7 @@ void hid_console_putchar(unsigned char ch)
 
 void uart_console_putchar(unsigned char ch)
 {
-  write_serial(ch);
+  write_serial(UARTBase, ch);
 }  
 
 
@@ -188,6 +188,12 @@ void hid_send(uint8_t data)
 {
   uart_console_putchar(data);
   hid_console_putchar(data);
+}
+
+void puthex(uint64_t n, int w)
+{
+  if (w > 1) puthex(n>>4, w-1);
+  hid_send("0123456789ABCDEF"[n&15]);
 }
 
 void hid_send_string(const char *str) {
