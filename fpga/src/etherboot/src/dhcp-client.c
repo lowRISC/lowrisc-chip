@@ -14,7 +14,6 @@
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
-//#include "lowrisc_memory_map.h"
 #include "eth.h"
 
 #define DHCP_BOOTREQUEST                    1
@@ -164,7 +163,7 @@ void dhcp_input(dhcp_t *dhcp, u_int8_t *mac, int *offcount, int *ackcount)
   uint32_t renew = 0;
   uint32_t rebind = 0;
   u_int8_t option = 0;
-  uip_ipaddr_t req_ip, server_id, netmask, router, dns_id, ntp_id, broadcast;
+  uip_ipaddr_t req_ip, dns_id;
   *domain = 0;
   *hostname = 0;
   *err = 0;
@@ -192,23 +191,23 @@ void dhcp_input(dhcp_t *dhcp, u_int8_t *mac, int *offcount, int *ackcount)
         hostname[field_len] = 0;
         break;
       case MESSAGE_TYPE_NTP_SERVER:
-        memcpy(&ntp_id, data, sizeof(ntp_id));
+        memcpy(&uip_ntp_addr, data, sizeof(uip_ntp_addr));
         break;
       case MESSAGE_TYPE_SERVER_ID:
-        memcpy(&server_id, data, sizeof(server_id));
+        memcpy(&uip_server_addr, data, sizeof(uip_server_addr));
         break;
       case MESSAGE_TYPE_LEASE_TIME:
         memcpy(&lease, data, sizeof(lease));
         lease = ntohl(lease);
         break;
       case MESSAGE_TYPE_REQ_SUBNET_MASK:
-        memcpy(&netmask, data, sizeof(netmask));
+        memcpy(&uip_netmask_addr, data, sizeof(uip_netmask_addr));
         break;
       case MESSAGE_TYPE_ROUTER:
-        memcpy(&router, data, sizeof(router));
+        memcpy(&uip_router_addr, data, sizeof(uip_router_addr));
         break;
       case MESSAGE_TYPE_BROADCAST_ADDRESS:
-        memcpy(&broadcast, data, sizeof(router));
+        memcpy(&uip_broadcast_addr, data, sizeof(uip_broadcast_addr));
         break;
       case MESSAGE_TYPE_DOMAIN_NAME:
         memcpy(domain, data, field_len);
@@ -251,16 +250,17 @@ void dhcp_input(dhcp_t *dhcp, u_int8_t *mac, int *offcount, int *ackcount)
                 printf("DHCP ACK\n");            
                 /* Get the IP address given by the server */
                 memcpy(&req_ip, &(dhcp->yiaddr), sizeof(uint32_t));
-                memcpy(&server_id, &(dhcp->siaddr), sizeof(uint32_t));
+                memcpy(&uip_server_addr, &(dhcp->siaddr), sizeof(uint32_t));
                 printf("DHCP Client IP Address:  %d.%d.%d.%d\n", uip_ipaddr_to_quad(&req_ip));
                 uip_sethostaddr(&req_ip);
-                printf("Server IP Address:  %d.%d.%d.%d\n", uip_ipaddr_to_quad(&server_id));
-                printf("Router address:  %d.%d.%d.%d\n", uip_ipaddr_to_quad(&router));
-                printf("Net mask address:  %d.%d.%d.%d\n", uip_ipaddr_to_quad(&netmask));
-                uip_setnetmask(&netmask);
+                printf("Server IP Address:  %d.%d.%d.%d\n", uip_ipaddr_to_quad(&uip_server_addr));
+                printf("Router address:  %d.%d.%d.%d\n", uip_ipaddr_to_quad(&uip_router_addr));
+                printf("Net mask address:  %d.%d.%d.%d\n", uip_ipaddr_to_quad(&uip_netmask_addr));
+                uip_setnetmask(&uip_netmask_addr);
                 printf("Lease time = %dh:%dm:%ds\n", lease/3600, (lease/60)%60, lease%60);
                 printf("Domain = \"%s\"\n", domain);
                 printf("Client Hostname = \"%s\"\n", hostname);
+                printf("NTP server IP Address:  %d.%d.%d.%d\n", uip_ipaddr_to_quad(&uip_ntp_addr));
               }
             else
               printf("ACK SKIPPED\n");

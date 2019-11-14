@@ -304,6 +304,34 @@ typedef struct dhcp
     u_int8_t    bp_options[0];
 } dhcp_t;
 
+struct arp_hdr {
+  struct uip_eth_hdr ethhdr;
+  uint16_t hwtype;
+  uint16_t protocol;
+  uint8_t hwlen;
+  uint8_t protolen;
+  uint16_t opcode;
+  struct uip_eth_addr shwaddr;
+  uip_ipaddr_t sipaddr;
+  struct uip_eth_addr dhwaddr;
+  uip_ipaddr_t dipaddr;
+} arp_hdr_t;
+
+struct ethip_hdr {
+  struct uip_eth_hdr ethhdr;
+  /* IP header. */
+  uint8_t vhl,
+    tos,
+    len[2],
+    ipid[2],
+    ipoffset[2],
+    ttl,
+    proto;
+  uint16_t ipchksum;
+  uip_ipaddr_t srcipaddr, destipaddr;
+  uint8_t body[];
+} ethip_hdr_t;
+                
 typedef struct inqueue_t {
   uint64_t alloc[max_packet];
   uint64_t len;
@@ -314,7 +342,8 @@ typedef struct outqueue_t {
   uint64_t len;
 } outqueue_t;
 
-extern uip_ipaddr_t uip_hostaddr, uip_draddr, uip_netmask;
+extern uip_ipaddr_t uip_hostaddr, uip_draddr, uip_netmask, uip_ntp_addr, uip_server_addr,
+                    uip_router_addr, uip_netmask_addr, uip_broadcast_addr;
 extern volatile uint64_t *const eth_base;
 
 #ifdef BUFFERED
@@ -345,6 +374,7 @@ int tftps_tick(int sock);
 void ethboot(void);
 void set_dummy_mac(void);
 void ntp_snd(int sockfd);
+int arp_query(uip_ipaddr_t dst);
 
 static inline void eth_write(size_t addr, uint64_t data)
 {

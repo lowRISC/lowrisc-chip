@@ -55,13 +55,14 @@ volatile uint64_t   get_ddr_size() { return (uint64_t) DRAMLength; }
 uip_ipaddr_t uip_hostaddr, uip_draddr, uip_netmask;
 uip_eth_addr mac_addr;
 
-const uip_ipaddr_t uip_broadcast_addr =
-  { { 0xff, 0xff, 0xff, 0xff } };
+uip_ipaddr_t uip_broadcast_addr;
 
-const uip_ipaddr_t uip_ntp_addr =
-  { { 192, 168, 0, 22 } };
+uip_ipaddr_t uip_ntp_addr;
+uip_ipaddr_t uip_server_addr;
+uip_ipaddr_t uip_router_addr;
+uip_ipaddr_t uip_netmask_addr;
 
-const uip_ipaddr_t uip_all_zeroes_addr = { { 0x0, /* rest is 0 */ } };
+uip_ipaddr_t uip_all_zeroes_addr;
 
 uip_lladdr_t uip_lladdr;
 
@@ -235,6 +236,7 @@ unsigned short csum(uint8_t *buf, int nbytes)
 static uint16_t saved_peer_port;
 static uint32_t saved_peer_ip;
 static u_char saved_peer_addr[6];
+static u_char saved_router_addr[6];
 
 void recog_packet(int proto_type, uint32_t *alloc32, int xlength)
 {
@@ -244,20 +246,7 @@ void recog_packet(int proto_type, uint32_t *alloc32, int xlength)
             {
               uint32_t peer_ip;
               static u_char peer_addr[6];
-              struct ethip_hdr {
-                struct uip_eth_hdr ethhdr;
-                /* IP header. */
-                uint8_t vhl,
-                  tos,
-                  len[2],
-                  ipid[2],
-                  ipoffset[2],
-                  ttl,
-                  proto;
-                uint16_t ipchksum;
-                uip_ipaddr_t srcipaddr, destipaddr;
-                uint8_t body[];
-              } *BUF = ((struct ethip_hdr *)alloc32);
+              struct ethip_hdr *BUF = ((struct ethip_hdr *)alloc32);
               memcpy(&peer_ip, &(BUF->srcipaddr), sizeof(uip_ipaddr_t));
               memcpy(peer_addr, BUF->ethhdr.src.addr, 6);
 #ifdef VERBOSE
@@ -429,24 +418,13 @@ void recog_packet(int proto_type, uint32_t *alloc32, int xlength)
             break;
           case ETH_P_ARP:
             {
-              struct arp_hdr {
-                struct uip_eth_hdr ethhdr;
-                uint16_t hwtype;
-                uint16_t protocol;
-                uint8_t hwlen;
-                uint8_t protolen;
-                uint16_t opcode;
-                struct uip_eth_addr shwaddr;
-                uip_ipaddr_t sipaddr;
-                struct uip_eth_addr dhwaddr;
-                uip_ipaddr_t dipaddr;
-              } *BUF = ((struct arp_hdr *)alloc32);
+              struct arp_hdr *BUF = (struct arp_hdr *)alloc32;
 #ifdef VERBOSE
              printf("proto = ARP\n");
 #endif
-             if(uip_ipaddr_cmp(&BUF->dipaddr, &uip_hostaddr))
+             if ((BUF->opcode == __htons(1)) && uip_ipaddr_cmp(&BUF->dipaddr, &uip_hostaddr))
                {
-                int len = sizeof(struct arp_hdr);
+                int len = sizeof(arp_hdr_t);
                 BUF->opcode = __htons(2);
                 
                 memcpy(BUF->dhwaddr.addr, BUF->shwaddr.addr, 6);
@@ -463,6 +441,11 @@ void recog_packet(int proto_type, uint32_t *alloc32, int xlength)
                 printf("sending ARP reply (length = %d)\n", len);
 #endif
                 lite_queue(0, alloc32, len);
+               }
+             else if ((BUF->opcode == __htons(2)) && uip_ipaddr_cmp(&BUF->sipaddr, &uip_router_addr))
+               {
+                printf("ARP reply from %d.%d.%d.%d\n", uip_ipaddr_to_quad(&BUF->sipaddr));
+                memcpy(saved_router_addr, BUF->shwaddr.addr, sizeof(saved_router_addr));
                }
              else
                {
@@ -500,6 +483,35 @@ int ntp_send(int sock, void *buf, int ulen) {
   memcpy(&dstaddr, &uip_ntp_addr, 4);
   udp_send(mac_addr.addr, buf, ulen, NTP_PORT, NTP_PORT, srcaddr, dstaddr, saved_peer_addr);
   return ulen;
+}
+
+int arp_query(uip_ipaddr_t dst)
+{
+  struct arp_hdr tmp;
+  struct arp_hdr *BUF = &tmp;
+  int len = sizeof(arp_hdr_t);
+  memset(BUF, 0, len);
+  BUF->hwtype = __htons(1);
+  BUF->protocol = __htons(UIP_ETHTYPE_IP);
+  BUF->hwlen = 6;
+  BUF->protolen = 4;
+  BUF->opcode = __htons(1);
+                
+  memcpy(BUF->dhwaddr.addr, mac_addr.addr, 6);
+  memcpy(BUF->shwaddr.addr, mac_addr.addr, 6);
+  memcpy(BUF->ethhdr.src.addr, mac_addr.addr, 6);
+  memset(BUF->ethhdr.dest.addr, -1, 6);
+                
+  uip_ipaddr_copy(&BUF->dipaddr, &dst);
+  uip_ipaddr_copy(&BUF->sipaddr, &uip_hostaddr);
+                
+  BUF->ethhdr.type = __htons(UIP_ETHTYPE_ARP);
+                
+#ifndef VERBOSE
+  printf("sending ARP query (length = %d)\n", len);
+#endif
+  lite_queue(0, (void *)BUF, len);
+  return 0;
 }
 
 uint16_t __bswap_16(uint16_t x)
@@ -555,6 +567,7 @@ void eth_main(void) {
   //  uip_ipaddr_t addr;
   uint64_t lo = eth_read(MACLO_OFFSET);
   uint64_t hi = eth_read(MACHI_OFFSET) & MACHI_MACADDR_MASK;
+  int option = 0;
   eth_write(MACHI_OFFSET, MACHI_IRQ_EN|hi);
 #ifdef BUFFERED
   rxbuf = (inqueue_t *)mysbrk(sizeof(inqueue_t)*queuelen);
@@ -574,6 +587,9 @@ void eth_main(void) {
          );
 #endif
   uip_setethaddr(mac_addr);
+  uip_ipaddr(&uip_broadcast_addr, 255, 255, 255, 255);
+  uip_ipaddr(&uip_all_zeroes_addr, 0, 0, 0, 0);
+  uip_ipaddr(&uip_ntp_addr, 10, 0, 0, 1); /* customize this locally if your DHCP server doesn't support */
   saved_peer_port = 0;
   saved_peer_ip = 0;
   eth_discard = 0;
@@ -604,7 +620,11 @@ void eth_main(void) {
 	      cnt = 10000;
 	    else
 	      {
-		ntp_snd(0);
+                switch(option++ % 2)
+                  {
+                  case 0: arp_query(uip_router_addr); break;
+                  case 1: ntp_snd(0); break;
+                  }
 		cnt = 50000000;
 	      }
             
