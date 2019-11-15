@@ -19,9 +19,6 @@
 [submodule "lowrisc-quickstart"]
 	path = lowrisc-quickstart
 	url = https://github.com/lowRISC/lowrisc-quickstart.git
-[submodule "qemu"]
-	path = qemu
-	url = https://github.com/qemu/qemu
 [submodule "ariane"]
 	path = ariane
 	url = https://github.com/lowRISC/ariane.git
