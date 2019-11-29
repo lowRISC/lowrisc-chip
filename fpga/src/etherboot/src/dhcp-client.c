@@ -14,7 +14,6 @@
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
-//#include "lowrisc_memory_map.h"
 #include "eth.h"
 
 #define DHCP_BOOTREQUEST                    1
@@ -28,6 +27,7 @@
 #define MESSAGE_TYPE_DNS                    6
 #define MESSAGE_TYPE_HOST_NAME              12
 #define MESSAGE_TYPE_DOMAIN_NAME            15
+#define MESSAGE_TYPE_BROADCAST_ADDRESS      28
 #define MESSAGE_TYPE_NTP_SERVER             42
 #define MESSAGE_TYPE_REQ_IP                 50
 #define MESSAGE_TYPE_LEASE_TIME             51
@@ -35,7 +35,10 @@
 #define MESSAGE_TYPE_SERVER_ID              54
 #define MESSAGE_TYPE_PARAMETER_REQ_LIST     55
 #define MESSAGE_TYPE_ERR                    56
+#define MESSAGE_TYPE_RENEWAL_TIME           58
+#define MESSAGE_TYPE_REBINDING_TIME         59
 #define MESSAGE_TYPE_CLIENT_ID              61
+#define MESSAGE_TYPE_VENDOR                 125
 #define MESSAGE_TYPE_END                    255
 
 #define DHCP_OPTION_DISCOVER                1
@@ -157,8 +160,10 @@ void dhcp_input(dhcp_t *dhcp, u_int8_t *mac, int *offcount, int *ackcount)
   u_int8_t code;
   //  u_int16_t   flags;
   uint32_t lease = 0;
+  uint32_t renew = 0;
+  uint32_t rebind = 0;
   u_int8_t option = 0;
-  uip_ipaddr_t req_ip, server_id, netmask, router, dns_id, ntp_id;
+  uip_ipaddr_t req_ip, dns_id;
   *domain = 0;
   *hostname = 0;
   *err = 0;
@@ -186,20 +191,23 @@ void dhcp_input(dhcp_t *dhcp, u_int8_t *mac, int *offcount, int *ackcount)
         hostname[field_len] = 0;
         break;
       case MESSAGE_TYPE_NTP_SERVER:
-        memcpy(&ntp_id, data, sizeof(ntp_id));
+        memcpy(&uip_ntp_addr, data, sizeof(uip_ntp_addr));
         break;
       case MESSAGE_TYPE_SERVER_ID:
-        memcpy(&server_id, data, sizeof(server_id));
+        memcpy(&uip_server_addr, data, sizeof(uip_server_addr));
         break;
       case MESSAGE_TYPE_LEASE_TIME:
         memcpy(&lease, data, sizeof(lease));
         lease = ntohl(lease);
         break;
       case MESSAGE_TYPE_REQ_SUBNET_MASK:
-        memcpy(&netmask, data, sizeof(netmask));
+        memcpy(&uip_netmask_addr, data, sizeof(uip_netmask_addr));
         break;
       case MESSAGE_TYPE_ROUTER:
-        memcpy(&router, data, sizeof(router));
+        memcpy(&uip_router_addr, data, sizeof(uip_router_addr));
+        break;
+      case MESSAGE_TYPE_BROADCAST_ADDRESS:
+        memcpy(&uip_broadcast_addr, data, sizeof(uip_broadcast_addr));
         break;
       case MESSAGE_TYPE_DOMAIN_NAME:
         memcpy(domain, data, field_len);
@@ -212,6 +220,15 @@ void dhcp_input(dhcp_t *dhcp, u_int8_t *mac, int *offcount, int *ackcount)
         memcpy(err, data, field_len);
         err[field_len] = 0;
         break;
+      case MESSAGE_TYPE_RENEWAL_TIME:
+        memcpy(&renew, data, field_len);
+	break;
+      case MESSAGE_TYPE_REBINDING_TIME:
+        memcpy(&rebind, data, field_len);
+	break;
+      case MESSAGE_TYPE_VENDOR:
+	printf("Vendor information = %d bytes\n", field_len);
+	break;
       case MESSAGE_TYPE_END:
         switch(option)
           {
@@ -233,16 +250,17 @@ void dhcp_input(dhcp_t *dhcp, u_int8_t *mac, int *offcount, int *ackcount)
                 printf("DHCP ACK\n");            
                 /* Get the IP address given by the server */
                 memcpy(&req_ip, &(dhcp->yiaddr), sizeof(uint32_t));
-                memcpy(&server_id, &(dhcp->siaddr), sizeof(uint32_t));
+                memcpy(&uip_server_addr, &(dhcp->siaddr), sizeof(uint32_t));
                 printf("DHCP Client IP Address:  %d.%d.%d.%d\n", uip_ipaddr_to_quad(&req_ip));
                 uip_sethostaddr(&req_ip);
-                printf("Server IP Address:  %d.%d.%d.%d\n", uip_ipaddr_to_quad(&server_id));
-                printf("Router address:  %d.%d.%d.%d\n", uip_ipaddr_to_quad(&router));
-                printf("Net mask address:  %d.%d.%d.%d\n", uip_ipaddr_to_quad(&netmask));
-                uip_setnetmask(&netmask);
+                printf("Server IP Address:  %d.%d.%d.%d\n", uip_ipaddr_to_quad(&uip_server_addr));
+                printf("Router address:  %d.%d.%d.%d\n", uip_ipaddr_to_quad(&uip_router_addr));
+                printf("Net mask address:  %d.%d.%d.%d\n", uip_ipaddr_to_quad(&uip_netmask_addr));
+                uip_setnetmask(&uip_netmask_addr);
                 printf("Lease time = %dh:%dm:%ds\n", lease/3600, (lease/60)%60, lease%60);
                 printf("Domain = \"%s\"\n", domain);
                 printf("Client Hostname = \"%s\"\n", hostname);
+                printf("NTP server IP Address:  %d.%d.%d.%d\n", uip_ipaddr_to_quad(&uip_ntp_addr));
               }
             else
               printf("ACK SKIPPED\n");
@@ -379,15 +397,11 @@ fill_dhcp_discovery_options(dhcp_t *dhcp)
 {
     int len = 0;
     //    u_int32_t req_ip;
-    u_int8_t parameter_req_list[] = {MESSAGE_TYPE_REQ_SUBNET_MASK, MESSAGE_TYPE_ROUTER, MESSAGE_TYPE_DNS, MESSAGE_TYPE_DOMAIN_NAME};
+    u_int8_t parameter_req_list[] = {MESSAGE_TYPE_REQ_SUBNET_MASK, MESSAGE_TYPE_ROUTER, MESSAGE_TYPE_DNS, MESSAGE_TYPE_DOMAIN_NAME, MESSAGE_TYPE_NTP_SERVER};
     u_int8_t option;
 
     option = DHCP_OPTION_DISCOVER;
     len += fill_dhcp_option(&dhcp->bp_options[len], MESSAGE_TYPE_DHCP, &option, sizeof(option));
-#if 0
-    req_ip = __htonl(0xc0a8010a);
-    len += fill_dhcp_option(&dhcp->bp_options[len], MESSAGE_TYPE_REQ_IP, (u_int8_t *)&req_ip, sizeof(req_ip));
-#endif    
     len += fill_dhcp_option(&dhcp->bp_options[len], MESSAGE_TYPE_PARAMETER_REQ_LIST, (u_int8_t *)&parameter_req_list, sizeof(parameter_req_list));
     option = 0;
     len += fill_dhcp_option(&dhcp->bp_options[len], MESSAGE_TYPE_END, &option, sizeof(option));
@@ -520,22 +534,6 @@ int dhcp_main(u_int8_t mac[6])
     return result;
 }
 
-#ifdef STANDALONE
-unsigned short csum(uint8_t *buf, int nbytes)
-    {       //
-            unsigned long sum;
-            for(sum=0; nbytes>0; nbytes-=2)
-              {
-                unsigned short src;
-                memcpy(&src, buf, 2);
-                buf+=2;
-                sum += ntohs(src);
-              }
-            sum = (sum >> 16) + (sum & 0xffff);
-            sum += (sum >> 16);
-            return (unsigned short)(~sum);
-    }
-#endif
 void PrintData (const u_char * data , int Size)
 {
     int i , j;
@@ -577,14 +575,3 @@ void PrintData (const u_char * data , int Size)
     }
 }
 
-#ifdef STANDALONE
-void process_udp_packet(const u_char *data, int ulen, uint16_t peer_port, uint32_t peer_ip, const u_char *peer_addr)
-{
-  uint16_t idx;	
-  static uint16_t maxidx;
-  uint32_t srcaddr;
-  memcpy(&srcaddr, &uip_hostaddr, 4);
-  printf("UDP packet length %d sent to port %d\n", ulen, peer_port);
-  PrintData(data, ulen);
-}
-#endif

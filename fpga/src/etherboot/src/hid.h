@@ -40,7 +40,7 @@ extern volatile uint64_t *const hid_reg_ptr;
 extern volatile uint64_t *const hid_plt_ptr;
 extern volatile uint64_t *const hid_fb_ptr;
 extern volatile uint32_t *const keyb_base;
-extern volatile uint64_t *const mouse_base;
+extern volatile uint64_t *const bt_base;
 
 extern void hid_init(uint32_t);
 extern void hid_send(uint8_t);
@@ -53,6 +53,7 @@ extern uint8_t hid_check_read_irq();
 extern void hid_enable_read_irq();
 extern void hid_disable_read_irq();
 extern void draw_logo(int);
-extern char zifu[];
+extern void puthex(uint64_t n, int w);
+extern unsigned char zifu[];
 
 #endif
