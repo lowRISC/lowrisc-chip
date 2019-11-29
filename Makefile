@@ -16,10 +16,17 @@ tftp: $(KERNEL)
 	md5sum $<
 	echo -e bin \\n put $< $(MD5) \\n | tftp $(REMOTE)
 
-linux: lowrisc-quickstart/boot.bin
-visual: lowrisc-quickstart/visual.bin
-rescue: lowrisc-quickstart/rescue.bin
-install: lowrisc-quickstart/install.bin
+linux:
+	rm -f lowrisc-quickstart/boot.bin; make lowrisc-quickstart/boot.bin
+
+visual:
+	rm -f lowrisc-quickstart/visual.bin; make lowrisc-quickstart/visual.bin
+
+rescue:
+	rm -f lowrisc-quickstart/rescue.bin; make lowrisc-quickstart/rescue.bin
+
+install:
+	rm -f lowrisc-quickstart/install.bin; make lowrisc-quickstart/install.bin
 
 lowrisc-quickstart/boot.bin: $(LINUX)/arch/riscv/configs/defconfig
 	sed -e 's/\(CONFIG_BLK_DEV_INITRD\)=y/\1=n/' < $(LINUX)/arch/riscv/configs/defconfig > $(LINUX)/boot.cfg
@@ -79,8 +86,8 @@ $(LINUX)/arch/riscv/configs/defconfig: linux-5.1.3.patch
 	mv linux-5.1.3 $(LINUX)
 	(cd $(LINUX); git checkout -b $(LINUX); git add .; git commit -a -m $(LINUX); git status)
 
-fpga/src/etherboot/$(BOARD)_$(CPU).sv: fpga/src/$(BOARD).dts
-	make -C fpga/src/etherboot BOARD=$(BOARD) CPU=$(CPU) PATH=$(RISCV)/bin:/usr/local/bin:/usr/bin:/bin
+fpga/src/etherboot/$(BOARD)_$(CPU).sv: fpga/src/generic.dts
+	make -C fpga/src/etherboot BOARD=$(BOARD) CPU=$(CPU) VENDOR=$(VENDOR) MEMSIZE=$(MEMSIZE) PATH=$(RISCV)/bin:/usr/local/bin:/usr/bin:/bin
 
 fpga/work-fpga/$(BOARD)_ariane/ariane_xilinx.bit: $(ariane_pkg) $(util) $(src) $(fpga_src) \
         fpga/src/etherboot/$(BOARD)_$(CPU).sv
@@ -97,22 +104,22 @@ fpga/work-fpga/$(BOARD)_rocket/rocket_xilinx.bit: $(ariane_pkg) $(util) $(src) $
 	make -C fpga BOARD=$(BOARD) BITSIZE=$(BITSIZE) XILINX_PART=$(XILINX_PART) XILINX_BOARD=$(XILINX_BOARD) CPU=$(CPU) CLK_PERIOD_NS="20"
 
 nexys4_ddr_ariane: $(KERNEL)
-	make fpga/work-fpga/nexys4_ddr_ariane/ariane_xilinx.bit BOARD=nexys4_ddr CPU="ariane" BITSIZE=0x400000 XILINX_PART=xc7a100tcsg324-1 XILINX_BOARD="digilentinc.com:nexys4_ddr:part0:1.1" COMPATIBLE="ethz, ariane" BBL=$(root-dir)$< |& tee nexys4_ddr_ariane.log
+	make fpga/work-fpga/nexys4_ddr_ariane/ariane_xilinx.bit BOARD="nexys4_ddr" CPU="ariane" BITSIZE=0x400000 XILINX_PART=xc7a100tcsg324-1 XILINX_BOARD="digilentinc.com:nexys4_ddr:part0:1.1" VENDOR="ethz" MEMSIZE="0x8000000" BBL=$(root-dir)$< |& tee nexys4_ddr_ariane.log
 
 nexys4_ddr_rocket: $(KERNEL)
-	make fpga/work-fpga/nexys4_ddr_rocket/rocket_xilinx.bit BOARD="nexys4_ddr" CPU="rocket" BITSIZE=0x400000 XILINX_PART="xc7a100tcsg324-1" XILINX_BOARD="digilentinc.com:nexys4_ddr:part0:1.1" COMPATIBLE="sifive,rocket0" BBL=$(root-dir)$< |& tee nexys4_ddr_rocket.log
+	make fpga/work-fpga/nexys4_ddr_rocket/rocket_xilinx.bit BOARD="nexys4_ddr" CPU="rocket" BITSIZE=0x400000 XILINX_PART="xc7a100tcsg324-1" XILINX_BOARD="digilentinc.com:nexys4_ddr:part0:1.1" VENDOR="sifive" MEMSIZE="0x8000000" BBL=$(root-dir)$< |& tee nexys4_ddr_rocket.log
 
 nexys_video_ariane: $(KERNEL)
-	make fpga/work-fpga/nexys4_video_ariane/ariane_xilinx.bit BOARD="nexys_video" CPU="ariane" BITSIZE=0x800000 XILINX_PART="xc7a200tsbg484-1" XILINX_BOARD="digilentinc.com:nexys_video:part0:1.1" COMPATIBLE="ethz, ariane" BBL=$(root-dir)$< |& tee nexys_video_ariane.log
+	make fpga/work-fpga/nexys4_video_ariane/ariane_xilinx.bit BOARD="nexys_video" CPU="ariane" BITSIZE=0x800000 XILINX_PART="xc7a200tsbg484-1" XILINX_BOARD="digilentinc.com:nexys_video:part0:1.1" VENDOR="ethz" MEMSIZE="0x20000000" BBL=$(root-dir)$< |& tee nexys_video_ariane.log
 
 nexys_video_rocket: $(KERNEL)
-	make fpga/work-fpga/nexys4_video_rocket/rocket_xilinx.bit BOARD="nexys_video" CPU="rocket" BITSIZE=0x800000 XILINX_PART="xc7a200tsbg484-1" XILINX_BOARD="digilentinc.com:nexys_video:part0:1.1" COMPATIBLE="sifive,rocket0" BBL=$(root-dir)$< |& tee nexys_video_rocket.log
+	make fpga/work-fpga/nexys4_video_rocket/rocket_xilinx.bit BOARD="nexys_video" CPU="rocket" BITSIZE=0x800000 XILINX_PART="xc7a200tsbg484-1" XILINX_BOARD="digilentinc.com:nexys_video:part0:1.1" VENDOR="sifive" MEMSIZE="0x20000000" BBL=$(root-dir)$< |& tee nexys_video_rocket.log
 
 genesys2_ariane: $(KERNEL)
-	make fpga/work-fpga/genesys2_ariane/ariane_xilinx.bit BOARD="genesys2" CPU="ariane" BITSIZE=0xB00000 XILINX_PART="xc7k325tffg900-2" XILINX_BOARD="digilentinc.com:genesys2:part0:1.1" COMPATIBLE="ethz, ariane" BBL=$(root-dir)$< |& tee genesys2_ariane.log
+	make fpga/work-fpga/genesys2_ariane/ariane_xilinx.bit BOARD="genesys2" CPU="ariane" BITSIZE=0xB00000 XILINX_PART="xc7k325tffg900-2" XILINX_BOARD="digilentinc.com:genesys2:part0:1.1" VENDOR="ethz" MEMSIZE="0x40000000" BBL=$(root-dir)$< |& tee genesys2_ariane.log
 
 genesys2_rocket: $(KERNEL)
-	make fpga/work-fpga/genesys2_rocket/rocket_xilinx.bit BOARD="genesys2" CPU="rocket" BITSIZE=0xB00000 XILINX_PART="xc7k325tffg900-2" XILINX_BOARD="digilentinc.com:genesys2:part0:1.1" COMPATIBLE="sifive,rocket0" BBL=$(root-dir)$< |& tee genesys2_rocket.log
+	make fpga/work-fpga/genesys2_rocket/rocket_xilinx.bit BOARD="genesys2" CPU="rocket" BITSIZE=0xB00000 XILINX_PART="xc7k325tffg900-2" XILINX_BOARD="digilentinc.com:genesys2:part0:1.1" VENDOR="sifive" MEMSIZE="0x40000000" BBL=$(root-dir)$< |& tee genesys2_rocket.log
 
 $(rocket_src): rocket-chip/vsim/Makefile
 	make -C rocket-chip/vsim verilog
@@ -121,16 +128,16 @@ rocket-chip/vsim/Makefile:
 	git submodule update --init --recursive rocket-chip
 
 genesys2_ariane_new: $(KERNEL)
-	make -C fpga BOARD=genesys2 BITSIZE=0xB00000 CPU=ariane COMPATIBLE="ethz, ariane" BBL=$(root-dir)$< new newmcs
+	make -C fpga BOARD=genesys2 BITSIZE=0xB00000 CPU=ariane VENDOR=ethz MEMSIZE=0x40000000 BBL=$(root-dir)$< new newmcs
 
 genesys2_rocket_new: $(KERNEL)
-	make -C fpga BOARD=genesys2 BITSIZE=0xB00000 CPU=rocket COMPATIBLE="sifive,rocket0" BBL=$(root-dir)$< new newmcs
+	make -C fpga BOARD=genesys2 BITSIZE=0xB00000 CPU=rocket VENDOR=sifive MEMSIZE=0x40000000 BBL=$(root-dir)$< new newmcs
 
 nexys4_ddr_ariane_new: $(KERNEL)
-	make -C fpga BOARD=nexys4_ddr BITSIZE=0x400000 CPU=ariane COMPATIBLE="ethz, ariane" BBL=$(root-dir)$< new newmcs
+	make -C fpga BOARD=nexys4_ddr BITSIZE=0x400000 CPU=ariane VENDOR=ethz MEMSIZE=0x8000000 BBL=$(root-dir)$< new newmcs
 
 nexys4_ddr_rocket_new: $(KERNEL)
-	make -C fpga BOARD=nexys4_ddr BITSIZE=0x400000 CPU=rocket COMPATIBLE="sifive,rocket0" BBL=$(root-dir)$< new newmcs
+	make -C fpga BOARD=nexys4_ddr BITSIZE=0x400000 CPU=rocket VENDOR=sifive MEMSIZE=0x8000000 BBL=$(root-dir)$< new newmcs
 
 sdcard-install: $(KERNEL) lowrisc-quickstart/rootfs.tar.xz
 	cp $< lowrisc-quickstart/boot.bin

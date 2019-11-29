@@ -1,18 +1,18 @@
 diff --git a/arch/riscv/configs/defconfig b/arch/riscv/configs/defconfig
-index 2fd3461..0475746 100644
+index 2fd3461e5..0689437ce 100644
 --- a/arch/riscv/configs/defconfig
 +++ b/arch/riscv/configs/defconfig
-@@ -1,83 +1,1786 @@
+@@ -1,83 +1,1889 @@
 +#
 +# Automatically generated file; DO NOT EDIT.
 +# Linux/riscv 5.1.3 Kernel Configuration
 +#
 +
 +#
-+# Compiler: riscv64-unknown-elf-gcc (GCC) 8.3.0
++# Compiler: riscv64-unknown-linux-gnu-gcc (GCC) 9.2.0
 +#
 +CONFIG_CC_IS_GCC=y
-+CONFIG_GCC_VERSION=80300
++CONFIG_GCC_VERSION=90200
 +CONFIG_CLANG_VERSION=0
 +CONFIG_CC_HAS_ASM_GOTO=y
 +CONFIG_CC_HAS_WARN_MAYBE_UNINITIALIZED=y
@@ -483,7 +483,27 @@ index 2fd3461..0475746 100644
 +# CONFIG_NET_PKTGEN is not set
 +# CONFIG_HAMRADIO is not set
 +# CONFIG_CAN is not set
-+# CONFIG_BT is not set
++CONFIG_BT=y
++CONFIG_BT_BREDR=y
++# CONFIG_BT_RFCOMM is not set
++# CONFIG_BT_BNEP is not set
++CONFIG_BT_HIDP=y
++CONFIG_BT_HS=y
++# CONFIG_BT_LE is not set
++CONFIG_BT_SELFTEST=y
++CONFIG_BT_DEBUGFS=y
++
++#
++# Bluetooth device drivers
++#
++CONFIG_BT_HCIUART=y
++# CONFIG_BT_HCIUART_H4 is not set
++CONFIG_BT_HCIUART_BCSP=y
++# CONFIG_BT_HCIUART_ATH3K is not set
++# CONFIG_BT_HCIUART_AG6XX is not set
++# CONFIG_BT_HCIUART_MRVL is not set
++# CONFIG_BT_HCIVHCI is not set
++# CONFIG_BT_MRVL is not set
 +# CONFIG_AF_RXRPC is not set
 +# CONFIG_AF_KCM is not set
 +CONFIG_WIRELESS=y
@@ -978,7 +998,14 @@ index 2fd3461..0475746 100644
 +# CONFIG_W1 is not set
 +# CONFIG_POWER_AVS is not set
 +# CONFIG_POWER_RESET is not set
-+# CONFIG_POWER_SUPPLY is not set
++CONFIG_POWER_SUPPLY=y
++# CONFIG_POWER_SUPPLY_DEBUG is not set
++# CONFIG_PDA_POWER is not set
++# CONFIG_TEST_POWER is not set
++# CONFIG_BATTERY_DS2780 is not set
++# CONFIG_BATTERY_DS2781 is not set
++# CONFIG_BATTERY_BQ27XXX is not set
++# CONFIG_CHARGER_MAX8903 is not set
 +# CONFIG_HWMON is not set
 +# CONFIG_THERMAL is not set
 +# CONFIG_WATCHDOG is not set
@@ -1061,7 +1088,76 @@ index 2fd3461..0475746 100644
 +#
 +# HID support
 +#
-+# CONFIG_HID is not set
++CONFIG_HID=y
++CONFIG_HID_BATTERY_STRENGTH=y
++CONFIG_HIDRAW=y
++CONFIG_UHID=y
++CONFIG_HID_GENERIC=y
++
++#
++# Special HID drivers
++#
++# CONFIG_HID_A4TECH is not set
++# CONFIG_HID_ACRUX is not set
++# CONFIG_HID_APPLE is not set
++# CONFIG_HID_AUREAL is not set
++# CONFIG_HID_BELKIN is not set
++# CONFIG_HID_CHERRY is not set
++# CONFIG_HID_CHICONY is not set
++# CONFIG_HID_COUGAR is not set
++# CONFIG_HID_CMEDIA is not set
++# CONFIG_HID_CYPRESS is not set
++# CONFIG_HID_DRAGONRISE is not set
++# CONFIG_HID_EMS_FF is not set
++# CONFIG_HID_ELECOM is not set
++# CONFIG_HID_EZKEY is not set
++# CONFIG_HID_GEMBIRD is not set
++# CONFIG_HID_GFRM is not set
++# CONFIG_HID_KEYTOUCH is not set
++# CONFIG_HID_KYE is not set
++# CONFIG_HID_WALTOP is not set
++# CONFIG_HID_VIEWSONIC is not set
++# CONFIG_HID_GYRATION is not set
++# CONFIG_HID_ICADE is not set
++# CONFIG_HID_ITE is not set
++# CONFIG_HID_JABRA is not set
++# CONFIG_HID_TWINHAN is not set
++# CONFIG_HID_KENSINGTON is not set
++# CONFIG_HID_LCPOWER is not set
++# CONFIG_HID_LENOVO is not set
++# CONFIG_HID_LOGITECH is not set
++# CONFIG_HID_MAGICMOUSE is not set
++# CONFIG_HID_MALTRON is not set
++# CONFIG_HID_MAYFLASH is not set
++# CONFIG_HID_REDRAGON is not set
++# CONFIG_HID_MICROSOFT is not set
++# CONFIG_HID_MONTEREY is not set
++# CONFIG_HID_MULTITOUCH is not set
++# CONFIG_HID_NTI is not set
++# CONFIG_HID_ORTEK is not set
++# CONFIG_HID_PANTHERLORD is not set
++# CONFIG_HID_PETALYNX is not set
++# CONFIG_HID_PICOLCD is not set
++# CONFIG_HID_PLANTRONICS is not set
++# CONFIG_HID_PRIMAX is not set
++# CONFIG_HID_SAITEK is not set
++# CONFIG_HID_SAMSUNG is not set
++# CONFIG_HID_SPEEDLINK is not set
++# CONFIG_HID_STEAM is not set
++# CONFIG_HID_STEELSERIES is not set
++# CONFIG_HID_SUNPLUS is not set
++# CONFIG_HID_RMI is not set
++# CONFIG_HID_GREENASIA is not set
++# CONFIG_HID_SMARTJOYPLUS is not set
++# CONFIG_HID_TIVO is not set
++# CONFIG_HID_TOPSEED is not set
++# CONFIG_HID_THRUSTMASTER is not set
++# CONFIG_HID_UDRAW_PS3 is not set
++# CONFIG_HID_XINMO is not set
++# CONFIG_HID_ZEROPLUS is not set
++# CONFIG_HID_ZYDACRON is not set
++# CONFIG_HID_SENSOR_HUB is not set
++# CONFIG_HID_ALPS is not set
 +CONFIG_USB_OHCI_LITTLE_ENDIAN=y
 +# CONFIG_USB_SUPPORT is not set
 +# CONFIG_UWB is not set
@@ -1086,7 +1182,7 @@ index 2fd3461..0475746 100644
 +CONFIG_RTC_INTF_PROC=y
 +CONFIG_RTC_INTF_DEV=y
 +# CONFIG_RTC_INTF_DEV_UIE_EMUL is not set
-+CONFIG_RTC_DRV_TEST=n
++# CONFIG_RTC_DRV_TEST is not set
 +
 +#
 +# I2C RTC drivers
@@ -1257,7 +1353,7 @@ index 2fd3461..0475746 100644
 +# CONFIG_ANDROID is not set
 +# CONFIG_LIBNVDIMM is not set
 +# CONFIG_DAX is not set
-+# CONFIG_NVMEM is not set
++CONFIG_NVMEM=y
 +
 +#
 +# HW tracing support
@@ -1470,17 +1566,21 @@ index 2fd3461..0475746 100644
 +CONFIG_CRYPTO_ALGAPI=y
 +CONFIG_CRYPTO_ALGAPI2=y
 +CONFIG_CRYPTO_AEAD2=y
++CONFIG_CRYPTO_BLKCIPHER=y
 +CONFIG_CRYPTO_BLKCIPHER2=y
 +CONFIG_CRYPTO_HASH=y
 +CONFIG_CRYPTO_HASH2=y
++CONFIG_CRYPTO_RNG=y
 +CONFIG_CRYPTO_RNG2=y
++CONFIG_CRYPTO_RNG_DEFAULT=y
 +CONFIG_CRYPTO_AKCIPHER2=y
 +CONFIG_CRYPTO_AKCIPHER=y
 +CONFIG_CRYPTO_KPP2=y
++CONFIG_CRYPTO_KPP=y
 +CONFIG_CRYPTO_ACOMP2=y
 +CONFIG_CRYPTO_RSA=y
 +# CONFIG_CRYPTO_DH is not set
-+# CONFIG_CRYPTO_ECDH is not set
++CONFIG_CRYPTO_ECDH=y
 +CONFIG_CRYPTO_MANAGER=y
 +CONFIG_CRYPTO_MANAGER2=y
 +# CONFIG_CRYPTO_USER is not set
@@ -1514,7 +1614,7 @@ index 2fd3461..0475746 100644
 +# CONFIG_CRYPTO_CFB is not set
 +# CONFIG_CRYPTO_CTR is not set
 +# CONFIG_CRYPTO_CTS is not set
-+# CONFIG_CRYPTO_ECB is not set
++CONFIG_CRYPTO_ECB=y
 +# CONFIG_CRYPTO_LRW is not set
 +# CONFIG_CRYPTO_OFB is not set
 +# CONFIG_CRYPTO_PCBC is not set
@@ -1525,8 +1625,8 @@ index 2fd3461..0475746 100644
 +#
 +# Hash modes
 +#
-+# CONFIG_CRYPTO_CMAC is not set
-+# CONFIG_CRYPTO_HMAC is not set
++CONFIG_CRYPTO_CMAC=y
++CONFIG_CRYPTO_HMAC=y
 +# CONFIG_CRYPTO_XCBC is not set
 +# CONFIG_CRYPTO_VMAC is not set
 +
@@ -1546,7 +1646,7 @@ index 2fd3461..0475746 100644
 +# CONFIG_CRYPTO_RMD256 is not set
 +# CONFIG_CRYPTO_RMD320 is not set
 +# CONFIG_CRYPTO_SHA1 is not set
-+# CONFIG_CRYPTO_SHA256 is not set
++CONFIG_CRYPTO_SHA256=y
 +# CONFIG_CRYPTO_SHA512 is not set
 +# CONFIG_CRYPTO_SHA3 is not set
 +# CONFIG_CRYPTO_SM3 is not set
@@ -1590,8 +1690,11 @@ index 2fd3461..0475746 100644
 +# Random Number Generation
 +#
 +# CONFIG_CRYPTO_ANSI_CPRNG is not set
-+# CONFIG_CRYPTO_DRBG_MENU is not set
-+# CONFIG_CRYPTO_JITTERENTROPY is not set
++CONFIG_CRYPTO_DRBG_MENU=y
++CONFIG_CRYPTO_DRBG_HMAC=y
++# CONFIG_CRYPTO_DRBG_HASH is not set
++CONFIG_CRYPTO_DRBG=y
++CONFIG_CRYPTO_JITTERENTROPY=y
 +# CONFIG_CRYPTO_USER_API_HASH is not set
 +# CONFIG_CRYPTO_USER_API_SKCIPHER is not set
 +# CONFIG_CRYPTO_USER_API_RNG is not set
@@ -1835,7 +1938,7 @@ index 2fd3461..0475746 100644
 +# CONFIG_UBSAN is not set
 +CONFIG_UBSAN_ALIGNMENT=y
 diff --git a/drivers/block/Kconfig b/drivers/block/Kconfig
-index 20bb4bf..a37da8b 100644
+index 20bb4bfa4..a37da8bed 100644
 --- a/drivers/block/Kconfig
 +++ b/drivers/block/Kconfig
 @@ -394,6 +394,12 @@ config XILINX_SYSACE
@@ -1852,7 +1955,7 @@ index 20bb4bf..a37da8b 100644
  	tristate "Xen virtual block device support"
  	depends on XEN
 diff --git a/drivers/block/Makefile b/drivers/block/Makefile
-index a53cc1e..d003fc4 100644
+index a53cc1e3a..d003fc465 100644
 --- a/drivers/block/Makefile
 +++ b/drivers/block/Makefile
 @@ -17,6 +17,7 @@ obj-$(CONFIG_AMIGA_Z2RAM)	+= z2ram.o
@@ -1865,10 +1968,10 @@ index a53cc1e..d003fc4 100644
  obj-$(CONFIG_BLK_DEV_SKD)	+= skd.o
 diff --git a/drivers/block/lowrisc_pitonsd.c b/drivers/block/lowrisc_pitonsd.c
 new file mode 100644
-index 0000000..c9872fe
+index 000000000..ed487079d
 --- /dev/null
 +++ b/drivers/block/lowrisc_pitonsd.c
-@@ -0,0 +1,991 @@
+@@ -0,0 +1,1010 @@
 +/*
 + * LowRISC_piton_sd device driver
 + *
@@ -2307,6 +2410,56 @@ index 0000000..c9872fe
 +	return NULL;
 +}
 +
++static void task_prepare(struct pitonsd_device *sdpiton)
++{
++                int dir = rq_data_dir(sdpiton->req); /* direction */
++                /* count buffers to be transferred, and clear the hardware buffer */
++                sdpiton->blkcnt = my_rq_foreach(sdpiton, pattern_transfer);
++
++                sdpiton->data_pos = blk_rq_pos(sdpiton->req);
++
++		pr_debug(
++			"request: sec=0x%llx dir=0x%i blkcnt=0x%i\n",
++			(unsigned long long)(sdpiton->data_pos),
++			dir, sdpiton->blkcnt);
++
++		if (dir) {
++                        /* copy buffers to be written */
++                        my_rq_foreach(sdpiton, write_transfer);
++                        /* Kick off write request */
++                        wmb();
++                        sdpiton->iter = 0;
++			sdpiton->fsm_task = _piton_sd_TASK_WRITE;
++                        /* SD sector address */
++                        sdpiton->baseaddr[ _piton_sd_ADDR_SD ] = sdpiton->data_pos;
++                        /* always start at beginning of DMA buffer */
++                        sdpiton->baseaddr[ _piton_sd_ADDR_DMA ] = 0;
++                        /* set sector count */
++	                sdpiton->baseaddr[ _piton_sd_BLKCNT ] = 1; /* this is a BUG, should be blkcnt */
++			sdpiton->baseaddr[ _piton_sd_REQ_WR ] = 1;
++                        sdpiton->baseaddr[ _piton_sd_IRQ_EN ] = 1;
++                        wmb();
++#ifdef SIMPLE_DEBUG
++                        printk("write_buffer 0x%llx 0x%llx\n", (u64)(sdpiton->data_pos), (u64)(sdpiton->blkcnt));
++#endif
++		} else {
++			/* Kick off read request */
++			sdpiton->fsm_task = _piton_sd_TASK_READ;
++                        /* SD sector address */
++                        sdpiton->baseaddr[ _piton_sd_ADDR_SD ] = sdpiton->data_pos;
++                        /* always start at beginning of DMA buffer */
++                        sdpiton->baseaddr[ _piton_sd_ADDR_DMA ] = 0;
++                        /* set sector count */
++	                sdpiton->baseaddr[ _piton_sd_BLKCNT ] = sdpiton->blkcnt;
++			sdpiton->baseaddr[ _piton_sd_REQ_RD ] = 1;
++                        sdpiton->baseaddr[ _piton_sd_IRQ_EN ] = 1;
++                        wmb();
++#ifdef SIMPLE_DEBUG
++                        printk("read_buffer 0x%llx 0x%llx\n", (u64)(sdpiton->data_pos), (u64)(sdpiton->blkcnt));
++#endif
++		}
++ }
++
 +static void pitonsd_fsm_tasklet(unsigned long data)
 +{
 +	struct pitonsd_device *sdpiton = (void *)data;
@@ -2389,55 +2542,8 @@ index 0000000..c9872fe
 +            if (!timer_pending(&sdpiton->stall_timer))
 +              add_timer(&sdpiton->stall_timer);
 +            sdpiton->req = pitonsd_get_next_request(sdpiton->queue);
-+            if (sdpiton->req) {
-+                int dir;                /* direction */
-+                /* count buffers to be transferred, and clear the hardware buffer */
-+                sdpiton->blkcnt = my_rq_foreach(sdpiton, pattern_transfer);
-+
-+                sdpiton->data_pos = blk_rq_pos(sdpiton->req);
-+                dir = rq_data_dir(sdpiton->req);
-+
-+		pr_debug(
-+			"request: sec=0x%llx dir=0x%i blkcnt=0x%i\n",
-+			(unsigned long long)(sdpiton->data_pos),
-+			dir, sdpiton->blkcnt);
-+
-+		if (dir) {
-+                        /* copy buffers to be written */
-+                        my_rq_foreach(sdpiton, write_transfer);
-+                        /* Kick off write request */
-+                        wmb();
-+                        sdpiton->iter = 0;
-+			sdpiton->fsm_task = _piton_sd_TASK_WRITE;
-+                        /* SD sector address */
-+                        sdpiton->baseaddr[ _piton_sd_ADDR_SD ] = sdpiton->data_pos;
-+                        /* always start at beginning of DMA buffer */
-+                        sdpiton->baseaddr[ _piton_sd_ADDR_DMA ] = 0;
-+                        /* set sector count */
-+	                sdpiton->baseaddr[ _piton_sd_BLKCNT ] = 1; /* this is a BUG, should be blkcnt */
-+			sdpiton->baseaddr[ _piton_sd_REQ_WR ] = 1;
-+                        sdpiton->baseaddr[ _piton_sd_IRQ_EN ] = 1;
-+                        wmb();
-+#ifdef SIMPLE_DEBUG
-+                        printk("write_buffer 0x%llx 0x%llx\n", (u64)(sdpiton->data_pos), (u64)(sdpiton->blkcnt));
-+#endif
-+		} else {
-+			/* Kick off read request */
-+			sdpiton->fsm_task = _piton_sd_TASK_READ;
-+                        /* SD sector address */
-+                        sdpiton->baseaddr[ _piton_sd_ADDR_SD ] = sdpiton->data_pos;
-+                        /* always start at beginning of DMA buffer */
-+                        sdpiton->baseaddr[ _piton_sd_ADDR_DMA ] = 0;
-+                        /* set sector count */
-+	                sdpiton->baseaddr[ _piton_sd_BLKCNT ] = sdpiton->blkcnt;
-+			sdpiton->baseaddr[ _piton_sd_REQ_RD ] = 1;
-+                        sdpiton->baseaddr[ _piton_sd_IRQ_EN ] = 1;
-+                        wmb();
-+#ifdef SIMPLE_DEBUG
-+                        printk("read_buffer 0x%llx 0x%llx\n", (u64)(sdpiton->data_pos), (u64)(sdpiton->blkcnt));
-+#endif
-+		}
-+            }
++            if (sdpiton->req)
++              task_prepare(sdpiton);
 +            else
 +              {
 +                pr_debug("prepare was empty");
@@ -2452,47 +2558,85 @@ index 0000000..c9872fe
 +	spin_unlock_irqrestore(&sdpiton->lock, flags);
 +}
 +
++static void pitonsd_card_reset(struct pitonsd_device *sdpiton)
++{
++  /* Verify that there is actually a SD-Card in the slot. If not, then
++   * bail out back to the idle state and wake up all the waiters */
++  
++  if (_piton_sd_STATUS_SD_DETECT & sdpiton->baseaddr[_piton_sd_STATUS])
++    {
++      set_capacity(sdpiton->gd, 0);
++      dev_info(sdpiton->dev, "No SD-Card in slot\n");
++      
++      /* Drop all in-flight and pending requests */
++      if (sdpiton->req) {
++        blk_mq_end_request(sdpiton->req, BLK_STS_IOERR);
++        sdpiton->req = NULL;
++        
++      }
++    while ((sdpiton->req = pitonsd_get_next_request(sdpiton->queue)) != NULL)
++      blk_mq_end_request(sdpiton->req, BLK_STS_IOERR);
++    }
++  else
++    {
++      int old_init_state = -1;
++      /* SD sector address */
++      sdpiton->baseaddr[ _piton_sd_ADDR_SD ] = 0;
++      /* always start at beginning of DMA buffer */
++      sdpiton->baseaddr[ _piton_sd_ADDR_DMA ] = 0;
++      /* set sector count */
++      sdpiton->baseaddr[ _piton_sd_BLKCNT ] = 0;
++      sdpiton->baseaddr[ _piton_sd_REQ_RD ] = 0;
++      sdpiton->baseaddr[ _piton_sd_REQ_WR ] = 0;
++      sdpiton->baseaddr[ _piton_sd_IRQ_EN ] = 0;
++      sdpiton->baseaddr[ _piton_sd_SYS_RST ] = 0;
++      
++      /* reset HW state machine */
++      sdpiton->baseaddr[ _piton_sd_SYS_RST ] = 1;
++      
++      while (_piton_sd_STATUS_INIT_DONE & ~sdpiton->baseaddr[_piton_sd_STATUS])
++        {
++          int init_state = sdpiton->baseaddr[_piton_sd_INIT_STATE];
++          if (old_init_state != init_state)
++            pitonsd_dump_regs(sdpiton);
++          old_init_state = init_state;
++        }
++      
++      pitonsd_dump_regs(sdpiton);
++    }
++}
++
 +static void pitonsd_stall_timer(struct timer_list *t)
 +{
 +	struct pitonsd_device *sdpiton = from_timer(sdpiton, t, stall_timer);
 +	unsigned long flags;
-+        int status;
 +        
-+	dev_warn(sdpiton->dev,
-+		 "kicking stalled fsm; status=%lld task=%i iter=%i\n",
++	dev_warn(sdpiton->dev, "kicking stalled fsm; status=%lld task=%i iter=%i\n",
 +		 sdpiton->baseaddr[_piton_sd_STATUS], sdpiton->fsm_task, sdpiton->fsm_iter_num);
 +
 +        pitonsd_dump_regs(sdpiton);
 +        
-+	spin_lock_irqsave(&sdpiton->lock, flags);
-+
 +	/* Rearm the stall timer *before* entering FSM (which may then
 +	 * delete the timer) */
++        
 +	mod_timer(&sdpiton->stall_timer, jiffies + TIMEOUT);
 +
-+	/* Verify that there is actually a SD-Card in the slot. If not, then
-+	 * bail out back to the idle state and wake up all the waiters */
-+        status = sdpiton->baseaddr[_piton_sd_STATUS];
-+        if (status & _piton_sd_STATUS_REQ_RDY) {
-+          /* SD card is ready */
-+          tasklet_schedule(&sdpiton->fsm_tasklet);
-+        }
-+
-+	spin_unlock_irqrestore(&sdpiton->lock, flags);
-+
-+	if ((_piton_sd_STATUS_SD_DETECT & ~status) == 0) {
-+		set_capacity(sdpiton->gd, 0);
-+		dev_info(sdpiton->dev, "No SD-Card in slot\n");
-+
-+		/* Drop all in-flight and pending requests */
-+		if (sdpiton->req) {
-+			blk_mq_end_request(sdpiton->req, BLK_STS_IOERR);
-+			sdpiton->req = NULL;
-+                        
-+		}
-+		while ((sdpiton->req = pitonsd_get_next_request(sdpiton->queue)) != NULL)
-+			blk_mq_end_request(sdpiton->req, BLK_STS_IOERR);
-+	}
++        /* If the card is idle and we missed the interrupt (can this happen ?)
++           call the tasklet to find the next action */
++        
++        if (sdpiton->baseaddr[_piton_sd_STATUS] & _piton_sd_STATUS_REQ_RDY)
++          {
++            /* SD card is ready */
++            spin_lock_irqsave(&sdpiton->lock, flags);
++            tasklet_schedule(&sdpiton->fsm_tasklet);
++            spin_unlock_irqrestore(&sdpiton->lock, flags);
++          }
++        else if (sdpiton->req)
++          {
++            pitonsd_card_reset(sdpiton);
++            task_prepare(sdpiton);
++          }
++        
 +}
 +
 +/* ---------------------------------------------------------------------
@@ -2583,7 +2727,7 @@ index 0000000..c9872fe
 + */
 +static int pitonsd_setup(struct pitonsd_device *sdpiton, int sdpiton_id)
 +{
-+        int rc, old_init_state = -1;
++        int rc;
 +        
 +	printk("pitonsd_setup(sdpiton=0x%llx)\n", (u64)sdpiton);
 +
@@ -2604,29 +2748,7 @@ index 0000000..c9872fe
 +                (unsigned long long)(sdpiton->physaddrend - sdpiton->physaddr),
 +                sdpiton->irq);
 +
-+        /* SD sector address */
-+        sdpiton->baseaddr[ _piton_sd_ADDR_SD ] = 0;
-+        /* always start at beginning of DMA buffer */
-+        sdpiton->baseaddr[ _piton_sd_ADDR_DMA ] = 0;
-+        /* set sector count */
-+        sdpiton->baseaddr[ _piton_sd_BLKCNT ] = 0;
-+        sdpiton->baseaddr[ _piton_sd_REQ_RD ] = 0;
-+        sdpiton->baseaddr[ _piton_sd_REQ_WR ] = 0;
-+        sdpiton->baseaddr[ _piton_sd_IRQ_EN ] = 0;
-+        sdpiton->baseaddr[ _piton_sd_SYS_RST ] = 0;
-+
-+        /* reset HW state machine */
-+        sdpiton->baseaddr[ _piton_sd_SYS_RST ] = 1;
-+
-+        while (_piton_sd_STATUS_INIT_DONE & ~sdpiton->baseaddr[_piton_sd_STATUS])
-+          {
-+            int init_state = sdpiton->baseaddr[_piton_sd_INIT_STATE];
-+            if (old_init_state != init_state)
-+              pitonsd_dump_regs(sdpiton);
-+            old_init_state = init_state;
-+          }
-+        
-+        pitonsd_dump_regs(sdpiton);
++        pitonsd_card_reset(sdpiton);
 +	/*
 +	 * Initialize the state machine tasklet and stall timer
 +	 */
@@ -2862,7 +2984,7 @@ index 0000000..c9872fe
 +module_exit(pitonsd_exit);
 diff --git a/drivers/block/lowrisc_pitonsd.h b/drivers/block/lowrisc_pitonsd.h
 new file mode 100644
-index 0000000..57e2c34
+index 000000000..57e2c3473
 --- /dev/null
 +++ b/drivers/block/lowrisc_pitonsd.h
 @@ -0,0 +1,54 @@
@@ -2921,7 +3043,7 @@ index 0000000..57e2c34
 +
 +enum { _piton_sd_NUM_MINORS = 16 };
 diff --git a/drivers/input/keyboard/Kconfig b/drivers/input/keyboard/Kconfig
-index 52d7f55..5f9ce38 100644
+index 52d7f55fc..5f9ce385c 100644
 --- a/drivers/input/keyboard/Kconfig
 +++ b/drivers/input/keyboard/Kconfig
 @@ -757,3 +757,19 @@ config KEYBOARD_MTK_PMIC
@@ -2945,7 +3067,7 @@ index 52d7f55..5f9ce38 100644
 +	  Say Y here if you want to use a serial device as a fake keyboard input device.
 +	  If unsure, say N.
 diff --git a/drivers/input/keyboard/Makefile b/drivers/input/keyboard/Makefile
-index 182e929..f04c3d6 100644
+index 182e92985..f04c3d65a 100644
 --- a/drivers/input/keyboard/Makefile
 +++ b/drivers/input/keyboard/Makefile
 @@ -67,3 +67,5 @@ obj-$(CONFIG_KEYBOARD_TM2_TOUCHKEY)	+= tm2-touchkey.o
@@ -2956,7 +3078,7 @@ index 182e929..f04c3d6 100644
 +obj-$(CONFIG_KEYBOARD_LOWRISC_FAKE)	+= lowrisc-fake-keys.o
 diff --git a/drivers/input/keyboard/lowrisc-fake-keys.c b/drivers/input/keyboard/lowrisc-fake-keys.c
 new file mode 100644
-index 0000000..11ef08c
+index 000000000..11ef08ca9
 --- /dev/null
 +++ b/drivers/input/keyboard/lowrisc-fake-keys.c
 @@ -0,0 +1,273 @@
@@ -3235,7 +3357,7 @@ index 0000000..11ef08c
 +MODULE_DESCRIPTION("Dummy Keyboard input events for Lowrisc");
 diff --git a/drivers/input/keyboard/lowrisc-kbd.c b/drivers/input/keyboard/lowrisc-kbd.c
 new file mode 100644
-index 0000000..6a473b3
+index 000000000..6a473b3c5
 --- /dev/null
 +++ b/drivers/input/keyboard/lowrisc-kbd.c
 @@ -0,0 +1,168 @@
@@ -3409,7 +3531,7 @@ index 0000000..6a473b3
 +MODULE_DESCRIPTION("Keyboard driver for Lowrisc Keyboard Lowrisc_controller");
 diff --git a/drivers/input/keyboard/lowrisc-scancode.h b/drivers/input/keyboard/lowrisc-scancode.h
 new file mode 100644
-index 0000000..8711843
+index 000000000..871184347
 --- /dev/null
 +++ b/drivers/input/keyboard/lowrisc-scancode.h
 @@ -0,0 +1,282 @@
@@ -3696,7 +3818,7 @@ index 0000000..8711843
 +[254] = {0xfe,0x00,0x00},
 +[255] = {0xff,0x00,0x00},
 diff --git a/drivers/input/mouse/Kconfig b/drivers/input/mouse/Kconfig
-index 566a1e3..571c7bf 100644
+index 566a1e3aa..571c7bf49 100644
 --- a/drivers/input/mouse/Kconfig
 +++ b/drivers/input/mouse/Kconfig
 @@ -393,6 +393,15 @@ config MOUSE_GPIO
@@ -3716,7 +3838,7 @@ index 566a1e3..571c7bf 100644
  	tristate "PXA930 Trackball mouse"
  	depends on CPU_PXA930 || CPU_PXA935
 diff --git a/drivers/input/mouse/Makefile b/drivers/input/mouse/Makefile
-index e49f085..e211709 100644
+index e49f08565..e21170928 100644
 --- a/drivers/input/mouse/Makefile
 +++ b/drivers/input/mouse/Makefile
 @@ -14,6 +14,7 @@ obj-$(CONFIG_MOUSE_ELAN_I2C)		+= elan_i2c.o
@@ -3729,7 +3851,7 @@ index e49f085..e211709 100644
  obj-$(CONFIG_MOUSE_PC110PAD)		+= pc110pad.o
 diff --git a/drivers/input/mouse/lowrisc_mouse.c b/drivers/input/mouse/lowrisc_mouse.c
 new file mode 100644
-index 0000000..ad0d2e3
+index 000000000..ad0d2e3fa
 --- /dev/null
 +++ b/drivers/input/mouse/lowrisc_mouse.c
 @@ -0,0 +1,192 @@
@@ -3926,7 +4048,7 @@ index 0000000..ad0d2e3
 +MODULE_LICENSE("GPL");
 +MODULE_ALIAS("platform:lowrisc_mouse"); /* work with hotplug and coldplug */
 diff --git a/drivers/mmc/host/Kconfig b/drivers/mmc/host/Kconfig
-index 28fcd8f..fbff935 100644
+index 28fcd8f58..fbff935af 100644
 --- a/drivers/mmc/host/Kconfig
 +++ b/drivers/mmc/host/Kconfig
 @@ -938,6 +938,12 @@ config MMC_BCM2835
@@ -3943,7 +4065,7 @@ index 28fcd8f..fbff935 100644
  	tristate "MediaTek SD/MMC Card Interface support"
  	depends on HAS_DMA
 diff --git a/drivers/mmc/host/Makefile b/drivers/mmc/host/Makefile
-index 7357871..2656d1a 100644
+index 73578718f..2656d1a40 100644
 --- a/drivers/mmc/host/Makefile
 +++ b/drivers/mmc/host/Makefile
 @@ -73,6 +73,7 @@ obj-$(CONFIG_MMC_SUNXI)		+= sunxi-mmc.o
@@ -3956,7 +4078,7 @@ index 7357871..2656d1a 100644
  obj-$(CONFIG_MMC_REALTEK_USB)	+= rtsx_usb_sdmmc.o
 diff --git a/drivers/mmc/host/lowrisc_sd.c b/drivers/mmc/host/lowrisc_sd.c
 new file mode 100644
-index 0000000..d2570eb
+index 000000000..d2570eb8a
 --- /dev/null
 +++ b/drivers/mmc/host/lowrisc_sd.c
 @@ -0,0 +1,803 @@
@@ -4765,7 +4887,7 @@ index 0000000..d2570eb
 +MODULE_LICENSE("GPL");
 diff --git a/drivers/mmc/host/lowrisc_sd.h b/drivers/mmc/host/lowrisc_sd.h
 new file mode 100644
-index 0000000..8aa18fa
+index 000000000..8aa18fa0e
 --- /dev/null
 +++ b/drivers/mmc/host/lowrisc_sd.h
 @@ -0,0 +1,52 @@
@@ -4822,7 +4944,7 @@ index 0000000..8aa18fa
 +  int int_en, width_setting;
 +};
 diff --git a/drivers/net/ethernet/Kconfig b/drivers/net/ethernet/Kconfig
-index 885e00d..5d18ddf 100644
+index 885e00d17..5d18ddf22 100644
 --- a/drivers/net/ethernet/Kconfig
 +++ b/drivers/net/ethernet/Kconfig
 @@ -115,6 +115,7 @@ config LANTIQ_XRX200
@@ -4834,7 +4956,7 @@ index 885e00d..5d18ddf 100644
  source "drivers/net/ethernet/mediatek/Kconfig"
  source "drivers/net/ethernet/mellanox/Kconfig"
 diff --git a/drivers/net/ethernet/Makefile b/drivers/net/ethernet/Makefile
-index 7b5bf96..06beeb5 100644
+index 7b5bf9682..06beeb577 100644
 --- a/drivers/net/ethernet/Makefile
 +++ b/drivers/net/ethernet/Makefile
 @@ -50,6 +50,7 @@ obj-$(CONFIG_JME) += jme.o
@@ -4847,7 +4969,7 @@ index 7b5bf96..06beeb5 100644
  obj-$(CONFIG_NET_VENDOR_MELLANOX) += mellanox/
 diff --git a/drivers/net/ethernet/lowrisc/Kconfig b/drivers/net/ethernet/lowrisc/Kconfig
 new file mode 100644
-index 0000000..cccdadc
+index 000000000..cccdadc16
 --- /dev/null
 +++ b/drivers/net/ethernet/lowrisc/Kconfig
 @@ -0,0 +1,26 @@
@@ -4879,7 +5001,7 @@ index 0000000..cccdadc
 +endif # NET_VENDOR_LOWRISC
 diff --git a/drivers/net/ethernet/lowrisc/Makefile b/drivers/net/ethernet/lowrisc/Makefile
 new file mode 100644
-index 0000000..4eb3ade
+index 000000000..4eb3adee1
 --- /dev/null
 +++ b/drivers/net/ethernet/lowrisc/Makefile
 @@ -0,0 +1,6 @@
@@ -4891,7 +5013,7 @@ index 0000000..4eb3ade
 +CFLAGS_lowrisc_100MHz.o := -DDEBUG
 diff --git a/drivers/net/ethernet/lowrisc/lowrisc_100MHz.c b/drivers/net/ethernet/lowrisc/lowrisc_100MHz.c
 new file mode 100644
-index 0000000..430665b
+index 000000000..430665bc3
 --- /dev/null
 +++ b/drivers/net/ethernet/lowrisc/lowrisc_100MHz.c
 @@ -0,0 +1,841 @@
@@ -5738,7 +5860,7 @@ index 0000000..430665b
 +MODULE_LICENSE("GPL");
 diff --git a/drivers/net/ethernet/lowrisc/lowrisc_100MHz.h b/drivers/net/ethernet/lowrisc/lowrisc_100MHz.h
 new file mode 100644
-index 0000000..9d227c1
+index 000000000..9d227c10d
 --- /dev/null
 +++ b/drivers/net/ethernet/lowrisc/lowrisc_100MHz.h
 @@ -0,0 +1,55 @@
@@ -5798,7 +5920,7 @@ index 0000000..9d227c1
 +
 +#endif
 diff --git a/drivers/rtc/Kconfig b/drivers/rtc/Kconfig
-index f933c06..f886e84 100644
+index f933c06bf..f886e8488 100644
 --- a/drivers/rtc/Kconfig
 +++ b/drivers/rtc/Kconfig
 @@ -1695,6 +1695,12 @@ config RTC_DRV_LOONGSON1
@@ -5815,7 +5937,7 @@ index f933c06..f886e84 100644
  	tristate "Freescale MXC Real Time Clock"
  	depends on ARCH_MXC
 diff --git a/drivers/rtc/Makefile b/drivers/rtc/Makefile
-index fe39624..607a158 100644
+index fe3962496..607a15899 100644
 --- a/drivers/rtc/Makefile
 +++ b/drivers/rtc/Makefile
 @@ -83,6 +83,7 @@ obj-$(CONFIG_RTC_DRV_ISL12026)	+= rtc-isl12026.o
@@ -5828,7 +5950,7 @@ index fe39624..607a158 100644
  obj-$(CONFIG_RTC_DRV_LPC32XX)	+= rtc-lpc32xx.o
 diff --git a/drivers/rtc/rtc-lowrisc.c b/drivers/rtc/rtc-lowrisc.c
 new file mode 100644
-index 0000000..34d55ef
+index 000000000..34d55ef88
 --- /dev/null
 +++ b/drivers/rtc/rtc-lowrisc.c
 @@ -0,0 +1,127 @@
@@ -5961,7 +6083,7 @@ index 0000000..34d55ef
 +MODULE_ALIAS("platform:rtc-lowrisc");
 diff --git a/drivers/video/console/lowrisc-con.c b/drivers/video/console/lowrisc-con.c
 new file mode 100644
-index 0000000..c3c782f
+index 000000000..c3c782f24
 --- /dev/null
 +++ b/drivers/video/console/lowrisc-con.c
 @@ -0,0 +1,303 @@
@@ -6269,7 +6391,7 @@ index 0000000..c3c782f
 +MODULE_DESCRIPTION("Lowrisc VGA-compatible console driver");
 +MODULE_LICENSE("GPL");
 diff --git a/drivers/video/fbdev/Kconfig b/drivers/video/fbdev/Kconfig
-index 58a9590..9172875 100644
+index 58a9590c9..9172875c7 100644
 --- a/drivers/video/fbdev/Kconfig
 +++ b/drivers/video/fbdev/Kconfig
 @@ -2272,6 +2272,12 @@ config FB_SIMPLE
@@ -6286,7 +6408,7 @@ index 58a9590..9172875 100644
  	tristate "Solomon SSD1307 framebuffer support"
  	depends on FB && I2C
 diff --git a/drivers/video/fbdev/Makefile b/drivers/video/fbdev/Makefile
-index 846b0c9..2f2173d 100644
+index 846b0c9ea..2f2173db5 100644
 --- a/drivers/video/fbdev/Makefile
 +++ b/drivers/video/fbdev/Makefile
 @@ -136,6 +136,7 @@ obj-$(CONFIG_FB_DA8XX)		  += da8xx-fb.o
@@ -6299,7 +6421,7 @@ index 846b0c9..2f2173d 100644
  obj-$(CONFIG_FB_VIRTUAL)          += vfb.o
 diff --git a/drivers/video/fbdev/lowrisc_fb.c b/drivers/video/fbdev/lowrisc_fb.c
 new file mode 100644
-index 0000000..f0f2159
+index 000000000..f0f21592d
 --- /dev/null
 +++ b/drivers/video/fbdev/lowrisc_fb.c
 @@ -0,0 +1,738 @@
@@ -7043,7 +7165,7 @@ index 0000000..f0f2159
 +MODULE_LICENSE("GPL");
 diff --git a/drivers/video/fbdev/lowrisc_logo.h b/drivers/video/fbdev/lowrisc_logo.h
 new file mode 100644
-index 0000000..a99a1bf
+index 000000000..a99a1bf2f
 --- /dev/null
 +++ b/drivers/video/fbdev/lowrisc_logo.h
 @@ -0,0 +1,660 @@
@@ -7709,7 +7831,7 @@ index 0000000..a99a1bf
 +0x83, 0x05, 0x98, 0x00, 0x8A, 0x05, 0x01, 0x00,
 diff --git a/drivers/video/fbdev/lowrisc_mini_font.h b/drivers/video/fbdev/lowrisc_mini_font.h
 new file mode 100644
-index 0000000..fff234b
+index 000000000..fff234be7
 --- /dev/null
 +++ b/drivers/video/fbdev/lowrisc_mini_font.h
 @@ -0,0 +1,190 @@
@@ -7905,7 +8027,7 @@ index 0000000..fff234b
 +0x40,0xA4,0x18,0x00,0x00,0x00,0x00,0x00,
 diff --git a/drivers/video/fbdev/lowrisc_palette.h b/drivers/video/fbdev/lowrisc_palette.h
 new file mode 100644
-index 0000000..59b0a9a
+index 000000000..59b0a9a71
 --- /dev/null
 +++ b/drivers/video/fbdev/lowrisc_palette.h
 @@ -0,0 +1,256 @@

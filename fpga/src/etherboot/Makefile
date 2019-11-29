@@ -30,12 +30,14 @@ BOOTRAM =
 all: $(MAIN) $(MAIN_BIN) $(MAIN_IMG) $(MAIN_DIS) $(MAIN_SV) $(MAIN_MEM)
 	@echo "zero stage etherboot loader has been compiled!"
 
-$(MAIN): $(OBJS_C) src/main.c $(OBJS_S) linker.lds
+$(MAIN): $(OBJS_C) src/main.c $(OBJS_S) $(BOARD)_$(CPU).o linker.lds
 	$(CC) $(CFLAGS) $(LDFLAGS) $(INCLUDES) -Tlinker.lds $(OBJS_S) $(OBJS_C) src/main.c -o $@
 	@echo "LD    >= $(MAIN)"
 
-$(BOARD)_$(CPU).o: ../$(BOARD).dts
-	sed -e "s/\(compatible = \"\)\(\"\)/\1$(COMPATIBLE)\2/" $< | dtc -I dts -O dtb -o $(BOARD)_$(CPU).dtb
+$(BOARD)_$(CPU).dtb: ../generic.dts
+	sed -e "s/VENDOR/$(VENDOR)/" -e "s/CPU/$(CPU)/" -e "s/MEMSIZE/$(MEMSIZE)/" -e "s/BOARD/$(BOARD)/" $< | dtc -I dts -O dtb -o $@
+
+$(BOARD)_$(CPU).o: $(BOARD)_$(CPU).dtb
 	echo -e .section .dtb \; .align 4,0 \; .globl _dtb \; _dtb: \; .incbin \"$(BOARD)_$(CPU).dtb\" | $(CC) $(CFLAGS) -c -xassembler - -o $@
 
 %.img: %.bin

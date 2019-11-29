@@ -1,0 +1,118 @@
+/dts-v1/;
+
+/ {
+	#address-cells = <1>;
+	#size-cells = <1>;
+	compatible = "VENDOR,CPU-dev";
+	model = "VENDOR,CPU-lowRISC";
+        chosen {
+          stdout-path = "/soc/uart@41000000:115200";
+        };
+	L13: cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+                timebase-frequency = <500000>; // 0.5 MHz
+		L5: cpu@0 {
+			clock-frequency = <50000000>; // 50 MHz
+			device_type = "cpu";
+			next-level-cache = <&L7>;
+			reg = <0>;
+			status = "okay";
+			compatible = "VENDOR,CPU", "riscv";
+			riscv,isa = "rv64imafdc";
+			mmu-type = "riscv,sv39";
+			tlb-split;
+			L3: interrupt-controller {
+				#interrupt-cells = <1>;
+				interrupt-controller;
+				compatible = "riscv,cpu-intc";
+			};
+		};
+	};
+	L7: memory@80000000 {
+		device_type = "memory";
+		reg = <0x80000000 MEMSIZE>;
+	};
+	L12: soc {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "VENDOR,CPU-lowRISC-BOARD", "simple-bus";
+		ranges;
+		L1: clint@2000000 {
+			compatible = "riscv,clint0";
+			interrupts-extended = <&L3 3 &L3 7>;
+			reg = <0x2000000 0x10000>;
+			reg-names = "control";
+		};
+		L10: error-device@3000 {
+			compatible = "sifive,error0";
+			reg = <0x3000 0x1000>;
+			reg-names = "mem";
+		};
+		L0: interrupt-controller@c000000 {
+			#interrupt-cells = <1>;
+			compatible = "riscv,plic0";
+			interrupt-controller;
+			interrupts-extended = <&L3 11 &L3 9>;
+			reg = <0xc000000 0x4000000>;
+			reg-names = "control";
+			riscv,max-priority = <7>;
+			riscv,ndev = <5>;
+		};
+                L8: uart@41000000 {
+		  #address-cells = <1>;
+		  #size-cells = <1>;
+                  compatible = "ns16750";
+                  reg = <0x41000000 0x1000>;
+                  clock-frequency = <50000000>;
+                  current-speed = <115200>;
+                  interrupt-parent = <&L0>;
+                  interrupts = <1>;
+                  reg-shift = <2>; // regs are spaced on 32 bit boundary
+                  reg-io-width = <4>; // only 32-bit access are supported
+		};
+                sd: lowrisc-pitonsd@42000000 {
+                  reg = <0x42000000 0x10000>;
+                  interrupt-parent = <&L0>;
+                  interrupts = <2>;
+                  compatible = "lowrisc-pitonsd";
+                  };
+                eth: lowrisc-eth@43000000 {
+                  compatible = "lowrisc-eth";
+                  device_type = "network";
+                  interrupt-parent = <&L0>;
+                  interrupts = <3>;
+                  reg = <0x43000000 0x8000>;
+                };
+                gpio: lowrisc-gpio@44000000 {
+                  compatible = "lowrisc-gpio";
+                  reg = <0x44000000 0x1000>;
+                };
+                rtc: lowrisc-rtc@44000000 {
+                  compatible = "lowrisc-rtc";
+                  reg = <0x44000000 0x1000>;
+                };
+                bt: lowrisc-bt@46000000 {
+                        compatible = "ns16750";
+                        reg = <0x46000000 0x1000>;
+                        clock-frequency = <50000000>;
+                        current-speed = <115200>;
+                        interrupt-parent = <&L0>;
+                        interrupts = <4>;
+                        reg-shift = <2>; // regs are spaced on 32 bit boundary
+                        reg-io-width = <4>; // only 32-bit access are supported
+                };
+                keyb: lowrisc-keyb@45030000 {
+                        reg = <0x45030000 0x4000>;
+                        reg-io-width = <8>;
+                        reg-shift = <3>;
+                        compatible = "lowrisc-keyb";
+                };
+                fb: lowrisc-fb@45038000 {
+                        reg = <0x45038000 0xC8000>;
+                        reg-io-width = <8>;
+                        reg-shift = <3>;
+                        compatible = "lowrisc-fb";
+                };
+	};
+};
