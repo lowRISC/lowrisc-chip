@@ -179,7 +179,9 @@ int main()
     case 0x0: printf("SD boot\n"); sd_main(sw); break;
     case 0x1: printf("QSPI boot\n"); qspi_main(sw); break;
     case 0x2: printf("DRAM test\n"); dram_main(sw); break;
+#ifdef BIGROM
     case 0x3: printf("BT test\n"); bt_main(sw); break;
+#endif      
     case 0x4: printf("TFTP boot\n"); eth_main(); break;
     case 0x6: printf("Cache test\n"); cache_main(); break;
 #ifdef BIGROM

@@ -3,6 +3,7 @@
 #include "uart.h"
 #include "hid.h"
 
+#ifdef BIGROM
 static uint64_t old_status1, old_status2, old_status3;
 
 void bt_main(int sw)
@@ -43,3 +44,4 @@ void bt_main(int sw)
         }
     }
 }
+#endif
