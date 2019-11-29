@@ -146,7 +146,7 @@ void file_close(void)
 // Send an ACK packet. Return bytes sent.
 // If error occurs, return -1;
 int send_ack(int sock, struct tftpx_packet *packet, int size){
-	if(mysend(sock, packet, size) != size){
+	if(tftp_send(sock, packet, size) != size){
 		return -1;
 	}
 	
@@ -232,7 +232,7 @@ void handle_switch(int sock, struct tftpx_request *request)
     }
 }
 
-void process_udp_packet(int sock, const u_char *data, int ulen, uint16_t peer_port, uint32_t peer_ip, const u_char *peer_addr)
+void process_tftp_packet(int sock, const u_char *data, int ulen, uint16_t peer_port, uint32_t peer_ip, const u_char *peer_addr)
 {
   struct tftpx_request request;
   memset(&request, 0, sizeof(request));
@@ -242,8 +242,9 @@ void process_udp_packet(int sock, const u_char *data, int ulen, uint16_t peer_po
   handle_switch(sock, &request);
 }
 
-void tftps_tick(int sock)
+int tftps_tick(int sock)
 {
   if (block > 0)
     send_ack(sock, &ack_packet, 4);
+  return block;
 }

@@ -17,6 +17,7 @@ ips := xlnx_axi_clock_converter.xci  \
        xlnx_axi_gpio.xci             \
        xlnx_clk_$(BOARD).xci         \
        xlnx_clk_sd.xci               \
+       xlnx_char_fifo.xci            \
        xlnx_ila_4.xci                \
        xlnx_ila_qspi.xci             \
        xlnx_ila_perf.xci             \
@@ -60,7 +61,7 @@ $(work-dir)/$(CPU)_xilinx.new.mcs: $(work-dir)/$(CPU)_xilinx.new.bit $(BBL)
 	env XILINX_PART="xc7a100t-csg324-1" XILINX_BOARD="digilentinc.com:nexys4_ddr:part0:1.1" vivado -nojournal -mode batch -source scripts/prologue.tcl -source scripts/write_cfgmem.tcl -tclargs $@ $< $(BBL)
 
 new: $(work-dir)/$(CPU)_xilinx.bit $(work-dir)/search-ramb.log scripts/cnvmem.v $(work-dir)/boot.bmm 
-	make BOARD=$(BOARD) COMPATIBLE="$(COMPATIBLE)" -C src/etherboot
+	make BOARD=$(BOARD) CPU=$(CPU) VENDOR=$(VENDOR) MEMSIZE=$(MEMSIZE) -C src/etherboot
 	data2mem -bm $(work-dir)/boot.bmm -bd src/etherboot/$(BOARD)_$(CPU).mem -bt $< -o b $(work-dir)/$(CPU)_xilinx.new.bit
 
 $(work-dir)/search-ramb.log: scripts/search_ramb.tcl $(work-dir)/$(CPU)_xilinx_routed.dcp

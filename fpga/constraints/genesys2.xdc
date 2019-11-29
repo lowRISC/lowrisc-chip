@@ -1,8 +1,15 @@
-## Mouse
-##Pmod Header JB
-
-set_property -dict { PACKAGE_PIN V29   IOSTANDARD LVCMOS33 } [get_ports { PS2_MDATA }]; #IO_L17P_T2_A14_D30_14 Sch=jb_p[1]
-set_property -dict { PACKAGE_PIN V25   IOSTANDARD LVCMOS33 } [get_ports { PS2_MCLK }]; #IO_L18P_T2_A12_D28_14 Sch=jb_p[2]
+## Bluetooth
+## PMOD Header JB
+set_property -dict { PACKAGE_PIN V29   IOSTANDARD LVCMOS33 } [get_ports { bt_rts }]; #IO_L17P_T2_A14_D30_14 Sch=jb_p[1]
+set_property -dict { PACKAGE_PIN V30   IOSTANDARD LVCMOS33 } [get_ports { bt_rx }]; #IO_L17N_T2_A13_D29_14 Sch=jb_n[1]
+set_property -dict { PACKAGE_PIN V25   IOSTANDARD LVCMOS33 } [get_ports { bt_tx }]; #IO_L18P_T2_A12_D28_14 Sch=jb_p[2]
+set_property -dict { PACKAGE_PIN W26   IOSTANDARD LVCMOS33 } [get_ports { bt_cts }]; #IO_L18N_T2_A11_D27_14 Sch=jb_n[2]
+## GND(5), VCC3V3(6)
+set_property -dict { PACKAGE_PIN T25   IOSTANDARD LVCMOS33 } [get_ports { bt_sts }]; #IO_L14P_T2_SRCC_14 Sch=jb_p[3]
+set_property -dict { PACKAGE_PIN U25   IOSTANDARD LVCMOS33 } [get_ports { bt_rstn }]; #IO_L14N_T2_SRCC_14 Sch=jb_n[3]
+#set_property -dict { PACKAGE_PIN U22   IOSTANDARD LVCMOS33 } [get_ports { bt_nc_9 }]; #IO_L21P_T3_DQS_14 Sch=jb_p[4]
+#set_property -dict { PACKAGE_PIN U23   IOSTANDARD LVCMOS33 } [get_ports { bt_nc_10 }]; #IO_L21N_T3_DQS_A06_D22_14 Sch=jb_n[4]
+## GND(11), VCC3V3(12)
 
 ## Buttons
 set_property -dict {PACKAGE_PIN R19 IOSTANDARD LVCMOS33} [get_ports cpu_resetn]
