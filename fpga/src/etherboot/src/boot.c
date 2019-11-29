@@ -118,7 +118,7 @@ void sd_main(int sw)
 int lowrisc_init(unsigned long addr, int ch, unsigned long quirks);
 void tohost_exit(long code)
 {
-  print_uart_int(code);
+  print_uart_int(UARTBase, code);
   for (;;)
     ;
 }
@@ -423,5 +423,5 @@ DSTATUS disk_status (uint8_t pdrv)
 
 void puts(const char *str)
 {
-  print_uart(str);
+  print_uart(UARTBase, str);
 }

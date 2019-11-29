@@ -26,6 +26,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 #include <string.h>
 #include <unistd.h>
 #include "eth.h"
+#include "hid.h"
 #include "uart.h"
 #include "ariane.h"
 #include "hash-md5.h"
@@ -80,7 +81,7 @@ Error Codes
 void myputn(int wid, unsigned n)
 {
   if ((wid > 0) || (n > 9)) myputn(wid-1, n / 10);
-  write_serial(n % 10 + '0');
+  hid_send(n % 10 + '0');
 }
 
 enum {verbose=0, md5sum = 1};
@@ -145,7 +146,7 @@ void file_close(void)
 // Send an ACK packet. Return bytes sent.
 // If error occurs, return -1;
 int send_ack(int sock, struct tftpx_packet *packet, int size){
-	if(mysend(sock, packet, size) != size){
+	if(tftp_send(sock, packet, size) != size){
 		return -1;
 	}
 	
@@ -197,9 +198,9 @@ void handle_data_packet(int sock, struct tftpx_packet *rcv_packet, int r_size) {
         printf("Send ACK=%d\n", block);
       else
         {
-          write_serial('\r');
+          hid_send('\r');
           myputn(5, block);
-          write_serial(' ');
+          hid_send(' ');
         }
       block++;
     }
@@ -231,7 +232,7 @@ void handle_switch(int sock, struct tftpx_request *request)
     }
 }
 
-void process_udp_packet(int sock, const u_char *data, int ulen, uint16_t peer_port, uint32_t peer_ip, const u_char *peer_addr)
+void process_tftp_packet(int sock, const u_char *data, int ulen, uint16_t peer_port, uint32_t peer_ip, const u_char *peer_addr)
 {
   struct tftpx_request request;
   memset(&request, 0, sizeof(request));
@@ -241,8 +242,9 @@ void process_udp_packet(int sock, const u_char *data, int ulen, uint16_t peer_po
   handle_switch(sock, &request);
 }
 
-void tftps_tick(int sock)
+int tftps_tick(int sock)
 {
   if (block > 0)
     send_ack(sock, &ack_packet, 4);
+  return block;
 }

@@ -1,32 +1,24 @@
 #include "uart.h"
 
-#define _write_reg_u8(addr, value) *((volatile uint8_t *)addr) = value
-
-#define _read_reg_u8(addr) (*(volatile uint8_t *)addr)
-
-#define _is_transmit_empty() (read_reg_u8(UART_LINE_STATUS) & 0x20)
-
-#define _write_serial(a) \
-    while (_is_transmit_empty() == 0) {}; \
-    write_reg_u8(UART_THR, a); \
-
 void write_reg_u8(uintptr_t addr, uint8_t value) { _write_reg_u8(addr, value); }
 uint8_t read_reg_u8(uintptr_t addr) { return _read_reg_u8(addr); }
-int is_transmit_empty() { return _is_transmit_empty(); }
-void write_serial(char a) { _write_serial(a); }
+int is_transmit_empty(uintptr_t UART_BASE) { return _is_transmit_empty(); }
+uint8_t uart_line_status(uintptr_t UART_BASE) { return _read_reg_u8(UART_LINE_STATUS); }
+void write_serial(uintptr_t UART_BASE, char a) { _write_serial(a); }
 
-void init_uart()
+void init_uart(uintptr_t UART_BASE, uint16_t baud)
 {
     _write_reg_u8(UART_INTERRUPT_ENABLE, 0x00); // Disable all interrupts
     _write_reg_u8(UART_LINE_CONTROL, 0x80);     // Enable DLAB (set baud rate divisor)
-    _write_reg_u8(UART_DLAB_LSB, 0x1B);         // Set divisor to 27 (lo byte) 115200 baud
-    _write_reg_u8(UART_DLAB_MSB, 0x00);         //                   (hi byte)
+    _write_reg_u8(UART_DLAB_LSB, baud & 0xFF);  // Set divisor to 50M/16/baud (lo byte) 115200 baud => 27
+    _write_reg_u8(UART_DLAB_MSB, baud >> 8);    //                   (hi byte)
+    _write_reg_u8(UART_FIFO_CONTROL, 0xE7);     // Enable FIFO64
     _write_reg_u8(UART_LINE_CONTROL, 0x03);     // 8 bits, no parity, one stop bit
     _write_reg_u8(UART_FIFO_CONTROL, 0xC7);     // Enable FIFO, clear them, with 14-byte threshold
-    _write_reg_u8(UART_MODEM_CONTROL, 0x20);    // Autoflow mode
+    _write_reg_u8(UART_MODEM_CONTROL, 0x2);     // flow control disabled
 }
 
-void print_uart(const char *str)
+void print_uart(uintptr_t UART_BASE, const char *str)
 {
     const char *cur = &str[0];
     while (*cur != '\0')
@@ -46,7 +38,7 @@ void bin_to_hex(uint8_t inp, uint8_t res[2])
     return;
 }
 
-void print_uart_short(uint16_t addr)
+void print_uart_short(uintptr_t UART_BASE, uint16_t addr)
 {
     int i;
     for (i = 1; i > -1; i--)
@@ -54,12 +46,12 @@ void print_uart_short(uint16_t addr)
         uint8_t cur = (addr >> (i * 8)) & 0xff;
         uint8_t hex[2];
         bin_to_hex(cur, hex);
-        write_serial(hex[0]);
-        write_serial(hex[1]);
+        write_serial(UART_BASE, hex[0]);
+        write_serial(UART_BASE, hex[1]);
     }
 }
 
-void print_uart_int(uint32_t addr)
+void print_uart_int(uintptr_t UART_BASE, uint32_t addr)
 {
     int i;
     for (i = 3; i > -1; i--)
@@ -67,12 +59,12 @@ void print_uart_int(uint32_t addr)
         uint8_t cur = (addr >> (i * 8)) & 0xff;
         uint8_t hex[2];
         bin_to_hex(cur, hex);
-        write_serial(hex[0]);
-        write_serial(hex[1]);
+        write_serial(UART_BASE, hex[0]);
+        write_serial(UART_BASE, hex[1]);
     }
 }
 
-void print_uart_addr(uint64_t addr)
+void print_uart_addr(uintptr_t UART_BASE, uint64_t addr)
 {
     int i;
     for (i = 7; i > -1; i--)
@@ -80,22 +72,20 @@ void print_uart_addr(uint64_t addr)
         uint8_t cur = (addr >> (i * 8)) & 0xff;
         uint8_t hex[2];
         bin_to_hex(cur, hex);
-        write_serial(hex[0]);
-        write_serial(hex[1]);
+        write_serial(UART_BASE, hex[0]);
+        write_serial(UART_BASE, hex[1]);
     }
 }
 
-void print_uart_byte(uint8_t byte)
+void print_uart_byte(uintptr_t UART_BASE, uint8_t byte)
 {
     uint8_t hex[2];
     bin_to_hex(byte, hex);
-    write_serial(hex[0]);
-    write_serial(hex[1]);
+    write_serial(UART_BASE, hex[0]);
+    write_serial(UART_BASE, hex[1]);
 }
 
-void puthex(uint64_t n, int w)
+int get_uart_byte(uintptr_t UART_BASE)
 {
-  if (w > 1) puthex(n>>4, w-1);
-  write_serial("0123456789ABCDEF"[n&15]);
+  return read_reg_u8(UART_LINE_STATUS) & 0x1 ? read_reg_u8(UART_RBR) : -1;
 }
-

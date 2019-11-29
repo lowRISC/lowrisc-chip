@@ -656,7 +656,7 @@ void dram_main(int sp)
   //  enum {range=262144};
   //  enum {range=1048576};
   //  enum {range=1<<30};
-    print_uart("\nBare metal DRAM test\n");
+    printf("\nBare metal DRAM test\n");
     printf("dram_main() = %p\n", (void*)dram_main);
     printf("dram sp() = %p\n", (void*)&sp);
     printf("memtester version " __version__ " (%d-bit)\n", UL_LEN);

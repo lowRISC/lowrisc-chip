@@ -22,6 +22,7 @@ read_ip xilinx/xlnx_axi_gpio/$::env(BOARD)/ip/xlnx_axi_gpio.xci
 read_ip xilinx/xlnx_axi_quad_spi/$::env(BOARD)/ip/xlnx_axi_quad_spi.xci
 read_ip xilinx/xlnx_clk_$::env(BOARD)/$::env(BOARD)/ip/xlnx_clk_$::env(BOARD).xci
 read_ip xilinx/xlnx_clk_sd/$::env(BOARD)/ip/xlnx_clk_sd.xci
+read_ip xilinx/xlnx_char_fifo/$::env(BOARD)/ip/xlnx_char_fifo.xci
 read_ip xilinx/xlnx_ila_4/$::env(BOARD)/ip/xlnx_ila_4.xci
 read_ip xilinx/xlnx_ila_qspi/$::env(BOARD)/ip/xlnx_ila_qspi.xci
 read_ip xilinx/xlnx_ila_perf/$::env(BOARD)/ip/xlnx_ila_perf.xci

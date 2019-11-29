@@ -19,7 +19,9 @@ module ariane_peripherals_xilinx #(
     parameter bit InclUART     = 1,
     parameter bit InclSPI      = 0,
     parameter bit InclEthernet = 0,
-    parameter bit InclGPIO     = 0
+    parameter bit InclGPIO     = 0,
+    parameter bit InclMOUSE    = 1,
+    parameter int graphmax     = 20
 ) (
     input  logic       clk_i           , // Clock
     input  logic       clk_200MHz_i    ,
@@ -89,9 +91,11 @@ module ariane_peripherals_xilinx #(
   // keyboard
     inout wire         PS2_CLK     ,
     inout wire         PS2_DATA    ,
-  // mouse
-    inout wire         PS2_MCLK    ,
-    inout wire         PS2_MDATA   ,
+  // Bluetooth mouse module
+    output wire        bt_rx,
+    output wire        bt_cts,
+    input wire         bt_rts,
+    input wire         bt_tx,
   // display
     output wire        VGA_HS_O    ,
     output wire        VGA_VS_O    ,
@@ -117,7 +121,8 @@ assign BASE = {
         ariane_soc::SPIBase,
         ariane_soc::EthernetBase,
         ariane_soc::GPIOBase,
-        ariane_soc::HIDBase
+        ariane_soc::HIDBase,
+        ariane_soc::MouseBase
       };
       
 assign MASK = {
@@ -126,7 +131,8 @@ assign MASK = {
               ariane_soc::SPILength - 1,
               ariane_soc::EthernetLength -1,
               ariane_soc::GPIOLength - 1,
-              ariane_soc::HIDLength - 1
+              ariane_soc::HIDLength - 1,
+              ariane_soc::MouseLength - 1
             };
 
 axi_demux_raw #(
@@ -170,129 +176,28 @@ bootram i_bootram (
     .wdata_i ( ram_wdata ),
     .rdata_o ( ram_rdata )
 );
+
+    // ---------------
+    // 2. Host UART
+    // ---------------
    
-    // ---------------
-    // 2. UART
-    // ---------------
-    logic         uart_penable;
-    logic         uart_pwrite;
-    logic [31:0]  uart_paddr;
-    logic         uart_psel;
-    logic [31:0]  uart_pwdata;
-    logic [31:0]  uart_prdata;
-    logic         uart_pready;
-    logic         uart_pslverr;
-
-    axi2apb_64_32 #(
-        .AXI4_ADDRESS_WIDTH ( AxiAddrWidth ),
-        .AXI4_RDATA_WIDTH   ( AxiDataWidth ),
-        .AXI4_WDATA_WIDTH   ( AxiDataWidth ),
-        .AXI4_ID_WIDTH      ( AxiIdWidth   ),
-        .AXI4_USER_WIDTH    ( AxiUserWidth ),
-        .BUFF_DEPTH_SLAVE   ( 2            ),
-        .APB_ADDR_WIDTH     ( 32           )
-    ) i_axi2apb_64_32_uart (
-        .ACLK      ( clk_i          ),
-        .ARESETn   ( rst_ni         ),
-        .test_en_i ( 1'b0           ),
-        .AWID_i    ( master[ariane_soc::UART].aw_id     ),
-        .AWADDR_i  ( master[ariane_soc::UART].aw_addr   ),
-        .AWLEN_i   ( master[ariane_soc::UART].aw_len    ),
-        .AWSIZE_i  ( master[ariane_soc::UART].aw_size   ),
-        .AWBURST_i ( master[ariane_soc::UART].aw_burst  ),
-        .AWLOCK_i  ( master[ariane_soc::UART].aw_lock   ),
-        .AWCACHE_i ( master[ariane_soc::UART].aw_cache  ),
-        .AWPROT_i  ( master[ariane_soc::UART].aw_prot   ),
-        .AWREGION_i( master[ariane_soc::UART].aw_region ),
-        .AWUSER_i  ( master[ariane_soc::UART].aw_user   ),
-        .AWQOS_i   ( master[ariane_soc::UART].aw_qos    ),
-        .AWVALID_i ( master[ariane_soc::UART].aw_valid  ),
-        .AWREADY_o ( master[ariane_soc::UART].aw_ready  ),
-        .WDATA_i   ( master[ariane_soc::UART].w_data    ),
-        .WSTRB_i   ( master[ariane_soc::UART].w_strb    ),
-        .WLAST_i   ( master[ariane_soc::UART].w_last    ),
-        .WUSER_i   ( master[ariane_soc::UART].w_user    ),
-        .WVALID_i  ( master[ariane_soc::UART].w_valid   ),
-        .WREADY_o  ( master[ariane_soc::UART].w_ready   ),
-        .BID_o     ( master[ariane_soc::UART].b_id      ),
-        .BRESP_o   ( master[ariane_soc::UART].b_resp    ),
-        .BVALID_o  ( master[ariane_soc::UART].b_valid   ),
-        .BUSER_o   ( master[ariane_soc::UART].b_user    ),
-        .BREADY_i  ( master[ariane_soc::UART].b_ready   ),
-        .ARID_i    ( master[ariane_soc::UART].ar_id     ),
-        .ARADDR_i  ( master[ariane_soc::UART].ar_addr   ),
-        .ARLEN_i   ( master[ariane_soc::UART].ar_len    ),
-        .ARSIZE_i  ( master[ariane_soc::UART].ar_size   ),
-        .ARBURST_i ( master[ariane_soc::UART].ar_burst  ),
-        .ARLOCK_i  ( master[ariane_soc::UART].ar_lock   ),
-        .ARCACHE_i ( master[ariane_soc::UART].ar_cache  ),
-        .ARPROT_i  ( master[ariane_soc::UART].ar_prot   ),
-        .ARREGION_i( master[ariane_soc::UART].ar_region ),
-        .ARUSER_i  ( master[ariane_soc::UART].ar_user   ),
-        .ARQOS_i   ( master[ariane_soc::UART].ar_qos    ),
-        .ARVALID_i ( master[ariane_soc::UART].ar_valid  ),
-        .ARREADY_o ( master[ariane_soc::UART].ar_ready  ),
-        .RID_o     ( master[ariane_soc::UART].r_id      ),
-        .RDATA_o   ( master[ariane_soc::UART].r_data    ),
-        .RRESP_o   ( master[ariane_soc::UART].r_resp    ),
-        .RLAST_o   ( master[ariane_soc::UART].r_last    ),
-        .RUSER_o   ( master[ariane_soc::UART].r_user    ),
-        .RVALID_o  ( master[ariane_soc::UART].r_valid   ),
-        .RREADY_i  ( master[ariane_soc::UART].r_ready   ),
-        .PENABLE   ( uart_penable   ),
-        .PWRITE    ( uart_pwrite    ),
-        .PADDR     ( uart_paddr     ),
-        .PSEL      ( uart_psel      ),
-        .PWDATA    ( uart_pwdata    ),
-        .PRDATA    ( uart_prdata    ),
-        .PREADY    ( uart_pready    ),
-        .PSLVERR   ( uart_pslverr   )
-    );
-
-    if (InclUART) begin : gen_uart
-        apb_uart i_apb_uart (
-            .CLK     ( clk_i           ),
-            .RSTN    ( rst_ni          ),
-            .PSEL    ( uart_psel       ),
-            .PENABLE ( uart_penable    ),
-            .PWRITE  ( uart_pwrite     ),
-            .PADDR   ( uart_paddr[4:2] ),
-            .PWDATA  ( uart_pwdata     ),
-            .PRDATA  ( uart_prdata     ),
-            .PREADY  ( uart_pready     ),
-            .PSLVERR ( uart_pslverr    ),
-            .INT     ( irq_sources[0]  ),
-            .OUT1N   (                 ), // keep open
-            .OUT2N   (                 ), // keep open
-            .RTSN    (                 ), // no flow control
-            .DTRN    (                 ), // no flow control
-            .CTSN    ( 1'b0            ),
-            .DSRN    ( 1'b0            ),
-            .DCDN    ( 1'b0            ),
-            .RIN     ( 1'b0            ),
-            .SIN     ( rx_i            ),
-            .SOUT    ( tx_o            )
-        );
-    end else begin
-        assign irq_sources[0] = 1'b0;
-        /* pragma translate_off */
-        `ifndef VERILATOR
-        mock_uart i_mock_uart (
-            .clk_i     ( clk_i        ),
-            .rst_ni    ( rst_ni       ),
-            .penable_i ( uart_penable ),
-            .pwrite_i  ( uart_pwrite  ),
-            .paddr_i   ( uart_paddr   ),
-            .psel_i    ( uart_psel    ),
-            .pwdata_i  ( uart_pwdata  ),
-            .prdata_o  ( uart_prdata  ),
-            .pready_o  ( uart_pready  ),
-            .pslverr_o ( uart_pslverr )
-        );
-        `endif
-        /* pragma translate_on */
-    end
-
+uart_axi #(
+    .AXI_ID_WIDTH   ( AxiIdWidth       ),
+    .AXI_ADDR_WIDTH ( AxiAddrWidth     ),
+    .AXI_DATA_WIDTH ( AxiDataWidth     ),
+    .AXI_USER_WIDTH ( AxiUserWidth     ),
+    .InclUART       ( InclUART         )
+) i_uart_axi_host (
+    .clk_i  ( clk_i                    ),
+    .rst_ni ( rst_ni                   ),
+    .slave  ( master[ariane_soc::UART] ),
+    .rx_i   ( rx_i                     ),
+    .tx_o   ( tx_o                     ),
+    .cts_i  ( 1'b0                     ),
+    .rts_o  (                          ),
+    .irq_o  ( irq_sources[0]           )
+);
+   
     // ---------------
     // 3. SPI
     // ---------------
@@ -520,6 +425,8 @@ axi2mem #(
        logic [31:0]        data_from_host;
        wire                spi_busy, spi_error;
        wire [63:0]         spi_readout;
+       reg  [63:26]        rtc_hi;
+       reg  [25:0]         rtc_lo;
 
 `ifdef HWRNG
        
@@ -569,15 +476,21 @@ axi2mem #(
                 begin
                    gpio_rdata = {spi_busy, spi_error};
                 end
-              default:
+              3'b111:
                 begin
-                   gpio_rdata = 32'hDEADBEEF;
+                   gpio_rdata = {rtc_hi,rtc_lo};
                 end
             endcase // case (gpio_addr[5:3])
          end
 
        always @(posedge clk_i)
          begin
+	    rtc_lo <= rtc_lo+1;
+	    if (rtc_lo == (50000000-1))
+	      begin
+		 rtc_lo <= 0;
+		 rtc_hi <= rtc_hi+1;
+	      end
             spi_wr <= 0;
             rdfifo <= 0;
             gpio_addr_prev <= gpio_addr;
@@ -596,6 +509,10 @@ axi2mem #(
                      data_from_host <= gpio_wrdata;
                      spi_wr <= 1;
                   end
+		3'b111:
+		  begin
+		     {rtc_hi,rtc_lo} <= gpio_wrdata;
+		  end
                 default:;
               endcase // case (gpio_addr[5:3])
          end
@@ -619,7 +536,30 @@ dword_interface dwi_inst(
    
     end
 
-    // HID
+    // ---------------
+    // 6. BT_MOUSE
+    // ---------------
+   
+uart_axi #(
+    .AXI_ID_WIDTH   ( AxiIdWidth        ),
+    .AXI_ADDR_WIDTH ( AxiAddrWidth      ),
+    .AXI_DATA_WIDTH ( AxiDataWidth      ),
+    .AXI_USER_WIDTH ( AxiUserWidth      ),
+    .InclUART       ( InclMOUSE         )
+) i_uart_axi_mouse (
+    .clk_i  ( clk_i                     ),
+    .rst_ni ( rst_ni                    ),
+    .slave  ( master[ariane_soc::MOUSE] ),
+    .rx_i   ( bt_tx                     ),
+    .tx_o   ( bt_rx                     ),
+    .cts_i  ( bt_rts                    ),
+    .rts_o  ( bt_cts                    ),
+    .irq_o  ( irq_sources[3]            )
+);
+   
+    // ---------------
+    // 7. HID
+    // ---------------
 
 localparam RamAddrWidth = 20;
    
@@ -647,7 +587,7 @@ axi_bram_ctrl #(
 
 `ifndef NEXYS_VIDEO
 
-hid_soc hid1
+hid_soc #(.graphmax(graphmax)) hid1
   (
  // clock and reset
  .pxl_clk,
@@ -661,9 +601,6 @@ hid_soc hid1
  // keyboard
  .PS2_CLK,
  .PS2_DATA,
- // mouse
- .PS2_MCLK,
- .PS2_MDATA,
 `ifdef NEXYS4DDR
  .CA,
  .CB,

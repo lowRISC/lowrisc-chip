@@ -52,6 +52,24 @@ uint64_t qspi_send(uint8_t len, uint8_t quad, uint16_t data_in_count, uint16_t d
   return swp[4];
 }
 
+void rtc_write(uint64_t secs, uint32_t usecs)
+{
+  volatile uint64_t *swp = (volatile uint64_t *)GPIOBase;
+  swp[7] = (secs << 26) | (usecs & ((1 << 26) - 1));
+}
+
+uint64_t rtc_secs(void)
+{
+  volatile uint64_t *swp = (volatile uint64_t *)GPIOBase;
+  return swp[7] >> 26;
+}
+
+uint32_t rtc_usecs(void)
+{
+  volatile uint64_t *swp = (volatile uint64_t *)GPIOBase;
+  return swp[7] & ((1 << 26) - 1);
+}
+
 uint8_t *const qspi_base = (void *)0x84000000;
 uint32_t qspi_len;
 
@@ -135,10 +153,12 @@ void qspi_main(int sw)
 
 int main()
 {
-  uint32_t i, rnd, sw, sw2;
-  init_uart();
-  print_uart("Hello World!\r\n");
-  hid_init();
+  uint32_t i, rnd;
+  uint32_t sw = gpio_sw();
+  uint32_t sw2 = gpio_sw();
+  init_uart(UARTBase, 0x001B);
+  print_uart(UARTBase, "Hello World!\r\n");
+  hid_init(sw);
   for (i = 0; i < 5; i++)
     {
       volatile uint64_t *swp = (volatile uint64_t *)GPIOBase;
@@ -148,8 +168,6 @@ int main()
   for (i = 0; i < 4; i++)
     {
       gpio_leds(pattern[i]);
-      sw = gpio_sw();
-      sw2 = gpio_sw();
       printf("Switch setting = %X,%X\n", sw, sw2);
       rnd = hwrnd();
       printf("Random seed = %X\n", rnd);
@@ -161,9 +179,12 @@ int main()
     case 0x0: printf("SD boot\n"); sd_main(sw); break;
     case 0x1: printf("QSPI boot\n"); qspi_main(sw); break;
     case 0x2: printf("DRAM test\n"); dram_main(sw); break;
+    case 0x3: printf("BT test\n"); bt_main(sw); break;
     case 0x4: printf("TFTP boot\n"); eth_main(); break;
     case 0x6: printf("Cache test\n"); cache_main(); break;
+#ifdef BIGROM
     case 0x7: printf("Keyboard test\n"); keyb_main(); break;
+#endif      
     }
   while (1)
     {
@@ -173,5 +194,5 @@ int main()
 
 void handle_trap(void)
 {
-    print_uart("trap\r\n");
+  print_uart(UARTBase, "trap\r\n");
 }
