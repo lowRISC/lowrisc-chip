@@ -7,7 +7,6 @@ root-dir := $(dir $(mkfile_path))
 ariane_pkg :=             ariane/include/riscv_pkg.sv                          \
 			  ariane/src/riscv-dbg/src/dm_pkg.sv                   \
 			  ariane/include/ariane_pkg.sv                         \
-			  ariane/include/std_cache_pkg.sv                      \
 			  ariane/include/wt_cache_pkg.sv                       \
 			  ariane/src/axi/src/axi_pkg.sv                        \
 			  ariane/src/register_interface/src/reg_intf.sv        \
