@@ -77,7 +77,7 @@ module sd_clock_divider (
 
     BUFGMUX sd_clk_bufgmux(
         .I0(slow_clk),
-        .I1(fast_clk),
+        .I1(RST?CLK:fast_clk),
         .S(DIVIDER == 0),
         .O(SD_CLK)
         );

@@ -13,3 +13,9 @@ linux-5.3.8-lowrisc/
 asic/
 vivado*
 webtalk*
+csrc/
+inter.vpd
+session.inter.vpd.tcl
+simv
+simv.daidir/
+vc_hdrs.h
