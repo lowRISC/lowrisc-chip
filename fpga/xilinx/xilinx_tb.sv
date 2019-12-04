@@ -39,6 +39,9 @@ module xilinx_tb;
     logic [ 0:0]  ddr3_cs_n   ;
     logic [ 3:0]  ddr3_dm     ;
     logic [ 0:0]  ddr3_odt    ;
+    wire [4:0]    VGA_RED_O   ;
+    wire [4:0]    VGA_BLUE_O  ;
+    wire [5:0]    VGA_GREEN_O ;
     assign sys_clk_p = clk;
     assign sys_clk_n = ~clk;   
 `elsif NEXYS4DDR
@@ -57,6 +60,18 @@ module xilinx_tb;
     logic [ 0:0] ddr2_cke    ;
     logic [ 1:0] ddr2_dm     ;
     logic [ 0:0] ddr2_odt    ;
+    wire [3:0]   VGA_RED_O   ;
+    wire [3:0]   VGA_BLUE_O  ;
+    wire [3:0]   VGA_GREEN_O ;
+    wire         CA;
+    wire         CB;
+    wire         CC;
+    wire         CD;
+    wire         CE;
+    wire         CF;
+    wire         CG;
+    wire         DP;
+    wire [7:0]   AN;
     assign clk_p = clk;
 `elsif NEXYS_VIDEO
     localparam int unsigned CLOCK_PERIOD = 10ns;
@@ -95,10 +110,10 @@ module xilinx_tb;
 `endif
 `ifdef RMII
   //! Ethernet MAC PHY interface signals
-    wire [1:0]    i_erxd; // RMII receive data
-    wire          i_erx_dv; // PHY data valid
-    wire          i_erx_er; // PHY coding error
-    wire          i_emdint; // PHY interrupt in active low
+    reg  [1:0]    i_erxd; // RMII receive data
+    reg           i_erx_dv; // PHY data valid
+    reg           i_erx_er; // PHY coding error
+    reg           i_emdint; // PHY interrupt in active low
     reg           o_erefclk; // RMII clock out
     reg [1:0]     o_etxd; // RMII transmit data
     reg           o_etx_en; // RMII transmit enable
@@ -134,9 +149,38 @@ module xilinx_tb;
     // Quad-SPI
     tri1          QSPI_CSN   ;
     tri1 [3:0]    QSPI_D    ;
+  wire         PS2_CLK     ;
+  wire         PS2_DATA    ;
+  // Bluetooth mouse module
+  wire        bt_rx;
+  wire        bt_rstn;
+  wire        bt_cts;
+  wire         bt_rts;
+  wire         bt_sts;
+  wire         bt_tx;
+  // display
+  wire        VGA_HS_O    ;
+  wire        VGA_VS_O    ;
 
     ariane_xilinx dut (.*);
 
+   // 4-bit full SD interface
+   wire [3:0]   sd_dat_to_host;
+   wire         sd_cmd_to_host;
+   wire         oeCmd, oeDat;
+   assign       sd_dat = oeDat ? sd_dat_to_host : 4'b1111;
+   assign       sd_cmd = oeCmd ? sd_cmd_to_host : 4'b1;
+
+sd_verilator_model sdflash1 (
+             .sdClk(sd_sclk),
+             .cmd(sd_cmd),
+             .cmdOut(sd_cmd_to_host),
+             .dat(sd_dat),
+             .datOut(sd_dat_to_host),
+             .oeCmd(oeCmd),
+             .oeDat(oeDat)
+);
+   
     // Clock process
     initial begin
        sw = 0;
@@ -201,22 +245,24 @@ module dummy;
     .AXI_USER_WIDTH ( 1      )
 ) axi_dummy_lite[1:0] ();
    REG_BUS reg_dummy[1:0] ();
-   
+/*   
    axi_riscv_lrsc_wrap #(.ADDR_BEGIN(0),
                          .ADDR_END(1),
                          .AXI_ADDR_WIDTH(64),
                          .AXI_DATA_WIDTH(64),
                          .AXI_ID_WIDTH(5)) dummy1 (.mst(axi_dummy[0]), .slv(axi_dummy[8]));
-   axi_riscv_atomics_wrap dummy2 (.mst(axi_dummy[1]), .slv(axi_dummy[2]));
-   axi_master_connect_rev dummy3 (.master(axi_dummy[3]));
-   axi_slave_connect_rev dummy4 (.slave(axi_dummy[4]));
+*/ 
+//   axi_riscv_atomics_wrap dummy2 (.mst(axi_dummy[1]), .slv(axi_dummy[2]));
+//   axi_master_connect_rev dummy3 (.master(axi_dummy[3]));
+//   axi_slave_connect_rev dummy4 (.slave(axi_dummy[4]));
    axi_node_wrap_with_slices dummy5 (.master(axi_master), .slave(axi_slave));
-   axi_to_axi_lite dummy6 (.in(axi_dummy[6]), .out(axi_dummy_lite[0]));
+//   axi_to_axi_lite dummy6 (.in(axi_dummy[6]), .out(axi_dummy_lite[0]));
    axi_slave_connect dummy7 (.slave(axi_dummy[10]));
-   axi_slice_wrap dummy8 (.axi_master(axi_dummy[11]), .axi_slave(axi_dummy[12]));
+//   axi_slice_wrap dummy8 (.axi_master(axi_dummy[11]), .axi_slave(axi_dummy[12]));
    apb_to_reg dummy9 (.reg_o(reg_dummy[0]));
    axi_master_connect dummy10 (.master(axi_dummy[13]));
-   axi_demux #(
+
+    axi_demux #(
     .SLAVE_NUM  ( 4      ),
     .ADDR_WIDTH ( 64     ),
     .DATA_WIDTH ( 64     ),
@@ -228,15 +274,16 @@ module dummy;
               .slave(axi_master4),
               .BASE(0),
               .MASK(0));
+
    stream_mux #(.N_INP(2)) dummy12 ();
    ariane_shell dummy13(.dram(axi_dummy[15]), .iobus(axi_dummy[16]));
-   rocket_shell dummy14(.dram(axi_dummy[17]), .iobus(axi_dummy[18]));
+//   rocket_shell dummy14(.dram(axi_dummy[17]), .iobus(axi_dummy[18]));
 
-ClockDivider2 ();
+// ClockDivider2 ();
 
-ClockDivider3 ();
+// ClockDivider3 ();
 
-TestHarness ();
+// TestHarness ();
 
 amo_alu ();
 
@@ -254,7 +301,7 @@ binary_to_gray ();
 
 bscan_generic ();
 
-cache_ctrl ();
+// cache_ctrl ();
 
 clock_buffer_generic ();
 
@@ -266,13 +313,13 @@ edge_detect ();
 
 edge_detector ();
 
-fpnew_f2fcast ();
+// fpnew_f2fcast ();
 
-fpnew_f2icast ();
+// fpnew_f2icast ();
 
-fpnew_i2fcast ();
+// fpnew_i2fcast ();
 
-fpnew_top_dummy ();
+// fpnew_top_dummy ();
 
 framing_top_rmii ();
 
@@ -290,21 +337,21 @@ sd_clock_divider ();
 
 slave_adapter ();
 
-std_icache ();
+// std_icache ();
 
 stream_demux ();
 
 synchronizer ();
 
-tag_cmp ();
+// tag_cmp ();
 
 wt_l15_adapter ();
 
-xlnx_axi_dwidth_converter ();
+// xlnx_axi_dwidth_converter ();
 
-xlnx_axi_gpio ();
+// xlnx_axi_gpio ();
 
-xlnx_axi_quad_spi ();
+// xlnx_axi_quad_spi ();
 
 `endif   
    

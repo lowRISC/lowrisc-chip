@@ -29,6 +29,11 @@ enum {
     DRAMLength     = 0x40000000, // 1GByte of DDR (split between two chips on Genesys2)
 };
 
+static inline void fence(void)
+{
+        asm volatile ("fence" ::: "memory");
+}
+
 void eth_main(void);
 void sd_main(int sw);
 void bt_main(int sw);

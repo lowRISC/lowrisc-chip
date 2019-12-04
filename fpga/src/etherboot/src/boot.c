@@ -393,6 +393,7 @@ DRESULT disk_read (uint8_t pdrv, uint8_t *buff, uint32_t sector, uint32_t count)
   sd_base[ _piton_sd_REQ_RD ] = 1;
   do
     {
+      fence(); /* This is needed for a suspected Ariane bug */
       stat = sd_base[_piton_sd_STATUS];
     }
   while (_piton_sd_STATUS_REQ_RDY & ~stat);

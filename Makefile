@@ -37,7 +37,7 @@ install: # serial console with Debian installer root
 vinstall: # VGA console, Debian installer root
 	rm -f lowrisc-quickstart/install.bin; make lowrisc-quickstart/install.bin
 
-lowrisc-quickstart/boot.bin: $(CROSS_COMPILE)gcc $(LINUX)/arch/riscv/configs/defconfig riscv-pk/build/Makefile
+lowrisc-quickstart/boot.bin: $(LINUX)/arch/riscv/configs/defconfig riscv-pk/build/Makefile
 	sed -e 's/\(CONFIG_BLK_DEV_INITRD\)=y/\1=n/' < $(LINUX)/arch/riscv/configs/defconfig > $(LINUX)/boot.cfg
 	make -C $(LINUX) ARCH=riscv KCONFIG_CONFIG=boot.cfg CROSS_COMPILE=$(CROSS_COMPILE) -j 4
 	make riscv-pk/build/bbl
@@ -184,6 +184,14 @@ sdcard-install: $(KERNEL) lowrisc-quickstart/rootfs.tar.xz
 
 lowrisc-quickstart/rootfs.tar.xz:
 	make -C debian-riscv64 image
+
+vmlinux.dis: $(LINUX)/vmlinux
+	$(CROSS_COMPILE)objdump -d -S -l $(LINUX)/vmlinux > $@
+
+firmware:
+	make -B -C fpga/src/etherboot BOARD=nexys4_ddr BITSIZE=0x400000 XILINX_PART=xc7a100tcsg324-1 XILINX_BOARD=digilentinc.com:nexys4_ddr:part0:1.1 CPU=rocket VENDOR=sifive MEMSIZE=0x8000000 CLK_PERIOD_NS="20" PATH=/opt/riscv/bin:/usr/local/bin:/usr/bin:/bin
+	make -B -C fpga/src/etherboot BOARD=nexys4_ddr BITSIZE=0x400000 XILINX_PART=xc7a100tcsg324-1 XILINX_BOARD=digilentinc.com:nexys4_ddr:part0:1.1 CPU=ariane VENDOR=ethz MEMSIZE=0x8000000 CLK_PERIOD_NS="20" PATH=/opt/riscv/bin:/usr/local/bin:/usr/bin:/bin
+
 
 toolchain: $(CROSS_COMPILE)gcc
 

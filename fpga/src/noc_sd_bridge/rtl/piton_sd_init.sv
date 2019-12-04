@@ -88,7 +88,8 @@ module piton_sd_init (
 
     // ------ FSM States ------ //
     // Refer to "leon575777642.github.io/leon/hardware/MMC-SD-Hardware-Control/"
-    typedef enum logic [7:0] {  ST_CI_EN_SW_RST     =   8'h0,
+    typedef enum logic [7:0] {
+     ST_CI_EN_SW_RST     =   8'h0,
      ST_CI_DAT_TIMEOUT   =   8'h1,
      ST_CI_BUS_WIDTH     =   8'h2,
      ST_CI_CMD_TIMEOUT   =   8'h3,
@@ -179,6 +180,7 @@ module piton_sd_init (
      ST_FIN_CLR_DAT_ISR          =   8'hb1,
 
      ST_INIT_DONE                =   8'hf0,
+     ST_INIT_RST                 =   8'hfe,
      ST_INIT_ERR                 =   8'hff} st_t;
 
     // ------ Signals Declaration ------ //
@@ -206,7 +208,7 @@ module piton_sd_init (
     always @(posedge clk or posedge rst) begin  //{{{
         if (rst) begin
             rca             <=  32'h0;
-            state           <=  ST_CI_EN_SW_RST;
+            state           <=  ST_INIT_RST;
             counter         <=  24'd0;
             is_card_spec_v1 <=  1'b0;
             is_hcxc         <=  1'b0;
@@ -255,6 +257,10 @@ module piton_sd_init (
         state_next  =   state;
 
         case (state)
+            // power up
+            ST_INIT_RST: begin
+               if (counter[2]) state_next = ST_CI_EN_SW_RST;
+            end
             // Core Initialization
             ST_CI_EN_SW_RST: begin
                 if (m_wb_ack_i) state_next  =   ST_CI_DAT_TIMEOUT;
@@ -634,6 +640,7 @@ module piton_sd_init (
     always @* begin //{{{
         //  state                               register adr,   data,                                                   we, stb, counter_en
         case (state)
+            ST_INIT_RST:                fsm = {8'b0,            32'h0,                                                  n,  n,      y};
             ST_CI_EN_SW_RST,
             ST_HS_EN_SW_RST:            fsm = {`reset,          32'h1,                                                  y,  y,      n};
             ST_CI_DAT_TIMEOUT:          fsm = {`data_timeout,   32'd16_000_000,                                         y,  y,      n};
