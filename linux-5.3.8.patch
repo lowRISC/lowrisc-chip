@@ -2154,10 +2154,10 @@ index a53cc1e3a..d003fc465 100644
  obj-$(CONFIG_BLK_DEV_SKD)	+= skd.o
 diff --git a/drivers/block/lowrisc_pitonsd.c b/drivers/block/lowrisc_pitonsd.c
 new file mode 100644
-index 000000000..ed487079d
+index 000000000..1bc4b32fb
 --- /dev/null
 +++ b/drivers/block/lowrisc_pitonsd.c
-@@ -0,0 +1,1010 @@
+@@ -0,0 +1,1012 @@
 +/*
 + * LowRISC_piton_sd device driver
 + *
@@ -2765,7 +2765,7 @@ index 000000000..ed487079d
 +    }
 +  else
 +    {
-+      int old_init_state = -1;
++      int init_state, old_init_state = -1;
 +      /* SD sector address */
 +      sdpiton->baseaddr[ _piton_sd_ADDR_SD ] = 0;
 +      /* always start at beginning of DMA buffer */
@@ -2779,14 +2779,16 @@ index 000000000..ed487079d
 +      
 +      /* reset HW state machine */
 +      sdpiton->baseaddr[ _piton_sd_SYS_RST ] = 1;
-+      
-+      while (_piton_sd_STATUS_INIT_DONE & ~sdpiton->baseaddr[_piton_sd_STATUS])
++
++      do
 +        {
-+          int init_state = sdpiton->baseaddr[_piton_sd_INIT_STATE];
++          fence();
++          init_state = sdpiton->baseaddr[_piton_sd_INIT_STATE];
 +          if (old_init_state != init_state)
 +            pitonsd_dump_regs(sdpiton);
 +          old_init_state = init_state;
 +        }
++      while (_piton_sd_STATUS_INIT_DONE & ~sdpiton->baseaddr[_piton_sd_STATUS]);
 +      
 +      pitonsd_dump_regs(sdpiton);
 +    }
@@ -3170,10 +3172,10 @@ index 000000000..ed487079d
 +module_exit(pitonsd_exit);
 diff --git a/drivers/block/lowrisc_pitonsd.h b/drivers/block/lowrisc_pitonsd.h
 new file mode 100644
-index 000000000..57e2c3473
+index 000000000..1d806a6ae
 --- /dev/null
 +++ b/drivers/block/lowrisc_pitonsd.h
-@@ -0,0 +1,54 @@
+@@ -0,0 +1,59 @@
 +/* LowRISC_piton_sd register definitions
 + *
 + * Copyright 2019 University of Cambridge
@@ -3206,7 +3208,7 @@ index 000000000..57e2c3473
 +  _piton_sd_SYS_RST     };
 +
 +enum {
-+  _piton_sd_ADDR_SD_F   ,
++  _piton_sd_ADDR_SD_F=32,
 +  _piton_sd_ADDR_DMA_F  ,
 +  _piton_sd_STATUS      ,
 +  _piton_sd_ERROR       ,
@@ -3228,6 +3230,11 @@ index 000000000..57e2c3473
 +  };
 +
 +enum { _piton_sd_NUM_MINORS = 16 };
++
++static inline void fence(void)
++{
++        asm volatile ("fence" ::: "memory");
++}
 diff --git a/drivers/input/keyboard/Kconfig b/drivers/input/keyboard/Kconfig
 index 90e8a7f2f..530926f79 100644
 --- a/drivers/input/keyboard/Kconfig
