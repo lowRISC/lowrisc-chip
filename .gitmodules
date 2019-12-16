@@ -31,3 +31,6 @@
 [submodule "riscv-pk"]
 	path = riscv-pk
 	url = https://github.com/riscv/riscv-pk.git
+[submodule "u-boot"]
+	path = u-boot
+	url = https://github.com/lowRISC/u-boot.git
