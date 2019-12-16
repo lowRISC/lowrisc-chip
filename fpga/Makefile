@@ -48,11 +48,14 @@ $(ips): %.xci :
 
 mcs: $(mcs)
 
-program:
+program: $(work-dir)/$(CPU)_xilinx.bit
 	env JTAG_PART="$(JTAG_PART)" JTAG_BITFILE="$(work-dir)/$(CPU)_xilinx.bit" $(VIVADO) -nojournal -nolog -mode batch -source scripts/program.tcl
 
-cfgmem:
+cfgmem: $(work-dir)/$(CPU)_xilinx.mcs
 	env JTAG_PART="$(JTAG_PART)" JTAG_MCSFILE="$(work-dir)/$(CPU)_xilinx.mcs" $(VIVADO) -nojournal -nolog -mode batch -source scripts/program_cfgmem.tcl
+
+cfgmem_new: $(work-dir)/$(CPU)_xilinx.new.mcs
+	env JTAG_PART="$(JTAG_PART)" JTAG_MCSFILE="$(work-dir)/$(CPU)_xilinx.new.mcs" $(VIVADO) -nojournal -nolog -mode batch -source scripts/program_cfgmem.tcl
 
 newmcs: $(work-dir)/$(CPU)_xilinx.new.mcs
 
