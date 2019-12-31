@@ -1,3 +1,9 @@
+#define __NEED_STRCMP
+#define __NEED_MEMSET
+#define __NEED_MEMCPY
+#define __NEED_STRLEN
+#define __NEED_STRCPY
+
 /*
  *  linux/lib/string.c
  *
@@ -69,7 +75,7 @@ int strcasecmp(const char *s1, const char *s2)
 
 char * ___strtok;
 
-#ifndef __HAVE_ARCH_STRCPY
+#ifdef __NEED_STRCPY
 /**
  * strcpy - Copy a %NUL terminated string
  * @dest: Where to copy the string to
@@ -85,7 +91,7 @@ char * strcpy(char * dest,const char *src)
 }
 #endif
 
-#ifndef __HAVE_ARCH_STRNCPY
+#ifdef __NEED_STRNCPY
 /**
  * strncpy - Copy a length-limited, %NUL-terminated string
  * @dest: Where to copy the string to
@@ -107,7 +113,7 @@ char * strncpy(char * dest,const char *src,size_t count)
 }
 #endif
 
-#ifndef __HAVE_ARCH_STRLCPY
+#ifdef __NEED_STRLCPY
 /**
  * strlcpy - Copy a C-string into a sized buffer
  * @dest: Where to copy the string to
@@ -132,7 +138,7 @@ size_t strlcpy(char *dest, const char *src, size_t size)
 }
 #endif
 
-#ifndef __HAVE_ARCH_STRCAT
+#ifdef __NEED_STRCAT
 /**
  * strcat - Append one %NUL-terminated string to another
  * @dest: The string to be appended to
@@ -151,7 +157,7 @@ char * strcat(char * dest, const char * src)
 }
 #endif
 
-#ifndef __HAVE_ARCH_STRNCAT
+#ifdef __NEED_STRNCAT
 /**
  * strncat - Append a length-limited, %NUL-terminated string to another
  * @dest: The string to be appended to
@@ -180,7 +186,7 @@ char * strncat(char *dest, const char *src, size_t count)
 }
 #endif
 
-#ifndef __HAVE_ARCH_STRCMP
+#ifdef __NEED_STRCMP
 /**
  * strcmp - Compare two strings
  * @cs: One string
@@ -199,7 +205,7 @@ int strcmp(const char * cs,const char * ct)
 }
 #endif
 
-#ifndef __HAVE_ARCH_STRNCMP
+#ifdef __NEED_STRNCMP
 /**
  * strncmp - Compare two length-limited strings
  * @cs: One string
@@ -220,7 +226,7 @@ int strncmp(const char * cs,const char * ct,size_t count)
 }
 #endif
 
-#ifndef __HAVE_ARCH_STRCHR
+#ifdef __NEED_STRCHR
 /**
  * strchr - Find the first occurrence of a character in a string
  * @s: The string to be searched
@@ -243,7 +249,7 @@ const char *strchrnul(const char *s, int c)
 	return s;
 }
 
-#ifndef __HAVE_ARCH_STRRCHR
+#ifdef __NEED_STRRCHR
 /**
  * strrchr - Find the last occurrence of a character in a string
  * @s: The string to be searched
@@ -260,7 +266,7 @@ char * strrchr(const char * s, int c)
 }
 #endif
 
-#ifndef __HAVE_ARCH_STRLEN
+#ifdef __NEED_STRLEN
 /**
  * strlen - Find the length of a string
  * @s: The string to be sized
@@ -275,7 +281,7 @@ size_t strlen(const char * s)
 }
 #endif
 
-#ifndef __HAVE_ARCH_STRNLEN
+#ifdef __NEED_STRNLEN
 /**
  * strnlen - Find the length of a length-limited string
  * @s: The string to be sized
@@ -291,7 +297,7 @@ size_t strnlen(const char * s, size_t count)
 }
 #endif
 
-#ifndef __HAVE_ARCH_STRCSPN
+#ifdef __NEED_STRCSPN
 /**
  * strcspn - Calculate the length of the initial substring of @s which does
  * not contain letters in @reject
@@ -315,7 +321,7 @@ size_t strcspn(const char *s, const char *reject)
 }
 #endif
 
-#ifdef __HAVE_ARCH_STRDUP
+#ifdef __NEED_STRDUP
 char * strdup(const char *s)
 {
 	char *new;
@@ -330,7 +336,7 @@ char * strdup(const char *s)
 }
 #endif
 
-#ifndef __HAVE_ARCH_STRSPN
+#ifdef __NEED_STRSPN
 /**
  * strspn - Calculate the length of the initial substring of @s which only
  *	contain letters in @accept
@@ -357,7 +363,7 @@ size_t strspn(const char *s, const char *accept)
 }
 #endif
 
-#ifndef __HAVE_ARCH_STRPBRK
+#ifdef __NEED_STRPBRK
 /**
  * strpbrk - Find the first occurrence of a set of characters
  * @cs: The string to be searched
@@ -377,7 +383,7 @@ char * strpbrk(const char * cs,const char * ct)
 }
 #endif
 
-#ifndef __HAVE_ARCH_STRTOK
+#ifdef __NEED_STRTOK
 /**
  * strtok - Split a string into tokens
  * @s: The string to be searched
@@ -406,7 +412,7 @@ char * strtok(char * s,const char * ct)
 }
 #endif
 
-#ifndef __HAVE_ARCH_STRSEP
+#ifdef __NEED_STRSEP
 /**
  * strsep - Split a string into tokens
  * @s: The string to be searched
@@ -434,7 +440,7 @@ char * strsep(char **s, const char *ct)
 }
 #endif
 
-#ifndef __HAVE_ARCH_STRSWAB
+#ifdef __NEED_STRSWAB
 /**
  * strswab - swap adjacent even and odd bytes in %NUL-terminated string
  * s: address of the string
@@ -462,7 +468,7 @@ char *strswab(const char *s)
 }
 #endif
 
-#ifndef __HAVE_ARCH_MEMSET
+#ifdef __NEED_MEMSET
 /**
  * memset - Fill a region of memory with the given value
  * @s: Pointer to the start of the area.
@@ -499,7 +505,7 @@ void * memset(void * s,int c,size_t count)
 }
 #endif
 
-#ifndef __HAVE_ARCH_MEMCPY
+#ifdef __NEED_MEMCPY
 /**
  * memcpy - Copy one area of memory to another
  * @dest: Where to copy to
@@ -534,7 +540,7 @@ void * memcpy(void *dest, const void *src, size_t count)
 }
 #endif
 
-#ifndef __HAVE_ARCH_MEMMOVE
+#ifdef __NEED_MEMMOVE
 /**
  * memmove - Copy one area of memory to another
  * @dest: Where to copy to
@@ -560,7 +566,7 @@ void * memmove(void * dest,const void *src,size_t count)
 }
 #endif
 
-#ifndef __HAVE_ARCH_MEMCMP
+#ifdef __NEED_MEMCMP
 /**
  * memcmp - Compare two areas of memory
  * @cs: One area of memory
@@ -579,7 +585,7 @@ int memcmp(const void * cs,const void * ct,size_t count)
 }
 #endif
 
-#ifndef __HAVE_ARCH_MEMSCAN
+#ifdef __NEED_MEMSCAN
 /**
  * memscan - Find a character in an area of memory.
  * @addr: The memory area
@@ -603,7 +609,7 @@ void * memscan(void * addr, int c, size_t size)
 }
 #endif
 
-#ifndef __HAVE_ARCH_STRSTR
+#ifdef __NEED_STRSTR
 /**
  * strstr - Find the first substring in a %NUL terminated string
  * @s1: The string to be searched
@@ -627,7 +633,7 @@ char * strstr(const char * s1,const char * s2)
 }
 #endif
 
-#ifndef __HAVE_ARCH_MEMCHR
+#ifdef __NEED_MEMCHR
 /**
  * memchr - Find a character in an area of memory.
  * @s: The memory area
@@ -649,7 +655,7 @@ void *memchr(const void *s, int c, size_t n)
 }
 
 #endif
-#ifndef __HAVE_ARCH_MEMCHR_INV
+#ifdef __NEED_MEMCHR_INV
 static void *check_bytes8(const u8 *start, u8 value, unsigned int bytes)
 {
 	while (bytes) {
