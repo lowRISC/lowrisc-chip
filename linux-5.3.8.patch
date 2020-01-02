@@ -2154,10 +2154,10 @@ index a53cc1e3a..d003fc465 100644
  obj-$(CONFIG_BLK_DEV_SKD)	+= skd.o
 diff --git a/drivers/block/lowrisc_pitonsd.c b/drivers/block/lowrisc_pitonsd.c
 new file mode 100644
-index 000000000..1bc4b32fb
+index 000000000..0115ed004
 --- /dev/null
 +++ b/drivers/block/lowrisc_pitonsd.c
-@@ -0,0 +1,1012 @@
+@@ -0,0 +1,1019 @@
 +/*
 + * LowRISC_piton_sd device driver
 + *
@@ -2672,10 +2672,14 @@ index 000000000..1bc4b32fb
 +#ifdef SIMPLE_DEBUG
 +                    dev_err(sdpiton->dev, "transfer failure (mask=%llx, creg=%llx)\n", mask, creg);
 +#endif
++                    task_prepare(sdpiton);
 +                    sdpiton->iostat = BLK_STS_AGAIN;
 +                  }
-+                blk_mq_end_request(sdpiton->req, sdpiton->iostat);
-+		sdpiton->req = NULL;
++                else
++                  {
++                    blk_mq_end_request(sdpiton->req, sdpiton->iostat);
++                    sdpiton->req = NULL;
++                  }
 +                tasklet_schedule(&sdpiton->fsm_tasklet);
 +                break;
 +              case _piton_sd_TASK_WRITE:
@@ -2710,11 +2714,14 @@ index 000000000..1bc4b32fb
 +                /* Check for error occurrence */
 +                if (sdpiton->iostat != BLK_STS_OK)
 +                  {
-+                    dev_err(sdpiton->dev, "SD-Card write verify failure\n");
-+                    pitonsd_dump_regs(sdpiton);
++                    dev_err(sdpiton->dev, "SD-Card write verify failure, sector %d\n", sdpiton->data_pos);
++                    task_prepare(sdpiton);
 +                  }
-+                blk_mq_end_request(sdpiton->req, sdpiton->iostat);
-+		sdpiton->req = NULL;
++                else
++                  {
++                    blk_mq_end_request(sdpiton->req, sdpiton->iostat);
++                    sdpiton->req = NULL;
++                  }
 +                tasklet_schedule(&sdpiton->fsm_tasklet);
 +                break;
 +              default:
@@ -6150,10 +6157,10 @@ index 6b09c21dc..66d9ca2a6 100644
  obj-$(CONFIG_RTC_DRV_LPC32XX)	+= rtc-lpc32xx.o
 diff --git a/drivers/rtc/rtc-lowrisc.c b/drivers/rtc/rtc-lowrisc.c
 new file mode 100644
-index 000000000..34d55ef88
+index 000000000..39bf5fdeb
 --- /dev/null
 +++ b/drivers/rtc/rtc-lowrisc.c
-@@ -0,0 +1,127 @@
+@@ -0,0 +1,152 @@
 +/*
 + * LowRISC RTC interface driver.
 + *
@@ -6172,21 +6179,31 @@ index 000000000..34d55ef88
 +#include <linux/platform_device.h>
 +#include <linux/of_device.h>
 +#include <linux/io.h>
++#include <generated/compile.h>
 +
 +struct lowrisc_rtc_device {
 +  struct rtc_device *rtcdev;
 +  struct device *dev;
 +  resource_size_t physaddr, physaddrend;
 +  uint64_t *iobase;
++  long unsigned int buildt;
 +  int irq;
 +};
++
++static const char * const months[] = {"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"};
 +
 +static int lowrisc_rtc_read_time(struct device *dev, struct rtc_time *tm)
 +{
 +	struct lowrisc_rtc_device *rtc = dev_get_drvdata(dev);
 +	uint64_t t = rtc->iobase[7] >> 26;
-+	printk("lowrisc_rtc_read_time returned %llX\n", t);
-+	rtc_time_to_tm(t, tm);
++        if (t < rtc->buildt)
++          {
++            printk("Fast-forwarding time to kernel build date: "UTS_VERSION);
++            rtc_time_to_tm(rtc->buildt, tm);
++            printk("%s %d %.02d:%.02d:%.02d %d", months[tm->tm_mon], tm->tm_mday, tm->tm_hour, tm->tm_min, tm->tm_sec, tm->tm_year+1900);
++          }
++	else
++          rtc_time_to_tm(t, tm);
 +
 +	return 0;
 +}
@@ -6197,11 +6214,17 @@ index 000000000..34d55ef88
 +	long unsigned int t;
 +	uint64_t traw;
 +	rtc_tm_to_time(tm, &t);
-+	traw = t << 26;
-+	printk("lowrisc_rtc_set_time to %llX\n", traw);
-+	rtc->iobase[7] = traw;
-+
-+	return 0;
++        if (t < rtc->buildt)
++          {
++            printk("lowrisc_rtc_set_time not set earlier than kernel build date: \n" UTS_VERSION);
++            return -1;
++          }
++        else
++          {
++            traw = t << 26;
++            rtc->iobase[7] = traw;
++            return 0;
++          }
 +}
 +
 +static const struct rtc_class_ops lowrisc_rtc_ops = {
@@ -6216,7 +6239,9 @@ index 000000000..34d55ef88
 +	int ret = -ETIMEDOUT;
 +	int i, irq = 0;
 +	struct lowrisc_rtc_device *rtc = kzalloc(sizeof(struct lowrisc_rtc_device), GFP_KERNEL);
-+	
++        struct rtc_time tm;
++        char mon[8], dow[8], zon[8];
++        
 +	printk("lowrisc_rtc_probe(%llx)\n", (u64)pdev);
 +
 +	for (i = 0; i < pdev->num_resources; i++) {
@@ -6247,6 +6272,13 @@ index 000000000..34d55ef88
 +		goto out_err;
 +	}	
 +
++        sscanf(UTS_VERSION, "#%d %s %s %d %d:%d:%d %s %d", &i, dow, mon, &tm.tm_mday, &tm.tm_hour, &tm.tm_min, &tm.tm_sec, zon, &tm.tm_year);
++        tm.tm_mon = 0;
++        while ((tm.tm_mon < 12) && strcmp(months[tm.tm_mon],mon)) ++tm.tm_mon;
++        printk("%s %d %.02d:%.02d:%.02d %s %d", months[tm.tm_mon], tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, zon, tm.tm_year);
++        tm.tm_year -= 1900;
++        rtc_tm_to_time(&tm, &(rtc->buildt));
++        
 +	return 0;
 +
 +out_err:
