@@ -233,11 +233,16 @@ debug:
 
 buildroot: buildroot-2019.11/.config
 	make -C buildroot-2019.11 oldconfig
-	make -C buildroot-2019.11 clean all
+	make -C buildroot-2019.11
+
+buildroot-clean: buildroot-2019.11/.config
+	make -C buildroot-2019.11 oldconfig
+	make -C buildroot-2019.11 clean
 
 buildroot-2019.11/.config: buildroot-2019.11.tar.bz2
 	tar xjf buildroot-2019.11.tar.bz2
-	cp buildroot_defconfig $@
+	cp buildroot-defconfig $@
+	tar xf buildroot-fs-overlay.tar
 
 buildroot-2019.11.tar.bz2:
 	wget https://buildroot.org/downloads/buildroot-2019.11.tar.bz2

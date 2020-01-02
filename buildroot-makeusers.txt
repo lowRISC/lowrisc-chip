@@ -1,0 +1,2 @@
+lowrisc 1000 lowrisc 1000 - /home/lowrisc /bin/bash sudo,video,input LowRISC user
+
