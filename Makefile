@@ -168,28 +168,28 @@ nexys4_ddr_rocket_program: $(KERNEL)
 	make -C fpga BOARD=nexys4_ddr CPU=rocket JTAG_PART="xc7a100t_0" program
 
 genesys2_ariane_cfgmem: $(KERNEL)
-	make -C fpga BOARD=genesys2 BITSIZE=0xB00000 CPU=ariane JTAG_PART="xc7k325t_0" JTAG_MEMORY="s25fl256sxxxxxx0-spi-x1_x2_x4" BBL=$(root-dir)$< cfgmem
+	make -C fpga BOARD=genesys2 BITSIZE=0xB00000 XILINX_PART="xc7k325tffg900-2" XILINX_BOARD="digilentinc.com:genesys2:part0:1.1" CPU=ariane JTAG_PART="xc7k325t_0" JTAG_MEMORY="s25fl256sxxxxxx0-spi-x1_x2_x4" BBL=$(root-dir)$< cfgmem
 
 genesys2_rocket_cfgmem: $(KERNEL)
-	make -C fpga BOARD=genesys2 BITSIZE=0xB00000 CPU=rocket JTAG_PART="xc7k325t_0" JTAG_MEMORY="s25fl256sxxxxxx0-spi-x1_x2_x4" BBL=$(root-dir)$< cfgmem
+	make -C fpga BOARD=genesys2 BITSIZE=0xB00000 XILINX_PART="xc7k325tffg900-2" XILINX_BOARD="digilentinc.com:genesys2:part0:1.1" CPU=rocket JTAG_PART="xc7k325t_0" JTAG_MEMORY="s25fl256sxxxxxx0-spi-x1_x2_x4" BBL=$(root-dir)$< cfgmem
 
 nexys4_ddr_ariane_cfgmem: $(KERNEL)
-	make -C fpga BOARD=nexys4_ddr BITSIZE=0x400000 CPU=ariane JTAG_PART="xc7a100t_0" JTAG_MEMORY="s25fl128sxxxxxx0-spi-x1_x2_x4" BBL=$(root-dir)$< cfgmem
+	make -C fpga BOARD=nexys4_ddr BITSIZE=0x400000 XILINX_PART=xc7a100tcsg324-1 XILINX_BOARD="digilentinc.com:nexys4_ddr:part0:1.1" CPU=ariane JTAG_PART="xc7a100t_0" JTAG_MEMORY="s25fl128sxxxxxx0-spi-x1_x2_x4" BBL=$(root-dir)$< cfgmem
 
 nexys4_ddr_rocket_cfgmem: $(KERNEL)
-	make -C fpga BOARD=nexys4_ddr BITSIZE=0x400000 CPU=rocket JTAG_PART="xc7a100t_0" JTAG_MEMORY="s25fl128sxxxxxx0-spi-x1_x2_x4" BBL=$(root-dir)$< cfgmem
+	make -C fpga BOARD=nexys4_ddr BITSIZE=0x400000 XILINX_PART=xc7a100tcsg324-1 XILINX_BOARD="digilentinc.com:nexys4_ddr:part0:1.1" CPU=rocket JTAG_PART="xc7a100t_0" JTAG_MEMORY="s25fl128sxxxxxx0-spi-x1_x2_x4" BBL=$(root-dir)$< cfgmem
 
 genesys2_ariane_cfgmem_new: $(KERNEL)
-	make -C fpga BOARD=genesys2  BITSIZE=0xB00000 CPU=ariane JTAG_PART="xc7k325t_0" JTAG_MEMORY="s25fl256sxxxxxx0-spi-x1_x2_x4" BBL=$(root-dir)$< cfgmem_new
+	make -C fpga BOARD=genesys2  BITSIZE=0xB00000 XILINX_PART="xc7k325tffg900-2" XILINX_BOARD="digilentinc.com:genesys2:part0:1.1" CPU=ariane JTAG_PART="xc7k325t_0" JTAG_MEMORY="s25fl256sxxxxxx0-spi-x1_x2_x4" BBL=$(root-dir)$< cfgmem_new
 
 genesys2_rocket_cfgmem_new: $(KERNEL)
-	make -C fpga BOARD=genesys2 BITSIZE=0xB00000 CPU=rocket JTAG_PART="xc7k325t_0" JTAG_MEMORY="s25fl256sxxxxxx0-spi-x1_x2_x4" BBL=$(root-dir)$< cfgmem_new
+	make -C fpga BOARD=genesys2 BITSIZE=0xB00000 XILINX_PART="xc7k325tffg900-2" XILINX_BOARD="digilentinc.com:genesys2:part0:1.1" CPU=rocket JTAG_PART="xc7k325t_0" JTAG_MEMORY="s25fl256sxxxxxx0-spi-x1_x2_x4" BBL=$(root-dir)$< cfgmem_new
 
 nexys4_ddr_ariane_cfgmem_new: $(KERNEL)
-	make -C fpga BOARD=nexys4_ddr BITSIZE=0x400000 CPU=ariane JTAG_PART="xc7a100t_0" JTAG_MEMORY="s25fl128sxxxxxx0-spi-x1_x2_x4" BBL=$(root-dir)$< cfgmem_new
+	make -C fpga BOARD=nexys4_ddr BITSIZE=0x400000 XILINX_PART="xc7a100tcsg324-1" XILINX_BOARD="digilentinc.com:nexys4_ddr:part0:1.1" CPU=ariane JTAG_PART="xc7a100t_0" JTAG_MEMORY="s25fl128sxxxxxx0-spi-x1_x2_x4" BBL=$(root-dir)$< cfgmem_new
 
 nexys4_ddr_rocket_cfgmem_new: $(KERNEL)
-	make -C fpga BOARD=nexys4_ddr BITSIZE=0x400000 CPU=rocket JTAG_PART="xc7a100t_0" JTAG_MEMORY="s25fl128sxxxxxx0-spi-x1_x2_x4" BBL=$(root-dir)$< cfgmem_new
+	make -C fpga BOARD=nexys4_ddr BITSIZE=0x400000 XILINX_PART="xc7a100tcsg324-1" XILINX_BOARD="digilentinc.com:nexys4_ddr:part0:1.1" CPU=rocket JTAG_PART="xc7a100t_0" JTAG_MEMORY="s25fl128sxxxxxx0-spi-x1_x2_x4" BBL=$(root-dir)$< cfgmem_new
 
 sdcard-install: $(KERNEL) lowrisc-quickstart/rootfs.tar.xz
 	cp $< lowrisc-quickstart/boot.bin
@@ -230,3 +230,15 @@ gdb: $(KERNEL)
 
 debug:
 	make -C lowrisc-quickstart debug
+
+buildroot: buildroot-2019.11/.config
+	make -C buildroot-2019.11 oldconfig
+	make -C buildroot-2019.11 clean all
+
+buildroot-2019.11/.config: buildroot-2019.11.tar.bz2
+	tar xjf buildroot-2019.11.tar.bz2
+	cp buildroot_defconfig $@
+
+buildroot-2019.11.tar.bz2:
+	wget https://buildroot.org/downloads/buildroot-2019.11.tar.bz2
+	
