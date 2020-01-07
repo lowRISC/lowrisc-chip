@@ -1,9 +1,6 @@
 [submodule "rocket-chip"]
 	path = rocket-chip
 	url = https://github.com/lowRISC/rocket-chip
-[submodule "debian-riscv64"]
-	path = debian-riscv64
-	url = https://github.com/lowRISC/debian-riscv64.git
 [submodule "src/OpenIP"]
 	path = src/OpenIP
 	url = https://github.com/lowRISC/OpenIP.git

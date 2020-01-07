@@ -12,6 +12,8 @@ export RISCV=/opt/riscv
 #export RISCV=/usr
 export HOST=riscv64-unknown-linux-gnu
 export CROSS_COMPILE=$(RISCV)/bin/$(HOST)-
+BUILDROOT=$(PWD)/buildroot-2019.11/mainfs/images/rootfs.tar
+RESCUECPIO=buildroot-2019.11/rescuefs/images/rootfs.cpio
 
 default: nexys4_ddr_ariane
 
@@ -32,12 +34,6 @@ visual: # VGA console, SD-Card root
 rescue: # serial console, miniroot with fsck, busybox, and network access
 	rm -f lowrisc-quickstart/rescue.bin; make lowrisc-quickstart/rescue.bin
 
-install: # serial console with Debian installer root
-	rm -f lowrisc-quickstart/install.bin; make lowrisc-quickstart/install.bin
-
-vinstall: # VGA console, Debian installer root
-	rm -f lowrisc-quickstart/install.bin; make lowrisc-quickstart/install.bin
-
 lowrisc-quickstart/boot.bin: $(LINUX)/arch/riscv/configs/defconfig riscv-pk/build/Makefile
 	sed -e 's/\(CONFIG_BLK_DEV_INITRD\)=y/\1=n/' < $(LINUX)/arch/riscv/configs/defconfig > $(LINUX)/boot.cfg
 	make -C $(LINUX) ARCH=riscv KCONFIG_CONFIG=boot.cfg CROSS_COMPILE=$(CROSS_COMPILE) -j 4
@@ -50,31 +46,14 @@ lowrisc-quickstart/visual.bin: $(LINUX)/arch/riscv/configs/defconfig riscv-pk/bu
 	make riscv-pk/build/bbl
 	cp -p riscv-pk/build/bbl $@
 
-lowrisc-quickstart/rescue.bin: $(LINUX)/arch/riscv/configs/defconfig $(LINUX)/initramfs.cpio riscv-pk/build/Makefile
-	sed -e 's/\(CONFIG_INITRAMFS_SOURCE\)=""/\1="initramfs.cpio"/' < $(LINUX)/arch/riscv/configs/defconfig > $(LINUX)/rescue.cfg
+lowrisc-quickstart/rescue.bin: $(LINUX)/arch/riscv/configs/defconfig lowrisc-quickstart/rootfs.cpio riscv-pk/build/Makefile
+	sed -e 's@\(CONFIG_INITRAMFS_SOURCE\)=""@\1="../lowrisc-quickstart/rootfs.cpio"@' < $(LINUX)/arch/riscv/configs/defconfig > $(LINUX)/rescue.cfg
 	make -C $(LINUX) ARCH=riscv KCONFIG_CONFIG=rescue.cfg CROSS_COMPILE=$(CROSS_COMPILE) -j 4
 	make riscv-pk/build/bbl
 	cp -p riscv-pk/build/bbl $@
 
-lowrisc-quickstart/install.bin: $(LINUX)/arch/riscv/configs/defconfig $(LINUX)/debian.cpio riscv-pk/build/Makefile
-	sed -e 's/\(CONFIG_LOWRISC_MII_INIT\)=y/\1=n/' -e 's/\(CONFIG_INITRAMFS_SOURCE\)=""/\1="debian.cpio"/' < $(LINUX)/arch/riscv/configs/defconfig > $(LINUX)/install.cfg
-	make -C $(LINUX) ARCH=riscv KCONFIG_CONFIG=install.cfg CROSS_COMPILE=$(CROSS_COMPILE) -j 4
-	make riscv-pk/build/bbl
-	cp -p riscv-pk/build/bbl $@
-
-lowrisc-quickstart/vinstall.bin: $(LINUX)/arch/riscv/configs/defconfig $(LINUX)/debian.cpio riscv-pk/build/Makefile
-	sed -e 's/\(CONFIG_LOWRISC_MII_INIT\)=y/\1=n/' -e 's/\(CONFIG_INITRAMFS_SOURCE\)=""/\1="debian.cpio"/' -e 's/# \(CONFIG_VT_CONSOLE\) is not set/\1=y/' < $(LINUX)/arch/riscv/configs/defconfig > $(LINUX)/install.cfg
-	make -C $(LINUX) ARCH=riscv KCONFIG_CONFIG=install.cfg CROSS_COMPILE=$(CROSS_COMPILE) -j 4
-	make riscv-pk/build/bbl
-	cp -p riscv-pk/build/bbl $@
-
-$(LINUX)/debian.cpio:
-	curl http://cdn-fastly.deb.debian.org/debian-ports/pool-riscv64/main/d/debian-installer/debian-installer-images_20190410_riscv64.tar.gz | tar xzf -
-	gzip -d < installer-riscv64/20190410/images/netboot/initrd.gz > $(LINUX)/debian.cpio
-	rm -rf installer-riscv64
-
-$(LINUX)/initramfs.cpio:
-	make -C debian-riscv64 ../linux-$(LINUXVER)-lowrisc/initramfs.cpio LINUX=$(LINUX)
+lowrisc-quickstart/rootfs.cpio: $(RESCUECPIO)
+	cp $< $@
 
 riscv-pk/build/bbl: $(LINUX)/arch/riscv/configs/defconfig $(LINUX)/vmlinux riscv-pk/build/Makefile
 	make -C riscv-pk/build PATH=$(RISCV)/bin:/usr/bin:/bin # CC="riscv-unknown-elf-gcc -g"
@@ -168,35 +147,32 @@ nexys4_ddr_rocket_program: $(KERNEL)
 	make -C fpga BOARD=nexys4_ddr CPU=rocket JTAG_PART="xc7a100t_0" program
 
 genesys2_ariane_cfgmem: $(KERNEL)
-	make -C fpga BOARD=genesys2 BITSIZE=0xB00000 CPU=ariane JTAG_PART="xc7k325t_0" JTAG_MEMORY="s25fl256sxxxxxx0-spi-x1_x2_x4" BBL=$(root-dir)$< cfgmem
+	make -C fpga BOARD=genesys2 BITSIZE=0xB00000 XILINX_PART="xc7k325tffg900-2" XILINX_BOARD="digilentinc.com:genesys2:part0:1.1" CPU=ariane JTAG_PART="xc7k325t_0" JTAG_MEMORY="s25fl256sxxxxxx0-spi-x1_x2_x4" BBL=$(root-dir)$< cfgmem
 
 genesys2_rocket_cfgmem: $(KERNEL)
-	make -C fpga BOARD=genesys2 BITSIZE=0xB00000 CPU=rocket JTAG_PART="xc7k325t_0" JTAG_MEMORY="s25fl256sxxxxxx0-spi-x1_x2_x4" BBL=$(root-dir)$< cfgmem
+	make -C fpga BOARD=genesys2 BITSIZE=0xB00000 XILINX_PART="xc7k325tffg900-2" XILINX_BOARD="digilentinc.com:genesys2:part0:1.1" CPU=rocket JTAG_PART="xc7k325t_0" JTAG_MEMORY="s25fl256sxxxxxx0-spi-x1_x2_x4" BBL=$(root-dir)$< cfgmem
 
 nexys4_ddr_ariane_cfgmem: $(KERNEL)
-	make -C fpga BOARD=nexys4_ddr BITSIZE=0x400000 CPU=ariane JTAG_PART="xc7a100t_0" JTAG_MEMORY="s25fl128sxxxxxx0-spi-x1_x2_x4" BBL=$(root-dir)$< cfgmem
+	make -C fpga BOARD=nexys4_ddr BITSIZE=0x400000 XILINX_PART=xc7a100tcsg324-1 XILINX_BOARD="digilentinc.com:nexys4_ddr:part0:1.1" CPU=ariane JTAG_PART="xc7a100t_0" JTAG_MEMORY="s25fl128sxxxxxx0-spi-x1_x2_x4" BBL=$(root-dir)$< cfgmem
 
 nexys4_ddr_rocket_cfgmem: $(KERNEL)
-	make -C fpga BOARD=nexys4_ddr BITSIZE=0x400000 CPU=rocket JTAG_PART="xc7a100t_0" JTAG_MEMORY="s25fl128sxxxxxx0-spi-x1_x2_x4" BBL=$(root-dir)$< cfgmem
+	make -C fpga BOARD=nexys4_ddr BITSIZE=0x400000 XILINX_PART=xc7a100tcsg324-1 XILINX_BOARD="digilentinc.com:nexys4_ddr:part0:1.1" CPU=rocket JTAG_PART="xc7a100t_0" JTAG_MEMORY="s25fl128sxxxxxx0-spi-x1_x2_x4" BBL=$(root-dir)$< cfgmem
 
 genesys2_ariane_cfgmem_new: $(KERNEL)
-	make -C fpga BOARD=genesys2  BITSIZE=0xB00000 CPU=ariane JTAG_PART="xc7k325t_0" JTAG_MEMORY="s25fl256sxxxxxx0-spi-x1_x2_x4" BBL=$(root-dir)$< cfgmem_new
+	make -C fpga BOARD=genesys2  BITSIZE=0xB00000 XILINX_PART="xc7k325tffg900-2" XILINX_BOARD="digilentinc.com:genesys2:part0:1.1" CPU=ariane JTAG_PART="xc7k325t_0" JTAG_MEMORY="s25fl256sxxxxxx0-spi-x1_x2_x4" BBL=$(root-dir)$< cfgmem_new
 
 genesys2_rocket_cfgmem_new: $(KERNEL)
-	make -C fpga BOARD=genesys2 BITSIZE=0xB00000 CPU=rocket JTAG_PART="xc7k325t_0" JTAG_MEMORY="s25fl256sxxxxxx0-spi-x1_x2_x4" BBL=$(root-dir)$< cfgmem_new
+	make -C fpga BOARD=genesys2 BITSIZE=0xB00000 XILINX_PART="xc7k325tffg900-2" XILINX_BOARD="digilentinc.com:genesys2:part0:1.1" CPU=rocket JTAG_PART="xc7k325t_0" JTAG_MEMORY="s25fl256sxxxxxx0-spi-x1_x2_x4" BBL=$(root-dir)$< cfgmem_new
 
 nexys4_ddr_ariane_cfgmem_new: $(KERNEL)
-	make -C fpga BOARD=nexys4_ddr BITSIZE=0x400000 CPU=ariane JTAG_PART="xc7a100t_0" JTAG_MEMORY="s25fl128sxxxxxx0-spi-x1_x2_x4" BBL=$(root-dir)$< cfgmem_new
+	make -C fpga BOARD=nexys4_ddr BITSIZE=0x400000 XILINX_PART="xc7a100tcsg324-1" XILINX_BOARD="digilentinc.com:nexys4_ddr:part0:1.1" CPU=ariane JTAG_PART="xc7a100t_0" JTAG_MEMORY="s25fl128sxxxxxx0-spi-x1_x2_x4" BBL=$(root-dir)$< cfgmem_new
 
 nexys4_ddr_rocket_cfgmem_new: $(KERNEL)
-	make -C fpga BOARD=nexys4_ddr BITSIZE=0x400000 CPU=rocket JTAG_PART="xc7a100t_0" JTAG_MEMORY="s25fl128sxxxxxx0-spi-x1_x2_x4" BBL=$(root-dir)$< cfgmem_new
+	make -C fpga BOARD=nexys4_ddr BITSIZE=0x400000 XILINX_PART="xc7a100tcsg324-1" XILINX_BOARD="digilentinc.com:nexys4_ddr:part0:1.1" CPU=rocket JTAG_PART="xc7a100t_0" JTAG_MEMORY="s25fl128sxxxxxx0-spi-x1_x2_x4" BBL=$(root-dir)$< cfgmem_new
 
-sdcard-install: $(KERNEL) lowrisc-quickstart/rootfs.tar.xz
+sdcard-install: $(KERNEL) $(BUILDROOT)
 	cp $< lowrisc-quickstart/boot.bin
-	make -C lowrisc-quickstart/ install USB=$(USB)
-
-lowrisc-quickstart/rootfs.tar.xz:
-	make -C debian-riscv64 image
+	make -C lowrisc-quickstart/ install USB=$(USB) BUILDROOT=$(BUILDROOT)
 
 vmlinux.dis: $(LINUX)/vmlinux
 	$(CROSS_COMPILE)objdump -d -S -l $(LINUX)/vmlinux > $@
@@ -230,3 +206,38 @@ gdb: $(KERNEL)
 
 debug:
 	make -C lowrisc-quickstart debug
+
+buildroot: $(BUILDROOT) $(RESCUECPIO)
+
+buildroot-clean: mainfs-clean rescuefs-clean
+
+buildroot-2019.11/mainfs/.config: buildroot-defconfig buildroot-2019.11.tar.bz2 rootfs-overlay buildroot-2019.11/Makefile
+	mkdir -p buildroot-2019.11/mainfs
+	cp $< $@
+	make -C buildroot-2019.11 O=mainfs oldconfig
+
+$(BUILDROOT): buildroot-2019.11/mainfs/.config
+	make -C buildroot-2019.11/mainfs
+
+mainfs-clean: buildroot-2019.11/mainfs/.config
+	make -C buildroot-2019.11/mainfs clean
+
+buildroot-2019.11/rescuefs/.config: buildroot-rescueconfig buildroot-2019.11.tar.bz2 rootfs-overlay/rdinit buildroot-2019.11/Makefile
+	mkdir -p buildroot-2019.11/rescuefs
+	cp $< $@
+	make -C buildroot-2019.11 O=rescuefs oldconfig
+
+$(RESCUECPIO): buildroot-2019.11/rescuefs/.config
+	make -C buildroot-2019.11/rescuefs
+
+rescuefs-clean: buildroot-2019.11/rescuefs/.config
+	make -C buildroot-2019.11/rescuefs clean
+
+buildroot-2019.11/Makefile:
+	tar xjf buildroot-2019.11.tar.bz2
+
+buildroot-2019.11.tar.bz2:
+	wget https://buildroot.org/downloads/buildroot-2019.11.tar.bz2
+
+rootfs-overlay: buildroot-fs-overlay.tar
+	tar xf buildroot-fs-overlay.tar

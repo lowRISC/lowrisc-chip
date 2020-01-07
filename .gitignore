@@ -19,3 +19,6 @@ session.inter.vpd.tcl
 simv
 simv.daidir/
 vc_hdrs.h
+buildroot-2019.11.tar.bz2
+buildroot-2019.11/
+rootfs-overlay/
