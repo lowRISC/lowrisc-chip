@@ -172,7 +172,12 @@ nexys4_ddr_rocket_cfgmem_new: $(KERNEL)
 
 sdcard-install: $(KERNEL) $(BUILDROOT)
 	cp $< lowrisc-quickstart/boot.bin
+	zstd -f $(BUILDROOT) -o lowrisc-quickstart/rootfs.tar
 	make -C lowrisc-quickstart/ install USB=$(USB) BUILDROOT=$(BUILDROOT)
+
+sdcard-install-debian: $(KERNEL) $(BUILDROOT)
+	cp $< lowrisc-quickstart/boot.bin
+	make -C lowrisc-quickstart/ install-debian USB=$(USB) BUILDROOT=$(BUILDROOT)
 
 vmlinux.dis: $(LINUX)/vmlinux
 	$(CROSS_COMPILE)objdump -d -S -l $(LINUX)/vmlinux > $@
@@ -211,10 +216,15 @@ buildroot: $(BUILDROOT) $(RESCUECPIO)
 
 buildroot-clean: mainfs-clean rescuefs-clean
 
-buildroot-2019.11/mainfs/.config: buildroot-defconfig buildroot-2019.11.tar.bz2 rootfs-overlay buildroot-2019.11/Makefile
+buildroot-2019.11/mainfs/.config: buildroot-defconfig buildroot-2019.11.tar.bz2 rootfs-overlay/rdinit buildroot-2019.11/Makefile buildroot-2019.11/package/cbzone/Config.in.parent
 	mkdir -p buildroot-2019.11/mainfs
 	cp $< $@
 	make -C buildroot-2019.11 O=mainfs oldconfig
+
+buildroot-2019.11/package/cbzone/Config.in.parent: buildroot-local.tar
+	tar xf $<
+	patch -p1 < $@
+	touch $@
 
 $(BUILDROOT): buildroot-2019.11/mainfs/.config
 	make -C buildroot-2019.11/mainfs
@@ -239,5 +249,6 @@ buildroot-2019.11/Makefile:
 buildroot-2019.11.tar.bz2:
 	wget https://buildroot.org/downloads/buildroot-2019.11.tar.bz2
 
-rootfs-overlay: buildroot-fs-overlay.tar
+rootfs-overlay/rdinit: buildroot-fs-overlay.tar
 	tar xf buildroot-fs-overlay.tar
+	touch $@
