@@ -1,6 +1,6 @@
 #
 # Automatically generated file; DO NOT EDIT.
-# Buildroot 2019.11-g6458260-dirty Configuration
+# Buildroot 2019.11-g8077c6d Configuration
 #
 BR2_HAVE_DOT_CONFIG=y
 BR2_HOST_GCC_AT_LEAST_4_9=y
@@ -1046,10 +1046,6 @@ BR2_PACKAGE_DILLO=y
 # BR2_PACKAGE_GQVIEW is not set
 # BR2_PACKAGE_GTKPERF is not set
 # BR2_PACKAGE_LEAFPAD is not set
-
-#
-# midori needs libgtk3 and a glibc toolchain w/ C++, gcc >= 6
-#
 # BR2_PACKAGE_NODM is not set
 # BR2_PACKAGE_PCMANFM is not set
 # BR2_PACKAGE_RDESKTOP is not set
@@ -1552,11 +1548,6 @@ BR2_PACKAGE_WAYLAND_PROTOCOLS=y
 
 #
 # waylandpp needs an OpenGL-EGL/wayland backend, a toolchain w/ gcc >= 4.9, host gcc >= 4.9
-#
-BR2_PACKAGE_WEBKITGTK_ARCH_SUPPORTS=y
-
-#
-# webkitgtk needs libgtk3 and a glibc toolchain w/ C++, gcc >= 6
 #
 BR2_PACKAGE_WEBP=y
 BR2_PACKAGE_WEBP_DEMUX=y
@@ -3355,4 +3346,3 @@ BR2_LINUX_KERNEL_CUSTOM_GIT_VERSION=""
 # BR2_VFP_FLOAT is not set
 # BR2_PACKAGE_GCC_TARGET is not set
 # BR2_HAVE_DEVFILES is not set
-
