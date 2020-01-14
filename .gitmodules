@@ -19,15 +19,9 @@
 [submodule "ariane"]
 	path = ariane
 	url = https://github.com/lowRISC/ariane.git
-[submodule "riscv-gnu-toolchain"]
-	path = riscv-gnu-toolchain
-	url = https://github.com/riscv/riscv-gnu-toolchain
 [submodule "riscv-openocd"]
 	path = riscv-openocd
 	url = https://github.com/riscv/riscv-openocd.git
-[submodule "riscv-pk"]
-	path = riscv-pk
-	url = https://github.com/riscv/riscv-pk.git
-[submodule "u-boot"]
-	path = u-boot
-	url = https://github.com/lowRISC/u-boot.git
+[submodule "buildroot-2019.11.1-lowrisc"]
+	path = buildroot-2019.11.1-lowrisc
+	url = https://github.com/lowrisc/buildroot.git
