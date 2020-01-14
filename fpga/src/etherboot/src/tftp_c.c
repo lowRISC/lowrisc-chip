@@ -178,21 +178,21 @@ void handle_wrq(int sock, struct tftpx_request *request) {
 		
 	file_open(r_path);
 	
-	ack_packet.cmd = htons(CMD_ACK);
-	ack_packet.block = htons(0);
+	ack_packet.cmd = __htons(CMD_ACK);
+	ack_packet.block = __htons(0);
 	send_ack(sock, &ack_packet, 4);
 	block = 1;
 }
 
 void handle_data_packet(int sock, struct tftpx_packet *rcv_packet, int r_size) {
-  if(r_size >= 4 && rcv_packet->cmd == htons(CMD_DATA) && rcv_packet->block == htons(block))
+  if(r_size >= 4 && rcv_packet->cmd == __htons(CMD_DATA) && rcv_packet->block == __htons(block))
     {
       if (verbose)
-        printf("DATA: block=%d, data_size=%d\n", ntohs(rcv_packet->block), r_size - 4);
+        printf("DATA: block=%d, data_size=%d\n", __ntohs(rcv_packet->block), r_size - 4);
       // Valid DATA
       file_write(rcv_packet->data, r_size - 4);
-      ack_packet.cmd = htons(CMD_ACK);
-      ack_packet.block = htons(block);
+      ack_packet.cmd = __htons(CMD_ACK);
+      ack_packet.block = __htons(block);
       send_ack(sock, &ack_packet, 4);
       if (verbose)
         printf("Send ACK=%d\n", block);
@@ -216,7 +216,7 @@ void handle_data_packet(int sock, struct tftpx_packet *rcv_packet, int r_size) {
 void handle_switch(int sock, struct tftpx_request *request)
 {
   // Choose handler
-  switch(ntohs(request->packet.cmd))
+  switch(__ntohs(request->packet.cmd))
     {
     case CMD_WRQ:
       printf("handle_wrq called.\n");

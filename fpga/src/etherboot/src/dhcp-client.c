@@ -198,7 +198,7 @@ void dhcp_input(dhcp_t *dhcp, u_int8_t *mac, int *offcount, int *ackcount)
         break;
       case MESSAGE_TYPE_LEASE_TIME:
         memcpy(&lease, data, sizeof(lease));
-        lease = ntohl(lease);
+        lease = __ntohl(lease);
         break;
       case MESSAGE_TYPE_REQ_SUBNET_MASK:
         memcpy(&uip_netmask_addr, data, sizeof(uip_netmask_addr));

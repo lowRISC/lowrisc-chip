@@ -105,7 +105,7 @@ static int copyin_pkt(void)
       uint32_t *alloc32 = (uint32_t *)(eth_base+start);
       // Do we need to read the packet at all ??
       uint16_t rxheader = alloc32[HEADER_OFFSET >> 2];
-      int proto_type = ntohs(rxheader) & 0xFFFF;
+      int proto_type = __ntohs(rxheader) & 0xFFFF;
       switch (proto_type)
           {
           case ETH_P_IP:
@@ -222,7 +222,7 @@ unsigned short csum(uint8_t *buf, int nbytes)
                 unsigned short src;
                 memcpy(&src, buf, 2);
                 buf+=2;
-                sum += ntohs(src);
+                sum += __ntohs(src);
               }
             sum = (sum >> 16) + (sum & 0xffff);
             sum += (sum >> 16);
@@ -284,7 +284,7 @@ void recog_packet(int proto_type, uint32_t *alloc32, int xlength)
                       icmp_hdr->type = 0; /* reply */
                       icmp_hdr->checksum = 0;
                       chksum = csum((uint8_t *)icmp_hdr, len);
-                      icmp_hdr->checksum = htons(chksum);
+                      icmp_hdr->checksum = __htons(chksum);
 #ifdef VERBOSE                      
                       printf("sending ICMP reply (header = %d, total = %d, checksum = %x)\n", sizeof(struct icmphdr), len, chksum);
                       PrintData((u_char *)icmp_hdr, len);
@@ -320,12 +320,12 @@ void recog_packet(int proto_type, uint32_t *alloc32, int xlength)
                       const u_char body[];              /* payload */
                     } *udp_hdr = (struct udphdr *)&(BUF->body);
 
-                    int16_t dport = ntohs(udp_hdr->uh_dport);
-                    int16_t ulen = ntohs(udp_hdr->uh_ulen);
-                    uint16_t peer_port = ntohs(udp_hdr->uh_sport);
+                    int16_t dport = __ntohs(udp_hdr->uh_dport);
+                    int16_t ulen = __ntohs(udp_hdr->uh_ulen);
+                    uint16_t peer_port = __ntohs(udp_hdr->uh_sport);
 #ifdef VERBOSE
                     if (dport != 1534) printf("IP Proto = UDP, source port = %d, dest port = %d, length = %d, ethlen = %d\n",
-                           ntohs(udp_hdr->uh_sport),
+                           __ntohs(udp_hdr->uh_sport),
                            dport,
                            ulen, xlength);
 #endif                        
@@ -339,7 +339,7 @@ void recog_packet(int proto_type, uint32_t *alloc32, int xlength)
                     else if (dport == NTP_PORT)
                       {
 			printf("IP Proto = NTP, source port = %d, dest port = %d, length = %d, ethlen = %d\n",
-                           ntohs(udp_hdr->uh_sport),
+                           __ntohs(udp_hdr->uh_sport),
                            dport,
                            ulen, xlength);
                         saved_peer_port = peer_port;
@@ -371,7 +371,7 @@ void recog_packet(int proto_type, uint32_t *alloc32, int xlength)
                         memcpy(&srcaddr, &uip_hostaddr, 4);
 #ifdef VERBOSE
                         printf("IP Proto = UDP, source port = %d, dest port = %d, length = %d\n",
-                           ntohs(udp_hdr->uh_sport),
+                           __ntohs(udp_hdr->uh_sport),
                            dport,
                            ulen);
 #else
@@ -514,12 +514,12 @@ int arp_query(uip_ipaddr_t dst)
   return 0;
 }
 
-uint16_t __bswap_16(uint16_t x)
+uint16_t _bswap_16(uint16_t x)
 {
         return ((x << 8) & 0xff00) | ((x >> 8) & 0x00ff);
 }
 
-uint32_t __bswap_32(uint32_t x)
+uint32_t _bswap_32(uint32_t x)
 {
   return
      ((((x) & 0xff000000) >> 24) | (((x) & 0x00ff0000) >>  8) |               \
@@ -554,8 +554,8 @@ void set_dummy_mac(void)
     }  
   memcpy (&macaddr_lo, mac_addr.addr+2, sizeof(uint32_t));
   memcpy (&macaddr_hi, mac_addr.addr+0, sizeof(uint16_t));
-  eth_base[MACLO_OFFSET>>3] = __bswap_32(macaddr_lo);
-  eth_base[MACHI_OFFSET>>3] = __bswap_16(macaddr_hi);
+  eth_base[MACLO_OFFSET>>3] = _bswap_32(macaddr_lo);
+  eth_base[MACHI_OFFSET>>3] = _bswap_16(macaddr_hi);
 
   macaddr_lo = eth_base[MACLO_OFFSET>>3];
   macaddr_hi = eth_base[MACHI_OFFSET>>3] & MACHI_MACADDR_MASK;
@@ -653,7 +653,7 @@ void eth_main(void) {
         uint32_t *alloc32 = (uint32_t *)(rxbuf[rxtail].alloc); // legacy size to avoid tweaking header offset
         int length, xlength = rxbuf[rxtail].len;
         uint16_t rxheader = alloc32[HEADER_OFFSET >> 2];
-        int proto_type = ntohs(rxheader) & 0xFFFF;
+        int proto_type = __ntohs(rxheader) & 0xFFFF;
 #ifdef VERBOSE
         printf("alloc32 = %x\n", alloc32);
         printf("rxhead = %d, rxtail = %d\n", rxhead, rxtail);

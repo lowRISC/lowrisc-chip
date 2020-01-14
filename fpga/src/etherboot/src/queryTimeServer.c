@@ -98,11 +98,11 @@ http://www.eecis.udel.edu/~mills/database/rfc/rfc2030.txt
 
 #define NTP_TO_UNIX(n,u) do {  u = n - JAN_1970; } while (0)
 
-#define HTONL_FP(h, n)  do { (n)->l_ui = htonl((h)->l_ui); \
-                             (n)->l_uf = htonl((h)->l_uf); } while (0)
+#define HTONL_FP(h, n)  do { (n)->l_ui = __htonl((h)->l_ui); \
+                             (n)->l_uf = __htonl((h)->l_uf); } while (0)
 
-#define NTOHL_FP(n, h)  do { (h)->l_ui = ntohl((n)->l_ui); \
-                             (h)->l_uf = ntohl((n)->l_uf); } while (0)
+#define NTOHL_FP(n, h)  do { (h)->l_ui = __ntohl((n)->l_ui); \
+                             (h)->l_uf = __ntohl((n)->l_uf); } while (0)
 
 #define SA      struct sockaddr
 #define MAXLINE 16384
