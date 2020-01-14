@@ -12,8 +12,9 @@ export RISCV=/opt/riscv
 #export RISCV=/usr
 export HOST=riscv64-unknown-linux-gnu
 export CROSS_COMPILE=$(RISCV)/bin/$(HOST)-
-BUILDROOT=$(PWD)/buildroot-2019.11/mainfs/images/rootfs.tar
-RESCUECPIO=buildroot-2019.11/rescuefs/images/rootfs.cpio
+export BUILDROOT_VER=buildroot-2019.11.1-lowrisc
+BUILDROOT=$(PWD)/$(BUILDROOT_VER)/mainfs/images/rootfs.tar
+RESCUECPIO=$(BUILDROOT_VER)/rescuefs/images/rootfs.cpio
 
 default: nexys4_ddr_ariane
 
@@ -216,38 +217,27 @@ buildroot: $(BUILDROOT) $(RESCUECPIO)
 
 buildroot-clean: mainfs-clean rescuefs-clean
 
-buildroot-2019.11/mainfs/.config: buildroot-defconfig buildroot-2019.11.tar.bz2 rootfs-overlay/rdinit buildroot-2019.11/Makefile buildroot-2019.11/package/cbzone/Config.in.parent
-	mkdir -p buildroot-2019.11/mainfs
+$(BUILDROOT_VER)/mainfs/.config: buildroot-defconfig rootfs-overlay/rdinit $(BUILDROOT_VER)/Makefile
+	mkdir -p $(BUILDROOT_VER)/mainfs
 	cp $< $@
-	make -C buildroot-2019.11 O=mainfs oldconfig
+	make -C $(BUILDROOT_VER) O=mainfs oldconfig
 
-buildroot-2019.11/package/cbzone/Config.in.parent: buildroot-local.tar
-	tar xf $<
-	patch -p1 < $@
-	touch $@
+$(BUILDROOT): $(BUILDROOT_VER)/mainfs/.config
+	make -C $(BUILDROOT_VER)/mainfs
 
-$(BUILDROOT): buildroot-2019.11/mainfs/.config
-	make -C buildroot-2019.11/mainfs
+mainfs-clean: $(BUILDROOT_VER)/mainfs/.config
+	make -C $(BUILDROOT_VER)/mainfs clean
 
-mainfs-clean: buildroot-2019.11/mainfs/.config
-	make -C buildroot-2019.11/mainfs clean
-
-buildroot-2019.11/rescuefs/.config: buildroot-rescueconfig buildroot-2019.11.tar.bz2 rootfs-overlay/rdinit buildroot-2019.11/Makefile
-	mkdir -p buildroot-2019.11/rescuefs
+$(BUILDROOT_VER)/rescuefs/.config: buildroot-rescueconfig rootfs-overlay/rdinit $(BUILDROOT_VER)/Makefile
+	mkdir -p $(BUILDROOT_VER)/rescuefs
 	cp $< $@
-	make -C buildroot-2019.11 O=rescuefs oldconfig
+	make -C $(BUILDROOT_VER) O=rescuefs oldconfig
 
-$(RESCUECPIO): buildroot-2019.11/rescuefs/.config
-	make -C buildroot-2019.11/rescuefs
+$(RESCUECPIO): $(BUILDROOT_VER)/rescuefs/.config
+	make -C $(BUILDROOT_VER)/rescuefs
 
-rescuefs-clean: buildroot-2019.11/rescuefs/.config
-	make -C buildroot-2019.11/rescuefs clean
-
-buildroot-2019.11/Makefile:
-	tar xjf buildroot-2019.11.tar.bz2
-
-buildroot-2019.11.tar.bz2:
-	wget https://buildroot.org/downloads/buildroot-2019.11.tar.bz2
+rescuefs-clean: $(BUILDROOT_VER)/rescuefs/.config
+	make -C $(BUILDROOT_VER)/rescuefs clean
 
 rootfs-overlay/rdinit: buildroot-fs-overlay.tar
 	tar xf buildroot-fs-overlay.tar
