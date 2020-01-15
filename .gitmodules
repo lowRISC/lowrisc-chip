@@ -19,9 +19,6 @@
 [submodule "ariane"]
 	path = ariane
 	url = https://github.com/lowRISC/ariane.git
-[submodule "riscv-openocd"]
-	path = riscv-openocd
-	url = https://github.com/riscv/riscv-openocd.git
 [submodule "buildroot-2019.11.1-lowrisc"]
 	path = buildroot-2019.11.1-lowrisc
 	url = https://github.com/lowrisc/buildroot.git

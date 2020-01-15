@@ -127,16 +127,6 @@ firmware:
 	make -B -C fpga/src/etherboot BOARD=nexys4_ddr BITSIZE=0x400000 XILINX_PART=xc7a100tcsg324-1 XILINX_BOARD=digilentinc.com:nexys4_ddr:part0:1.1 CPU=rocket VENDOR=sifive MEMSIZE=0x8000000 CLK_PERIOD_NS="20" PATH=$(RISCV)/bin:/usr/local/bin:/usr/bin:/bin
 	make -B -C fpga/src/etherboot BOARD=nexys4_ddr BITSIZE=0x400000 XILINX_PART=xc7a100tcsg324-1 XILINX_BOARD=digilentinc.com:nexys4_ddr:part0:1.1 CPU=ariane VENDOR=ethz MEMSIZE=0x8000000 CLK_PERIOD_NS="20" PATH=$(RISCV)/bin:/usr/local/bin:/usr/bin:/bin
 
-openocd: $(RISCV)/bin/openocd
-
-$(RISCV)/bin/openocd: riscv-openocd/Makefile
-	(mkdir riscv-openocd/build; cd riscv-openocd/build; ../configure --prefix=$(RISCV) --enable-remote-bitbang --enable-jtag_vpi --disable-werror)
-	make -s -C riscv-openocd/build
-	make -s -C riscv-openocd/build install
-
-riscv-openocd/Makefile:
-	(cd riscv-openocd; find . -iname configure.ac | sed s/configure.ac/m4/ | xargs mkdir -p; autoreconf -i)
-
 gdb: $(KERNEL)
 	riscv64-unknown-elf-gdb -tui $(KERNEL)
 
