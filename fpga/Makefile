@@ -1,4 +1,5 @@
-export STRIP=riscv64-unknown-elf-strip
+export CROSSCOMPILE=riscv64-buildroot-linux-gnu-
+export STRIP=${CROSSCOMPILE}strip
 export XILINX_VER=2018.2
 export XILINX_ROOT=/opt/Xilinx
 export XILINX_VIVADO=$(XILINX_ROOT)/Vivado/$(XILINX_VER)

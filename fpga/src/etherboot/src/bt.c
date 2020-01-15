@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdint.h>
 #include "ariane.h"
 #include "uart.h"
 #include "hid.h"

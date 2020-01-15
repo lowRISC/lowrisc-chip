@@ -1,10 +1,10 @@
-export CROSSCOMPILE=riscv64-unknown-elf-
+export CROSSCOMPILE=riscv64-buildroot-linux-gnu-
 CC = ${CROSSCOMPILE}gcc
 PYTHON=python
 MODEL=medany
 #MODEL=medlow
 
-CFLAGS = -Os -ggdb -march=rv64imac -mabi=lp64 -Wall -mcmodel=$(MODEL) -fno-builtin-printf -fno-builtin-memcpy -fno-builtin -ffreestanding -fshort-wchar -DBITSIZE=$(BITSIZE) # -mexplicit-relocs
+CFLAGS = -Os -ggdb -march=rv64imafdc -mabi=lp64d -Wall -mcmodel=$(MODEL) -fno-builtin-printf -fno-builtin-memcpy -fno-builtin -ffreestanding -fshort-wchar -DBITSIZE=$(BITSIZE) # -mexplicit-relocs
 CCASFLAGS = -mcmodel=$(MODEL) # -mexplicit-relocs
 LDFLAGS = -nostdlib -nodefaultlibs -nostartfiles -Wl,-Map=mapfile
 

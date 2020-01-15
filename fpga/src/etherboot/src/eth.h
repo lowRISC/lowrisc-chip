@@ -237,22 +237,22 @@ uint16_t __bswap_16(uint16_t x);
 uint32_t __bswap_32(uint32_t x);
 #endif
 
-#define ntohl(x) ({ uint32_t __tmp; \
+#define __ntohl(x) ({ uint32_t __tmp; \
       uint8_t *optr = (uint8_t *)&__tmp; \
       uint8_t *iptr = (uint8_t *)&(x); \
       int i; \
       for (i = 0; i < sizeof(uint32_t); i++) optr[sizeof(uint32_t)-i-1] = iptr[i]; \
       __tmp; })
 
-#define ntohs(x) ({ uint16_t __tmp; \
+#define __ntohs(x) ({ uint16_t __tmp; \
       uint8_t *optr = (uint8_t *)&__tmp; \
       uint8_t *iptr = (uint8_t *)&(x); \
       int i; \
       for (i = 0; i < sizeof(uint16_t); i++) optr[sizeof(uint16_t)-i-1] = iptr[i]; \
       __tmp; })
 
-static inline uint32_t htonl(uint32_t x) { return ntohl(x); }
-static inline uint16_t htons(uint16_t x) { return ntohs(x); }
+static inline uint32_t __htonl(uint32_t x) { return __ntohl(x); }
+static inline uint16_t __htons(uint16_t x) { return __ntohs(x); }
 
 typedef unsigned int __u_int;
 typedef __u_int bpf_u_int32;
