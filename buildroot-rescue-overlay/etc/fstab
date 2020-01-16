@@ -1,0 +1,2 @@
+/dev/root / auto rw 0 1
+/dev/rda3 swap swap defaults 0 0

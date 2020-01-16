@@ -153,26 +153,14 @@ void qspi_main(int sw)
 
 int main()
 {
-  uint32_t i, rnd;
+  uint32_t i;
   uint32_t sw = gpio_sw();
   uint32_t sw2 = gpio_sw();
   init_uart(UARTBase, 0x001B);
   print_uart(UARTBase, "Hello World!\r\n");
   hid_init(sw);
-  for (i = 0; i < 5; i++)
-    {
-      volatile uint64_t *swp = (volatile uint64_t *)GPIOBase;
-      printf("swp[%d] = %lX\n", i, swp[i]);
-    }
   set_dummy_mac();
-  for (i = 0; i < 4; i++)
-    {
-      gpio_leds(pattern[i]);
-      printf("Switch setting = %X,%X\n", sw, sw2);
-      rnd = hwrnd();
-      printf("Random seed = %X\n", rnd);
-      sw = sw2 & 0xFF;
-    }
+  sw = sw2 & 0xFF;
   
   switch (sw >> 5)
     {
