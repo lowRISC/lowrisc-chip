@@ -2924,7 +2924,7 @@ index 000000000..0115ed004
 +{
 +        int rc;
 +        
-+	printk("pitonsd_setup(sdpiton=0x%llx)\n", (u64)sdpiton);
++	pr_debug("pitonsd_setup(sdpiton=0x%llx)\n", (u64)sdpiton);
 +
 +	spin_lock_init(&sdpiton->lock);
 +	INIT_LIST_HEAD(&sdpiton->rq_list);
@@ -3101,7 +3101,7 @@ index 000000000..0115ed004
 +	int irq = 0;
 +	int i;
 +
-+	printk("pitonsd_probe(%llx)\n", (u64)dev);
++	pr_debug("pitonsd_probe(%llx)\n", (u64)dev);
 +
 +	for (i = 0; i < dev->num_resources; i++) {
 +		if (dev->resource[i].flags & IORESOURCE_MEM)
@@ -3470,7 +3470,7 @@ index 000000000..11ef08ca9
 +  struct input_polled_dev *poll_dev;
 +  struct device *dev = &pdev->dev;
 +
-+  printk("lowrisc_fake_probe\n");
++  pr_debug("lowrisc_fake_probe\n");
 +  lowrisc_fake = &lowrisc_fake_static;
 +  
 +  if (lowrisc_fake->fake_base) /* Only one instance allowed */
@@ -3643,7 +3643,7 @@ index 000000000..6a473b3c5
 +  struct input_polled_dev *poll_dev;
 +  struct device *dev = &pdev->dev;
 +
-+  printk("lowrisc_kbd_probe\n");
++  pr_debug("lowrisc_kbd_probe\n");
 +  lowrisc_kbd = devm_kzalloc(&pdev->dev, sizeof(struct lowrisc_kbd), GFP_KERNEL);
 +  if (!lowrisc_kbd) {
 +    return -ENOMEM;
@@ -3701,12 +3701,12 @@ index 000000000..6a473b3c5
 +    dev_err(dev, "Unable to register input device: %d\n", error);
 +    return error;
 +  }
-+  printk("Clear any pending input\n");
++  pr_debug("Clear any pending input\n");
 +  while ((1<<9) & ~*lowrisc_kbd->keyb_base)
 +    {
 +      *lowrisc_kbd->keyb_base = 0; // bump FIFO location
 +    }
-+  printk("Loading keyboard input device returns success\n");  
++  pr_debug("Loading keyboard input device returns success\n");  
 +  return 0;
 +}
 +
@@ -4156,13 +4156,13 @@ index 000000000..ad0d2e3fa
 +
 +static int lowrisc_open(struct input_dev *dev)
 +{
-+  printk("Opening mouse");
++  pr_debug("Opening mouse");
 +  return 0;
 +}
 +
 +static void lowrisc_close(struct input_dev *dev)
 +{
-+  printk("Closing mouse");
++  pr_debug("Closing mouse");
 +}
 +
 +static int lowrisc_mouse_probe(struct platform_device *pdev)
@@ -4173,7 +4173,7 @@ index 000000000..ad0d2e3fa
 +  struct input_dev *input;
 +  int ret;
 +
-+  printk("lowrisc_mouse_probe\n");
++  pr_debug("lowrisc_mouse_probe\n");
 +  lowrisc_mouse = devm_kzalloc(dev, sizeof(*lowrisc_mouse), GFP_KERNEL);
 +  if (!lowrisc_mouse)
 +    return -ENOMEM;
@@ -4362,7 +4362,7 @@ index 000000000..d2570eb8a
 +		return -1;
 +	}
 +
-+	printk("This is lowrisc-gpio driver.\n");
++	pr_debug("This is lowrisc-gpio driver.\n");
 +
 +        return 0;
 +}
@@ -4434,7 +4434,7 @@ index 000000000..d2570eb8a
 +        if (led_sd_base)
 +          {
 +            led_last = (led_last&red_led) | (simple_strtol(msg, &endp, 16) & ~red_led);
-+            printk("User msg %s, led=%X", msg, led_last);
++            pr_debug("User msg %s, led=%X", msg, led_last);
 +            led_sd_base[led_reg] = led_last;
 +          }
 +	return len;
@@ -6242,7 +6242,7 @@ index 000000000..39bf5fdeb
 +        struct rtc_time tm;
 +        char mon[8], dow[8], zon[8];
 +        
-+	printk("lowrisc_rtc_probe(%llx)\n", (u64)pdev);
++	pr_debug("lowrisc_rtc_probe(%llx)\n", (u64)pdev);
 +
 +	for (i = 0; i < pdev->num_resources; i++) {
 +		if (pdev->resource[i].flags & IORESOURCE_MEM)
@@ -6726,7 +6726,7 @@ index 000000000..f0f21592d
 +        struct lowrisc_fb_par *par = info->par;
 +
 +        if (!par->ref_count) {
-+                printk("lowrisc_fb_open\n");
++                pr_debug("lowrisc_fb_open\n");
 +                graphic_defaults();
 +        }
 +        par->ref_count++;
@@ -6743,7 +6743,7 @@ index 000000000..f0f21592d
 +
 +        if (par->ref_count == 1)
 +          {
-+            printk("lowrisc_fb_release\n");
++            pr_debug("lowrisc_fb_release\n");
 +            font_defaults();
 +          }
 +        par->ref_count--;
@@ -6975,7 +6975,7 @@ index 000000000..f0f21592d
 +      plt_reg_base[i] = lowrisc_palette[i];
 +    }
 +#endif
-+  printk("switched to graphics mode\n");
++  pr_debug("switched to graphics mode\n");
 +  hid_reg_base[LOWRISC_REGS_MODE] = 0x75;
 +}
 +
@@ -7237,7 +7237,7 @@ index 000000000..f0f21592d
 +
 +static int lowrisc_fbcon_switch(struct vc_data *vc)
 +{
-+  printk("lowrisc_fbcon_switch %d called\n", vc->vc_num);
++  pr_debug("lowrisc_fbcon_switch %d called\n", vc->vc_num);
 +  switch(vc->vc_mode)
 +    {
 +    case KD_TEXT: /* text console /dev/tty1 */
@@ -7309,7 +7309,7 @@ index 000000000..f0f21592d
 +	char __iomem *fb_base;
 +	int err = 0;
 +
-+        printk("lowrisc_fb_probe");
++        pr_debug("lowrisc_fb_probe");
 +        
 +	info = framebuffer_alloc(0, &ofdev->dev);
 +	if (!info) {
@@ -7385,7 +7385,7 @@ index 000000000..f0f21592d
 +
 +static int __init lowrisc_fb_init(void)
 +{
-+  printk("lowrisc_fb_init");
++  pr_debug("lowrisc_fb_init");
 +  
 +	return platform_driver_register(&lowrisc_fb_driver);
 +}
