@@ -10,6 +10,7 @@ export HOST=riscv64-unknown-linux-gnu
 export CROSS_COMPILE=$(RISCV)/bin/$(HOST)-
 export BUILDROOT_VER=buildroot-2019.11.1-lowrisc
 BUILDROOT=$(PWD)/$(BUILDROOT_VER)/mainfs/images/rootfs.tar
+ZROOT=$(PWD)/lowrisc-quickstart/rootfs.tar.zstd
 RESCUECPIO=$(BUILDROOT_VER)/rescuefs/images/rootfs.cpio
 export RISCV=$(PWD)/$(BUILDROOT_VER)/mainfs/host
 export HOST=riscv64-buildroot-linux-gnu
@@ -123,11 +124,11 @@ nexys4_ddr_ariane_cfgmem_new: $(RESCUEKERNEL)
 nexys4_ddr_rocket_cfgmem_new: $(RESCUEKERNEL)
 	make -C fpga BOARD=nexys4_ddr BITSIZE=0x400000 XILINX_PART="xc7a100tcsg324-1" XILINX_BOARD="digilentinc.com:nexys4_ddr:part0:1.1" CPU=rocket JTAG_PART="xc7a100t_0" JTAG_MEMORY="s25fl128sxxxxxx0-spi-x1_x2_x4" BBL=$(root-dir)$< cfgmem_new
 
-sdcard-install: $(BUILDROOT)
-	make -C lowrisc-quickstart/ install USB=$(USB) BUILDROOT=$(BUILDROOT)
+sdcard-install: $(ZROOT)
+	make -C lowrisc-quickstart/ install USB=$(USB) ROOTFS=$<
 
-sdcard-install-debian: $(BUILDROOT)
-	make -C lowrisc-quickstart/ install-debian USB=$(USB) BUILDROOT=$(BUILDROOT)
+sdcard-install-debian: $(PWD)/lowrisc-quickstart/rootfs.tar.xz
+	make -C lowrisc-quickstart/ install-debian USB=$(USB) ROOTFS=$<
 
 firmware:
 	make -B -C fpga/src/etherboot BOARD=nexys4_ddr BITSIZE=0x400000 XILINX_PART=xc7a100tcsg324-1 XILINX_BOARD=digilentinc.com:nexys4_ddr:part0:1.1 CPU=rocket VENDOR=sifive MEMSIZE=0x8000000 CLK_PERIOD_NS="20" PATH=$(RISCV)/bin:/usr/local/bin:/usr/bin:/bin
@@ -164,7 +165,9 @@ $(BUILDROOT_VER)/mainfs/.config: buildroot-defconfig buildroot-rescue-overlay/rd
 
 $(BUILDROOT): $(BUILDROOT_VER)/mainfs/.config $(RESCUECPIO)
 	make -C $(BUILDROOT_VER)/mainfs
-	zstd -f $(BUILDROOT) -o lowrisc-quickstart/rootfs.tar
+
+$(ZROOT): $(BUILDROOT)
+	zstd -f $(BUILDROOT) -c > $@
 
 mainfs-clean: $(BUILDROOT_VER)/mainfs/.config
 	make -C $(BUILDROOT_VER)/mainfs clean
