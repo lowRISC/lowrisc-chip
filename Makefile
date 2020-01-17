@@ -13,9 +13,9 @@ BUILDROOT=$(PWD)/$(BUILDROOT_VER)/mainfs/images/rootfs.tar
 RESCUECPIO=$(BUILDROOT_VER)/rescuefs/images/rootfs.cpio
 export RISCV=$(PWD)/$(BUILDROOT_VER)/mainfs/host
 export HOST=riscv64-buildroot-linux-gnu
-#export KERNEL=$(PWD)/$(BUILDROOT_VER)/mainfs/images/u-boot
-export MAINKERNEL=$(BUILDROOT_VER)/rescuefs/images/bbl
-export RESCUEKERNEL=$(BUILDROOT_VER)/mainfs/images/bbl
+export UBOOT=$(PWD)/$(BUILDROOT_VER)/mainfs/images/u-boot
+export MAINKERNEL=lowrisc-quickstart/boot.bin
+export RESCUEKERNEL=lowrisc-quickstart/rescue.bin
 MD5=$(shell md5sum $(MAINKERNEL) | cut -d\  -f1)
 
 default: nexys4_ddr_ariane
@@ -27,6 +27,12 @@ all: nexys4_ddr_ariane nexys4_ddr_rocket genesys2_ariane genesys2_rocket \
 tftp: $(MAINKERNEL)
 	md5sum $<
 	echo -e bin \\n put $< $(MD5) \\n | tftp $(REMOTE)
+
+$(MAINKERNEL): $(BUILDROOT)
+	cp $(BUILDROOT_VER)/rescuefs/images/bbl $@
+
+$(RESCUEKERNEL): $(BUILDROOT)
+	cp $(BUILDROOT_VER)/mainfs/images/bbl $@
 
 fpga/src/etherboot/$(BOARD)_$(CPU).sv: fpga/src/generic.dts
 	make -C fpga/src/etherboot BOARD=$(BOARD) CPU=$(CPU) VENDOR=$(VENDOR) MEMSIZE=$(MEMSIZE) PATH=$(RISCV)/bin:/usr/local/bin:/usr/bin:/bin
@@ -117,13 +123,10 @@ nexys4_ddr_ariane_cfgmem_new: $(RESCUEKERNEL)
 nexys4_ddr_rocket_cfgmem_new: $(RESCUEKERNEL)
 	make -C fpga BOARD=nexys4_ddr BITSIZE=0x400000 XILINX_PART="xc7a100tcsg324-1" XILINX_BOARD="digilentinc.com:nexys4_ddr:part0:1.1" CPU=rocket JTAG_PART="xc7a100t_0" JTAG_MEMORY="s25fl128sxxxxxx0-spi-x1_x2_x4" BBL=$(root-dir)$< cfgmem_new
 
-sdcard-install: $(MAINKERNEL) $(BUILDROOT)
-	cp $< lowrisc-quickstart/boot.bin
-	zstd -f $(BUILDROOT) -o lowrisc-quickstart/rootfs.tar
+sdcard-install: $(BUILDROOT)
 	make -C lowrisc-quickstart/ install USB=$(USB) BUILDROOT=$(BUILDROOT)
 
-sdcard-install-debian: $(MAINKERNEL) $(BUILDROOT)
-	cp $< lowrisc-quickstart/boot.bin
+sdcard-install-debian: $(BUILDROOT)
 	make -C lowrisc-quickstart/ install-debian USB=$(USB) BUILDROOT=$(BUILDROOT)
 
 firmware:
@@ -139,7 +142,7 @@ debug:
 # Because of hidden dependencies, we build the normal dependency free kernel in the rescuefs tree,
 # and the rescue kernel in the main tree, after the rootfs.cpio has been build in the rescuefs tree...
 
-buildroot: $(RESCUECPIO) $(BUILDROOT)
+buildroot: $(BUILDROOT)
 
 buildroot-clean: mainfs-clean rescuefs-clean
 
@@ -159,8 +162,9 @@ $(BUILDROOT_VER)/mainfs/.config: buildroot-defconfig buildroot-rescue-overlay/rd
 	cp $< $@
 	make -C $(BUILDROOT_VER) O=mainfs oldconfig
 
-$(BUILDROOT): $(BUILDROOT_VER)/mainfs/.config
+$(BUILDROOT): $(BUILDROOT_VER)/mainfs/.config $(RESCUECPIO)
 	make -C $(BUILDROOT_VER)/mainfs
+	zstd -f $(BUILDROOT) -o lowrisc-quickstart/rootfs.tar
 
 mainfs-clean: $(BUILDROOT_VER)/mainfs/.config
 	make -C $(BUILDROOT_VER)/mainfs clean
