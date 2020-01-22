@@ -1,18 +1,17 @@
-diff --git a/arch/riscv/configs/defconfig b/arch/riscv/configs/defconfig
-index 3efff552a..4a9b3b8a8 100644
---- a/arch/riscv/configs/defconfig
-+++ b/arch/riscv/configs/defconfig
-@@ -1,92 +1,2067 @@
+diff -urN linux-5.3.18.orig/arch/riscv/configs/defconfig linux-5.3.18-lowrisc/arch/riscv/configs/defconfig
+--- linux-5.3.18.orig/arch/riscv/configs/defconfig	2019-12-18 15:06:00.000000000 +0000
++++ linux-5.3.18-lowrisc/arch/riscv/configs/defconfig	2020-01-22 09:51:50.058850773 +0000
+@@ -1,92 +1,2082 @@
 +#
 +# Automatically generated file; DO NOT EDIT.
-+# Linux/riscv 5.3.8 Kernel Configuration
++# Linux/riscv 5.3.18 Kernel Configuration
 +#
 +
 +#
-+# Compiler: riscv64-unknown-linux-gnu-gcc (GCC) 9.2.0
++# Compiler: gcc (Ubuntu 7.4.0-1ubuntu1~18.04.1) 7.4.0
 +#
 +CONFIG_CC_IS_GCC=y
-+CONFIG_GCC_VERSION=90200
++CONFIG_GCC_VERSION=70400
 +CONFIG_CLANG_VERSION=0
 +CONFIG_CC_CAN_LINK=y
 +CONFIG_CC_HAS_ASM_GOTO=y
@@ -131,17 +130,17 @@ index 3efff552a..4a9b3b8a8 100644
 +# CONFIG_SYSFS_DEPRECATED is not set
 +# CONFIG_RELAY is not set
  CONFIG_BLK_DEV_INITRD=y
-+CONFIG_INITRAMFS_SOURCE=""
++CONFIG_INITRAMFS_SOURCE="../../../rescuefs/images/rootfs.cpio"
 +CONFIG_INITRAMFS_FORCE=y
 +CONFIG_INITRAMFS_ROOT_UID=0
 +CONFIG_INITRAMFS_ROOT_GID=0
-+CONFIG_RD_GZIP=y
++# CONFIG_RD_GZIP is not set
 +# CONFIG_RD_BZIP2 is not set
 +# CONFIG_RD_LZMA is not set
-+# CONFIG_RD_XZ is not set
++CONFIG_RD_XZ=y
 +# CONFIG_RD_LZO is not set
 +# CONFIG_RD_LZ4 is not set
-+CONFIG_INITRAMFS_COMPRESSION=".gz"
++CONFIG_INITRAMFS_COMPRESSION=".xz"
 +CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE=y
 +# CONFIG_CC_OPTIMIZE_FOR_SIZE is not set
 +CONFIG_SYSCTL=y
@@ -262,7 +261,7 @@ index 3efff552a..4a9b3b8a8 100644
 +#
 +# Boot options
 +#
-+CONFIG_CMDLINE="swiotlb=noforce root=/dev/rda2"
++CONFIG_CMDLINE="swiotlb=noforce root=/dev/rda2 rdinit=/rdinit"
 +# CONFIG_CMDLINE_FALLBACK is not set
 +# CONFIG_CMDLINE_EXTEND is not set
 +CONFIG_CMDLINE_FORCE=y
@@ -297,7 +296,7 @@ index 3efff552a..4a9b3b8a8 100644
 +# CONFIG_GCOV_KERNEL is not set
 +# end of GCOV-based kernel profiling
 +
-+CONFIG_PLUGIN_HOSTCC="g++"
++CONFIG_PLUGIN_HOSTCC=""
 +# end of General architecture-dependent options
 +
 +CONFIG_RT_MUTEXES=y
@@ -1522,7 +1521,13 @@ index 3efff552a..4a9b3b8a8 100644
 +# CONFIG_XFS_FS is not set
 +# CONFIG_GFS2_FS is not set
 +# CONFIG_OCFS2_FS is not set
-+# CONFIG_BTRFS_FS is not set
++CONFIG_BTRFS_FS=y
++# CONFIG_BTRFS_FS_POSIX_ACL is not set
++# CONFIG_BTRFS_FS_CHECK_INTEGRITY is not set
++# CONFIG_BTRFS_FS_RUN_SANITY_TESTS is not set
++# CONFIG_BTRFS_DEBUG is not set
++# CONFIG_BTRFS_ASSERT is not set
++# CONFIG_BTRFS_FS_REF_VERIFY is not set
 +# CONFIG_NILFS2_FS is not set
 +# CONFIG_F2FS_FS is not set
 +# CONFIG_FS_DAX is not set
@@ -1578,9 +1583,8 @@ index 3efff552a..4a9b3b8a8 100644
 +CONFIG_KERNFS=y
 +CONFIG_SYSFS=y
  CONFIG_TMPFS=y
--CONFIG_TMPFS_POSIX_ACL=y
-+# CONFIG_TMPFS_POSIX_ACL is not set
-+# CONFIG_TMPFS_XATTR is not set
+ CONFIG_TMPFS_POSIX_ACL=y
++CONFIG_TMPFS_XATTR=y
 +# CONFIG_HUGETLBFS is not set
 +CONFIG_MEMFD_CREATE=y
 +CONFIG_ARCH_HAS_GIGANTIC_PAGE=y
@@ -1716,6 +1720,7 @@ index 3efff552a..4a9b3b8a8 100644
 +# end of Kernel hardening options
 +# end of Security options
 +
++CONFIG_XOR_BLOCKS=y
 +CONFIG_CRYPTO=y
 +
 +#
@@ -1883,6 +1888,8 @@ index 3efff552a..4a9b3b8a8 100644
 +#
 +# Library routines
 +#
++CONFIG_RAID6_PQ=y
++CONFIG_RAID6_PQ_BENCHMARK=y
 +# CONFIG_PACKING is not set
 +CONFIG_BITREVERSE=y
 +CONFIG_GENERIC_STRNCPY_FROM_USER=y
@@ -1904,10 +1911,16 @@ index 3efff552a..4a9b3b8a8 100644
 +# CONFIG_CRC64 is not set
 +# CONFIG_CRC4 is not set
 +CONFIG_CRC7=y
-+# CONFIG_LIBCRC32C is not set
++CONFIG_LIBCRC32C=y
 +# CONFIG_CRC8 is not set
++CONFIG_XXHASH=y
 +# CONFIG_RANDOM32_SELFTEST is not set
 +CONFIG_ZLIB_INFLATE=y
++CONFIG_ZLIB_DEFLATE=y
++CONFIG_LZO_COMPRESS=y
++CONFIG_LZO_DECOMPRESS=y
++CONFIG_ZSTD_COMPRESS=y
++CONFIG_ZSTD_DECOMPRESS=y
 +CONFIG_XZ_DEC=y
 +CONFIG_XZ_DEC_X86=y
 +CONFIG_XZ_DEC_POWERPC=y
@@ -1917,7 +1930,7 @@ index 3efff552a..4a9b3b8a8 100644
 +CONFIG_XZ_DEC_SPARC=y
 +CONFIG_XZ_DEC_BCJ=y
 +# CONFIG_XZ_DEC_TEST is not set
-+CONFIG_DECOMPRESS_GZIP=y
++CONFIG_DECOMPRESS_XZ=y
 +CONFIG_ASSOCIATIVE_ARRAY=y
 +CONFIG_HAS_IOMEM=y
 +CONFIG_HAS_IOPORT_MAP=y
@@ -2123,11 +2136,10 @@ index 3efff552a..4a9b3b8a8 100644
 +# CONFIG_UBSAN is not set
 +CONFIG_UBSAN_ALIGNMENT=y
 +# end of Kernel hacking
-diff --git a/drivers/block/Kconfig b/drivers/block/Kconfig
-index 1bb8ec575..8093b6b98 100644
---- a/drivers/block/Kconfig
-+++ b/drivers/block/Kconfig
-@@ -394,6 +394,12 @@ config XILINX_SYSACE
+diff -urN linux-5.3.18.orig/drivers/block/Kconfig linux-5.3.18-lowrisc/drivers/block/Kconfig
+--- linux-5.3.18.orig/drivers/block/Kconfig	2019-12-18 15:06:00.000000000 +0000
++++ linux-5.3.18-lowrisc/drivers/block/Kconfig	2020-01-22 09:47:34.262851749 +0000
+@@ -394,6 +394,12 @@
  	help
  	  Include support for the Xilinx SystemACE CompactFlash interface
  
@@ -2140,23 +2152,9 @@ index 1bb8ec575..8093b6b98 100644
  config XEN_BLKDEV_FRONTEND
  	tristate "Xen virtual block device support"
  	depends on XEN
-diff --git a/drivers/block/Makefile b/drivers/block/Makefile
-index a53cc1e3a..d003fc465 100644
---- a/drivers/block/Makefile
-+++ b/drivers/block/Makefile
-@@ -17,6 +17,7 @@ obj-$(CONFIG_AMIGA_Z2RAM)	+= z2ram.o
- obj-$(CONFIG_BLK_DEV_RAM)	+= brd.o
- obj-$(CONFIG_BLK_DEV_LOOP)	+= loop.o
- obj-$(CONFIG_XILINX_SYSACE)	+= xsysace.o
-+obj-$(CONFIG_LOWRISC_PITONSD)	+= lowrisc_pitonsd.o
- obj-$(CONFIG_CDROM_PKTCDVD)	+= pktcdvd.o
- obj-$(CONFIG_SUNVDC)		+= sunvdc.o
- obj-$(CONFIG_BLK_DEV_SKD)	+= skd.o
-diff --git a/drivers/block/lowrisc_pitonsd.c b/drivers/block/lowrisc_pitonsd.c
-new file mode 100644
-index 000000000..0115ed004
---- /dev/null
-+++ b/drivers/block/lowrisc_pitonsd.c
+diff -urN linux-5.3.18.orig/drivers/block/lowrisc_pitonsd.c linux-5.3.18-lowrisc/drivers/block/lowrisc_pitonsd.c
+--- linux-5.3.18.orig/drivers/block/lowrisc_pitonsd.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.3.18-lowrisc/drivers/block/lowrisc_pitonsd.c	2020-01-22 09:47:34.262851749 +0000
 @@ -0,0 +1,1019 @@
 +/*
 + * LowRISC_piton_sd device driver
@@ -3177,11 +3175,9 @@ index 000000000..0115ed004
 +	unregister_blkdev(pitonsd_major, "pitonsd");
 +}
 +module_exit(pitonsd_exit);
-diff --git a/drivers/block/lowrisc_pitonsd.h b/drivers/block/lowrisc_pitonsd.h
-new file mode 100644
-index 000000000..1d806a6ae
---- /dev/null
-+++ b/drivers/block/lowrisc_pitonsd.h
+diff -urN linux-5.3.18.orig/drivers/block/lowrisc_pitonsd.h linux-5.3.18-lowrisc/drivers/block/lowrisc_pitonsd.h
+--- linux-5.3.18.orig/drivers/block/lowrisc_pitonsd.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.3.18-lowrisc/drivers/block/lowrisc_pitonsd.h	2020-01-22 09:47:34.262851749 +0000
 @@ -0,0 +1,59 @@
 +/* LowRISC_piton_sd register definitions
 + *
@@ -3242,11 +3238,21 @@ index 000000000..1d806a6ae
 +{
 +        asm volatile ("fence" ::: "memory");
 +}
-diff --git a/drivers/input/keyboard/Kconfig b/drivers/input/keyboard/Kconfig
-index 90e8a7f2f..530926f79 100644
---- a/drivers/input/keyboard/Kconfig
-+++ b/drivers/input/keyboard/Kconfig
-@@ -787,3 +787,19 @@ config KEYBOARD_MTK_PMIC
+diff -urN linux-5.3.18.orig/drivers/block/Makefile linux-5.3.18-lowrisc/drivers/block/Makefile
+--- linux-5.3.18.orig/drivers/block/Makefile	2019-12-18 15:06:00.000000000 +0000
++++ linux-5.3.18-lowrisc/drivers/block/Makefile	2020-01-22 09:47:34.262851749 +0000
+@@ -17,6 +17,7 @@
+ obj-$(CONFIG_BLK_DEV_RAM)	+= brd.o
+ obj-$(CONFIG_BLK_DEV_LOOP)	+= loop.o
+ obj-$(CONFIG_XILINX_SYSACE)	+= xsysace.o
++obj-$(CONFIG_LOWRISC_PITONSD)	+= lowrisc_pitonsd.o
+ obj-$(CONFIG_CDROM_PKTCDVD)	+= pktcdvd.o
+ obj-$(CONFIG_SUNVDC)		+= sunvdc.o
+ obj-$(CONFIG_BLK_DEV_SKD)	+= skd.o
+diff -urN linux-5.3.18.orig/drivers/input/keyboard/Kconfig linux-5.3.18-lowrisc/drivers/input/keyboard/Kconfig
+--- linux-5.3.18.orig/drivers/input/keyboard/Kconfig	2019-12-18 15:06:00.000000000 +0000
++++ linux-5.3.18-lowrisc/drivers/input/keyboard/Kconfig	2020-01-22 09:47:34.262851749 +0000
+@@ -787,3 +787,19 @@
  	  module will be called pmic-keys.
  
  endif
@@ -3266,21 +3272,9 @@ index 90e8a7f2f..530926f79 100644
 +	help
 +	  Say Y here if you want to use a serial device as a fake keyboard input device.
 +	  If unsure, say N.
-diff --git a/drivers/input/keyboard/Makefile b/drivers/input/keyboard/Makefile
-index 06a0af6ef..8a6cc90df 100644
---- a/drivers/input/keyboard/Makefile
-+++ b/drivers/input/keyboard/Makefile
-@@ -69,3 +69,5 @@ obj-$(CONFIG_KEYBOARD_TM2_TOUCHKEY)	+= tm2-touchkey.o
- obj-$(CONFIG_KEYBOARD_TWL4030)		+= twl4030_keypad.o
- obj-$(CONFIG_KEYBOARD_XTKBD)		+= xtkbd.o
- obj-$(CONFIG_KEYBOARD_W90P910)		+= w90p910_keypad.o
-+obj-$(CONFIG_KEYBOARD_LOWRISC)		+= lowrisc-kbd.o
-+obj-$(CONFIG_KEYBOARD_LOWRISC_FAKE)	+= lowrisc-fake-keys.o
-diff --git a/drivers/input/keyboard/lowrisc-fake-keys.c b/drivers/input/keyboard/lowrisc-fake-keys.c
-new file mode 100644
-index 000000000..11ef08ca9
---- /dev/null
-+++ b/drivers/input/keyboard/lowrisc-fake-keys.c
+diff -urN linux-5.3.18.orig/drivers/input/keyboard/lowrisc-fake-keys.c linux-5.3.18-lowrisc/drivers/input/keyboard/lowrisc-fake-keys.c
+--- linux-5.3.18.orig/drivers/input/keyboard/lowrisc-fake-keys.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.3.18-lowrisc/drivers/input/keyboard/lowrisc-fake-keys.c	2020-01-22 09:47:34.262851749 +0000
 @@ -0,0 +1,273 @@
 +/*
 + * Lowrisc Dummy Keyboard Controller Driver - Translates UART input to fake key events
@@ -3555,11 +3549,9 @@ index 000000000..11ef08ca9
 +MODULE_LICENSE("GPL");
 +MODULE_AUTHOR("Jonathan Kimmitt <jonathan@kimmitt.uk>");
 +MODULE_DESCRIPTION("Dummy Keyboard input events for Lowrisc");
-diff --git a/drivers/input/keyboard/lowrisc-kbd.c b/drivers/input/keyboard/lowrisc-kbd.c
-new file mode 100644
-index 000000000..6a473b3c5
---- /dev/null
-+++ b/drivers/input/keyboard/lowrisc-kbd.c
+diff -urN linux-5.3.18.orig/drivers/input/keyboard/lowrisc-kbd.c linux-5.3.18-lowrisc/drivers/input/keyboard/lowrisc-kbd.c
+--- linux-5.3.18.orig/drivers/input/keyboard/lowrisc-kbd.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.3.18-lowrisc/drivers/input/keyboard/lowrisc-kbd.c	2020-01-22 09:47:34.262851749 +0000
 @@ -0,0 +1,168 @@
 +/*
 + * Lowrisc Keyboard Controller Driver
@@ -3729,11 +3721,9 @@ index 000000000..6a473b3c5
 +MODULE_LICENSE("GPL");
 +MODULE_AUTHOR("Jonathan Kimmitt <jonathan@kimmitt.uk>");
 +MODULE_DESCRIPTION("Keyboard driver for Lowrisc Keyboard Lowrisc_controller");
-diff --git a/drivers/input/keyboard/lowrisc-scancode.h b/drivers/input/keyboard/lowrisc-scancode.h
-new file mode 100644
-index 000000000..871184347
---- /dev/null
-+++ b/drivers/input/keyboard/lowrisc-scancode.h
+diff -urN linux-5.3.18.orig/drivers/input/keyboard/lowrisc-scancode.h linux-5.3.18-lowrisc/drivers/input/keyboard/lowrisc-scancode.h
+--- linux-5.3.18.orig/drivers/input/keyboard/lowrisc-scancode.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.3.18-lowrisc/drivers/input/keyboard/lowrisc-scancode.h	2020-01-22 09:47:34.262851749 +0000
 @@ -0,0 +1,282 @@
 +//////////////////////////////////////////////////////////////////////
 +////                                                              ////
@@ -4017,11 +4007,19 @@ index 000000000..871184347
 +[253] = {0xfd,0x00,0x00},
 +[254] = {0xfe,0x00,0x00},
 +[255] = {0xff,0x00,0x00},
-diff --git a/drivers/input/mouse/Kconfig b/drivers/input/mouse/Kconfig
-index 652c38e3c..eb2dc7ad5 100644
---- a/drivers/input/mouse/Kconfig
-+++ b/drivers/input/mouse/Kconfig
-@@ -394,6 +394,15 @@ config MOUSE_GPIO
+diff -urN linux-5.3.18.orig/drivers/input/keyboard/Makefile linux-5.3.18-lowrisc/drivers/input/keyboard/Makefile
+--- linux-5.3.18.orig/drivers/input/keyboard/Makefile	2019-12-18 15:06:00.000000000 +0000
++++ linux-5.3.18-lowrisc/drivers/input/keyboard/Makefile	2020-01-22 09:47:34.262851749 +0000
+@@ -69,3 +69,5 @@
+ obj-$(CONFIG_KEYBOARD_TWL4030)		+= twl4030_keypad.o
+ obj-$(CONFIG_KEYBOARD_XTKBD)		+= xtkbd.o
+ obj-$(CONFIG_KEYBOARD_W90P910)		+= w90p910_keypad.o
++obj-$(CONFIG_KEYBOARD_LOWRISC)		+= lowrisc-kbd.o
++obj-$(CONFIG_KEYBOARD_LOWRISC_FAKE)	+= lowrisc-fake-keys.o
+diff -urN linux-5.3.18.orig/drivers/input/mouse/Kconfig linux-5.3.18-lowrisc/drivers/input/mouse/Kconfig
+--- linux-5.3.18.orig/drivers/input/mouse/Kconfig	2019-12-18 15:06:00.000000000 +0000
++++ linux-5.3.18-lowrisc/drivers/input/mouse/Kconfig	2020-01-22 09:47:34.262851749 +0000
+@@ -394,6 +394,15 @@
  	  To compile this driver as a module, choose M here: the
  	  module will be called gpio_mouse.
  
@@ -4037,23 +4035,9 @@ index 652c38e3c..eb2dc7ad5 100644
  config MOUSE_PXA930_TRKBALL
  	tristate "PXA930 Trackball mouse"
  	depends on CPU_PXA930 || CPU_PXA935
-diff --git a/drivers/input/mouse/Makefile b/drivers/input/mouse/Makefile
-index e49f08565..e21170928 100644
---- a/drivers/input/mouse/Makefile
-+++ b/drivers/input/mouse/Makefile
-@@ -14,6 +14,7 @@ obj-$(CONFIG_MOUSE_ELAN_I2C)		+= elan_i2c.o
- obj-$(CONFIG_MOUSE_GPIO)		+= gpio_mouse.o
- obj-$(CONFIG_MOUSE_INPORT)		+= inport.o
- obj-$(CONFIG_MOUSE_LOGIBM)		+= logibm.o
-+obj-$(CONFIG_MOUSE_LOWRISC)		+= lowrisc_mouse.o
- obj-$(CONFIG_MOUSE_MAPLE)		+= maplemouse.o
- obj-$(CONFIG_MOUSE_NAVPOINT_PXA27x)	+= navpoint.o
- obj-$(CONFIG_MOUSE_PC110PAD)		+= pc110pad.o
-diff --git a/drivers/input/mouse/lowrisc_mouse.c b/drivers/input/mouse/lowrisc_mouse.c
-new file mode 100644
-index 000000000..ad0d2e3fa
---- /dev/null
-+++ b/drivers/input/mouse/lowrisc_mouse.c
+diff -urN linux-5.3.18.orig/drivers/input/mouse/lowrisc_mouse.c linux-5.3.18-lowrisc/drivers/input/mouse/lowrisc_mouse.c
+--- linux-5.3.18.orig/drivers/input/mouse/lowrisc_mouse.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.3.18-lowrisc/drivers/input/mouse/lowrisc_mouse.c	2020-01-22 09:47:34.262851749 +0000
 @@ -0,0 +1,192 @@
 +/*
 + * Driver for LowRISC mouse on AXI bus with PS/2 interface.
@@ -4247,11 +4231,21 @@ index 000000000..ad0d2e3fa
 +MODULE_DESCRIPTION("LowRISC PS/2 mouse driver");
 +MODULE_LICENSE("GPL");
 +MODULE_ALIAS("platform:lowrisc_mouse"); /* work with hotplug and coldplug */
-diff --git a/drivers/mmc/host/Kconfig b/drivers/mmc/host/Kconfig
-index 14d89a108..f962b0518 100644
---- a/drivers/mmc/host/Kconfig
-+++ b/drivers/mmc/host/Kconfig
-@@ -940,6 +940,12 @@ config MMC_BCM2835
+diff -urN linux-5.3.18.orig/drivers/input/mouse/Makefile linux-5.3.18-lowrisc/drivers/input/mouse/Makefile
+--- linux-5.3.18.orig/drivers/input/mouse/Makefile	2019-12-18 15:06:00.000000000 +0000
++++ linux-5.3.18-lowrisc/drivers/input/mouse/Makefile	2020-01-22 09:47:34.262851749 +0000
+@@ -14,6 +14,7 @@
+ obj-$(CONFIG_MOUSE_GPIO)		+= gpio_mouse.o
+ obj-$(CONFIG_MOUSE_INPORT)		+= inport.o
+ obj-$(CONFIG_MOUSE_LOGIBM)		+= logibm.o
++obj-$(CONFIG_MOUSE_LOWRISC)		+= lowrisc_mouse.o
+ obj-$(CONFIG_MOUSE_MAPLE)		+= maplemouse.o
+ obj-$(CONFIG_MOUSE_NAVPOINT_PXA27x)	+= navpoint.o
+ obj-$(CONFIG_MOUSE_PC110PAD)		+= pc110pad.o
+diff -urN linux-5.3.18.orig/drivers/mmc/host/Kconfig linux-5.3.18-lowrisc/drivers/mmc/host/Kconfig
+--- linux-5.3.18.orig/drivers/mmc/host/Kconfig	2019-12-18 15:06:00.000000000 +0000
++++ linux-5.3.18-lowrisc/drivers/mmc/host/Kconfig	2020-01-22 09:47:34.262851749 +0000
+@@ -940,6 +940,12 @@
  
  	  If unsure, say N.
  
@@ -4264,23 +4258,9 @@ index 14d89a108..f962b0518 100644
  config MMC_MTK
  	tristate "MediaTek SD/MMC Card Interface support"
  	depends on HAS_DMA
-diff --git a/drivers/mmc/host/Makefile b/drivers/mmc/host/Makefile
-index 73578718f..2656d1a40 100644
---- a/drivers/mmc/host/Makefile
-+++ b/drivers/mmc/host/Makefile
-@@ -73,6 +73,7 @@ obj-$(CONFIG_MMC_SUNXI)		+= sunxi-mmc.o
- obj-$(CONFIG_MMC_USDHI6ROL0)	+= usdhi6rol0.o
- obj-$(CONFIG_MMC_TOSHIBA_PCI)	+= toshsd.o
- obj-$(CONFIG_MMC_BCM2835)	+= bcm2835.o
-+obj-$(CONFIG_MMC_LOWRISC)       += lowrisc_sd.o
- 
- obj-$(CONFIG_MMC_REALTEK_PCI)	+= rtsx_pci_sdmmc.o
- obj-$(CONFIG_MMC_REALTEK_USB)	+= rtsx_usb_sdmmc.o
-diff --git a/drivers/mmc/host/lowrisc_sd.c b/drivers/mmc/host/lowrisc_sd.c
-new file mode 100644
-index 000000000..d2570eb8a
---- /dev/null
-+++ b/drivers/mmc/host/lowrisc_sd.c
+diff -urN linux-5.3.18.orig/drivers/mmc/host/lowrisc_sd.c linux-5.3.18-lowrisc/drivers/mmc/host/lowrisc_sd.c
+--- linux-5.3.18.orig/drivers/mmc/host/lowrisc_sd.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.3.18-lowrisc/drivers/mmc/host/lowrisc_sd.c	2020-01-22 09:47:34.262851749 +0000
 @@ -0,0 +1,803 @@
 +/*
 + *  LowRISC Secure Digital Host Controller Interface driver
@@ -5085,11 +5065,9 @@ index 000000000..d2570eb8a
 +MODULE_AUTHOR("Jonathan Kimmitt");
 +MODULE_DESCRIPTION("LowRISC Secure Digital Host Controller Interface driver");
 +MODULE_LICENSE("GPL");
-diff --git a/drivers/mmc/host/lowrisc_sd.h b/drivers/mmc/host/lowrisc_sd.h
-new file mode 100644
-index 000000000..8aa18fa0e
---- /dev/null
-+++ b/drivers/mmc/host/lowrisc_sd.h
+diff -urN linux-5.3.18.orig/drivers/mmc/host/lowrisc_sd.h linux-5.3.18-lowrisc/drivers/mmc/host/lowrisc_sd.h
+--- linux-5.3.18.orig/drivers/mmc/host/lowrisc_sd.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.3.18-lowrisc/drivers/mmc/host/lowrisc_sd.h	2020-01-22 09:47:34.262851749 +0000
 @@ -0,0 +1,52 @@
 +/*
 + *  LowRISC PCI Secure Digital Host Controller Interface driver
@@ -5143,11 +5121,21 @@ index 000000000..8aa18fa0e
 +  int irq;
 +  int int_en, width_setting;
 +};
-diff --git a/drivers/net/ethernet/Kconfig b/drivers/net/ethernet/Kconfig
-index 93a2d4deb..ff0cb807c 100644
---- a/drivers/net/ethernet/Kconfig
-+++ b/drivers/net/ethernet/Kconfig
-@@ -117,6 +117,7 @@ config LANTIQ_XRX200
+diff -urN linux-5.3.18.orig/drivers/mmc/host/Makefile linux-5.3.18-lowrisc/drivers/mmc/host/Makefile
+--- linux-5.3.18.orig/drivers/mmc/host/Makefile	2019-12-18 15:06:00.000000000 +0000
++++ linux-5.3.18-lowrisc/drivers/mmc/host/Makefile	2020-01-22 09:47:34.262851749 +0000
+@@ -73,6 +73,7 @@
+ obj-$(CONFIG_MMC_USDHI6ROL0)	+= usdhi6rol0.o
+ obj-$(CONFIG_MMC_TOSHIBA_PCI)	+= toshsd.o
+ obj-$(CONFIG_MMC_BCM2835)	+= bcm2835.o
++obj-$(CONFIG_MMC_LOWRISC)       += lowrisc_sd.o
+ 
+ obj-$(CONFIG_MMC_REALTEK_PCI)	+= rtsx_pci_sdmmc.o
+ obj-$(CONFIG_MMC_REALTEK_USB)	+= rtsx_usb_sdmmc.o
+diff -urN linux-5.3.18.orig/drivers/net/ethernet/Kconfig linux-5.3.18-lowrisc/drivers/net/ethernet/Kconfig
+--- linux-5.3.18.orig/drivers/net/ethernet/Kconfig	2019-12-18 15:06:00.000000000 +0000
++++ linux-5.3.18-lowrisc/drivers/net/ethernet/Kconfig	2020-01-22 09:47:34.262851749 +0000
+@@ -117,6 +117,7 @@
  	  Support for the PMAC of the Gigabit switch (GSWIP) inside the
  	  Lantiq / Intel VRX200 VDSL SoC
  
@@ -5155,23 +5143,9 @@ index 93a2d4deb..ff0cb807c 100644
  source "drivers/net/ethernet/marvell/Kconfig"
  source "drivers/net/ethernet/mediatek/Kconfig"
  source "drivers/net/ethernet/mellanox/Kconfig"
-diff --git a/drivers/net/ethernet/Makefile b/drivers/net/ethernet/Makefile
-index fb9155cff..8798dbdea 100644
---- a/drivers/net/ethernet/Makefile
-+++ b/drivers/net/ethernet/Makefile
-@@ -51,6 +51,7 @@ obj-$(CONFIG_JME) += jme.o
- obj-$(CONFIG_KORINA) += korina.o
- obj-$(CONFIG_LANTIQ_ETOP) += lantiq_etop.o
- obj-$(CONFIG_LANTIQ_XRX200) += lantiq_xrx200.o
-+obj-$(CONFIG_NET_VENDOR_LOWRISC) += lowrisc/
- obj-$(CONFIG_NET_VENDOR_MARVELL) += marvell/
- obj-$(CONFIG_NET_VENDOR_MEDIATEK) += mediatek/
- obj-$(CONFIG_NET_VENDOR_MELLANOX) += mellanox/
-diff --git a/drivers/net/ethernet/lowrisc/Kconfig b/drivers/net/ethernet/lowrisc/Kconfig
-new file mode 100644
-index 000000000..802422de6
---- /dev/null
-+++ b/drivers/net/ethernet/lowrisc/Kconfig
+diff -urN linux-5.3.18.orig/drivers/net/ethernet/lowrisc/Kconfig linux-5.3.18-lowrisc/drivers/net/ethernet/lowrisc/Kconfig
+--- linux-5.3.18.orig/drivers/net/ethernet/lowrisc/Kconfig	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.3.18-lowrisc/drivers/net/ethernet/lowrisc/Kconfig	2020-01-22 09:47:34.262851749 +0000
 @@ -0,0 +1,33 @@
 +#
 +# Xilink device configuration
@@ -5206,23 +5180,9 @@ index 000000000..802422de6
 +         If you have software that interferes with correct PHY operation, disable this option.
 +
 +endif # NET_VENDOR_LOWRISC
-diff --git a/drivers/net/ethernet/lowrisc/Makefile b/drivers/net/ethernet/lowrisc/Makefile
-new file mode 100644
-index 000000000..4eb3adee1
---- /dev/null
-+++ b/drivers/net/ethernet/lowrisc/Makefile
-@@ -0,0 +1,6 @@
-+#
-+# Makefile for the Lowrisc network device driver.
-+#
-+
-+obj-$(CONFIG_LOWRISC_DIGILENT_100MHZ) += lowrisc_100MHz.o
-+CFLAGS_lowrisc_100MHz.o := -DDEBUG
-diff --git a/drivers/net/ethernet/lowrisc/lowrisc_100MHz.c b/drivers/net/ethernet/lowrisc/lowrisc_100MHz.c
-new file mode 100644
-index 000000000..430665bc3
---- /dev/null
-+++ b/drivers/net/ethernet/lowrisc/lowrisc_100MHz.c
+diff -urN linux-5.3.18.orig/drivers/net/ethernet/lowrisc/lowrisc_100MHz.c linux-5.3.18-lowrisc/drivers/net/ethernet/lowrisc/lowrisc_100MHz.c
+--- linux-5.3.18.orig/drivers/net/ethernet/lowrisc/lowrisc_100MHz.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.3.18-lowrisc/drivers/net/ethernet/lowrisc/lowrisc_100MHz.c	2020-01-22 09:47:34.262851749 +0000
 @@ -0,0 +1,841 @@
 +/*
 + * Lowrisc Ether100MHz Linux driver for the Lowrisc Ethernet 100MHz device.
@@ -6065,11 +6025,9 @@ index 000000000..430665bc3
 +MODULE_AUTHOR("Jonathan Kimmitt");
 +MODULE_DESCRIPTION("Lowrisc Ethernet 100MHz driver");
 +MODULE_LICENSE("GPL");
-diff --git a/drivers/net/ethernet/lowrisc/lowrisc_100MHz.h b/drivers/net/ethernet/lowrisc/lowrisc_100MHz.h
-new file mode 100644
-index 000000000..9d227c10d
---- /dev/null
-+++ b/drivers/net/ethernet/lowrisc/lowrisc_100MHz.h
+diff -urN linux-5.3.18.orig/drivers/net/ethernet/lowrisc/lowrisc_100MHz.h linux-5.3.18-lowrisc/drivers/net/ethernet/lowrisc/lowrisc_100MHz.h
+--- linux-5.3.18.orig/drivers/net/ethernet/lowrisc/lowrisc_100MHz.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.3.18-lowrisc/drivers/net/ethernet/lowrisc/lowrisc_100MHz.h	2020-01-22 09:47:34.262851749 +0000
 @@ -0,0 +1,55 @@
 +// See LICENSE for license details.
 +
@@ -6126,11 +6084,31 @@ index 000000000..9d227c10d
 +#define HEADER_IP_LENGTH_OFFSET     16      /* IP Length Offset */
 +
 +#endif
-diff --git a/drivers/rtc/Kconfig b/drivers/rtc/Kconfig
-index add43c337..f0889b1eb 100644
---- a/drivers/rtc/Kconfig
-+++ b/drivers/rtc/Kconfig
-@@ -1705,6 +1705,12 @@ config RTC_DRV_LOONGSON1
+diff -urN linux-5.3.18.orig/drivers/net/ethernet/lowrisc/Makefile linux-5.3.18-lowrisc/drivers/net/ethernet/lowrisc/Makefile
+--- linux-5.3.18.orig/drivers/net/ethernet/lowrisc/Makefile	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.3.18-lowrisc/drivers/net/ethernet/lowrisc/Makefile	2020-01-22 09:47:34.262851749 +0000
+@@ -0,0 +1,6 @@
++#
++# Makefile for the Lowrisc network device driver.
++#
++
++obj-$(CONFIG_LOWRISC_DIGILENT_100MHZ) += lowrisc_100MHz.o
++CFLAGS_lowrisc_100MHz.o := -DDEBUG
+diff -urN linux-5.3.18.orig/drivers/net/ethernet/Makefile linux-5.3.18-lowrisc/drivers/net/ethernet/Makefile
+--- linux-5.3.18.orig/drivers/net/ethernet/Makefile	2019-12-18 15:06:00.000000000 +0000
++++ linux-5.3.18-lowrisc/drivers/net/ethernet/Makefile	2020-01-22 09:47:34.262851749 +0000
+@@ -51,6 +51,7 @@
+ obj-$(CONFIG_KORINA) += korina.o
+ obj-$(CONFIG_LANTIQ_ETOP) += lantiq_etop.o
+ obj-$(CONFIG_LANTIQ_XRX200) += lantiq_xrx200.o
++obj-$(CONFIG_NET_VENDOR_LOWRISC) += lowrisc/
+ obj-$(CONFIG_NET_VENDOR_MARVELL) += marvell/
+ obj-$(CONFIG_NET_VENDOR_MEDIATEK) += mediatek/
+ obj-$(CONFIG_NET_VENDOR_MELLANOX) += mellanox/
+diff -urN linux-5.3.18.orig/drivers/rtc/Kconfig linux-5.3.18-lowrisc/drivers/rtc/Kconfig
+--- linux-5.3.18.orig/drivers/rtc/Kconfig	2019-12-18 15:06:00.000000000 +0000
++++ linux-5.3.18-lowrisc/drivers/rtc/Kconfig	2020-01-22 09:47:34.262851749 +0000
+@@ -1705,6 +1705,12 @@
  	  This driver can also be built as a module. If so, the module
  	  will be called rtc-ls1x.
  
@@ -6143,11 +6121,10 @@ index add43c337..f0889b1eb 100644
  config RTC_DRV_MXC
  	tristate "Freescale MXC Real Time Clock"
  	depends on ARCH_MXC
-diff --git a/drivers/rtc/Makefile b/drivers/rtc/Makefile
-index 6b09c21dc..66d9ca2a6 100644
---- a/drivers/rtc/Makefile
-+++ b/drivers/rtc/Makefile
-@@ -85,6 +85,7 @@ obj-$(CONFIG_RTC_DRV_ISL12026)	+= rtc-isl12026.o
+diff -urN linux-5.3.18.orig/drivers/rtc/Makefile linux-5.3.18-lowrisc/drivers/rtc/Makefile
+--- linux-5.3.18.orig/drivers/rtc/Makefile	2019-12-18 15:06:00.000000000 +0000
++++ linux-5.3.18-lowrisc/drivers/rtc/Makefile	2020-01-22 09:47:34.262851749 +0000
+@@ -85,6 +85,7 @@
  obj-$(CONFIG_RTC_DRV_ISL1208)	+= rtc-isl1208.o
  obj-$(CONFIG_RTC_DRV_JZ4740)	+= rtc-jz4740.o
  obj-$(CONFIG_RTC_DRV_LOONGSON1)	+= rtc-ls1x.o
@@ -6155,11 +6132,9 @@ index 6b09c21dc..66d9ca2a6 100644
  obj-$(CONFIG_RTC_DRV_LP8788)	+= rtc-lp8788.o
  obj-$(CONFIG_RTC_DRV_LPC24XX)	+= rtc-lpc24xx.o
  obj-$(CONFIG_RTC_DRV_LPC32XX)	+= rtc-lpc32xx.o
-diff --git a/drivers/rtc/rtc-lowrisc.c b/drivers/rtc/rtc-lowrisc.c
-new file mode 100644
-index 000000000..39bf5fdeb
---- /dev/null
-+++ b/drivers/rtc/rtc-lowrisc.c
+diff -urN linux-5.3.18.orig/drivers/rtc/rtc-lowrisc.c linux-5.3.18-lowrisc/drivers/rtc/rtc-lowrisc.c
+--- linux-5.3.18.orig/drivers/rtc/rtc-lowrisc.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.3.18-lowrisc/drivers/rtc/rtc-lowrisc.c	2020-01-22 09:47:34.262851749 +0000
 @@ -0,0 +1,152 @@
 +/*
 + * LowRISC RTC interface driver.
@@ -6313,11 +6288,9 @@ index 000000000..39bf5fdeb
 +MODULE_AUTHOR("Jonathan Kimmitt <jrrk2@cam.ac.uk>");
 +MODULE_LICENSE("GPL");
 +MODULE_ALIAS("platform:rtc-lowrisc");
-diff --git a/drivers/video/console/lowrisc-con.c b/drivers/video/console/lowrisc-con.c
-new file mode 100644
-index 000000000..c3c782f24
---- /dev/null
-+++ b/drivers/video/console/lowrisc-con.c
+diff -urN linux-5.3.18.orig/drivers/video/console/lowrisc-con.c linux-5.3.18-lowrisc/drivers/video/console/lowrisc-con.c
+--- linux-5.3.18.orig/drivers/video/console/lowrisc-con.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.3.18-lowrisc/drivers/video/console/lowrisc-con.c	2020-01-22 09:47:34.262851749 +0000
 @@ -0,0 +1,303 @@
 +/*
 + *  linux/drivers/video/lowrisc_con.c -- A lowrisc console driver
@@ -6622,11 +6595,10 @@ index 000000000..c3c782f24
 +MODULE_AUTHOR("Jonathan Kimmitt");
 +MODULE_DESCRIPTION("Lowrisc VGA-compatible console driver");
 +MODULE_LICENSE("GPL");
-diff --git a/drivers/video/fbdev/Kconfig b/drivers/video/fbdev/Kconfig
-index 6b2de93bd..23dd687ed 100644
---- a/drivers/video/fbdev/Kconfig
-+++ b/drivers/video/fbdev/Kconfig
-@@ -2256,6 +2256,12 @@ config FB_SIMPLE
+diff -urN linux-5.3.18.orig/drivers/video/fbdev/Kconfig linux-5.3.18-lowrisc/drivers/video/fbdev/Kconfig
+--- linux-5.3.18.orig/drivers/video/fbdev/Kconfig	2019-12-18 15:06:00.000000000 +0000
++++ linux-5.3.18-lowrisc/drivers/video/fbdev/Kconfig	2020-01-22 09:47:34.262851749 +0000
+@@ -2256,6 +2256,12 @@
  	  Configuration re: surface address, size, and format must be provided
  	  through device tree, or plain old platform data.
  
@@ -6639,23 +6611,9 @@ index 6b2de93bd..23dd687ed 100644
  config FB_SSD1307
  	tristate "Solomon SSD1307 framebuffer support"
  	depends on FB && I2C
-diff --git a/drivers/video/fbdev/Makefile b/drivers/video/fbdev/Makefile
-index 7dc4861a9..dbad23dfb 100644
---- a/drivers/video/fbdev/Makefile
-+++ b/drivers/video/fbdev/Makefile
-@@ -133,6 +133,7 @@ obj-$(CONFIG_FB_MX3)		  += mx3fb.o
- obj-$(CONFIG_FB_DA8XX)		  += da8xx-fb.o
- obj-$(CONFIG_FB_SSD1307)	  += ssd1307fb.o
- obj-$(CONFIG_FB_SIMPLE)           += simplefb.o
-+obj-$(CONFIG_FB_LOWRISC)          += lowrisc_fb.o
- 
- # the test framebuffer is last
- obj-$(CONFIG_FB_VIRTUAL)          += vfb.o
-diff --git a/drivers/video/fbdev/lowrisc_fb.c b/drivers/video/fbdev/lowrisc_fb.c
-new file mode 100644
-index 000000000..f0f21592d
---- /dev/null
-+++ b/drivers/video/fbdev/lowrisc_fb.c
+diff -urN linux-5.3.18.orig/drivers/video/fbdev/lowrisc_fb.c linux-5.3.18-lowrisc/drivers/video/fbdev/lowrisc_fb.c
+--- linux-5.3.18.orig/drivers/video/fbdev/lowrisc_fb.c	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.3.18-lowrisc/drivers/video/fbdev/lowrisc_fb.c	2020-01-22 09:47:34.262851749 +0000
 @@ -0,0 +1,738 @@
 +/* lowrisc_fb.c, based on Sun XVR-1000 fb driver for sparc64 systems by David S. Miller (davem@davemloft.net)
 + *
@@ -7395,11 +7353,9 @@ index 000000000..f0f21592d
 +MODULE_AUTHOR("Jonathan Kimmitt");
 +MODULE_DESCRIPTION("Lowrisc FB-console driver");
 +MODULE_LICENSE("GPL");
-diff --git a/drivers/video/fbdev/lowrisc_logo.h b/drivers/video/fbdev/lowrisc_logo.h
-new file mode 100644
-index 000000000..a99a1bf2f
---- /dev/null
-+++ b/drivers/video/fbdev/lowrisc_logo.h
+diff -urN linux-5.3.18.orig/drivers/video/fbdev/lowrisc_logo.h linux-5.3.18-lowrisc/drivers/video/fbdev/lowrisc_logo.h
+--- linux-5.3.18.orig/drivers/video/fbdev/lowrisc_logo.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.3.18-lowrisc/drivers/video/fbdev/lowrisc_logo.h	2020-01-22 09:47:34.262851749 +0000
 @@ -0,0 +1,660 @@
 +0xFF, 0x00, 0xFA, 0x00, 0x8D, 0x01, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xE9, 0x00, 0xA6, 0x01,
 +0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xD6, 0x00, 0x83, 0x01, 0x82, 0x02, 0xAB, 0x01, 0x82, 0x02,
@@ -8061,11 +8017,9 @@ index 000000000..a99a1bf2f
 +0x86, 0x05, 0xB8, 0x00, 0x83, 0x05, 0x9A, 0x00, 0x84, 0x05, 0x86, 0x00, 0x83, 0x05, 0x98, 0x00,
 +0x8A, 0x05, 0xB5, 0x00, 0x86, 0x05, 0x9D, 0x00, 0x85, 0x05, 0x9D, 0x00, 0x83, 0x05, 0x85, 0x00,
 +0x83, 0x05, 0x98, 0x00, 0x8A, 0x05, 0x01, 0x00,
-diff --git a/drivers/video/fbdev/lowrisc_mini_font.h b/drivers/video/fbdev/lowrisc_mini_font.h
-new file mode 100644
-index 000000000..fff234be7
---- /dev/null
-+++ b/drivers/video/fbdev/lowrisc_mini_font.h
+diff -urN linux-5.3.18.orig/drivers/video/fbdev/lowrisc_mini_font.h linux-5.3.18-lowrisc/drivers/video/fbdev/lowrisc_mini_font.h
+--- linux-5.3.18.orig/drivers/video/fbdev/lowrisc_mini_font.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.3.18-lowrisc/drivers/video/fbdev/lowrisc_mini_font.h	2020-01-22 09:47:34.266851749 +0000
 @@ -0,0 +1,190 @@
 +/*--     --*/
 +0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
@@ -8257,11 +8211,9 @@ index 000000000..fff234be7
 +0x60,0x20,0x20,0x10,0x20,0x20,0x20,0x60,
 +/*-- ~  --*/
 +0x40,0xA4,0x18,0x00,0x00,0x00,0x00,0x00,
-diff --git a/drivers/video/fbdev/lowrisc_palette.h b/drivers/video/fbdev/lowrisc_palette.h
-new file mode 100644
-index 000000000..59b0a9a71
---- /dev/null
-+++ b/drivers/video/fbdev/lowrisc_palette.h
+diff -urN linux-5.3.18.orig/drivers/video/fbdev/lowrisc_palette.h linux-5.3.18-lowrisc/drivers/video/fbdev/lowrisc_palette.h
+--- linux-5.3.18.orig/drivers/video/fbdev/lowrisc_palette.h	1970-01-01 01:00:00.000000000 +0100
++++ linux-5.3.18-lowrisc/drivers/video/fbdev/lowrisc_palette.h	2020-01-22 09:47:34.266851749 +0000
 @@ -0,0 +1,256 @@
 +  0x0,
 +  0xffffff,
@@ -8519,3 +8471,14 @@ index 000000000..59b0a9a71
 +0xE0354F,
 +0xE9374F,
 +0xE1E6E8,
+diff -urN linux-5.3.18.orig/drivers/video/fbdev/Makefile linux-5.3.18-lowrisc/drivers/video/fbdev/Makefile
+--- linux-5.3.18.orig/drivers/video/fbdev/Makefile	2019-12-18 15:06:00.000000000 +0000
++++ linux-5.3.18-lowrisc/drivers/video/fbdev/Makefile	2020-01-22 09:47:34.262851749 +0000
+@@ -133,6 +133,7 @@
+ obj-$(CONFIG_FB_DA8XX)		  += da8xx-fb.o
+ obj-$(CONFIG_FB_SSD1307)	  += ssd1307fb.o
+ obj-$(CONFIG_FB_SIMPLE)           += simplefb.o
++obj-$(CONFIG_FB_LOWRISC)          += lowrisc_fb.o
+ 
+ # the test framebuffer is last
+ obj-$(CONFIG_FB_VIRTUAL)          += vfb.o
