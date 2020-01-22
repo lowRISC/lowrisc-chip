@@ -4,14 +4,14 @@ mount -t proc - /proc
 mount -t sysfs - /sys
 mount -t tmpfs - /run
 echo "File system check (root partition)"
-fsck.ext4 -p /dev/rda2
+btrfs check /dev/rda2
 if [ "$?" -gt 1 ]
 then
-    echo fsck.ext4 /dev/rda2 returned "$?", dropping to ash
+    echo btrfs check /dev/rda2 returned "$?", dropping to ash
     /bin/ash
 fi
 echo Mounting SD root
-mount -t ext4 /dev/rda2 /mnt || (echo mount -t ext4 /dev/rda2 /mnt failed, dropping to ash; /bin/ash)
+mount -t btrfs /dev/rda2 /mnt || (echo mount -t btrfs /dev/rda2 /mnt failed, dropping to ash; /bin/ash)
 mkdir -p /mnt/proc /mnt/sys /mnt/dev /mnt/run
 echo Enable network
 udhcpc eth0
