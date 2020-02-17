@@ -16,9 +16,9 @@
 [submodule "lowrisc-quickstart"]
 	path = lowrisc-quickstart
 	url = https://github.com/lowRISC/lowrisc-quickstart.git
-[submodule "ariane"]
-	path = ariane
-	url = https://github.com/lowRISC/ariane.git
 [submodule "buildroot-2019.11.1-lowrisc"]
 	path = buildroot-2019.11.1-lowrisc
 	url = https://github.com/lowrisc/buildroot.git
+[submodule "ariane"]
+	path = ariane
+	url = https://github.com/pulp-platform/ariane.git
