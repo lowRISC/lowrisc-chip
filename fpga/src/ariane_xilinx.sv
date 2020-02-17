@@ -654,7 +654,7 @@ logic [ariane_soc::NumSources-1:0] irq_sources;
 
 `ifdef NEXYS4DDR
 `ifdef ARIANE_SHELL
-   localparam graphmax = 18;
+   localparam graphmax = 17;
 `elsif ROCKET_SHELL
    localparam graphmax = 20;
 `else
