@@ -25,9 +25,10 @@ volatile uint64_t *const bt_base = (volatile uint64_t *)BTBase;
 
 static int addr_int = 0;
 
+enum {lines=30};
+
 void hid_console_putchar(unsigned char ch)
 {
-  enum {lines=30};
   int blank = ' '|0x0A00;
   uint16_t *hid_vga_ptr = (uint16_t *)hid_fb_ptr;
   switch(ch)
@@ -60,13 +61,15 @@ void uart_console_putchar(unsigned char ch)
   write_serial(UARTBase, ch);
 }  
 
-
 void hid_init(uint32_t sw)
 {
+#ifdef ZIFU
   int i;
+#endif
   hid_reg_ptr[LOWRISC_REGS_MODE] = 0x00;
   hid_reg_ptr[LOWRISC_REGS_HPIX ] = 6;
   hid_reg_ptr[LOWRISC_REGS_VPIX ] = 9;
+  memset((void *)hid_fb_ptr, 0, lines*256);
 #ifdef ZIFU
   if (sw&16)
     {

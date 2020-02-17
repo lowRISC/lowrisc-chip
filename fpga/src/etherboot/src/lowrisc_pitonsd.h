@@ -30,7 +30,7 @@ enum {
   _piton_sd_SYS_RST     };
 
 enum {
-  _piton_sd_ADDR_SD_F=32,
+  _piton_sd_ADDR_SD_F   ,
   _piton_sd_ADDR_DMA_F  ,
   _piton_sd_STATUS      ,
   _piton_sd_ERROR       ,

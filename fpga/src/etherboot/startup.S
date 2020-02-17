@@ -48,13 +48,24 @@ _clr:
 trap_entry:
   csrr t0, mcause
   csrr t1, mepc
+  la a0, trap_msg
+  call hid_send_string
+  mv a0, t1
+  li a1, 8
+  call puthex
+  la a0, cause_msg
+  call hid_send_string        
+  mv a0, t0
+  li a1, 2
+  call puthex
+  la a0, stars
+  call hid_send_string        
 1:      
   wfi
   j 1b
-hello:
-  .ascii "Hello from lowRISC! Please wait a moment...\n\000"
-relocmsg:
-  .ascii "Relocating to DDR memory\n\000"
-skiprelocmsg:
-  .ascii "Skip relocating to DDR memory\n\000"
-
+trap_msg:
+  .ascii "Trapped to machine mode, PC = \000"
+cause_msg:
+  .ascii ", Cause = \000"
+stars:
+  .ascii " ********                     \000"
