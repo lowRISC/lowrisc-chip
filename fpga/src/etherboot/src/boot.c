@@ -15,6 +15,8 @@
 #include "ariane.h"
 #include "lowrisc_pitonsd.h"
 
+#define DUMP_REGS
+
 volatile uint64_t *const sd_base = (volatile uint64_t *)SDBase;
 volatile uint64_t *const sd_bram = (volatile uint64_t *)(SDBase + 0x8000);
 
@@ -161,10 +163,11 @@ void free(void *ptr)
 
 }
 
-#ifdef BIGROM
+#ifdef DUMP_REGS
 static void pitonsd_dump_regs(void)
 {
-  const char *init_state, *tran_state;
+  static char init_state_num[10], tran_state_num[10];
+  const char *init_state = init_state_num, *tran_state = tran_state_num;
   char status[99];
   int stat = sd_base[_piton_sd_STATUS];
   *status = 0;
@@ -176,6 +179,7 @@ static void pitonsd_dump_regs(void)
   if (stat&32) strcat(status," INIT_DONE");
   if (stat&64) strcat(status," HCXC");
   if (stat&128) strcat(status," DETECT");
+#ifdef DUMP_REGS_VERBOSE
   switch(sd_base[_piton_sd_INIT_STATE])
     {
     case 0x0: init_state = "ST_CI_EN_SW_RST"; break;
@@ -272,6 +276,10 @@ static void pitonsd_dump_regs(void)
     case 0xff: init_state = "ST_INIT_ERR"; break;
     default: init_state = "UNKNOWN";
     }
+#else
+  sprintf(init_state_num, "0x%x", sd_base[_piton_sd_INIT_STATE]);
+#endif  
+#ifdef DUMP_REGS_VERBOSE
   switch(sd_base[_piton_sd_TRAN_STATE])
     {
     case 0x3f: tran_state = "ST_RST"; break;
@@ -303,6 +311,9 @@ static void pitonsd_dump_regs(void)
     case 0x28: tran_state = "ST_CMD24_RD_DATA_ISR"; break;
     default: tran_state = "UNKNOWN";
     }
+#else
+  sprintf(tran_state_num, "0x%x", sd_base[_piton_sd_TRAN_STATE]);
+#endif  
   printf(
         "    sd_f:  0x%lx  dma_f: 0x%lx status: %s\n"
         "    resp_vec: 0x%lx  init_state: %s  counter: 0x%lx\n"
@@ -335,17 +346,21 @@ DSTATUS disk_initialize (uint8_t pdrv)
 
         /* reset HW state machine */
         sd_base[ _piton_sd_SYS_RST ] = 1;
-
-        while (_piton_sd_STATUS_INIT_DONE & ~sd_base[_piton_sd_STATUS])
+        fence_io();
+        do
           {
             int init_state = sd_base[_piton_sd_INIT_STATE];
-#ifdef BIGROM  
+#ifdef DUMP_REGS_VERBOSE
+            printf("init_state = 0x%x\n", init_state);
+#endif
+#ifdef DUMP_REGS
             if (old_init_state != init_state)
               pitonsd_dump_regs();
 #endif
             old_init_state = init_state;
           }
-#ifdef BIGROM  
+          while (old_init_state != 0xf0);
+#ifdef DUMP_REGS
         pitonsd_dump_regs();
 #endif
         return 0;
@@ -382,6 +397,9 @@ void *memalign(size_t alignment, size_t size)
 DRESULT disk_read (uint8_t pdrv, uint8_t *buff, uint32_t sector, uint32_t count)
 {
   uint64_t vec;
+#ifdef DUMP_REGS_VERBOSE
+  uint64_t stat2;
+#endif
   uint64_t stat = 0xDEADBEEF;
   uint64_t mask = (1 << count) - 1;
   /* SD sector address */
@@ -391,10 +409,20 @@ DRESULT disk_read (uint8_t pdrv, uint8_t *buff, uint32_t sector, uint32_t count)
   /* set sector count */
   sd_base[ _piton_sd_BLKCNT ] = count;
   sd_base[ _piton_sd_REQ_RD ] = 1;
+  fence_io();
+#ifdef DUMP_REGS_VERBOSE
+  printf("disk_read(0x%x, 0x%x, 0x%x, 0x%x);\n", pdrv, buff, sector, count);
+#endif
   do
     {
+#ifdef ISSUE_356
       fence(); /* This is needed for a suspected Ariane bug */
+#endif      
       stat = sd_base[_piton_sd_STATUS];
+#ifdef DUMP_REGS_VERBOSE
+      stat2 = sd_base[_piton_sd_STATUS+32];
+      printf("stat = 0x%x, stat2 = 0x%x\n", stat, stat2);
+#endif
     }
   while (_piton_sd_STATUS_REQ_RDY & ~stat);
   sd_base[ _piton_sd_REQ_RD ] = 0;
@@ -402,7 +430,7 @@ DRESULT disk_read (uint8_t pdrv, uint8_t *buff, uint32_t sector, uint32_t count)
   memcpy(buff, (void *)sd_bram, count*512);
   if (vec==mask)
     return FR_OK;
-#ifdef BIGROM  
+#ifdef DUMP_REGS
   pitonsd_dump_regs();
 #endif  
   return FR_INT_ERR;

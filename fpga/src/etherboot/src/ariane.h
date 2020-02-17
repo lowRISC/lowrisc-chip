@@ -34,6 +34,11 @@ static inline void fence(void)
         asm volatile ("fence" ::: "memory");
 }
 
+static inline void fence_io(void)
+{
+        asm volatile ("fence io,io" ::: "memory");
+}
+
 void eth_main(void);
 void sd_main(int sw);
 void bt_main(int sw);

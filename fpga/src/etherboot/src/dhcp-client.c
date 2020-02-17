@@ -365,6 +365,7 @@ udp_output(struct udphdr *udp_header, int *len, uint16_t client, uint16_t server
 static void
 dhcp_output(dhcp_t *dhcp, u_int8_t *mac, int *len)
 {
+    uint32_t mag = __htonl(DHCP_MAGIC_COOKIE);
     *len += sizeof(dhcp_t);
     memset(dhcp, 0, sizeof(dhcp_t));
 
@@ -373,7 +374,7 @@ dhcp_output(dhcp_t *dhcp, u_int8_t *mac, int *len)
     dhcp->hlen = 6;
     memcpy(dhcp->chaddr, mac, DHCP_CHADDR_LEN);
 
-    dhcp->magic_cookie = __htonl(DHCP_MAGIC_COOKIE);
+    memcpy(&(dhcp->magic_cookie), &mag, sizeof(uint32_t));
 }
 
 /*

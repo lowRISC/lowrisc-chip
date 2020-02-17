@@ -3,6 +3,7 @@
 #define __NEED_MEMCPY
 #define __NEED_STRLEN
 #define __NEED_STRCPY
+#define __NEED_STRCAT
 
 /*
  *  linux/lib/string.c

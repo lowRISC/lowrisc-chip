@@ -9,8 +9,6 @@
 #include "elfriscv.h"
 #include "eth.h"
 
-static const uint8_t pattern[] = {0x55, 0xAA, 0x33, 0xcc};
-
 void gpio_leds(uint32_t arg)
 {
   volatile uint64_t *swp = (volatile uint64_t *)GPIOBase;
@@ -153,7 +151,6 @@ void qspi_main(int sw)
 
 int main()
 {
-  uint32_t i;
   uint32_t sw = gpio_sw();
   uint32_t sw2 = gpio_sw();
   init_uart(UARTBase, 0x001B);
