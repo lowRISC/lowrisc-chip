@@ -29,11 +29,13 @@ tftp: $(MAINKERNEL)
 	md5sum $<
 	echo -e bin \\n put $< $(MD5) \\n | tftp $(REMOTE)
 
-$(MAINKERNEL): $(BUILDROOT)
-	cp $(BUILDROOT_VER)/rescuefs/images/bbl $@
+$(MAINKERNEL): $(BUILDROOT_VER)/rescuefs/images/bbl
+	cp $< $@
 
-$(RESCUEKERNEL): $(BUILDROOT)
-	cp $(BUILDROOT_VER)/mainfs/images/bbl $@
+$(BUILDROOT_VER)/rescuefs/images/bbl $(BUILDROOT_VER)/mainfs/images/bbl: $(BUILDROOT)
+
+$(RESCUEKERNEL): $(BUILDROOT_VER)/mainfs/images/bbl
+	cp $< $@
 
 fpga/src/etherboot/$(BOARD)_$(CPU).sv: fpga/src/generic.dts
 	make -C fpga/src/etherboot BOARD=$(BOARD) CPU=$(CPU) VENDOR=$(VENDOR) MEMSIZE=$(MEMSIZE) PATH=$(RISCV)/bin:/usr/local/bin:/usr/bin:/bin
@@ -129,6 +131,12 @@ sdcard-install: $(ZROOT)
 
 sdcard-install-debian: $(PWD)/lowrisc-quickstart/rootfs.tar.xz
 	make -C lowrisc-quickstart/ install-debian USB=$(USB) ROOTFS=$<
+
+$(PWD)/lowrisc-quickstart/rootfs.tar.xz: debian-riscv64/work/makefile.inc
+	make -C debian-riscv64
+
+debian-riscv64/work/makefile.inc:
+	git clone -b ariane-v0.7 https://github.com/lowRISC/debian-riscv64.git
 
 firmware:
 	make -B -C fpga/src/etherboot BOARD=nexys4_ddr BITSIZE=0x400000 XILINX_PART=xc7a100tcsg324-1 XILINX_BOARD=digilentinc.com:nexys4_ddr:part0:1.1 CPU=rocket VENDOR=sifive MEMSIZE=0x8000000 CLK_PERIOD_NS="20" PATH=$(RISCV)/bin:/usr/local/bin:/usr/bin:/bin
